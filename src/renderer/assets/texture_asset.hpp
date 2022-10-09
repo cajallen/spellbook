@@ -6,22 +6,26 @@
 #include "json.hpp"
 #include "geometry.hpp"
 
-#include "asset_loader.hpp"
+#include "renderer/assets/asset_loader.hpp"
 
 namespace spellbook {
 
+/*
+ * Asset files are special file types that contain header data at the start and a binary blob at the end.
+ *
+ * To load a normally serialized file, we load a file into json and construct the object out of the json
+ *
+ * To load an asset file, we load a file into an AssetFile, convert it to it's info type and json type,
+ * and construct the object out of those two.
+ */
+
 struct TextureInfo {
-    string original_file;
-    int    compression_mode; // CompressionMode
-    int    texture_format;   // vuk::Format
-
-    v2i dimensions;
-
-    u64 compressed_byte_size;
-    u64 original_byte_size;
+    CompressionMode compression_mode = {};
+    u64 compressed_bsize = 0;
+    u64 original_bsize = 0;
 
     TextureInfo() = default;
-    JSON_IMPL(TextureInfo, original_file, compression_mode, texture_format, dimensions, compressed_byte_size, original_byte_size);
+    JSON_IMPL(TextureInfo, compression_mode, compressed_bsize, original_bsize);
 };
 
 TextureInfo read_texture_info(AssetFile* file);

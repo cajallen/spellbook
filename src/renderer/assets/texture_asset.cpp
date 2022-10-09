@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "console.hpp"
+
 #include "lib_ext/fmt_geometry.hpp"
 
 namespace spellbook {
@@ -13,20 +14,20 @@ TextureInfo read_texture_info(AssetFile* file) {
 }
 
 void unpack_texture(TextureInfo* info, const u8* sourcebuffer, u8* destination) {
-    console({.str = fmt_("unpack_texture with {} original_bytes, {} compressed_bytes, and {} for dims",
-                 info->original_byte_size,
-                 info->compressed_byte_size,
-                 info->dimensions)});
+    console({.str = fmt_("unpack_texture with {} original_bytes, {} compressed_bytes,",
+                 info->original_bsize,
+                 info->compressed_bsize
+                 )});
 
     if (info->compression_mode == CompressionMode_Lz4) {
-        LZ4_decompress_safe((const char*) sourcebuffer, (char*) destination, (s32) info->compressed_byte_size, (s32) info->original_byte_size);
+        LZ4_decompress_safe((const char*) sourcebuffer, (char*) destination, (s32) info->compressed_bsize, (s32) info->original_bsize);
     } else {
-        memcpy(destination, sourcebuffer, info->original_byte_size);
+        memcpy(destination, sourcebuffer, info->original_bsize);
     }
 }
 
 AssetFile pack_texture(TextureInfo* info, void* pixel_data) {
-    console({.str = fmt_("pack_texture with {} bytes and {} for dims", info->original_byte_size, info->dimensions)});
+    console({.str = fmt_("pack_texture with {} bytes", info->original_bsize)});
     // core file header
     AssetFile file;
     file.type[0] = 'T';
@@ -38,32 +39,32 @@ AssetFile pack_texture(TextureInfo* info, void* pixel_data) {
     bool compress = true;
     if (compress) {
         // Compress binary blob using LZ4
-        s32         src_byte_size     = (s32) info->original_byte_size;
+        s32         src_bsize     = (s32) info->original_bsize;
         const char* src_data          = (char*) pixel_data;
-        s32         max_dst_byte_size = LZ4_compressBound(src_byte_size);
-        file.binary_blob.resize(max_dst_byte_size);
+        s32         max_dst_bsize = LZ4_compressBound(src_bsize);
+        file.binary_blob.resize(max_dst_bsize);
         auto dst_data = (char*) file.binary_blob.data();
 
-        int   compressed_byte_size = LZ4_compress_default(src_data, dst_data, src_byte_size, max_dst_byte_size);
-        float compression_rate     = float(compressed_byte_size) / float(info->original_byte_size);
+        int   compressed_bsize = LZ4_compress_default(src_data, dst_data, src_bsize, max_dst_bsize);
+        float compression_rate     = float(compressed_bsize) / float(info->original_bsize);
 
         // if the compression is more than 80% of the original size, its not worth to use it
         if (compression_rate > 0.8f) {
             info->compression_mode = CompressionMode_None;
-            compressed_byte_size   = src_byte_size;
-            file.binary_blob.resize(compressed_byte_size);
-            memcpy(file.binary_blob.data(), pixel_data, compressed_byte_size);
+            compressed_bsize   = src_bsize;
+            file.binary_blob.resize(compressed_bsize);
+            memcpy(file.binary_blob.data(), pixel_data, compressed_bsize);
         } else {
             info->compression_mode = CompressionMode_Lz4;
-            file.binary_blob.resize(compressed_byte_size);
+            file.binary_blob.resize(compressed_bsize);
         }
-        info->compressed_byte_size = compressed_byte_size;
+        info->compressed_bsize = compressed_bsize;
         // Finished compression state
     } else {
         info->compression_mode = CompressionMode_None;
-        file.binary_blob.resize(info->original_byte_size);
-        memcpy(file.binary_blob.data(), pixel_data, info->original_byte_size);
-        info->compressed_byte_size = info->original_byte_size;
+        file.binary_blob.resize(info->original_bsize);
+        memcpy(file.binary_blob.data(), pixel_data, info->original_bsize);
+        info->compressed_bsize = info->original_bsize;
     }
 
     file.json = ((json_value) *info).dump();

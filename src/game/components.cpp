@@ -1,12 +1,14 @@
 #include "components.hpp"
 
-#include "scene.hpp"
-#include "renderer/renderable.hpp"
-#include "renderer/draw_functions.hpp"
-
 #include <imgui.h>
 
 #include "string.hpp"
+
+#include "scene.hpp"
+
+#include "renderer/renderable.hpp"
+#include "renderer/draw_functions.hpp"
+
 
 namespace spellbook {
 

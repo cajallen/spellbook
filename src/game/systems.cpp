@@ -25,7 +25,7 @@ void travel_system(Scene* scene) {
     astar::Navigation nav;
     for (auto [entity, slot] : slots.each()) {
         if (slot.path)
-            nav.positions.push_back(slot.position.xy);
+            nav.positions.insert_back(slot.position.xy);
     }
 
     // handle actual traveling
@@ -33,31 +33,31 @@ void travel_system(Scene* scene) {
         bool has_path = !traveler.targets.empty();
 
         if (!has_path && !consumers.empty()) {
-            int       random_consumer = m::random_s32() % s32(consumers.size());
+            int       random_consumer = math::random_s32() % s32(consumers.size());
             auto      consumer_entity = consumers[random_consumer];
             GridSlot* p_slot          = scene->registry.try_get<GridSlot>(consumer_entity);
             assert_else(p_slot);
 
-            auto path = nav.find_path(m::round_cast(transform.translation.xy), p_slot->position.xy);
+            auto path = nav.find_path(math::round_cast(transform.translation.xy), p_slot->position.xy);
             for (auto it = path.begin(); it != path.end(); ++it) {
                 traveler.targets.emplace_back(it->x, it->y, 0);
             }
         }
-        assert_else(!m::is_nan(transform.translation.x)) {
+        assert_else(!math::is_nan(transform.translation.x)) {
             transform.translation = v3(0, 0, 0);
         }
 
-        v3i  target_position = has_path ? traveler.targets.back() : m::round_cast(transform.translation);
+        v3i  target_position = has_path ? traveler.targets.last() : math::round_cast(transform.translation);
         v3   velocity        = v3(target_position) - transform.translation;
-        bool at_target       = m::length(velocity) < 0.01f;
+        bool at_target       = math::length(velocity) < 0.01f;
         if (at_target && has_path) {
-            traveler.targets.pop_back();
+            traveler.targets.remove_back();
             velocity = v3(0);
         }
         f32 max_velocity = traveler.velocity * Input::delta_time;
         f32 min_velocity = 0.0f;
         if (!at_target)
-            transform.translation += m::normalize(velocity) * m::clamp(m::length(velocity), min_velocity, max_velocity);
+            transform.translation += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
     }
 }
 
@@ -81,6 +81,7 @@ void health_draw_system(Scene* scene) {
         string name   = p_name ? fmt_("{}:health", p_name->name) : fmt_("nameless_{}:health", health_draw_system_i++);
 
         string mesh_name = fmt_("cube_c{:.2f}_e{:.2f}", v3(0), v3(1));
+        // TODO:
         if (game.renderer.meshes.count(mesh_name) == 0) {
             game.renderer.upload_mesh(generate_cube(v3(0), v3(1)), false);
         }
@@ -99,21 +100,21 @@ void health_draw_system(Scene* scene) {
 
         if (health.value <= 0.0f) continue;
 
-        float dir_to_camera = m::angle_to(scene->cameras.front().position.xy, transform.translation.xy);
+        float dir_to_camera = math::angle_to(scene->cameras.first().position.xy, transform.translation.xy);
         float thickness = 0.03f;
 
-        m44 inner_matrix = m::translate(transform.translation + model.offset) * 
-                           m::rotation(euler(dir_to_camera - m::PI / 2.0f, 0.0f)) *
-                           m::translate(v3(-(1.0f - health.value) / 2.0f, 0.0f, 1.0f)) *
-                           m::scale(v3(health.value * 0.5f, 0.1f, 0.1f));
-        m44 outer_matrix = m::translate(v3(0.0f, 0.0f, 1.0) + transform.translation + model.offset) *
-                           m::rotation(euler(dir_to_camera - m::PI / 2.0f, 0.0f)) * 
-                           m::scale(v3(0.5f + thickness, 0.1f + thickness, 0.1f + thickness));
+        m44 inner_matrix = math::translate(transform.translation + model.offset) * 
+                           math::rotation(euler(dir_to_camera - math::PI / 2.0f, 0.0f)) *
+                           math::translate(v3(-(1.0f - health.value) / 2.0f, 0.0f, 1.0f)) *
+                           math::scale(v3(health.value * 0.5f, 0.1f, 0.1f));
+        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 1.0) + transform.translation + model.offset) *
+                           math::rotation(euler(dir_to_camera - math::PI / 2.0f, 0.0f)) * 
+                           math::scale(v3(0.5f + thickness, 0.1f + thickness, 0.1f + thickness));
 
-        auto renderable1 = Renderable(name, mesh_name, "health_material", inner_matrix);
-        auto renderable2 = Renderable(name + "_bar", mesh_name, "health_bar_material", outer_matrix);
-        scene->render_scene.frame_renderables.push_back(renderable1);
-        scene->render_scene.frame_renderables.push_back(renderable2);
+        // auto renderable1 = Renderable(name, mesh_name, "health_material", inner_matrix);
+        // auto renderable2 = Renderable(name + "_bar", mesh_name, "health_bar_material", outer_matrix);
+        // scene->render_scene.frame_renderables.insert_back(renderable1);
+        // scene->render_scene.frame_renderables.insert_back(renderable2);
     }
 }
 
@@ -130,15 +131,6 @@ void spawner_system(Scene* scene) {
         if (spawner.last_spawn + spawner.rate < Input::time) {
             spawner.last_spawn += spawner.rate;
 
-            vector<slot<Renderable>> model;
-            int                      spawn_index = m::random_s32() % spawner.prefab.root_nodes.size();
-            int                      r_index     = spawner.prefab.root_nodes[spawn_index];
-            model.push_back(scene->render_scene.add_renderable(spawner.prefab.renderables[r_index]));
-            for (int i = 0; i < spawner.prefab.renderables.size(); i++) {
-                if (spawner.prefab.parents[i] == r_index)
-                    model.push_back(scene->render_scene.add_renderable(spawner.prefab.renderables[i]));
-            }
-
             GridSlot* p_slot = scene->registry.try_get<GridSlot>(entity);
             assert_else(p_slot);
 
@@ -146,7 +138,7 @@ void spawner_system(Scene* scene) {
             auto       new_entity = scene->registry.create();
             scene->registry.emplace<Name>(new_entity, fmt_("fruit_{}", i++));
             scene->registry.emplace<Transform>(new_entity, (v3) p_slot->position);
-            scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
+            // TODO: scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
             scene->registry.emplace<Health>(new_entity, 1.0f);
             scene->registry.emplace<Traveler>(new_entity);
             scene->registry.emplace<Collision>(new_entity, 0.3f);
@@ -161,7 +153,7 @@ void consumer_system(Scene* scene) {
 
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
         for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
-            f32 dist = m::length(v2(consumer_transform.translation.xy) - consumee_transform.translation.xy);
+            f32 dist = math::length(v2(consumer_transform.translation.xy) - consumee_transform.translation.xy);
             if (dist < consumer.consume_distance) {
                 scene->registry.emplace<Killed>(e_consumee, Input::time);
                 console({.str=fmt_("Om nom nom"), .group = "system.consumer"});
@@ -199,7 +191,7 @@ void pyro_system(Scene* scene) {
         pyro.last_tick += pyro.rate; // Don't skip the deltatime
         for (auto [e_enemy, enemy_health, enemy_transform, _] : enemies.each()) {
             if (e_pyro == e_enemy) continue;
-            if (m::length(pyro_transform.translation - enemy_transform.translation) > pyro.radius) continue;
+            if (math::length(pyro_transform.translation - enemy_transform.translation) > pyro.radius) continue;
             
             enemy_health.value -= pyro.damage;
         }
@@ -210,15 +202,7 @@ void selection_id_system(Scene* scene) {
     ZoneScoped;
     auto model_view = scene->registry.view<Model>();
     for (auto [entity, model] : model_view.each()) {
-        for (auto handle : model.renderables) {
-            if (!scene->render_scene.renderables.valid(handle)) {
-                console_error("Render Scene invalid renderable", "model", ErrorType_Warning);
-                continue;
-            }
-
-            auto& renderable = scene->render_scene.renderables[handle];
-            renderable.selection_id = (u32) entity;
-        }
+        // TODO: set selection_ids
     }
 }
 
@@ -232,7 +216,7 @@ void dragging_update_system(Scene* scene) {
 
         if (scene->registry.valid((entt::entity) result_int)) {
             scene->selected_entity = (entt::entity) result_int;
-            v3  intersect = m::intersect_axis_plane(scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+            v3  intersect = math::intersect_axis_plane(scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
             auto transform = scene->registry.try_get<Transform>(scene->selected_entity);
             assert_else(transform);
 
@@ -244,7 +228,7 @@ void dragging_update_system(Scene* scene) {
 void dragging_system(Scene* scene) {
     ZoneScoped;
     Viewport& viewport = scene->render_scene.viewport;
-    v3 intersect = m::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+    v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
 
     constexpr f32 raise_speed = 4.0f;
 
@@ -253,7 +237,7 @@ void dragging_system(Scene* scene) {
         v3 offset = intersect - dragging.start_intersect;
         v3 position = dragging.start_position + offset;
 
-        transform.translation.z = m::min(transform.translation.z + raise_speed * Input::delta_time, 0.5f);
+        transform.translation.z = math::min(transform.translation.z + raise_speed * Input::delta_time, 0.5f);
         transform.translation.xy = position.xy;
     }
 }
@@ -274,7 +258,7 @@ void collision_update_system(Scene* scene) {
             auto& transform2 = view.get<Transform>(entity2);
             auto& collision2 = view.get<Collision>(entity2);
 
-            if (m::length(transform1.translation - transform2.translation) < (collision1.radius + collision2.radius)) {
+            if (math::length(transform1.translation - transform2.translation) < (collision1.radius + collision2.radius)) {
                 if (!collision1.with.contains(entity2))
                     collision1.with.insert(entity2);
                 if (!collision2.with.contains(entity1))
@@ -312,12 +296,12 @@ void roller_system(Scene* scene) {
             static int rollee_index = 0;
             auto       new_entity = scene->registry.create();
 
-            vector<slot<Renderable>> model;
-            model.push_back(scene->render_scene.add_renderable(Renderable{fmt_("rollee_{}_renderable", rollee_index), "icosphere_3", "rollee_material", m::scale(roller.rollee_radius)}));
+            // vector<slot<Renderable>> model;
+            // model.insert_back(scene->render_scene.add_renderable(Renderable{fmt_("rollee_{}_renderable", rollee_index), "icosphere_3", "rollee_material", math::scale(roller.rollee_radius)}));
 
             scene->registry.emplace<Name>(new_entity, fmt_("rollee_{}", rollee_index));
             scene->registry.emplace<Transform>(new_entity, transform.translation + v3(0.2f * dirs[i], 0.0f), euler(), roller.rollee_radius);
-            scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
+            // TODO: scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
             scene->registry.emplace<Rollee>(new_entity, entity, roller.rollee_speed * v3(dirs[i], 0.0f), roller.rollee_lifetime);
             scene->registry.emplace<Collision>(new_entity, roller.rollee_radius);
             rollee_index++;
@@ -358,7 +342,7 @@ void rollee_system(Scene* scene) {
             }
         }
         if (p_transform && p_collision) {
-            p_transform->scale = m::mix(p_collision->radius,0.0f,m::smoothstep(0.2f, 0.0f, rollee.lifetime));
+            p_transform->scale = math::mix(p_collision->radius,0.0f,math::smoothstep(0.2f, 0.0f, rollee.lifetime));
         }
     }
 }

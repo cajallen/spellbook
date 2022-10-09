@@ -1,23 +1,23 @@
 #include "map_editor.hpp"
 
+#include <tracy/Tracy.hpp>
+
 #include "scene.hpp"
 #include "game.hpp"
 #include "components.hpp"
+
 #include "renderer/loader.hpp"
 #include "renderer/draw_functions.hpp"
-#include "assets/asset_main.hpp"
-
-#include <tracy/Tracy.hpp>
 
 namespace spellbook {
 
 // clang-format off
 vector<Brush> MapEditor::brushes = {
-    {"Air", palette::black, vector<Renderable>{}, false},
-    {"Floor", palette::green, {}, false},
-    {"Path", palette::saddle_brown, {}, true},
-    {"Spawner", palette::cadet_blue, {}, true},
-    {"Consumer", palette::dark_gray, {}, true}
+    {"Air", palette::black, nullptr, false},
+    {"Floor", palette::green, nullptr,  false},
+    {"Path", palette::saddle_brown, nullptr, true},
+    {"Spawner", palette::cadet_blue, nullptr, true},
+    {"Consumer", palette::dark_gray, nullptr, true}
 };
 vector<Tower> MapEditor::towers = {};
 // clang-format on
@@ -40,7 +40,7 @@ void MapEditor::setup(Scene* init_scene) {
         if (brush.name == "Air")
             continue;
         MaterialCPU brush_mat = {.name  = fmt_("{}_mat", brush.name),
-            .base_color_tint            = brush.color,
+            .base_color_tint            = brush.button_color,
             .base_color_texture         = brush.name == "Path" ? "white" : "tile_color",
             .roughness_factor           = 0.9f,
             .metallic_roughness_texture = "tile_mr",
@@ -74,9 +74,9 @@ void MapEditor::update() {
                 {(v3) cell + v3(0.0, 1.0, 0.05), palette::white, 0.03f},
                 {(v3) cell + v3(0.0, 0.0, 0.05), palette::white, 0.03f},
                 {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f}});
-        string mesh_name = line_mesh.name;
-        p_scene->render_scene.mesh_dependencies.insert_back(std::move(line_mesh));
-        p_scene->render_scene.frame_renderables.insert_back(Renderable{"Placement Line", mesh_name, "default", m44::identity()});
+        MeshGPU& mesh = game.renderer.upload_mesh(line_mesh);
+        MaterialGPU& material = *game.renderer.find_material("default");
+        p_scene->render_scene.frame_renderables.insert_back(Renderable{mesh, material, m44::identity()});
     }
     else if (selected_tower != -1) {
         vector<FormattedVertex> vertices;
@@ -87,9 +87,9 @@ void MapEditor::update() {
         }
         
         auto   line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
-        string mesh_name = line_mesh.name;
-        p_scene->render_scene.mesh_dependencies.insert_back(std::move(line_mesh));
-        p_scene->render_scene.frame_renderables.insert_back(Renderable{"Placement Line", mesh_name, "default", m44::identity()});
+        MeshGPU& mesh = game.renderer.upload_mesh(line_mesh);
+        MaterialGPU& material = *game.renderer.find_material("default");
+        p_scene->render_scene.frame_renderables.insert_back(Renderable{mesh, material, m44::identity()});
     }
 
 
@@ -118,8 +118,8 @@ void MapEditor::update() {
         // TODO: add brush
         // p_scene->registry.emplace<Model>(entity, renderables, v3(0.0f));
         p_scene->registry.emplace<GridSlot>(entity, cell, brush.travelable);
-        if (brush.name == "Spawner")
-            p_scene->registry.emplace<Spawner>(entity, Input::time, 2.0f, for_spawner);
+        // if (brush.name == "Spawner")
+        //     p_scene->registry.emplace<Spawner>(entity, Input::time, 2.0f, for_spawner);
         if (brush.name == "Consumer")
             p_scene->registry.emplace<Consumer>(entity, 0.5f, 0);
     }
@@ -172,7 +172,7 @@ void MapEditor::window(bool* p_open) {
         float       window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
         ImVec2      tower_button_sz         = ImVec2(100, 30);
         for (int i = 0; i < towers_count; i++) {
-            Color normal_color  = towers[i].color;
+            Color normal_color  = towers[i].button_color;
             Color hovered_color = mix(normal_color, palette::white, 0.2);
             Color pressed_color = mix(normal_color, palette::white, 0.1);
 
@@ -202,7 +202,7 @@ void MapEditor::window(bool* p_open) {
         int         buttons_count     = brushes.size();
         ImVec2      button_sz         = ImVec2(100, 100);
         for (int i = 0; i < buttons_count; i++) {
-            Color normal_color  = brushes[i].color;
+            Color normal_color  = brushes[i].button_color;
             Color hovered_color = mix(normal_color, palette::white, 0.2);
             Color pressed_color = mix(normal_color, palette::white, 0.1);
 

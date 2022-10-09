@@ -1,8 +1,8 @@
 #include "mesh_asset.hpp"
 
-#include "math.hpp"
-
 #include <lz4.h>
+
+#include "math.hpp"
 
 namespace spellbook {
 

@@ -6,7 +6,8 @@
 
 namespace spellbook {
 
-typedef void (*system_update)(Scene*);
+// Order does not represent execution order.
+// Could order these as a DAG.... ...hmm....
 
 // Handles wanderer behavior
 void travel_system(Scene* scene);
@@ -20,25 +21,15 @@ void health_draw_system(Scene* scene);
 // Uses the transform for models
 void transform_system(Scene* scene);
 
-// Spawns entities
 void spawner_system(Scene* scene);
-
-// Consumes entities
 void consumer_system(Scene* scene);
-
 void health_system(Scene* scene);
-
 void disposal_system(Scene* scene);
-
 void pyro_system(Scene* scene);
-
 void selection_id_system(Scene* scene);
-
 void dragging_update_system(Scene* scene);
 void dragging_system(Scene* scene);
-
 void collision_update_system(Scene* scene);
-
 void roller_system(Scene* scene);
 void rollee_system(Scene* scene);
 

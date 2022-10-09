@@ -27,4 +27,9 @@ TextureCPU load_texture(const string_view file_name) {
     return texture;
 }
 
+void save_texture(const TextureCPU&) {
+    assert_else(false && "NYI");
+}
+
+
 }

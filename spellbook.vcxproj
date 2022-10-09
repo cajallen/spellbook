@@ -807,7 +807,6 @@
     <ClInclude Include="libs\lz4\lz4hc.h" />
     <ClInclude Include="libs\lz4\xxhash.h" />
     <ClInclude Include="libs\tinygltf\tiny_gltf.h" />
-    <ClInclude Include="libs\tinyobjloader\tiny_obj_loader.h" />
     <ClInclude Include="libs\tracy\public\tracy\Tracy.hpp" />
     <ClInclude Include="libs\vk-bootstrap\src\VkBootstrap.h" />
     <ClInclude Include="libs\vk-bootstrap\src\VkBootstrapDispatch.h" />

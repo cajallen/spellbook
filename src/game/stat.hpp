@@ -26,7 +26,7 @@ struct Stat {
                     base += effect.value * effect.stacks;
                 } break;
                 case (StatEffect::Type_Multiply): {
-                    mult *= m::pow(1.0f + effect.value, (f32) effect.stacks);
+                    mult *= math::pow(1.0f + effect.value, (f32) effect.stacks);
                 } break;
                 case (StatEffect::Type_Add): {
                     add += effect.value * effect.stacks;

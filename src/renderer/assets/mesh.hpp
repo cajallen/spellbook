@@ -1,10 +1,10 @@
 #pragma once
 
-#include "vector.hpp"
-#include "string.hpp"
-
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
+
+#include "vector.hpp"
+#include "string.hpp"
 
 #include "renderer/vertex.hpp"
 #include "renderer/render_scene.hpp"

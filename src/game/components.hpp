@@ -1,9 +1,9 @@
 #pragma once
 
+#include <entt/entt.hpp>
+
 #include "string.hpp"
 #include "umap.hpp"
-
-#include <entt/entt.hpp>
 
 #include "geometry.hpp"
 #include "math.hpp"

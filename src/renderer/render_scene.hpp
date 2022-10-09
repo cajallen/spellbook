@@ -51,9 +51,9 @@ struct RenderScene {
     void _upload_dependencies();
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 
-    void          setup(vuk::Allocator& allocator);
+    void        setup(vuk::Allocator& allocator);
     vuk::Future render(vuk::Allocator& allocator, vuk::Future future);
-    void          cleanup(vuk::Allocator& allocator);
+    void        cleanup(vuk::Allocator& allocator);
 
     slot<Renderable> add_renderable(Renderable renderable);
     slot<Renderable> copy_renderable(slot<Renderable> renderable);

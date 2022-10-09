@@ -6,22 +6,21 @@
 #include "string.hpp"
 #include "scene.hpp"
 
-#include "renderer/prefab.hpp"
+#include "renderer/assets/prefab.hpp"
 
 namespace spellbook {
 
 struct Tower {
-    string name;
-    Color color;
-    vector<u32> r_indices;
+    string     name;
+    Color      button_color;
     PrefabCPU* prefab;
 };
 
 struct Brush {
-    string             name;
-    Color              color;
-    vector<Renderable> model;
-    bool               travelable;
+    string     name;
+    Color      button_color;
+    PrefabCPU* prefab;
+    bool       travelable;
 };
 
 struct MapEditor {
@@ -30,7 +29,7 @@ struct MapEditor {
 
     int    selected_brush = -1;
     int    selected_tower = -1;
-    Scene* p_scene = nullptr;
+    Scene* p_scene        = nullptr;
     void   setup();
     void   setup(Scene* init_scene);
     void   update();

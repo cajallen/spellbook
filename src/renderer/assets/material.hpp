@@ -1,9 +1,9 @@
 #pragma once
 
-#include "string.hpp"
-
 #include <vuk/Pipeline.hpp>
 #include <vuk/CommandBuffer.hpp>
+
+#include "string.hpp"
 
 #include "geometry.hpp"
 #include "color.hpp"

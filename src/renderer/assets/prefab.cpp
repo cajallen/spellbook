@@ -1,7 +1,7 @@
 ﻿#include "prefab.hpp"
 
-#include "renderer.hpp"
-#include "render_scene.hpp"
+#include "renderer/renderer.hpp"
+#include "renderer/render_scene.hpp"
 
 namespace spellbook {
 
