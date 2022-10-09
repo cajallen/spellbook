@@ -13,8 +13,6 @@
 #include "renderer/renderable.hpp"
 #include "renderer/render_scene.hpp"
 
-#include "tiny_gltf.h"
-
 namespace spellbook {
 
 struct PrefabCPU {
@@ -33,8 +31,8 @@ struct PrefabCPU {
         JSON_IMPL(Node, name, mesh, material, transform, parent, children);
     };
 
-    uset<MaterialCPU> materials = {};
-    uset<MeshCPU> meshes = {};
+    vector<MaterialCPU> materials = {};
+    vector<MeshCPU> meshes = {};
     vector<id_ptr<Node>> nodes = {};
     id_ptr<Node> root_node = id_ptr<Node>::null();
 
@@ -45,8 +43,9 @@ struct PrefabGPU {
     vector<slot<Renderable>> renderables;
 };
 
-void save_prefab(const PrefabCPU&);
+void      save_prefab(const PrefabCPU&);
 PrefabCPU load_prefab(const string_view file_name);
 PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU&);
+PrefabCPU convert_to_prefab(const string_view file_name);
 
 }

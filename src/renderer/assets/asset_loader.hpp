@@ -1,21 +1,27 @@
 #pragma once
 
+#include <array>
+
+#include "json.hpp"
 #include "vector.hpp"
 #include "string.hpp"
+
+using std::array;
 
 namespace spellbook {
 
 struct AssetFile {
-    char       type[4];
-    int        version;
-    string     json;
-    vector<u8> binary_blob;
+    string file_name;
+
+    array<char, 4> type;
+    int            version;
+    json           asset_json;
+    vector<u8>     binary_blob;
 };
 
 enum CompressionMode { CompressionMode_None, CompressionMode_Lz4 };
 
-bool            save_binary_file(string_view path, const AssetFile& file);
-bool            load_binary_file(string_view path, AssetFile* output_file);
-CompressionMode parse_compression(string_view f);
+void      save_asset_file(const AssetFile& file);
+AssetFile load_asset_file(const string& path);
 
 }
