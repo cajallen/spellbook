@@ -26,6 +26,7 @@ struct MeshCPU {
 
     MeshBounds bounds;
 
+    MeshCPU() = default;
     JSON_IMPL(MeshCPU, name);
 };
 
@@ -38,8 +39,5 @@ struct MeshGPU {
 };
 
 void inspect(MeshGPU* mesh);
-
-void    save_mesh(const MeshCPU&);
-MeshCPU load_mesh(const string_view file_name);
 
 }

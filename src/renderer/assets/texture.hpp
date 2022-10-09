@@ -11,15 +11,17 @@
 namespace spellbook {
 
 struct TextureCPU {
-    string        name = {};
-    v2i           size = {};
+    string name = {};
+    string file_name = {};
+
+    v2i         size   = {};
     vuk::Format format = {};
-    u8*           data = nullptr;
+    vector<u8>  pixels = {};
+
+    TextureCPU() = default;
+    JSON_IMPL(TextureCPU, name, size, format);
 };
 
 using TextureGPU = vuk::Texture;
-
-void       save_texture(const TextureCPU&);
-TextureCPU load_texture(const string_view file_name);
 
 }

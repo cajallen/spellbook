@@ -7,8 +7,13 @@
 namespace spellbook {
 
 MeshCPU load_mesh(const string& file_name) {
+    // TODO: CompressionMode
     AssetFile asset_file = load_asset_file(file_name);
 
+    constexpr array expected_type = {'T','X','T','R'};
+    assert_else(asset_file.version == 2 && asset_file.type == expected_type)
+        return {};
+    
     MeshInfo mesh_info = MeshInfo(*asset_file.asset_json["mesh_info"]);
     MeshCPU mesh_cpu = MeshCPU(*asset_file.asset_json["mesh_cpu"]);
     
@@ -25,7 +30,7 @@ void save_mesh(MeshCPU& mesh_cpu) {
     AssetFile file;
     file.file_name = mesh_cpu.file_name;
     file.type = {'M','E','S','H'};
-    file.version = 1;
+    file.version = 2;
 
     MeshInfo mesh_info;
     mesh_info.vertices_bsize = mesh_cpu.vertices.size() * sizeof(Vertex);
@@ -39,7 +44,7 @@ void save_mesh(MeshCPU& mesh_cpu) {
 
     s32 compress_staging = LZ4_compressBound(s32(mesh_info.vertices_bsize + mesh_info.indices_bsize));
     file.binary_blob.resize(compress_staging);
-    s32 compressed_bsize = LZ4_compress_default((char*) merged_buffer.data(), (char*) file.binary_blob.data(), (s32) (merged_buffer.size()), (s32) (compress_staging));
+    s32 compressed_bsize = LZ4_compress_default((char*) merged_buffer.data(), (char*) file.binary_blob.data(), s32(merged_buffer.size()), s32(compress_staging));
     file.binary_blob.resize(compressed_bsize);
     mesh_info.compression_mode = CompressionMode_Lz4;
 
@@ -48,7 +53,6 @@ void save_mesh(MeshCPU& mesh_cpu) {
     j["mesh_info"] = make_shared<json_value>(mesh_info);
     file.asset_json = j;
 
-    // save to disk
     save_asset_file(file);
 }
 
