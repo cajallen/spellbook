@@ -1,0 +1,118 @@
+#version 450
+#pragma shader_stage(compute)
+
+// compositing
+layout(binding = 0) uniform sampler2D s_color;
+layout(binding = 1) uniform sampler2D s_normal;
+layout(binding = 2) uniform sampler2D s_depth;
+layout(binding = 3, rgba16f) uniform writeonly image2D u_target;
+
+layout(constant_id = 0) const int target_width	= 0;
+layout(constant_id = 1) const int target_height = 0;
+
+layout(push_constant) uniform uPushConstant {
+	vec4 outline_step;
+} pc;
+
+
+const int NUM_TAPS = 12;
+const ivec3 samples[NUM_TAPS] = ivec3[](
+    ivec3(-1, 0, 4),
+    ivec3( 1, 0, 4),
+    ivec3( 0,-1, 4),
+    ivec3( 0, 1, 4),
+
+    ivec3(-1,-1, 2),
+    ivec3( 1, 1, 2),
+    ivec3(-1, 1, 2),
+    ivec3( 1,-1, 2),
+
+    ivec3(-2, 0, 1),
+    ivec3( 2, 0, 1),
+    ivec3( 0,-2, 1),
+    ivec3( 0, 2, 1)
+);
+
+float compare_depth(ivec2 coordinate, float depth) {
+    vec4 depth_read = texelFetch(s_depth, coordinate, 0);
+    if (depth_read.a < 0.1 || depth_read.r < 0.0001)
+        depth_read = vec4(vec3(0.0001), 1.0);
+        // return 0.0;
+    
+    float other_depth = depth_read.r;
+    other_depth = 1.0 / other_depth;
+
+    float delta = abs(depth - other_depth);
+    return delta;
+}
+
+float compare_normal(ivec2 coordinate, vec4 normal, float depth) {
+    vec4 depth_read = texelFetch(s_depth, coordinate, 0);
+    vec4 normal_read = texelFetch(s_normal, coordinate, 0);
+    if (normal_read.a == 0.0)
+        return 0.0;
+    
+    float other_depth = 1.0 / depth_read.r;
+    float depth_delta = smoothstep(5.0, 10.0, abs(depth - other_depth));
+    float depth_falloff = 1.0 - depth_delta;
+
+    vec3 other_normal = normalize(normal_read.xyz);
+    float normal_cont = depth_falloff * 5.0 * smoothstep(pc.outline_step.z, pc.outline_step.w, 1.0 - abs(dot(normal.xyz, other_normal)));
+
+    return normal_cont;
+}
+
+vec3 linear_to_srgb(vec3 linear_rgb) {
+	bvec3 cutoff = lessThan(linear_rgb, vec3(0.0031308));
+	vec3  higher = vec3(1.055) * pow(linear_rgb, vec3(1.0 / 2.4)) - vec3(0.055);
+	vec3  lower	 = linear_rgb * vec3(12.92);
+
+	return mix(higher, lower, cutoff);
+}
+
+// Converts a color from sRGB gamma to linear light gamma
+vec3 srgb_to_linear(vec3 sRGB) {
+	bvec3 cutoff = lessThan(sRGB, vec3(0.04045));
+	vec3  higher = pow((sRGB + vec3(0.055)) / vec3(1.055), vec3(2.4));
+	vec3  lower	 = sRGB / vec3(12.92);
+
+	return mix(higher, lower, cutoff);
+}
+
+
+
+layout (local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
+	
+    vec4 color = texelFetch(s_color, uv, 0);
+
+    vec4 depth_read = texelFetch(s_depth, uv, 0);
+    vec4 normal_read = texelFetch(s_normal, uv, 0);
+    if (depth_read.a < 0.1 || depth_read.r < 0.0001)
+        depth_read = vec4(vec3(0.0001), 1.0);
+
+	vec4 normal = vec4(normalize(normal_read.xyz), normal_read.a);
+    float depth = 1.0 / depth_read.r;
+
+    float depth_outline = 0.0;
+    float normal_outline = 0.0;
+    for (int i = 0; i < NUM_TAPS; i++) {
+        float depth_val = compare_depth(uv + samples[i].xy, depth);
+        depth_outline += samples[i].z / 28.0 * depth_val;
+    }
+    depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, depth_outline);
+    
+    if (normal.a != 0.0) {
+        for (int i = 0; i < NUM_TAPS; i++) {
+            normal_outline += samples[i].z / 28.0 * compare_normal(uv + samples[i].xy, normal, depth);
+        }
+    }
+    float outline = max(depth_outline, normal_outline);
+    // imageStore(u_target, uv, vec4(vec3(depth_outline, normal_outline, 0.0), 1.0));
+    
+    color.rgb = mix(color.rgb, vec3(0.04, 0.02, 0.04), outline);
+	color = vec4(srgb_to_linear(color.rgb), color.a);
+    imageStore(u_target, uv, color);
+
+}

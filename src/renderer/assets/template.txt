@@ -1,0 +1,17 @@
+﻿#pragma once
+
+// std includes
+
+// third party includes
+
+// lib_ext
+
+// main basic includes
+
+// specific includes
+
+// foldered includes
+
+namespace spellbook {
+
+}
