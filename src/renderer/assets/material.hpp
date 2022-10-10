@@ -17,23 +17,22 @@ struct MaterialCPU {
     string name;
     string file_name;
 
-    Color  base_color_tint    = palette::white;
-    string base_color_texture = "white";
-
+    Color  base_color_tint            = palette::white;
+    Color  emissive_tint              = palette::black;
     f32    roughness_factor           = 0.5f;
     f32    metallic_factor            = 0.0f;
-    string metallic_roughness_texture = "white";
-
-    f32    normal_factor  = 0.0f;
-    string normal_texture = "white";
-
-    Color  emissive_tint    = palette::black;
-    string emissive_texture = "white";
+    f32    normal_factor              = 0.0f;
+    
+    string base_color_texture         = "textures/white.tx";
+    string orm_texture                = "textures/white.tx";
+    string normal_texture             = "textures/white.tx";
+    string emissive_texture           = "textures/white.tx";
 
     f32 uv_scale = 1.0f;
 
     vuk::CullModeFlags cull_mode = vuk::CullModeFlagBits::eNone;
 
+    MaterialCPU() = default;
     JSON_IMPL(MaterialCPU, name, base_color_tint, base_color_texture, roughness_factor, metallic_factor, metallic_roughness_texture, normal_factor, normal_texture, emissive_tint, emissive_texture, uv_scale, cull_mode)
 };
 

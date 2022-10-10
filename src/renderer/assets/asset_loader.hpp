@@ -13,7 +13,7 @@ namespace spellbook {
 struct AssetFile {
     string file_name;
 
-    array<char, 4> type;
+    array<char, 3> type;
     int            version;
     json           asset_json;
     vector<u8>     binary_blob;

@@ -7,6 +7,7 @@
 #include "game.hpp"
 #include "matrix_math.hpp"
 #include "mesh_asset.hpp"
+#include "texture_asset.hpp"
 
 #include "renderer/renderer.hpp"
 #include "renderer/render_scene.hpp"
@@ -27,7 +28,7 @@ vector<PrefabCPU> PrefabCPU::split() {
     prefabs.resize(root_node->children.size());
     u32 i = 0;
     for (id_ptr<Node> child : root_node->children) {
-        child->parent = id_ptr<Node>::null(); 
+        child->parent = id_ptr<Node>::null();
         traverse(prefabs[i++], child, traverse);
     }
 
@@ -42,7 +43,7 @@ void save_prefab(const PrefabCPU& prefab) {
     for (id_ptr<PrefabCPU::Node> node : prefab.nodes) {
         json json_node;
         json_node["node"] = make_shared<json_value>(*node);
-        json_node["id"] = make_shared<json_value>(node);
+        json_node["id"]   = make_shared<json_value>(node);
         json_nodes.insert_back((json_value) json_node);
     }
     j["nodes"] = make_shared<json_value>(json_nodes);
@@ -51,7 +52,7 @@ void save_prefab(const PrefabCPU& prefab) {
 
 PrefabCPU load_prefab(const string_view file_name) {
     PrefabCPU prefab;
-    json j = parse_file(file_name);
+    json      j = parse_file(file_name);
     if (j.contains("root_node"))
         prefab.root_node = id_ptr<PrefabCPU::Node>(*j["root_node"]);
 
@@ -74,7 +75,7 @@ PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU& prefab) {
         auto new_renderable = render_scene.add_renderable(renderable);
         prefab_gpu.renderables.insert_back(new_renderable);
     }
-    
+
     return prefab_gpu;
 }
 
@@ -273,63 +274,40 @@ string _calculate_gltf_material_name(tinygltf::Model& model, int material_index)
     return matname;
 }
 
-bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs::path& output_folder, const fs::path& resource_folder) {
-    tinygltf::Model* glmod = &model;
-    for (auto meshindex = 0; meshindex < model.meshes.size(); meshindex++) {
-        auto& glmesh = model.meshes[meshindex];
+bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder) {
+    for (auto i_mesh = 0; i_mesh < model.meshes.size(); i_mesh++) {
+        auto& gltf_mesh = model.meshes[i_mesh];
 
-        vector<Vertex> vertices;
-        vector<u32>    indices;
-
-        for (auto primindex = 0; primindex < glmesh.primitives.size(); primindex++) {
-            vertices.clear();
-            indices.clear();
-
-            string meshname = _calculate_gltf_mesh_name(model, meshindex, primindex);
-
-            auto& primitive = glmesh.primitives[primindex];
-
-            _extract_gltf_indices(primitive, model, indices);
-            _extract_gltf_vertices(primitive, model, vertices);
-
-            MeshInfo mesh_info;
-            mesh_info.vertices_bsize = vertices.size() * sizeof(Vertex);
-            mesh_info.indices_bsize  = indices.size() * sizeof(u32);
-            mesh_info.index_bsize    = sizeof(u32);
-
+        for (auto i_primitive = 0; i_primitive < gltf_mesh.primitives.size(); i_primitive++) {
             MeshCPU mesh_cpu;
-            
-            save_mesh(mesh_cpu, mesh_info, (u8*) vertices.data(), (u8*) indices.data());
 
-            fs::path meshpath = output_folder / (meshname + ".mesh");
+            mesh_cpu.name      = _calculate_gltf_mesh_name(model, i_mesh, i_primitive);
+            mesh_cpu.file_name = (output_folder / (mesh_cpu.name + ".sbmsh")).string();
 
-            // save to disk
-            save_binary_file(meshpath.string(), newFile);
+            auto& primitive = gltf_mesh.primitives[i_primitive];
+            _extract_gltf_indices(primitive, model, mesh_cpu.indices);
+            _extract_gltf_vertices(primitive, model, mesh_cpu.vertices);
+
+            save_mesh(mesh_cpu);
         }
     }
     return true;
 }
 
-bool _convert_gltf_materials(
-    tinygltf::Model& model, const fs::path& input, const fs::path& output_folder, const fs::path& resource_folder) {
-    int nm = 0;
+bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& input, const fs::path& output_folder,
+    const fs::path&                           resource_folder) {
+    int material_number = 0;
     for (auto& glmat : model.materials) {
-        string matname = _calculate_gltf_material_name(model, nm);
+        string matname = _calculate_gltf_material_name(model, material_number++);
 
-        nm++;
         auto& pbr = glmat.pbrMetallicRoughness;
 
-        assets::MaterialInfo new_material;
-        new_material.base_effect = "defaultPBR";
+        MaterialCPU material_cpu;
 
-        new_material.textures["baseColor"]         = "textures/white.tx";
-        new_material.textures["metallicRoughness"] = "textures/white.tx";
-        new_material.textures["normals"]           = "textures/white.tx";
-        new_material.textures["emissive"]          = "textures/white.tx";
-
-        int texture_indices[] = {
-            pbr.baseColorTexture.index, pbr.metallicRoughnessTexture.index, glmat.normalTexture.index, glmat.emissiveTexture.index};
-        string texture_names[] = {"baseColor", "metallicRoughness", "normals", "emissive"};
+        array texture_indices = {pbr.baseColorTexture.index, pbr.metallicRoughnessTexture.index, glmat.normalTexture.index,
+                                 glmat.emissiveTexture.index};
+        array texture_files = {&material_cpu.base_color_texture, &material_cpu.orm_texture, &material_cpu.normal_texture,
+                               &material_cpu.emissive_texture};
 
         for (int i = 0; i < 4; i++) {
             int texture_index = texture_indices[i];
@@ -338,36 +316,39 @@ bool _convert_gltf_materials(
             auto image     = model.textures[texture_index];
             auto baseImage = model.images[image.source];
 
+            constexpr string texture_names[] = {"baseColor", "metallicRoughness", "normals", "emissive"};
             if (baseImage.name == "")
                 baseImage.name = texture_names[i];
 
-            fs::path baseColorPath = _convert_to_relative(output_folder / baseImage.name, resource_folder);
-            baseColorPath.replace_extension(".tx");
-            _convert_image(input, baseImage.image, v2i{baseImage.width, baseImage.height}, baseColorPath, resource_folder);
-            new_material.textures[texture_names[i]] = baseColorPath.string();
+            fs::path base_color_path = _convert_to_relative(output_folder / baseImage.name, resource_folder);
+            base_color_path.replace_extension(".tx");
+            vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
+
+            TextureCPU texture_cpu = {
+                baseImage.name,
+                base_color_path.string(),
+                v2i{baseImage.width, baseImage.height},
+                format,
+                vector<u8>(&*baseImage.image.begin(), &*baseImage.image.end())
+            };
+            save_texture(texture_cpu);
+            *texture_files[i] = texture_cpu.file_name;
         }
 
-        new_material.properties["base_color_r"] = (f32) pbr.baseColorFactor[0];
-        new_material.properties["base_color_g"] = (f32) pbr.baseColorFactor[1];
-        new_material.properties["base_color_b"] = (f32) pbr.baseColorFactor[2];
-        new_material.properties["base_color_a"] = (f32) pbr.baseColorFactor[3];
-        new_material.properties["roughness"]    = pbr.roughnessFactor;
-        new_material.properties["metallic"]     = pbr.metallicFactor;
-        new_material.properties["normal"]       = new_material.textures["normals"] == "textures/white.tx" ? 0.0f : 0.5f;
-        // cel shading should have minimal normals
-        new_material.properties["emissive"] = new_material.textures["emissive"] == "textures/white.tx" ? 0.0f : 1.0f;
-        fs::path materialPath               = output_folder / (matname + ".mat");
+        material_cpu.base_color_tint = Color((f32) pbr.baseColorFactor[0], (f32) pbr.baseColorFactor[1], (f32) pbr.baseColorFactor[2], (f32) pbr.baseColorFactor[3]);
+        material_cpu.emissive_tint         = material_cpu.emissive_texture == "textures/white.tx" ? palette::black : palette::white;
+        material_cpu.roughness_factor         = pbr.roughnessFactor;
+        material_cpu.metallic_factor         = pbr.metallicFactor;
+        material_cpu.normal_factor         = material_cpu.normal_texture == "textures/white.tx" ? 0.0f : 0.5f;
+        fs::path materialPath        = output_folder / (matname + ".mat");
 
         if (glmat.alphaMode.compare("BLEND") == 0) {
-            new_material.transparency = TransparencyMode_Transparent;
+            // new_material.transparency = TransparencyMode_Transparent;
         } else {
-            new_material.transparency = TransparencyMode_Opaque;
+            // new_material.transparency = TransparencyMode_Opaque;
         }
 
-        assets::AssetFile newFile = assets::pack_material(&new_material);
-
-        // save to disk
-        assets::save_binary_file(materialPath.string(), newFile);
+        save_material(material_cpu);
     }
     return true;
 }
@@ -507,7 +488,7 @@ m44 _calculate_matrix(tinygltf::Node& node) {
 };
 
 PrefabCPU convert_to_prefab(const string_view file_name) {
-    
+
 }
 
 

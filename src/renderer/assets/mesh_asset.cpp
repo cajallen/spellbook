@@ -10,7 +10,7 @@ MeshCPU load_mesh(const string& file_name) {
     // TODO: CompressionMode
     AssetFile asset_file = load_asset_file(file_name);
 
-    constexpr array expected_type = {'T','X','T','R'};
+    constexpr array expected_type = {'M','S','H'};
     assert_else(asset_file.version == 2 && asset_file.type == expected_type)
         return {};
     
@@ -29,7 +29,7 @@ MeshCPU load_mesh(const string& file_name) {
 void save_mesh(MeshCPU& mesh_cpu) {
     AssetFile file;
     file.file_name = mesh_cpu.file_name;
-    file.type = {'M','E','S','H'};
+    file.type = {'M','S','H'};
     file.version = 2;
 
     MeshInfo mesh_info;

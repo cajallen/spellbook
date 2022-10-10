@@ -13,7 +13,7 @@ TextureCPU load_texture(const string& file_name) {
     // TODO: CompressionMode
     AssetFile asset_file = load_asset_file(file_name);
 
-    constexpr array expected_type = {'T','X','T','R'};
+    constexpr array expected_type = {'T','E','X'};
     assert_else(asset_file.version == 2 && asset_file.type == expected_type)
         return {};
     
@@ -31,7 +31,7 @@ TextureCPU load_texture(const string& file_name) {
 void save_texture(TextureCPU& texture_cpu) {
     AssetFile file;
     file.file_name = texture_cpu.file_name;
-    file.type = {'T','X','T','R'};
+    file.type = {'T','E','X'};
     file.version = 2;
 
     TextureInfo texture_info;
