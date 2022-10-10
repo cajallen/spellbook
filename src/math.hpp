@@ -75,6 +75,8 @@ f32 random_f32();
 f32 random_f32(f32 high);
 f32 random_f32(f32 low, f32 high);
 
+u64 random_u64();
+
 v3    euler2vector(euler e);
 euler vector2euler(v3 v);
 

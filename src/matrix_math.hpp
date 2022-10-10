@@ -21,6 +21,10 @@ m44           inverse(const m44& A);
 constexpr m44 transpose(const m44& A);
 r3            transformed_ray(const m44& transform, v2 viewport_UV);
 
+}
+
+namespace spellbook {
+
 v4   operator*(const m44& lhs, const v4& rhs);
 m44  operator*(const m44& lhs, const m44& rhs);
 v3   operator*(const m33& lhs, const v3& rhs);
@@ -29,3 +33,4 @@ bool operator==(const m44& lhs, const m44& rhs);
 bool operator!=(const m44& lhs, const m44& rhs);
 
 }
+

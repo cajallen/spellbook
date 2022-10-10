@@ -1,6 +1,7 @@
 #include "math.hpp"
 
 #include <cmath>
+#include <random>
 
 namespace spellbook::math {
 
@@ -161,6 +162,15 @@ f32 random_f32(f32 high) {
 }
 f32 random_f32(f32 low, f32 high) {
     return low + math::random_f32(high - low);
+}
+
+u64 random_u64() {
+    static std::random_device rd;
+ 
+    // Choose a random mean between 1 and 6
+    std::default_random_engine e1(rd());
+    std::uniform_int_distribution<u64> uniform_dist(0);
+    return uniform_dist(e1);
 }
 
 v2 project_point_onto_line(v2 point, l2 line) {

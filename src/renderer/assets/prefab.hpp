@@ -46,6 +46,6 @@ struct PrefabGPU {
 void      save_prefab(const PrefabCPU&);
 PrefabCPU load_prefab(const string_view file_name);
 PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU&);
-PrefabCPU convert_to_prefab(const string_view file_name);
+PrefabCPU convert_to_prefab(const string& input_file, const string& output_folder);
 
 }

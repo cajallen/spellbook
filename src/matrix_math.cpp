@@ -254,6 +254,10 @@ r3 transformed_ray(const m44& transform, v2 viewport_UV) {
     return r3 {origin, math::normalize(end - origin)};
 }
 
+}
+
+namespace spellbook {
+
 v4 operator*(const m44& lhs, const v4& rhs) {
     return v4(lhs.cr(0, 0) * rhs.x + lhs.cr(1, 0) * rhs.y + lhs.cr(2, 0) * rhs.z + lhs.cr(3, 0) * rhs.w,
         lhs.cr(0, 1) * rhs.x + lhs.cr(1, 1) * rhs.y + lhs.cr(2, 1) * rhs.z + lhs.cr(3, 1) * rhs.w,

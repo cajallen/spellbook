@@ -79,10 +79,10 @@ PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU& prefab) {
     return prefab_gpu;
 }
 
-const m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
+constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
 
-fs::path _convert_to_relative(const fs::path& path, const fs::path& resource_path) {
-    return path.lexically_proximate(resource_path);
+fs::path _convert_to_relative(const fs::path& path) {
+    return path.lexically_proximate(game.resource_folder);
 }
 
 void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer) {
@@ -294,8 +294,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
     return true;
 }
 
-bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& input, const fs::path& output_folder,
-    const fs::path&                           resource_folder) {
+bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_folder) {
     int material_number = 0;
     for (auto& glmat : model.materials) {
         string matname = _calculate_gltf_material_name(model, material_number++);
@@ -320,7 +319,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& input, cons
             if (baseImage.name == "")
                 baseImage.name = texture_names[i];
 
-            fs::path base_color_path = _convert_to_relative(output_folder / baseImage.name, resource_folder);
+            fs::path base_color_path = _convert_to_relative(output_folder / baseImage.name);
             base_color_path.replace_extension(".tx");
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
@@ -335,12 +334,16 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& input, cons
             *texture_files[i] = texture_cpu.file_name;
         }
 
-        material_cpu.base_color_tint = Color((f32) pbr.baseColorFactor[0], (f32) pbr.baseColorFactor[1], (f32) pbr.baseColorFactor[2], (f32) pbr.baseColorFactor[3]);
-        material_cpu.emissive_tint         = material_cpu.emissive_texture == "textures/white.tx" ? palette::black : palette::white;
-        material_cpu.roughness_factor         = pbr.roughnessFactor;
-        material_cpu.metallic_factor         = pbr.metallicFactor;
-        material_cpu.normal_factor         = material_cpu.normal_texture == "textures/white.tx" ? 0.0f : 0.5f;
-        fs::path materialPath        = output_folder / (matname + ".mat");
+        material_cpu.base_color_tint = Color((f32) pbr.baseColorFactor[0],
+            (f32) pbr.baseColorFactor[1],
+            (f32) pbr.baseColorFactor[2],
+            (f32) pbr.baseColorFactor[3]);
+        material_cpu.emissive_tint    = material_cpu.emissive_texture == "textures/white.sbtex" ? palette::black : palette::white;
+        material_cpu.roughness_factor = pbr.roughnessFactor;
+        material_cpu.metallic_factor  = pbr.metallicFactor;
+        material_cpu.normal_factor    = material_cpu.normal_texture == "textures/white.sbtex" ? 0.0f : 0.5f;
+        fs::path material_path        = output_folder / (matname + ".sbmat");
+        material_cpu.file_name        = material_path.string();
 
         if (glmat.alphaMode.compare("BLEND") == 0) {
             // new_material.transparency = TransparencyMode_Transparent;
@@ -350,108 +353,6 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& input, cons
 
         save_material(material_cpu);
     }
-    return true;
-}
-
-bool _convert_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs::path& output_folder, const fs::path& resource_folder) {
-    assets::PrefabInfo prefab;
-
-    // calculate parent hierarchies
-    // gltf stores children, but we want parent
-    for (int i = 0; i < model.nodes.size(); i++) {
-        for (auto c : model.nodes[i].children) {
-            prefab.node_parents[c] = i;
-        }
-    }
-
-    vector<u64> multimat_nodes;
-    for (int i = 0; i < model.nodes.size(); i++) {
-        auto& node = model.nodes[i];
-
-        if (node.mesh >= 0 && model.meshes[node.mesh].primitives.size() == 1) {
-            auto mesh = model.meshes[node.mesh];
-
-            auto primitive = mesh.primitives[0];
-            int  material  = primitive.material;
-            assert_else(material >= 0 && "Need material on node, default mat NYI");
-            string meshname = _calculate_gltf_mesh_name(model, node.mesh, 0);
-            string matname  = _calculate_gltf_material_name(model, material);
-
-            fs::path meshpath     = _convert_to_relative(output_folder / (meshname + ".mesh"), resource_folder);
-            fs::path materialpath = _convert_to_relative(output_folder / (matname + ".mat"), resource_folder);
-
-            assets::PrefabNodeInfo nmesh;
-            nmesh.node_name     = model.nodes[i].name;
-            nmesh.mesh_path     = meshpath.string();
-            nmesh.material_path = materialpath.string();
-            nmesh.matrix        = calculate_matrix(node);
-
-            prefab.node_infos[i] = nmesh;
-        }
-        // Serving hierarchy
-        else {
-            assets::PrefabNodeInfo nmesh;
-            nmesh.node_name      = node.name;
-            nmesh.mesh_path      = "";
-            nmesh.material_path  = "";
-            nmesh.matrix         = calculate_matrix(node);
-            prefab.node_infos[i] = nmesh;
-
-            if (node.mesh >= 0)
-                multimat_nodes.push_back(i);
-        }
-    }
-
-    for (int i = 0; i < model.nodes.size(); i++) {
-        auto it = prefab.node_parents.find(i);
-        if (it == prefab.node_parents.end()) {
-            prefab.node_infos[i].matrix = gltf_fixup * prefab.node_infos[i].matrix;
-        }
-    }
-
-    int nodeindex = model.nodes.size();
-    // iterate nodes with multiple materials, convert each submesh into a node
-    for (int i = 0; i < multimat_nodes.size(); i++) {
-        auto  multimat_node_index = multimat_nodes[i];
-        auto& multimat_node       = model.nodes[multimat_node_index];
-
-        if (multimat_node.mesh < 0)
-            break;
-
-        auto mesh = model.meshes[multimat_node.mesh];
-
-        for (int primindex = 0; primindex < mesh.primitives.size(); primindex++) {
-            auto primitive = mesh.primitives[primindex];
-            int  new_node  = nodeindex++;
-
-            char buffer[50];
-
-            itoa(primindex, buffer, 10);
-
-            int    material = primitive.material;
-            auto   mat      = model.materials[material];
-            string matname  = _calculate_gltf_material_name(model, material);
-            string meshname = _calculate_gltf_mesh_name(model, multimat_node.mesh, primindex);
-
-            fs::path materialpath = _convert_to_relative(output_folder / (matname + ".mat"), resource_folder);
-            fs::path meshpath     = _convert_to_relative(output_folder / (meshname + ".mesh"), resource_folder);
-
-            assets::PrefabNodeInfo new_mesh;
-            new_mesh.node_name     = prefab.node_infos[i].node_name + "_PRIM_" + &buffer[0];
-            new_mesh.mesh_path     = meshpath.string();
-            new_mesh.material_path = materialpath.string();
-            new_mesh.matrix        = m44::identity();
-
-            prefab.node_infos[new_node]   = new_mesh;
-            prefab.node_parents[new_node] = multimat_node_index;
-        }
-    }
-
-    assets::AssetFile new_file   = assets::pack_prefab(&prefab);
-    fs::path          scene_path = output_folder / input.stem();
-    scene_path.replace_extension(".pfb");
-    // save to disk
-    assets::save_binary_file(scene_path.string(), new_file);
     return true;
 }
 
@@ -487,8 +388,124 @@ m44 _calculate_matrix(tinygltf::Node& node) {
     return matrix;
 };
 
-PrefabCPU convert_to_prefab(const string_view file_name) {
+PrefabCPU convert_to_prefab(const string& input, const string& output_folder) {
+    // TODO: gltf can't support null materials
+    fs::create_directory(game.resource_folder);
 
+    const auto& ext = fs::path(input).extension().string();
+    assert_else(ext == ".gltf" || ext == ".glb")
+        return {};
+    tinygltf::Model    model;
+    tinygltf::TinyGLTF loader;
+    string             err, warn;
+
+    bool ret = ext == ".gltf"
+                   ? loader.LoadASCIIFromFile(&model, &err, &warn, input)
+                   : loader.LoadBinaryFromFile(&model, &err, &warn, input);
+
+    if (!warn.empty())
+        console_error(fmt_("Conversion warning while loading \"{}\": {}", input, warn), "asset.import", ErrorType_Warning);
+    if (!err.empty())
+        console_error(fmt_("Conversion error while loading \"{}\": {}", input, err), "asset.import", ErrorType_Severe);
+    assert_else(!ret)
+        return {};
+
+    auto folder = game.resource_folder / fs::path(fs::path(input).stem().string() + "_GLTF");
+    fs::create_directory(folder);
+
+    PrefabCPU prefab;
+
+    // calculate parent hierarchies
+    for (u32 i = 0; i < model.nodes.size(); i++) {
+        prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>());
+    }
+    for (u32 i = 0; i < model.nodes.size(); i++) {
+        auto& children = prefab.nodes[i]->children;
+        for (u32 c : model.nodes[i].children) {
+            children.insert(prefab.nodes[c]);
+            prefab.nodes[c]->parent = prefab.nodes[i];
+        }
+    }
+
+    vector<u32> multimat_nodes;
+    for (int i = 0; i < model.nodes.size(); i++) {
+        auto& node = model.nodes[i];
+
+        if (node.mesh >= 0 && model.meshes[node.mesh].primitives.size() == 1) {
+            auto mesh = model.meshes[node.mesh];
+
+            auto primitive = mesh.primitives[0];
+            int  material  = primitive.material;
+            assert_else(material >= 0 && "Need material on node, default mat NYI");
+            string mesh_name     = _calculate_gltf_mesh_name(model, node.mesh, 0);
+            string material_name = _calculate_gltf_material_name(model, material);
+
+            fs::path meshpath     = _convert_to_relative(fs::path(output_folder) / (mesh_name + ".sbmsh"));
+            fs::path materialpath = _convert_to_relative(fs::path(output_folder) / (material_name + ".sbmat"));
+
+            prefab.nodes[i]->name      = model.nodes[i].name;
+            prefab.nodes[i]->mesh      = meshpath.string();
+            prefab.nodes[i]->material  = materialpath.string();
+            prefab.nodes[i]->transform = _calculate_matrix(node);
+        }
+        // Serving hierarchy
+        else {
+            prefab.nodes[i]->name      = node.name;
+            prefab.nodes[i]->transform = _calculate_matrix(node);
+
+            if (node.mesh >= 0)
+                multimat_nodes.insert_back(i);
+        }
+    }
+
+    for (int i = 0; i < prefab.nodes.size(); i++) {
+        if (!prefab.nodes[i]->parent.valid())
+            prefab.nodes[i]->transform = gltf_fixup * prefab.nodes[i]->transform;
+    }
+
+    int nodeindex = prefab.nodes.size();
+    // iterate nodes with multiple materials, convert each submesh into a node
+    for (int i = 0; i < multimat_nodes.size(); i++) {
+        auto  multimat_node_index = multimat_nodes[i];
+        auto& multimat_node       = model.nodes[multimat_node_index];
+
+        if (multimat_node.mesh < 0)
+            break;
+
+        auto mesh = model.meshes[multimat_node.mesh];
+
+        for (int i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
+            auto primitive = mesh.primitives[i_primitive];
+            int  new_node  = nodeindex++;
+            prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>());
+            id_ptr<PrefabCPU::Node> node = prefab.nodes.last();
+
+            char buffer[50];
+
+            itoa(i_primitive, buffer, 10);
+
+            int    material      = primitive.material;
+            string material_name = _calculate_gltf_material_name(model, material);
+            string mesh_name     = _calculate_gltf_mesh_name(model, multimat_node.mesh, i_primitive);
+
+            fs::path material_path = _convert_to_relative(fs::path(output_folder) / (material_name + ".sbmat"));
+            fs::path mesh_path     = _convert_to_relative(fs::path(output_folder) / (mesh_name + ".sbmsh"));
+
+            node->name      = prefab.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
+            node->mesh      = mesh_path.string();
+            node->material  = material_path.string();
+            node->transform = m44::identity();
+            node->parent    = prefab.nodes[multimat_node_index];
+            prefab.nodes[multimat_node_index]->children.insert(node);
+        }
+    }
+
+    fs::path scene_path = output_folder / fs::path(input).stem();
+    scene_path.replace_extension(".sbpfb");
+
+    prefab.file_name = scene_path.string();
+
+    return prefab;
 }
 
 

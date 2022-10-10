@@ -19,6 +19,8 @@ struct Game {
 
     MapEditor editor;
 
+    string resource_folder = "resources";
+
     void startup();
     void run();
     void step(bool skip_input = false); // skip input is for blocking calls to not recurse (resize)
