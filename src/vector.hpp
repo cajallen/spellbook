@@ -42,6 +42,7 @@ struct vector {
     [[nodiscard]] u32 index(const T& t);
 
     [[nodiscard]] u32  size() const;
+    [[nodiscard]] u32 bsize() const;
     [[nodiscard]] bool empty() const;
     [[nodiscard]] bool contains(const T& t) const;
 
@@ -207,6 +208,11 @@ u32 vector<T>::index(const T& t) {
 template <typename T>
 u32 vector<T>::size() const {
     return internal.size();
+}
+
+template <typename T>
+u32 vector<T>::bsize() const {
+    return internal.size() * sizeof(T);
 }
 
 template <typename T>

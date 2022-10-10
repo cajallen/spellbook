@@ -70,5 +70,18 @@ MaterialCPU load_material(const string_view file_name) {
     return std::move(material_cpu);
 }
 
+u64 MaterialCPU::contents_hash() const {
+    u64 hash1 = hash_data(&base_color_tint, sizeof(Color) * 2 + sizeof(f32) * 3);
+    u64 hash2 = hash_data(base_color_texture.data, base_color_texture.size());
+    u64 hash3 = hash_data(orm_texture.data, orm_texture.size());
+    u64 hash4 = hash_data(normal_texture.data, normal_texture.size());
+    u64 hash5 = hash_data(emissive_texture.data, emissive_texture.size());
+    u64 hash6 = hash_data(&uv_scale, sizeof(uv_scale));
+    u64 hash7 = hash_data(&cull_mode, sizeof(cull_mode));
+
+    return hash1 ^ hash2 ^ hash3 ^ hash4 ^ hash5 ^ hash6 ^ hash7;
+}
+
+
 }
 

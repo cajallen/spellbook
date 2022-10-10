@@ -31,8 +31,9 @@ struct MaterialCPU {
     vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
 
     MaterialCPU() = default;
-    // name, base_color_tint, roughness_factor, 
     JSON_IMPL(MaterialCPU, name, base_color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, base_color_texture, orm_texture, normal_texture, emissive_texture, uv_scale, cull_mode);
+
+    u64 contents_hash() const;
 };
 
 struct MaterialDataGPU {

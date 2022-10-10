@@ -12,6 +12,7 @@
 #include <stb_image.h>
 
 #include "utils.hpp"
+#include "assets/texture_asset.hpp"
 #include "backends/imgui_impl_glfw.h"
 #include "vuk/Partials.hpp"
 
@@ -128,8 +129,9 @@ void Renderer::setup() {
         context->create_named_pipeline("textured_model", pci);
     }
 
-    assets::convert("external_resources/images/white.jpg", "resources", "resources");
-    load_texture(*this, "white", "resources/textures/white.tx");
+    TextureCPU texture = convert_to_texture("external_resources/images/white.jpg");
+    save_texture(texture);
+    upload_texture("resources/textures/white.tx");
 
     assets::convert("external_resources/images/grid.png", "resources", "resources");
     load_texture(*this, "grid", "resources/textures/grid.tx");
@@ -249,8 +251,11 @@ void Renderer::resize(v2i new_size) {
 }
 
 MeshGPU& Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
-    if (mesh_cache.contains(mesh_cpu))
-        return mesh_cache[mesh_cpu];
+    u64 mesh_cpu_hash = mesh_cpu.contents_hash();
+    mesh_aliases[mesh_cpu.name] = mesh_cpu_hash;
+    if (mesh_cache.contains(mesh_cpu_hash))
+        return mesh_cache[mesh_cpu_hash];
+    
     MeshGPU         mesh_gpu;
     vuk::Allocator& alloc     = frame_allocation ? *frame_allocator : *global_allocator;
     auto [vert_buf, vert_fut] = create_buffer_gpu(alloc, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
@@ -264,13 +269,15 @@ MeshGPU& Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     
     if (frame_allocation); // TODO: frame allocation
     
-    mesh_cache[mesh_cpu] = std::move(mesh_gpu);
-    return mesh_cache[mesh_cpu];
+    mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
+    return mesh_cache[mesh_cpu_hash];
 }
 
 MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
-    if (material_cache.contains(material_cpu))
-        return material_cache[material_cpu];
+    u64 material_cpu_hash = material_cpu.contents_hash();
+    material_aliases[material_cpu.name] = material_cpu_hash;
+    if (material_cache.contains(material_cpu_hash))
+        return material_cache[material_cpu_hash];
 
     if (frame_allocation); // TODO: frame allocation
 
@@ -287,13 +294,15 @@ MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool fra
     };
     material_gpu.cull_mode               = material_cpu.cull_mode;
     
-    material_cache[material_cpu] = std::move(material_gpu);
-    return material_cache[material_cpu];
+    material_cache[material_cpu_hash] = std::move(material_gpu);
+    return material_cache[material_cpu_hash];
 }
 
 TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
-    if (texture_cache.contains(tex_cpu))
-        return texture_cache[tex_cpu];
+    u64 tex_cpu_hash = tex_cpu.contents_hash();
+    texture_aliases[tex_cpu.name] = tex_cpu_hash;
+    if (texture_cache.contains(tex_cpu_hash))
+        return texture_cache[tex_cpu_hash];
     vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
     auto [tex, tex_fut]   = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
     context->debug.set_name(tex, vuk::Name(tex_cpu.name));
@@ -301,29 +310,23 @@ TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_alloc
 
     if (frame_allocation);  // TODO: frame allocation
 
-    texture_cache[tex_cpu] = std::move(tex);
-    return texture_cache[tex_cpu];
+    texture_cache[tex_cpu_hash] = std::move(tex);
+    return texture_cache[tex_cpu_hash];
 }
 
-MeshGPU* Renderer::find_mesh(string_view name) {
-    for (auto& [cpu, gpu] : mesh_cache) {
-        if (cpu.name == name)
-            return &gpu;
-    }
+MeshGPU* Renderer::find_mesh(const string& name) {
+    if (mesh_aliases.count(name))
+        return &mesh_cache[mesh_aliases[name]];
     return nullptr;
 }
-MaterialGPU* Renderer::find_material(string_view name) {
-    for (auto& [cpu, gpu] : material_cache) {
-        if (cpu.name == name)
-            return &gpu;
-    }
+MaterialGPU* Renderer::find_material(const string& name) {
+    if (material_aliases.count(name))
+        return &material_cache[material_aliases[name]];
     return nullptr;
 }
-TextureGPU* Renderer::find_texture(string_view name) {
-    for (auto& [cpu, gpu] : texture_cache) {
-        if (cpu.name == name)
-            return &gpu;
-    }
+TextureGPU* Renderer::find_texture(const string& name) {
+    if (texture_aliases.count(name))
+        return &texture_cache[texture_aliases[name]];
     return nullptr;
 }
 
@@ -341,13 +344,7 @@ void Renderer::debug_window(bool* p_open) {
             
         }
         if (ImGui::CollapsingHeader("Uploaded Textures")) {
-            for (auto& [texture_cpu, texture_gpu] : texture_cache) {
-                if (ImGui::TreeNode(texture_cpu.name.c_str())) {
-                    auto si = vuk::make_sampled_image(*texture_gpu.view, {});
-                    ImGui::Image(&*sampled_images.emplace(si), {(f32) texture_gpu.extent.width, (f32) texture_gpu.extent.height});
-                    ImGui::TreePop();
-                }
-            }
+            
         }
     }
     ImGui::End();

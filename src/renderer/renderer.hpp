@@ -46,30 +46,33 @@ struct Renderer {
 
     enum RenderStage { RenderStage_Inactive, RenderStage_BuildingRG, RenderStage_Presenting };
 
-    v2i                                       window_size = {1920, 1080};
-    VkDevice                                  device;
-    VkPhysicalDevice                          physical_device;
-    VkQueue                                   graphics_queue;
-    VkQueue                                   transfer_queue;
+    v2i                                     window_size = {1920, 1080};
+    VkDevice                                device;
+    VkPhysicalDevice                        physical_device;
+    VkQueue                                 graphics_queue;
+    VkQueue                                 transfer_queue;
     optional<vuk::Context>                  context;
     optional<vuk::DeviceSuperFrameResource> super_frame_resource;
     optional<vuk::Allocator>                global_allocator;
     optional<vuk::Allocator>                frame_allocator;
     vuk::SwapchainRef                       swapchain;
-    GLFWwindow*                               window;
-    VkSurfaceKHR                              surface;
-    vkb::Instance                             vkbinstance;
-    vkb::Device                               vkbdevice;
-    ImGuiData                                 imgui_data;
+    GLFWwindow*                             window;
+    VkSurfaceKHR                            surface;
+    vkb::Instance                           vkbinstance;
+    vkb::Device                             vkbdevice;
+    ImGuiData                               imgui_data;
     vector<vuk::Future>                     futures;
-    std::mutex                                setup_lock;
+    std::mutex                              setup_lock;
 
     plf::colony<vuk::SampledImage> sampled_images;
-    
+
     // MEMORY: replace CPU storage here with some hashed version
-    umap<MeshCPU, MeshGPU>         mesh_cache;
-    umap<MaterialCPU, MaterialGPU> material_cache;
-    umap<TextureCPU, TextureGPU>   texture_cache;
+    umap<string, u64> mesh_aliases;
+    umap<string, u64> material_aliases;
+    umap<string, u64> texture_aliases;
+    umap<u64, MeshGPU>     mesh_cache;
+    umap<u64, MaterialGPU> material_cache;
+    umap<u64, TextureGPU>  texture_cache;
 
     RenderStage stage = RenderStage_Inactive;
 
@@ -87,13 +90,13 @@ struct Renderer {
 
     void add_scene(RenderScene*);
 
-    MeshGPU& upload_mesh(const MeshCPU&, bool frame_allocation = false);
+    MeshGPU&     upload_mesh(const MeshCPU&, bool frame_allocation = false);
     MaterialGPU& upload_material(const MaterialCPU&, bool frame_allocation = false);
-    TextureGPU& upload_texture(const TextureCPU&, bool frame_allocation = false);
+    TextureGPU&  upload_texture(const TextureCPU&, bool frame_allocation = false);
 
-    MeshGPU* find_mesh(string_view name);
-    MaterialGPU* find_material(string_view name);
-    TextureGPU* find_texture(string_view name);
+    MeshGPU*     find_mesh(const string& name);
+    MaterialGPU* find_material(const string& name);
+    TextureGPU*  find_texture(const string& name);
 
     void resize(v2i new_size);
 

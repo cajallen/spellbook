@@ -391,11 +391,13 @@ m44 _calculate_matrix(tinygltf::Node& node) {
     return matrix;
 };
 
-PrefabCPU convert_to_prefab(const string& input, const string& output_folder) {
+PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder, const string& output_name) {
     // TODO: gltf can't support null materials
     fs::create_directory(game.resource_folder);
 
-    const auto& ext = fs::path(input).extension().string();
+    const fs::path file_path = fs::path(file_name);
+
+    const auto& ext = file_path.extension().string();
     assert_else(ext == ".gltf" || ext == ".glb")
         return {};
     tinygltf::Model    model;
@@ -403,17 +405,17 @@ PrefabCPU convert_to_prefab(const string& input, const string& output_folder) {
     string             err, warn;
 
     bool ret = ext == ".gltf"
-                   ? loader.LoadASCIIFromFile(&model, &err, &warn, input)
-                   : loader.LoadBinaryFromFile(&model, &err, &warn, input);
+                   ? loader.LoadASCIIFromFile(&model, &err, &warn, file_name)
+                   : loader.LoadBinaryFromFile(&model, &err, &warn, file_name);
 
     if (!warn.empty())
-        console_error(fmt_("Conversion warning while loading \"{}\": {}", input, warn), "asset.import", ErrorType_Warning);
+        console_error(fmt_("Conversion warning while loading \"{}\": {}", file_name, warn), "asset.import", ErrorType_Warning);
     if (!err.empty())
-        console_error(fmt_("Conversion error while loading \"{}\": {}", input, err), "asset.import", ErrorType_Severe);
+        console_error(fmt_("Conversion error while loading \"{}\": {}", file_name, err), "asset.import", ErrorType_Severe);
     assert_else(!ret)
         return {};
 
-    auto folder = game.resource_folder / fs::path(fs::path(input).stem().string() + "_GLTF");
+    auto folder = game.resource_folder / fs::path(file_path.stem().string() + "_GLTF");
     fs::create_directory(folder);
 
     PrefabCPU prefab;
@@ -503,7 +505,7 @@ PrefabCPU convert_to_prefab(const string& input, const string& output_folder) {
         }
     }
 
-    fs::path scene_path = output_folder / fs::path(input).stem();
+    fs::path scene_path = output_folder / fs::path(output_name);
     scene_path.replace_extension(".sbpfb");
 
     prefab.file_name = scene_path.string();
