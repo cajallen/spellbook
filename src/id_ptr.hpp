@@ -22,7 +22,7 @@ struct id_ptr {
 
     id_ptr();
     id_ptr(u64 value);
-    template <typename... Args> id_ptr(Args args);
+    template <typename... Args> id_ptr(Args&&... args);
 
     bool valid() const;
     void remove() const;
@@ -73,7 +73,7 @@ id_ptr<T>::id_ptr() {
 
 template <typename T>
 template <typename... Args>
-id_ptr<T>::id_ptr(Args args) {
+id_ptr<T>::id_ptr(Args&&... args) {
     auto& arch                  = archive();
     value                       = math::random_u64();
     arch.vals[value]            = T(args);

@@ -228,16 +228,16 @@ void   delete_json(json& j);
 #define PASTE8(func, v1, v2, v3, v4, v5, v6, v7) PASTE2(func, v1) PASTE7(func, v2, v3, v4, v5, v6, v7)
 #define PASTE9(func, v1, v2, v3, v4, v5, v6, v7, v8) PASTE2(func, v1) PASTE8(func, v2, v3, v4, v5, v6, v7, v8)
 #define PASTE10(func, v1, v2, v3, v4, v5, v6, v7, v8, v9) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9)
-#define PASTE11(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9, v10)
-#define PASTE12(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11)
-#define PASTE13(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12)
-#define PASTE14(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13)
-#define PASTE15(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14)
-#define PASTE16(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) PASTE2(func, v1) PASTE9(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15)
+#define PASTE11(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) PASTE2(func, v1) PASTE10(func, v2, v3, v4, v5, v6, v7, v8, v9, v10)
+#define PASTE12(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) PASTE2(func, v1) PASTE11(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11)
+#define PASTE13(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) PASTE2(func, v1) PASTE12(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12)
+#define PASTE14(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) PASTE2(func, v1) PASTE13(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13)
+#define PASTE15(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) PASTE2(func, v1) PASTE14(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14)
+#define PASTE16(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) PASTE2(func, v1) PASTE15(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15)
 
 #define FROM_JSON_ELE(var_name)                \
     if (j.contains(#var_name)) {             \
-        typedef std::conditional<std::is_enum_v<decltype(var_name)>, s64, decltype(var_name)>::type CastableT; \
+        typedef std::conditional<std::is_enum_v<decltype(var_name)>, s32, decltype(var_name)>::type CastableT; \
         using ValueT = decltype(var_name);      \
         (var_name)  = ValueT(CastableT(*j.at(#var_name))); \
     }

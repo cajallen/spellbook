@@ -1,5 +1,10 @@
 #include "game.hpp"
 
+#include <vulkan/vulkan.h>
+
+#include <tracy/Tracy.hpp>
+
+#include "matrix_math.hpp"
 #include "console.hpp"
 #include "input.hpp"
 #include "math.hpp"
@@ -9,14 +14,7 @@
 #include "renderer/viewport.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/utils.hpp"
-#include "assets/asset_main.hpp"
 
-#include <vulkan/vulkan.h>
-
-#include "matrix_math.hpp"
-#include "renderer/loader.hpp"
-
-#include "tracy/Tracy.hpp"
 
 namespace spellbook {
 

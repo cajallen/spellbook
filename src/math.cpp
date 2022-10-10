@@ -167,7 +167,6 @@ f32 random_f32(f32 low, f32 high) {
 u64 random_u64() {
     static std::random_device rd;
  
-    // Choose a random mean between 1 and 6
     std::default_random_engine e1(rd());
     std::uniform_int_distribution<u64> uniform_dist(0);
     return uniform_dist(e1);

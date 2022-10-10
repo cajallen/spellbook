@@ -10,7 +10,10 @@
 #include "texture_asset.hpp"
 
 #include "renderer/renderer.hpp"
+#include "renderer/renderable.hpp"
 #include "renderer/render_scene.hpp"
+#include "renderer/assets/mesh.hpp"
+#include "renderer/assets/material.hpp"
 
 namespace fs = std::filesystem;
 

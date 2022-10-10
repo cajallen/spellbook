@@ -3,7 +3,6 @@
 #include "vector.hpp"
 #include "string.hpp"
 
-#include "renderable.hpp"
 #include "viewport.hpp"
 #include "renderer.hpp"
 #include "slotmap.hpp"
@@ -14,6 +13,8 @@
 #include "vuk/Buffer.hpp"
 
 namespace spellbook {
+
+struct Renderable;
 
 struct SceneData {
     v4  ambient             = v4(1.0f, 1.0f, 1.0f, 0.3f);

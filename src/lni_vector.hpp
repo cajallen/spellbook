@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <stdexcept>
+
 #define LNI_VECTOR_MAX_SZ 1000000000
 
 namespace lni {
@@ -94,7 +96,6 @@ public:
     bool operator >(const vector<T>&) const;
     bool operator >=(const vector<T>&) const;
 
-    friend void Print(const vector<T>&, std::string);
 private:
     size_type rsrv_sz = 4;
     size_type vec_sz  = 0;
@@ -200,6 +201,7 @@ vector<T>& vector<T>::operator =(vector<T>&& other) {
     for (i     = 0; i < other.vec_sz; ++i)
         arr[i] = std::move(other.arr[i]);
     vec_sz = other.vec_sz;
+    return *this;
 }
 
 template <typename T>
@@ -211,6 +213,7 @@ vector<T>& vector<T>::operator =(std::initializer_list<T> lst) {
     vec_sz = 0;
     for (auto& item : lst)
         arr[vec_sz++] = item;
+    return *this;
 }
 
 template <typename T>

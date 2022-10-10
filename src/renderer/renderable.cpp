@@ -7,7 +7,9 @@
 
 #include "matrix_math.hpp"
 
-#include "render_scene.hpp"
+#include "renderer/render_scene.hpp"
+#include "renderer/assets/mesh.hpp"
+#include "renderer/assets/material.hpp"
 
 namespace spellbook {
 

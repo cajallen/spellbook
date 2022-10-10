@@ -12,7 +12,7 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <tracy/Tracy.hpp>
 
-#include "assets/asset_main.hpp"
+#include "game.hpp"
 #include "lib_ext/fmt_geometry.hpp"
 
 namespace fs = std::filesystem;
@@ -152,8 +152,6 @@ const string shader_exts[] = {"glsl", "shader", "shad"};
 const string vert_exts[]   = {"vert", "glslv", "vsh"};
 const string frag_exts[]   = {"frag", "glslf", "fsh"};
 
-#include "game.hpp"
-
 void handle_console_input(string& input) {
     Console::input_history.insert_back(input);
     Console::input_history_cursor = Console::input_history.end();
@@ -169,7 +167,7 @@ void handle_console_input(string& input) {
     } else if (word == "load") {
         string rest;
         getline(iss, rest);
-        assets::convert(rest, "resources", "resources");
+        //assets::convert(rest, "resources", "resources");
     } else if (word == "cwd") {
         console({.str = fmt_("{}\n", fs::current_path().string()), .group = "console"});
     } else if (word == "ls") {
@@ -182,7 +180,7 @@ void handle_console_input(string& input) {
             console({.str = fmt_("{}\n", entry.path().string()), .group = "console"});
     } else if (word == "convert") {
         iss >> word;
-        assets::convert(fs::path(word), "resources", "resources");
+       //assets::convert(fs::path(word), "resources", "resources");
     } else if (word == "call") {
         Console::_handle_call_request(iss);
     } else if (word == "clear") {
@@ -258,10 +256,10 @@ void Console::window(bool* open) {
 string string2string(string_view word) {
     return string(word);
 }
-int string2int(string_view word) {
+int string2int(const string& word) {
     return std::stoi(word);
 }
-float string2float(string_view word) {
+float string2float(const string& word) {
     return std::stof(word);
 }
 bool string2bool(string_view word) {

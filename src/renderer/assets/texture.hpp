@@ -1,12 +1,11 @@
 #pragma once
 
 #include <vuk/Types.hpp>
+#include <vuk/Image.hpp>
 
 #include "string.hpp"
 
 #include "geometry.hpp"
-
-#include "renderer/render_scene.hpp"
 
 namespace spellbook {
 

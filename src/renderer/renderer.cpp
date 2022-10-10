@@ -11,6 +11,7 @@
 #include <tracy/Tracy.hpp>
 #include <stb_image.h>
 
+#include "utils.hpp"
 #include "backends/imgui_impl_glfw.h"
 #include "vuk/Partials.hpp"
 
@@ -27,7 +28,7 @@ Renderer::Renderer() {
                                 void*                                       pUserData) -> VkBool32 {
             auto ms = vkb::to_string_message_severity(messageSeverity);
             auto mt = vkb::to_string_message_type(messageType);
-            console({.str = fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), .group = "vulkan", .color = palette::red_1});
+            console({.str = fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), .group = "vulkan", .color = palette::crimson});
             __debugbreak();
             return VK_FALSE;
         })
@@ -101,11 +102,11 @@ Renderer::Renderer() {
     const unsigned num_inflight_frames = 3;
     super_frame_resource.emplace(*context, num_inflight_frames);
     global_allocator.emplace(*super_frame_resource);
-    swapchain = context->add_swapchain(util::make_swapchain(vkbdevice));
+    swapchain = context->add_swapchain(make_swapchain(vkbdevice));
 }
 
 void Renderer::add_scene(RenderScene* scene) {
-    scenes.push_back(scene);
+    scenes.insert_back(scene);
     if (setup_finished) {
         scene->setup(*global_allocator);
     }
@@ -276,7 +277,7 @@ MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool fra
     MaterialGPU material_gpu;
     material_gpu.pipeline                = context->get_named_pipeline("textured_model");
     material_gpu.base_color_view         = find_texture(material_cpu.base_color_texture)->view.get();
-    material_gpu.metallic_roughness_view = find_texture(material_cpu.metallic_roughness_texture)->view.get();
+    material_gpu.metallic_roughness_view = find_texture(material_cpu.orm_texture)->view.get();
     material_gpu.normal_view             = find_texture(material_cpu.normal_texture)->view.get();
     material_gpu.emissive_view           = find_texture(material_cpu.emissive_texture)->view.get();
     material_gpu.tints                   = {
@@ -294,7 +295,7 @@ TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_alloc
     if (texture_cache.contains(tex_cpu))
         return texture_cache[tex_cpu];
     vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
-    auto [tex, tex_fut]   = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), tex_cpu.data, true);
+    auto [tex, tex_fut]   = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
     context->debug.set_name(tex, vuk::Name(tex_cpu.name));
     enqueue_setup(std::move(tex_fut));
 

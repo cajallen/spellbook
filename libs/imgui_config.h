@@ -98,42 +98,42 @@
 
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
-#include "vector.hpp"
+#include "geometry.hpp"
 #include "color.hpp"
 #define IM_VEC2_CLASS_EXTRA                   \
-	explicit constexpr ImVec2(const v2& f) {  \
+	explicit constexpr ImVec2(const spellbook::v2& f) {  \
 		x = f.x;                              \
 		y = f.y;                              \
 	}                                         \
-	explicit constexpr ImVec2(const v2i& f) { \
+	explicit constexpr ImVec2(const spellbook::v2i& f) { \
 		x = f.x;                              \
 		y = f.y;                              \
 	}                                         \
-	explicit constexpr operator v2() const {  \
-		return v2(x, y);                      \
+	explicit constexpr operator spellbook::v2() const {  \
+		return spellbook::v2(x, y);                      \
 	}                                         \
-	explicit constexpr operator v2i() const { \
-		return v2i(x, y);                     \
+	explicit constexpr operator spellbook::v2i() const { \
+		return spellbook::v2i(x, y);                     \
 	}
 
 #define IM_VEC4_CLASS_EXTRA                     \
-	explicit constexpr ImVec4(const v4& f) {    \
+	explicit constexpr ImVec4(const spellbook::v4& f) {    \
 		x = f.x;                                \
 		y = f.y;                                \
 		z = f.z;                                \
 		w = f.w;                                \
 	}                                           \
-	explicit constexpr ImVec4(const Color& c) { \
+	explicit constexpr ImVec4(const spellbook::Color& c) { \
 		x = c.r;                                \
 		y = c.g;                                \
 		z = c.b;                                \
 		w = c.a;                                \
 	}                                           \
-	explicit constexpr operator v4() const {    \
-		return v4(x, y, z, w);                  \
+	explicit constexpr operator spellbook::v4() const {    \
+		return spellbook::v4(x, y, z, w);                  \
 	}                                           \
-	explicit constexpr operator Color() const { \
-		return Color(x, y, z, w);               \
+	explicit constexpr operator spellbook::Color() const { \
+		return spellbook::Color(x, y, z, w);               \
 	}
 
 //---- Use 32-bit vertex indices (default is 16-bit) is one way to allow large meshes with more than 64K vertices.

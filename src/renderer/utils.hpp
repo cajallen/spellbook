@@ -3,16 +3,8 @@
 #include "vector.hpp"
 
 #include <VkBootstrap.h>
-#include <imgui.h>
 #include <vuk/Swapchain.hpp>
 #include <vuk/Types.hpp>
-
-#include "vertex.hpp"
-#include "renderer/mesh.hpp"
-#include "renderable.hpp"
-
-#include "console.hpp"
-#include "lib_ext/fmt_geometry.hpp"
 
 namespace spellbook {
 

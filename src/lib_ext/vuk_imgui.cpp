@@ -8,6 +8,8 @@
 
 #include "file.hpp"
 
+namespace spellbook {
+
 ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
     vuk::Context& ctx      = allocator.get_context();
     auto&         io       = ImGui::GetIO();
@@ -36,10 +38,10 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
         vuk::PipelineBaseCreateInfo pci;
         auto                        vpath = "src/shaders/imgui.vert.spv";
         auto                        vcont = get_contents<u32>(vpath);
-        pci.add_spirv(std::move(vcont), vpath);
+        pci.add_spirv(std::vector(vcont.begin(), vcont.end()), vpath);
         auto fpath = "src/shaders/imgui.frag.spv";
         auto fcont = get_contents<u32>(fpath);
-        pci.add_spirv(std::move(fcont), fpath);
+        pci.add_spirv(std::vector(fcont.begin(), fcont.end()), fpath);
         ctx.create_named_pipeline("imgui", pci);
     }
     return data;
@@ -184,4 +186,6 @@ vuk::Future ImGui_ImplVuk_Render(vuk::Allocator& allocator, vuk::Future target, 
     rg->add_pass(std::move(pass));
 
     return {std::move(rg), "target+"};
+}
+
 }

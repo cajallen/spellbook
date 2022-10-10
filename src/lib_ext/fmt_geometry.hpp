@@ -134,8 +134,8 @@ template <> struct fmt::formatter<spellbook::r3> : formatter<f32> {
     }
 };
 
-template <> struct fmt::formatter<quat> : formatter<f32> {
-    template <typename FormatContext> auto format(const quat& q, FormatContext& ctx) {
+template <> struct fmt::formatter<spellbook::quat> : formatter<f32> {
+    template <typename FormatContext> auto format(const spellbook::quat& q, FormatContext& ctx) {
         auto out = ctx.out();
         *out     = '(';
         ctx.advance_to(out);
@@ -154,8 +154,8 @@ template <> struct fmt::formatter<quat> : formatter<f32> {
     }
 };
 
-template <> struct fmt::formatter<m33> : formatter<f32> {
-    template <typename FormatContext> auto format(const m33& m, FormatContext& ctx) {
+template <> struct fmt::formatter<spellbook::m33> : formatter<f32> {
+    template <typename FormatContext> auto format(const spellbook::m33& m, FormatContext& ctx) {
         auto out = ctx.out();
         *out     = '[';
         for (int y = 0; y < 3; y++) {
@@ -175,8 +175,8 @@ template <> struct fmt::formatter<m33> : formatter<f32> {
     }
 };
 
-template <> struct fmt::formatter<m44> : formatter<f32> {
-    template <typename FormatContext> auto format(const m44& m, FormatContext& ctx) {
+template <> struct fmt::formatter<spellbook::m44> : formatter<f32> {
+    template <typename FormatContext> auto format(const spellbook::m44& m, FormatContext& ctx) {
         auto out = ctx.out();
         *out     = '[';
         for (int y = 0; y < 4; y++) {

@@ -8,8 +8,6 @@
 #include "geometry.hpp"
 #include "color.hpp"
 
-#include "renderer/render_scene.hpp"
-
 
 namespace spellbook {
 
@@ -30,10 +28,11 @@ struct MaterialCPU {
 
     f32 uv_scale = 1.0f;
 
-    vuk::CullModeFlags cull_mode = vuk::CullModeFlagBits::eNone;
+    vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
 
     MaterialCPU() = default;
-    JSON_IMPL(MaterialCPU, name, base_color_tint, base_color_texture, roughness_factor, metallic_factor, metallic_roughness_texture, normal_factor, normal_texture, emissive_tint, emissive_texture, uv_scale, cull_mode)
+    // name, base_color_tint, roughness_factor, 
+    JSON_IMPL(MaterialCPU, name, base_color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, base_color_texture, orm_texture, normal_texture, emissive_texture, uv_scale, cull_mode);
 };
 
 struct MaterialDataGPU {
@@ -55,8 +54,8 @@ struct MaterialGPU { // uses master shader
     MaterialGPU()                         = default;
     MaterialGPU(const MaterialGPU& other) = default;
     MaterialGPU(MaterialGPU&& other)      = default;
-    virtual void bind_parameters(vuk::CommandBuffer& cbuf);
-    virtual void bind_textures(vuk::CommandBuffer& cbuf);
+    void bind_parameters(vuk::CommandBuffer& cbuf);
+    void bind_textures(vuk::CommandBuffer& cbuf);
 };
 
 void inspect(MaterialGPU* material);

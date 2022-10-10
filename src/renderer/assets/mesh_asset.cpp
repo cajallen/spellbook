@@ -3,6 +3,7 @@
 #include <lz4.h>
 
 #include "math.hpp"
+#include "console.hpp"
 
 namespace spellbook {
 

@@ -2,14 +2,14 @@
 
 #include "matrix.hpp"
 
-#include "renderer/assets/mesh.hpp"
-#include "renderer/assets/material.hpp"
-
 namespace spellbook {
 
+struct MeshGPU;
+struct MaterialGPU;
+
 struct Renderable {
-    MeshGPU*     mesh         = {};
-    MaterialGPU* material     = {};
+    MeshGPU*     mesh         = nullptr;
+    MaterialGPU* material     = nullptr;
     m44          transform    = {};
     u32          selection_id = 0;
 

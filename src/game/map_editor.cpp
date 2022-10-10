@@ -6,7 +6,6 @@
 #include "game.hpp"
 #include "components.hpp"
 
-#include "renderer/loader.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {

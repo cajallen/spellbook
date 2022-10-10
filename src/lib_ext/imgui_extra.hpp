@@ -5,7 +5,7 @@
 #include "matrix.hpp"
 #include "string.hpp"
 
-inline bool DragMat3(const string& name, m33* matrix, f32 speed, const string& format) {
+inline bool DragMat3(const string& name, spellbook::m33* matrix, f32 speed, const string& format) {
     bool changed = false;
 
     ImGui::BeginGroup();
@@ -23,7 +23,7 @@ inline bool DragMat3(const string& name, m33* matrix, f32 speed, const string& f
     return changed;
 }
 
-inline bool DragMat4(const string& name, m44* matrix, f32 speed, const string& format) {
+inline bool DragMat4(const string& name, spellbook::m44* matrix, f32 speed, const string& format) {
     bool changed = false;
 
     ImGui::BeginGroup();

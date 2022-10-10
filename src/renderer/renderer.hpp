@@ -1,5 +1,4 @@
 ﻿#pragma once
-
 #include <optional>
 #include <mutex>
 
@@ -17,7 +16,6 @@
 #include "string.hpp"
 
 #include "matrix.hpp"
-#include "utils.hpp"
 #include "umap.hpp"
 
 #include "renderer/assets/mesh.hpp"

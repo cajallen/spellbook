@@ -1,5 +1,12 @@
 #include "render_scene.hpp"
 
+#include <tracy/Tracy.hpp>
+#include <functional>
+
+#include <vuk/Partials.hpp>
+
+#include "lib_ext/fmt_renderer.hpp"
+
 #include "umap.hpp"
 #include "file.hpp"
 #include "samplers.hpp"
@@ -7,12 +14,7 @@
 #include "game.hpp"
 #include "viewport.hpp"
 
-#include "lib_ext/fmt_renderer.hpp"
-
-#include <tracy/Tracy.hpp>
-#include <functional>
-
-#include "vuk/Partials.hpp"
+#include "renderable.hpp"
 
 namespace spellbook {
 

@@ -8,10 +8,10 @@
 
 #include "matrix.hpp"
 
-#include "renderer/assets/mesh.hpp"
-#include "renderer/assets/material.hpp"
-#include "renderer/renderable.hpp"
-#include "renderer/render_scene.hpp"
+struct MeshCPU;
+struct MaterialCPU;
+struct Renderable;
+struct RenderScene;
 
 namespace spellbook {
 

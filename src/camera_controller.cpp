@@ -197,27 +197,27 @@ void inspect(CameraController* controller) {
         ImGui::DragFloat("Sensitivity", &controller->fly_state.sensitivity, 0.01f);
 
         ImGui::Text("Move State: ");
-        if (controller->fly_state.move_state & LEFT) {
+        if (controller->fly_state.move_state & Direction_Left) {
             ImGui::SameLine();
             ImGui::Text("LEFT ");
         }
-        if (controller->fly_state.move_state & RIGHT) {
+        if (controller->fly_state.move_state & Direction_Right) {
             ImGui::SameLine();
             ImGui::Text("RIGHT ");
         }
-        if (controller->fly_state.move_state & FORWARD) {
+        if (controller->fly_state.move_state & Direction_Forward) {
             ImGui::SameLine();
             ImGui::Text("FORWARD ");
         }
-        if (controller->fly_state.move_state & BACKWARD) {
+        if (controller->fly_state.move_state & Direction_Backward) {
             ImGui::SameLine();
             ImGui::Text("BACKWARD ");
         }
-        if (controller->fly_state.move_state & UP) {
+        if (controller->fly_state.move_state & Direction_Up) {
             ImGui::SameLine();
             ImGui::Text("UP ");
         }
-        if (controller->fly_state.move_state & DOWN) {
+        if (controller->fly_state.move_state & Direction_Down) {
             ImGui::SameLine();
             ImGui::Text("DOWN ");
         }
@@ -248,10 +248,10 @@ void inspect(CameraController* controller) {
 void CameraController::setup(Viewport* init_viewport, Camera* init_camera) {
     viewport = init_viewport;
     camera   = init_camera;
-    Input::mouse_button_callback_stack.insert(Input::mouse_button_callback_stack.begin(), {cc_on_mouse_press, name, this});
-    Input::mouse_pos_callback_stack.insert(Input::mouse_pos_callback_stack.begin(), {cc_on_cursor_move, name, this});
-    Input::scroll_callback_stack.insert(Input::scroll_callback_stack.begin(), {cc_on_scroll, name, this});
-    Input::key_callback_stack.insert(Input::key_callback_stack.begin(), {cc_on_key, name, this});
+    Input::mouse_button_callback_stack.insert(0, {cc_on_mouse_press, name, this});
+    Input::mouse_pos_callback_stack.insert(0, {cc_on_cursor_move, name, this});
+    Input::scroll_callback_stack.insert(0, {cc_on_scroll, name, this});
+    Input::key_callback_stack.insert(0, {cc_on_key, name, this});
 }
 
 }

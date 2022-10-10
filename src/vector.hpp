@@ -108,12 +108,12 @@ void vector<T>::emplace(u32 i, Args&&...args) {
 
 template <typename T>
 void vector<T>::insert(u32 i, T&& t) {
-    internal.insert(i, t);
+    internal.insert(internal.begin() + i, t);
 }
 
 template <typename T>
 void vector<T>::insert(u32 i, const T& t) {
-    internal.insert(i, t);
+    internal.insert(internal.begin() + i, t);
 }
 
 template <typename T>
@@ -127,7 +127,12 @@ void vector<T>::remove_if(Predicate predicate, bool unordered) {
                 i++;
         }
     } else {
-        std::erase_if(internal, predicate);
+        for (int i = 0; i < this->size();) {
+            if (predicate(this->at(i)))
+                this->remove_index(i, false);
+            else
+                i++;
+        }
     }
 }
 
@@ -138,7 +143,7 @@ void vector<T>::remove_index(u32 i, bool unordered) {
             std::swap(this->at(i), this->last());
         this->remove_back();
     } else {
-        internal.erase(i);
+        internal.erase(internal.begin() + i);
     }
 }
 
@@ -149,7 +154,7 @@ void vector<T>::remove_indices(u32 start, u32 end, bool unordered) {
             this->remove_index(i, true);
         }
     } else {
-        internal.erase(start, end);
+        internal.erase(internal.begin() + start, internal.begin() + end);
     }
 }
 
@@ -221,22 +226,22 @@ T* vector<T>::data() {
 
 template <typename T>
 T* vector<T>::begin() {
-    return internal.begin();
+    return &*internal.begin();
 }
 
 template <typename T>
 T* vector<T>::end() {
-    return internal.end();
+    return &*internal.end();
 }
 
 template <typename T>
 T& vector<T>::first() {
-    return internal.first();
+    return internal.front();
 }
 
 template <typename T>
 T& vector<T>::last() {
-    return internal.last();
+    return internal.back();
 }
 
 template <typename T>
@@ -246,22 +251,22 @@ const T* vector<T>::data() const {
 
 template <typename T>
 const T* vector<T>::begin() const {
-    return internal.begin();
+    return internal.data();
 }
 
 template <typename T>
 const T* vector<T>::end() const {
-    return internal.end();
+    return internal.data() + this->size();
 }
 
 template <typename T>
 const T& vector<T>::first() const {
-    return internal.first();
+    return internal.front();
 }
 
 template <typename T>
 const T& vector<T>::last() const {
-    return internal.last();
+    return internal.back();
 }
 
 template <typename T>
