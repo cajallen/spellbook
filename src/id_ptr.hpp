@@ -39,7 +39,7 @@ struct id_ptr {
 template <typename T>
 id_ptr<T> from_jv_impl(const json_value& jv, id_ptr<T>* _) {
     json      j = from_jv<json>(jv);
-    id_ptr<T> value(from_jv<T>(j["node"]), from_jv<T>(j["id"]));
+    id_ptr<T> value(from_jv<T>(*j["node"]), from_jv<u64>(*j["id"]));
     return value;
 }
 

@@ -13,9 +13,6 @@ template <typename T> class slotmap;
 
 template <typename T> struct slot {
 	u64 value = LONG_MAX;
-
-    slot() = default;
-    slot(const slot<T>& s) = default;
     
 	bool   operator==(const slot<T>& other) const {
 		  return value == other.value;

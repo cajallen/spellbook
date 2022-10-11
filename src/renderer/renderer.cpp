@@ -1,8 +1,11 @@
 ﻿#include "renderer.hpp"
 
 #include <vuk/src/RenderGraphUtil.hpp>
+#include <vuk/Partials.hpp>
+#include <backends/imgui_impl_glfw.h>
 #include <tracy/Tracy.hpp>
-#include <stb_image.h>
+
+#include "lib_ext/fmt_geometry.hpp"
 
 #include "file.hpp"
 #include "matrix_math.hpp"
@@ -11,8 +14,6 @@
 
 #include "utils.hpp"
 #include "assets/texture_asset.hpp"
-#include <backends/imgui_impl_glfw.h>
-#include <vuk/Partials.hpp>
 
 namespace spellbook {
 
@@ -129,11 +130,9 @@ void Renderer::setup() {
 
     // TODO: get white and grid textures
     {
-        vector<std::jthread> threads;
+        // TODO: can thread
         for (auto scene : scenes) {
-            threads.emplace_back(std::jthread([&] {
-                scene->setup(*global_allocator);
-            }));
+            scene->setup(*global_allocator);
         }
     }
 
