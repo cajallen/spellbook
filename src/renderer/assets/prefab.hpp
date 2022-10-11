@@ -8,27 +8,27 @@
 
 #include "matrix.hpp"
 
+namespace spellbook {
+
 struct MeshCPU;
 struct MaterialCPU;
 struct Renderable;
 struct RenderScene;
-
-namespace spellbook {
 
 struct PrefabCPU {
     string file_name;    
 
     struct Node {
         string name = {};
-        string mesh = {};
-        string material = {};
+        // hashed MeshCPU/MaterialCPU, can use renderer.mesh_aliases, etc.
+        u64 mesh = {};
+        u64 material = {};
         m44 transform = {};
 
         id_ptr<Node> parent = {};
-        uset<id_ptr<Node>> children = {};
+        vector<id_ptr<Node>> children = {};
 
         Node() = default;
-        JSON_IMPL(Node, name, mesh, material, transform, parent, children);
     };
 
     vector<MaterialCPU> materials = {};
@@ -38,6 +38,8 @@ struct PrefabCPU {
 
     vector<PrefabCPU> split();
 };
+
+JSON_IMPL(PrefabCPU::Node, name, mesh, material, transform, parent, children);
 
 struct PrefabGPU {
     vector<slot<Renderable>> renderables;

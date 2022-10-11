@@ -77,11 +77,11 @@ json_value parse_item(istream& iss) {
         iss.get(c);
     if (c == '{') {
         iss.unget();
-        return json_value(parse_json(iss));
+        return to_jv(parse_json(iss));
     } else if (c == '[') {
-        return json_value(parse_list(iss));
+        return to_jv(parse_list(iss));
     } else if (c == '"') {
-        return json_value(parse_quote(iss));
+        return to_jv(parse_quote(iss));
     } else {
         if (isalpha(c)) {
             string word;
@@ -91,9 +91,9 @@ json_value parse_item(istream& iss) {
             }
             iss.unget();
             if (word.rfind("true", 0) == 0)
-                return json_value(true);
+                return to_jv(true);
             if (word.rfind("false", 0) == 0)
-                return json_value(false);
+                return to_jv(false);
         } else {
             string word;
             while (isdigit(c) || c == '.' || c == '-' || c == 'e') {
@@ -102,9 +102,9 @@ json_value parse_item(istream& iss) {
             }
             iss.unget();
             if (is_int(word))
-                return json_value(stoll(word));
+                return to_jv(stoll(word));
             if (is_float(word)) {
-                return json_value(stod(word));
+                return to_jv(stod(word));
             }
         }
     }

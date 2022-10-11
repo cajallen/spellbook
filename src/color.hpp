@@ -1,7 +1,7 @@
 #pragma once
 
-#include "geometry.hpp"
 #include "json.hpp"
+#include "geometry.hpp"
 
 struct ImVec4;
 namespace vuk {
@@ -63,9 +63,9 @@ struct Color {
         return v4 {r, g, b, a};
     }
     explicit operator vuk::ClearColor() const;
-
-    JSON_IMPL(Color, r, g, b, a);
 };
+
+JSON_IMPL(Color, r, g, b, a);
 
 inline Color mix(Color c1, Color c2, f32 amt) {
     return Color {c1.r * c1.a * (1.0f - amt) + c2.r * c2.a * amt,

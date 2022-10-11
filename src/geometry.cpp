@@ -139,11 +139,11 @@ euler string2euler(string word) {
     int first = word.find_first_of(',');
     int last = word.find_last_of(',');
     assert_else(first == last)
-        return euler();
-    return euler(
+        return euler{};
+    return euler{
         std::stof(word.substr(offset, first - offset)) * (units == RAD ? 1.0f : math::D2R),
         std::stof(word.substr(first + 1))              * (units == RAD ? 1.0f : math::D2R)
-    );
+    };
 }
 
 }

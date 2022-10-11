@@ -34,19 +34,20 @@ struct Message {
     bool operator==(Message& rhs) const {
         return str == rhs.str && color == rhs.color && group == rhs.group;
     }
-
-    FROM_JSON_IMPL(Message, str, count, color, group)
-    operator spellbook::json() const {
-        spellbook::json j;
-        if (!save)
-            return j;
-        TO_JSON_ELE(str);
-        TO_JSON_ELE(count);
-        TO_JSON_ELE(color);
-        TO_JSON_ELE(group);
-        return j;
-    }
+    
 };
+
+FROM_JSON_IMPL(Message, str, count, color, group)
+json_value to_jv(const Message& value) {
+    auto j = json();
+    if (!value.save)
+        return {};
+    TO_JSON_ELE(str);
+    TO_JSON_ELE(group);
+    TO_JSON_ELE(color);
+    TO_JSON_ELE(count);
+    return to_jv(j);
+}
 
 void console(MsgArg content);
 #define assert_else(cond)                                                                   \
@@ -80,7 +81,7 @@ struct Console {
     static bool                     input_reset;
     static bool                     added_message;
     static vector<string>           input_history;
-    static string* input_history_cursor;
+    static string*                  input_history_cursor;
     static umap<string, bool>       group_visible;
     static umap<string, bool>       frame_bool;
 
@@ -89,8 +90,8 @@ struct Console {
     static void show_message(Message& msg);
     static void show_messages(v2i size);
     static void _handle_call_request(std::istringstream& iss);
-
-    JSON_IMPL(Console, Console::input_history, Console::message_list, Console::group_visible);
 };
+
+JSON_IMPL(Console, Console::input_history, Console::message_list, Console::group_visible);
 
 }

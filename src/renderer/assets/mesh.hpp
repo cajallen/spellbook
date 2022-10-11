@@ -6,8 +6,10 @@
 #include "hash.hpp"
 #include "vector.hpp"
 #include "string.hpp"
+#include "json.hpp"
 
 #include "renderer/vertex.hpp"
+
 
 namespace spellbook {
 
@@ -25,13 +27,11 @@ struct MeshCPU {
     vector<u32>    indices;
 
     MeshBounds bounds;
-
-    MeshCPU() = default;
-    JSON_IMPL(MeshCPU, name);
-
+    
     // Skips name/file_name, only references the actual mesh
     u64 contents_hash() const;
 };
+JSON_IMPL(MeshCPU, name);
 
 struct MeshGPU {
     vuk::Unique<vuk::BufferGPU> vertex_buffer;

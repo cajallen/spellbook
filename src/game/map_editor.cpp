@@ -2,10 +2,13 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "lib_ext/fmt_geometry.hpp"
+
 #include "scene.hpp"
 #include "game.hpp"
 #include "components.hpp"
 
+#include "renderer/renderable.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
@@ -36,15 +39,15 @@ void MapEditor::setup() {
 void MapEditor::setup(Scene* init_scene) {
     p_scene = init_scene;
     for (auto& brush : brushes) {
-        if (brush.name == "Air")
-            continue;
         MaterialCPU brush_mat = {.name  = fmt_("{}_mat", brush.name),
             .base_color_tint            = brush.button_color,
-            .base_color_texture         = brush.name == "Path" ? "white" : "tile_color",
             .roughness_factor           = 0.9f,
-            .metallic_roughness_texture = "tile_mr",
             .normal_factor              = 1.0f,
+            .base_color_texture         = brush.name == "Path" ? "white" : "tile_color",
+            .orm_texture                = "tile_mr",
             .normal_texture             = "tile_normal"};
+        if (brush.name == "Air")
+            continue;
         game.renderer.upload_material(brush_mat, false);
     }
 

@@ -14,11 +14,11 @@ f32 d2r(f32 deg) {
 }
 
 euler r2d(euler rad) {
-    return euler(math::r2d(rad.yaw), math::r2d(rad.pitch), math::r2d(rad.roll));
+    return euler{math::r2d(rad.yaw), math::r2d(rad.pitch), math::r2d(rad.roll)};
 }
 
 euler d2r(euler deg) {
-    return euler(math::d2r(deg.yaw), math::d2r(deg.pitch), math::d2r(deg.roll));
+    return euler{math::d2r(deg.yaw), math::d2r(deg.pitch), math::d2r(deg.roll)};
 }
 
 bool contains(range r, f32 f) {
@@ -237,7 +237,7 @@ euler vector2euler(v3 v) {
     v         = math::normalize(v);
     f32 pitch = math::asin(-v.z);
     f32 yaw   = math::atan2(v.y, v.x);
-    return euler(yaw, pitch);
+    return euler{yaw, pitch};
 }
 
 bool ray_intersects_aabb(v3 rstart, v3 rdir, v3 bstart, v3 bend, float* out_dist) {

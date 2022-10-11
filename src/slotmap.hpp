@@ -12,10 +12,13 @@
 template <typename T> class slotmap;
 
 template <typename T> struct slot {
-	size_t value = LONG_MAX;
-    slotmap<T>* p_slotmap;
+	u64 value = LONG_MAX;
+
+    slot() = default;
+    slot(const slot<T>& s) = default;
+    
 	bool   operator==(const slot<T>& other) const {
-		  return value == other.value && p_slotmap == other.p_slotmap;
+		  return value == other.value;
 	}
 };
 
@@ -247,7 +250,7 @@ template <typename T> inline slot<T> slotmap<T>::add_element(T&& newElement) {
 	size_t returnIndex = freeKeyHead;
 	freeKeyHead		   = nextFreeIndex;
 
-	return {returnIndex, this};
+	return {returnIndex};
 }
 
 template <typename T> inline T& slotmap<T>::element_at(slot<T> handle) {

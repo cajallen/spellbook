@@ -87,8 +87,8 @@ vector<T>::vector(const T* begin, const T* end)
 
 template <typename T>
 template <typename... Args>
-void vector<T>::emplace_back(Args&&...args) {
-    internal.emplace_back(args);
+void vector<T>::emplace_back(Args&&... args) {
+    internal.emplace_back(std::forward<Args>(args)...);
 }
 
 template <typename T>
@@ -103,8 +103,8 @@ void vector<T>::insert_back(const T& t) {
 
 template <typename T>
 template <typename... Args>
-void vector<T>::emplace(u32 i, Args&&...args) {
-    internal.emplace(internal.begin() + i, args);
+void vector<T>::emplace(u32 i, Args&&... args) {
+    internal.emplace(internal.begin() + i, std::forward<Args>(args)...);
 }
 
 template <typename T>

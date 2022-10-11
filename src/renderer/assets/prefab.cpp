@@ -40,16 +40,13 @@ vector<PrefabCPU> PrefabCPU::split() {
 
 void save_prefab(const PrefabCPU& prefab) {
     json j;
-    j["root_node"] = make_shared<json_value>(prefab.root_node);
+    j["root_node"] = make_shared<json_value>(to_jv(prefab.root_node));
 
     vector<json_value> json_nodes;
     for (id_ptr<PrefabCPU::Node> node : prefab.nodes) {
-        json json_node;
-        json_node["node"] = make_shared<json_value>(*node);
-        json_node["id"]   = make_shared<json_value>(node);
-        json_nodes.insert_back((json_value) json_node);
+        json_nodes.insert_back(to_jv(node));
     }
-    j["nodes"] = make_shared<json_value>(json_nodes);
+    j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
     file_dump(j, prefab.file_name);
 }
 
@@ -57,12 +54,13 @@ PrefabCPU load_prefab(const string_view file_name) {
     PrefabCPU prefab;
     json      j = parse_file(file_name);
     if (j.contains("root_node"))
-        prefab.root_node = id_ptr<PrefabCPU::Node>(*j["root_node"]);
+        prefab.root_node = from_jv<id_ptr<PrefabCPU::Node>>(*j["root_node"]);
 
     if (j.contains("nodes")) {
         for (const json_value& jv : j["nodes"]->get_list()) {
-            auto json_node = json(jv);
-            json_node["node"];
+            // TODO:
+            auto json_node = from_jv<json>(jv);
+            PrefabCPU::Node node = from_jv<PrefabCPU::Node>(*json_node["node"]);
             json_node["id"];
         }
     }
@@ -74,7 +72,7 @@ PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU& prefab) {
 
     for (id_ptr<PrefabCPU::Node> node_ptr : prefab.nodes) {
         const PrefabCPU::Node& node = *node_ptr;
-        Renderable renderable = Renderable(game.renderer.find_mesh(node.name), game.renderer.find_material(node.material), node.transform);
+        Renderable renderable = Renderable(game.renderer.mesh_cache[node.mesh], game.renderer.material_cache[node.material], node.transform);
         auto new_renderable = render_scene.add_renderable(renderable);
         prefab_gpu.renderables.insert_back(new_renderable);
     }
@@ -311,14 +309,14 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
         array texture_files = {&material_cpu.base_color_texture, &material_cpu.orm_texture, &material_cpu.normal_texture,
                                &material_cpu.emissive_texture};
 
+        array texture_names = {"baseColor", "metallicRoughness", "normals", "emissive"};
         for (int i = 0; i < 4; i++) {
-            int texture_index = texture_indices[i];
+            int              texture_index   = texture_indices[i];
             if (texture_index < 0)
                 continue;
-            auto image     = model.textures[texture_index];
-            auto baseImage = model.images[image.source];
+            auto             image           = model.textures[texture_index];
+            auto             baseImage       = model.images[image.source];
 
-            constexpr string texture_names[] = {"baseColor", "metallicRoughness", "normals", "emissive"};
             if (baseImage.name == "")
                 baseImage.name = texture_names[i];
 
@@ -427,7 +425,7 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
     for (u32 i = 0; i < model.nodes.size(); i++) {
         auto& children = prefab.nodes[i]->children;
         for (u32 c : model.nodes[i].children) {
-            children.insert(prefab.nodes[c]);
+            children.insert_back(prefab.nodes[c]);
             prefab.nodes[c]->parent = prefab.nodes[i];
         }
     }
@@ -449,8 +447,8 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
             fs::path materialpath = _convert_to_relative(fs::path(output_folder) / (material_name + ".sbmat"));
 
             prefab.nodes[i]->name      = model.nodes[i].name;
-            prefab.nodes[i]->mesh      = meshpath.string();
-            prefab.nodes[i]->material  = materialpath.string();
+            prefab.nodes[i]->mesh      = game.renderer.mesh_aliases[meshpath.string()];
+            prefab.nodes[i]->material  = game.renderer.material_aliases[materialpath.string()];
             prefab.nodes[i]->transform = _calculate_matrix(node);
         }
         // Serving hierarchy
@@ -497,11 +495,11 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
             fs::path mesh_path     = _convert_to_relative(fs::path(output_folder) / (mesh_name + ".sbmsh"));
 
             node->name      = prefab.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
-            node->mesh      = mesh_path.string();
-            node->material  = material_path.string();
+            node->mesh      = game.renderer.mesh_aliases[mesh_path.string()];
+            node->material  = game.renderer.material_aliases[material_path.string()];
             node->transform = m44::identity();
             node->parent    = prefab.nodes[multimat_node_index];
-            prefab.nodes[multimat_node_index]->children.insert(node);
+            prefab.nodes[multimat_node_index]->children.insert_back(node);
         }
     }
 

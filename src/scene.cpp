@@ -1,5 +1,9 @@
 #include "scene.hpp"
 
+#include <tracy/Tracy.hpp>
+
+#include "lib_ext/fmt_geometry.hpp"
+
 #include "math.hpp"
 #include "matrix_math.hpp"
 #include "game.hpp"
@@ -7,12 +11,7 @@
 
 #include "game/components.hpp"
 #include "game/systems.hpp"
-#include "assets/asset_main.hpp"
-#include "renderer/loader.hpp"
 #include "renderer/draw_functions.hpp"
-#include "lib_ext/fmt_geometry.hpp"
-
-#include <tracy/Tracy.hpp>
 
 namespace spellbook {
 
@@ -33,7 +32,7 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
 void Scene::setup() {
 	render_scene.name = name + "::render_scene";
 	// setup camera
-	cameras.emplace_back(v3(-8, 0, 4), math::d2r(euler(0, -30)));
+	cameras.emplace_back(v3(-8, 0, 4), math::d2r(euler{0, -30}));
 	render_scene.viewport.name	 = render_scene.name + "::viewport";
 	render_scene.viewport.camera = &cameras.last();
 	render_scene.viewport.setup();

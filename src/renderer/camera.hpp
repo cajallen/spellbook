@@ -30,9 +30,9 @@ struct Camera {
     void set_aspect_xy(float new_aspect_xy);
 
     void pre_render();
-
-    JSON_IMPL(Camera, position, heading)
 };
+
+JSON_IMPL(Camera, position, heading);
 
 void inspect(Camera* camera);
 

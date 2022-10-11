@@ -23,10 +23,9 @@ namespace spellbook {
 struct TextureInfo {
     CompressionMode compression_mode = {};
     u32             pixels_bsize   = 0;
-
-    TextureInfo() = default;
-    JSON_IMPL(TextureInfo, compression_mode, pixels_bsize);
 };
+
+JSON_IMPL(TextureInfo, compression_mode, pixels_bsize);
 
 TextureCPU convert_to_texture(const string& file_name, const string& output_folder, const string& output_name); // TODO;
 TextureCPU load_texture(const string& file_name);

@@ -22,8 +22,8 @@ TextureCPU load_texture(const string& file_name) {
     assert_else(asset_file.version == 2 && asset_file.type == expected_type)
         return {};
 
-    TextureInfo texture_info = TextureInfo(*asset_file.asset_json["texture_info"]);
-    TextureCPU  texture_cpu  = TextureCPU(*asset_file.asset_json["texture_cpu"]);
+    TextureInfo texture_info = from_jv<TextureInfo>(*asset_file.asset_json["texture_info"]);
+    TextureCPU  texture_cpu  = from_jv<TextureCPU>(*asset_file.asset_json["texture_cpu"]);
 
     vector<u8> decompressed(texture_info.pixels_bsize);
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(),
@@ -55,8 +55,8 @@ void save_texture(TextureCPU& texture_cpu) {
     texture_info.compression_mode = CompressionMode_Lz4;
 
     json j;
-    j["mesh_cpu"]     = make_shared<json_value>(texture_cpu);
-    j["texture_info"] = make_shared<json_value>(texture_info);
+    j["mesh_cpu"]     = make_shared<json_value>(to_jv(texture_cpu));
+    j["texture_info"] = make_shared<json_value>(to_jv(texture_info));
     file.asset_json   = j;
 
     save_asset_file(file);

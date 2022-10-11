@@ -15,8 +15,8 @@ MeshCPU load_mesh(const string& file_name) {
     assert_else(asset_file.version == 2 && asset_file.type == expected_type)
         return {};
     
-    MeshInfo mesh_info = MeshInfo(*asset_file.asset_json["mesh_info"]);
-    MeshCPU mesh_cpu = MeshCPU(*asset_file.asset_json["mesh_cpu"]);
+    MeshInfo mesh_info = from_jv<MeshInfo>(*asset_file.asset_json["mesh_info"]);
+    MeshCPU mesh_cpu = from_jv<MeshCPU>(*asset_file.asset_json["mesh_cpu"]);
     
     vector<u8> decompressed(mesh_info.vertices_bsize + mesh_info.indices_bsize);
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(), (char*) decompressed.data(), asset_file.binary_blob.size(), (s32) (decompressed.size()));
@@ -50,8 +50,8 @@ void save_mesh(MeshCPU& mesh_cpu) {
     mesh_info.compression_mode = CompressionMode_Lz4;
 
     json j;
-    j["mesh_cpu"] = make_shared<json_value>(mesh_cpu);
-    j["mesh_info"] = make_shared<json_value>(mesh_info);
+    j["mesh_cpu"] = make_shared<json_value>(to_jv(mesh_cpu));
+    j["mesh_info"] = make_shared<json_value>(to_jv(mesh_info));
     file.asset_json = j;
 
     save_asset_file(file);

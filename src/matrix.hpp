@@ -76,16 +76,18 @@ struct m44 {
     inline f32* ptr() {
         return data.data();
     }
-
-    explicit m44(const json_value& jv) {
-        auto vec = (vector<f32>) jv;
-        std::copy_n(vec.begin(), 16, data.begin());
-    }
-    explicit operator json_value() const {
-        vector<f32> vec(data.data(), data.data() + data.size());
-        return json_value(vec);
-    }
 };
+
+m44 from_jv_impl(const json_value& jv, m44* _) {
+    auto vec = from_jv<vector<f32>>(jv);
+    m44 m;
+    std::copy_n(vec.begin(), 16, m.data.begin());
+    return m;
+}
+json_value to_jv(const m44& m) {
+    vector<f32> vec(m.data.data(), m.data.data() + m.data.size());
+    return to_jv(vec);
+}
 
 struct m33 {
     array<f32, 9> data = {};

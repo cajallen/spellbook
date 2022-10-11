@@ -1,20 +1,18 @@
 ﻿#include "renderer.hpp"
 
-#include "file.hpp"
-#include "matrix_math.hpp"
-#include "console.hpp"
-#include "assets/asset_main.hpp"
-#include "render_scene.hpp"
-#include "loader.hpp"
-
 #include <vuk/src/RenderGraphUtil.hpp>
 #include <tracy/Tracy.hpp>
 #include <stb_image.h>
 
+#include "file.hpp"
+#include "matrix_math.hpp"
+#include "console.hpp"
+#include "render_scene.hpp"
+
 #include "utils.hpp"
 #include "assets/texture_asset.hpp"
-#include "backends/imgui_impl_glfw.h"
-#include "vuk/Partials.hpp"
+#include <backends/imgui_impl_glfw.h>
+#include <vuk/Partials.hpp>
 
 namespace spellbook {
 
@@ -129,12 +127,7 @@ void Renderer::setup() {
         context->create_named_pipeline("textured_model", pci);
     }
 
-    TextureCPU texture = convert_to_texture("external_resources/images/white.jpg");
-    save_texture(texture);
-    upload_texture("resources/textures/white.tx");
-
-    assets::convert("external_resources/images/grid.png", "resources", "resources");
-    load_texture(*this, "grid", "resources/textures/grid.tx");
+    // TODO: get white and grid textures
     {
         vector<std::jthread> threads;
         for (auto scene : scenes) {

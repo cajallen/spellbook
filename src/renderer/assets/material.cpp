@@ -59,23 +59,23 @@ void inspect(MaterialGPU* material) {
 }
 
 void save_material(const MaterialCPU& material_cpu) {
-    auto j = json((json_value) material_cpu);
+    auto j = from_jv<json>(to_jv(material_cpu));
     file_dump(j, material_cpu.file_name);
 }
 
 MaterialCPU load_material(const string_view file_name) {
     json j = parse_file(file_name);
-    auto material_cpu = MaterialCPU(json_value(j));
+    auto material_cpu = from_jv<MaterialCPU>(to_jv(j));
     material_cpu.file_name = file_name;
-    return std::move(material_cpu);
+    return material_cpu;
 }
 
 u64 MaterialCPU::contents_hash() const {
     u64 hash1 = hash_data(&base_color_tint, sizeof(Color) * 2 + sizeof(f32) * 3);
-    u64 hash2 = hash_data(base_color_texture.data, base_color_texture.size());
-    u64 hash3 = hash_data(orm_texture.data, orm_texture.size());
-    u64 hash4 = hash_data(normal_texture.data, normal_texture.size());
-    u64 hash5 = hash_data(emissive_texture.data, emissive_texture.size());
+    u64 hash2 = hash_data(base_color_texture.data(), base_color_texture.size());
+    u64 hash3 = hash_data(orm_texture.data(), orm_texture.size());
+    u64 hash4 = hash_data(normal_texture.data(), normal_texture.size());
+    u64 hash5 = hash_data(emissive_texture.data(), emissive_texture.size());
     u64 hash6 = hash_data(&uv_scale, sizeof(uv_scale));
     u64 hash7 = hash_data(&cull_mode, sizeof(cull_mode));
 

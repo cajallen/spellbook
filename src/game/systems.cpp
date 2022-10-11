@@ -1,5 +1,9 @@
 #include "systems.hpp"
 
+#include <tracy/Tracy.hpp>
+
+#include "lib_ext/fmt_geometry.hpp"
+
 #include "astar.hpp"
 #include "game.hpp"
 #include "console.hpp"
@@ -9,9 +13,6 @@
 
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
-
-#include "tracy/Tracy.hpp"
-
 
 namespace spellbook {
 
@@ -82,21 +83,21 @@ void health_draw_system(Scene* scene) {
 
         string mesh_name = fmt_("cube_c{:.2f}_e{:.2f}", v3(0), v3(1));
         // TODO:
-        if (game.renderer.meshes.count(mesh_name) == 0) {
-            game.renderer.upload_mesh(generate_cube(v3(0), v3(1)), false);
-        }
-
-        if (game.renderer.materials.count("health_material") == 0) {
-            MaterialCPU material_cpu = {.name = "health_material", .base_color_tint = palette::black, .emissive_tint = palette::green};
-            game.renderer.upload_material(material_cpu, false);
-        }
-        if (game.renderer.materials.count("health_bar_material") == 0) {
-            MaterialCPU material_cpu = {.name = "health_bar_material",
-                .base_color_tint              = palette::black,
-                .emissive_tint                = palette::white,
-                .cull_mode                    = vuk::CullModeFlagBits::eFront};
-            game.renderer.upload_material(material_cpu, false);
-        }
+        // if (game.renderer.meshes.count(mesh_name) == 0) {
+        //     game.renderer.upload_mesh(generate_cube(v3(0), v3(1)), false);
+        // }
+        //
+        // if (game.renderer.materials.count("health_material") == 0) {
+        //     MaterialCPU material_cpu = {.name = "health_material", .base_color_tint = palette::black, .emissive_tint = palette::green};
+        //     game.renderer.upload_material(material_cpu, false);
+        // }
+        // if (game.renderer.materials.count("health_bar_material") == 0) {
+        //     MaterialCPU material_cpu = {.name = "health_bar_material",
+        //         .base_color_tint              = palette::black,
+        //         .emissive_tint                = palette::white,
+        //         .cull_mode                    = vuk::CullModeFlagBits::eFront};
+        //     game.renderer.upload_material(material_cpu, false);
+        // }
 
         if (health.value <= 0.0f) continue;
 
@@ -104,11 +105,11 @@ void health_draw_system(Scene* scene) {
         float thickness = 0.03f;
 
         m44 inner_matrix = math::translate(transform.translation + model.offset) * 
-                           math::rotation(euler(dir_to_camera - math::PI / 2.0f, 0.0f)) *
+                           math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
                            math::translate(v3(-(1.0f - health.value) / 2.0f, 0.0f, 1.0f)) *
                            math::scale(v3(health.value * 0.5f, 0.1f, 0.1f));
         m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 1.0) + transform.translation + model.offset) *
-                           math::rotation(euler(dir_to_camera - math::PI / 2.0f, 0.0f)) * 
+                           math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) * 
                            math::scale(v3(0.5f + thickness, 0.1f + thickness, 0.1f + thickness));
 
         // auto renderable1 = Renderable(name, mesh_name, "health_material", inner_matrix);

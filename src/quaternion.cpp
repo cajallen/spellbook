@@ -19,9 +19,9 @@ quat euler2quat(euler e) {
 
 euler quat2euler(quat q) {
 	f32 k = 2 * (q.w * q.y - q.z * q.x);
-	return euler(math::atan2(2 * (q.w * q.x + q.y * q.z), 1 - 2 * (q.x * q.x + q.y * q.y)),
+	return euler{math::atan2(2 * (q.w * q.x + q.y * q.z), 1 - 2 * (q.x * q.x + q.y * q.y)),
 				 math::abs(k) >= 1 ? math::copy_sign(math::PI, k) : math::asin(k),
-				 math::atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z)));
+				 math::atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))};
 }
 
 quat invert(quat q) {

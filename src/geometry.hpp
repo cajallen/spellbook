@@ -29,7 +29,6 @@ template <typename T> struct v2_ {
         };
         T data[2];
     };
-    JSON_IMPL(v2_<T>, x, y)
 
     v2_() : x(), y() {}
     constexpr explicit v2_(T s) {
@@ -151,6 +150,8 @@ template <typename T> struct v2_ {
 template <typename T> const v2_<T> v2_<T>::X(1, 0);
 template <typename T> const v2_<T> v2_<T>::Y(0, 1);
 
+JSON_IMPL_TEMPLATE(template<typename T>, v2_<T>, x, y);
+
 template <typename T> constexpr v2_<T> operator+(T s, v2_<T> v) {
     return v2_<T>(s + v.x, s + v.y);
 }
@@ -180,8 +181,6 @@ template <typename T> struct v3_ {
             v2_<T> yz;
         };
     };
-
-    JSON_IMPL(v3_<T>, x, y, z)
 
     v3_() : x(), y(), z() {}
     constexpr v3_(T s) {
@@ -316,6 +315,8 @@ template <typename T> const v3_<T> v3_<T>::X(1, 0, 0);
 template <typename T> const v3_<T> v3_<T>::Y(0, 1, 0);
 template <typename T> const v3_<T> v3_<T>::Z(0, 0, 1);
 
+JSON_IMPL_TEMPLATE(template<typename T>, v3_<T>, x, y, z)
+
 template <typename T> constexpr v3_<T> operator+(T s, v3_<T> v) {
     return v3_<T>(s + v.x, s + v.y, s + v.z);
 }
@@ -351,8 +352,6 @@ template <typename T> struct v4_ {
             v2_<T> zw;
         };
     };
-
-    JSON_IMPL(v4_<T>, x, y, z, w)
 
     v4_() : x(), y(), z(), w() {}
     constexpr v4_(T s) {
@@ -500,6 +499,8 @@ template <typename T> const v4_<T> v4_<T>::X(1, 0, 0, 0);
 template <typename T> const v4_<T> v4_<T>::Y(0, 1, 0, 0);
 template <typename T> const v4_<T> v4_<T>::Z(0, 0, 1, 0);
 
+JSON_IMPL_TEMPLATE(template<typename T>, v4_<T>, x, y, z, w)
+
 template <typename T> constexpr v4_<T> operator+(T s, v4_<T> p) {
     return v4_<T>(s + p.x, s + p.y, s + p.z, s + p.w);
 }
@@ -551,9 +552,9 @@ template <typename T> struct line_ {
     }
 
     explicit operator v2() const;
-
-    JSON_IMPL(line_<T>, start, end);
 };
+
+JSON_IMPL_TEMPLATE(template <typename T>, line_<T>, start, end);
 
 typedef ray_<v2> r2;
 typedef ray_<v3> r3;
@@ -574,13 +575,7 @@ struct euler {
             f32 yaw, pitch, roll;
         };
     };
-
-    constexpr euler() : yaw(0.0f), pitch(0.0f), roll(0.0f) {}
-    constexpr euler(f32 yaw, f32 pitch) : yaw(yaw), pitch(pitch), roll(0.0f) {}
-    constexpr euler(f32 yaw, f32 pitch, f32 roll) : yaw(yaw), pitch(pitch), roll(roll) {}
-    JSON_IMPL(euler, yaw, pitch, roll);
-
-
+    
     constexpr euler operator*(f32 f) {
         return {yaw * f, pitch * f, roll * f};
     }
@@ -592,6 +587,8 @@ struct euler {
     euler r2d();
     euler d2r();
 };
+
+JSON_IMPL(euler, yaw, pitch, roll);
 
 enum AXIS { X, Y, Z };
 
