@@ -210,7 +210,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
             },
     });
 
-    if (query.x >= 0 && query.y >= 0) {
+    if (math::contains(range2i(v2i(0), v2i(viewport.size)), query)) {
         auto info_storage_buffer = **vuk::allocate_buffer_cross_device(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, (size_t) 64, 1});
         rg->attach_buffer("info_storage", info_storage_buffer);
 	    rg->add_pass({

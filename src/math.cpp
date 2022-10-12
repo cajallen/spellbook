@@ -29,6 +29,10 @@ bool contains(range2 r, v2 v) {
     return r.start[0] < v[0] && v[0] < r.end[0] && r.start[1] < v[1] && v[1] < r.end[1];
 }
 
+bool contains(range2i r, v2i v) {
+    return r.start[0] <= v[0] && v[0] < r.end[0] && r.start[1] <= v[1] && v[1] < r.end[1];
+}
+
 bool contains(range3 r, v3 v) {
     return r.start[0] < v[0] && v[0] < r.end[0] && r.start[1] < v[1] && v[1] < r.end[1] && r.start[2] < v[2] && v[2] < r.end[2];
 }

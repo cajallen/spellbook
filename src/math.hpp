@@ -18,6 +18,7 @@ euler d2r(euler deg);
 
 bool contains(range r, f32 f);
 bool contains(range2 r, v2 v);
+bool contains(range2i r, v2i v);
 bool contains(range3 r, v3 v);
 
 v2i round_cast(v2 value);

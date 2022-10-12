@@ -24,12 +24,12 @@ vector<Message> Console::message_list {};
 bool                     Console::input_reset   = false;
 bool                     Console::added_message = false;
 vector<string>           Console::input_history {};
-string*          Console::input_history_cursor = input_history.end();
+u32                      Console::input_history_cursor = 0;
 umap<string, bool>       Console::group_visible {};
 umap<string, bool>       Console::frame_bool {};
 
 void Console::setup() {
-    input_history_cursor = input_history.end();
+    input_history_cursor = input_history.size();
     for (auto& msg : message_list)
         if (group_visible.count(msg.group) == 0)
             group_visible.insert({msg.group, true});
@@ -114,27 +114,27 @@ int console_input_callback(ImGuiInputTextCallbackData* data) {
         data->InsertChars(data->CursorPos, "<reproduce and report>");
     } else if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory) {
         if (data->EventKey == ImGuiKey_UpArrow) {
-            if (Console::input_history_cursor == Console::input_history.begin())
-                Console::input_history_cursor = Console::input_history.end();
+            if (Console::input_history_cursor == 0)
+                Console::input_history_cursor = Console::input_history.size();
             else
                 Console::input_history_cursor--;
 
             data->DeleteChars(0, data->BufTextLen);
 
-            if (Console::input_history_cursor != Console::input_history.end()) {
-                data->InsertChars(0, Console::input_history_cursor->c_str());
+            if (Console::input_history_cursor != Console::input_history.size()) {
+                data->InsertChars(0, Console::input_history[Console::input_history_cursor].c_str());
                 data->SelectAll();
             }
         } else if (data->EventKey == ImGuiKey_DownArrow) {
-            if (Console::input_history_cursor == Console::input_history.end())
-                Console::input_history_cursor = Console::input_history.end();
+            if (Console::input_history_cursor == Console::input_history.size())
+                Console::input_history_cursor = Console::input_history.size();
             else
                 Console::input_history_cursor++;
 
             data->DeleteChars(0, data->BufTextLen);
 
-            if (Console::input_history_cursor != Console::input_history.end()) {
-                data->InsertChars(0, Console::input_history_cursor->c_str());
+            if (Console::input_history_cursor != Console::input_history.size()) {
+                data->InsertChars(0, Console::input_history[Console::input_history_cursor].c_str());
                 data->SelectAll();
             }
         }
@@ -154,7 +154,7 @@ const string frag_exts[]   = {"frag", "glslf", "fsh"};
 
 void handle_console_input(string& input) {
     Console::input_history.insert_back(input);
-    Console::input_history_cursor = Console::input_history.end();
+    Console::input_history_cursor = Console::input_history.size();
     Console::input_reset          = true;
 
     console({.str = fmt_("> {}", input), .group = "console", .color = palette::green});
@@ -186,7 +186,7 @@ void handle_console_input(string& input) {
     } else if (word == "clear") {
         Console::message_list.clear();
         Console::input_history.clear();
-        Console::input_history_cursor = Console::input_history.end();
+        Console::input_history_cursor = Console::input_history.size();
     } else {
         console({.str = fmt_("Unknown input: {}", input), .group = "console", .color = palette::orange});
     }
@@ -206,7 +206,7 @@ void Console::window(bool* open) {
             }
             if (ImGui::BeginMenu("Clear Input History")) {
                 input_history.clear();
-                input_history_cursor = input_history.end();
+                input_history_cursor = input_history.size();
                 ImGui::CloseCurrentPopup();
                 ImGui::EndMenu();
             }

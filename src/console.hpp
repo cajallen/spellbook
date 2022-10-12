@@ -81,7 +81,7 @@ struct Console {
     static bool                     input_reset;
     static bool                     added_message;
     static vector<string>           input_history;
-    static string*                  input_history_cursor;
+    static u32                      input_history_cursor;
     static umap<string, bool>       group_visible;
     static umap<string, bool>       frame_bool;
 

@@ -92,7 +92,7 @@ void default_key_callback(GLFWwindow* window, int key, int scancode, int action,
     if (ImGui::GetIO().WantCaptureKeyboard)
         return;
 
-    for (auto ptr = Input::key_callback_stack.end() - 1; ptr >= Input::key_callback_stack.begin(); ptr++) {
+    for (auto ptr = Input::key_callback_stack.end() - 1; ptr >= Input::key_callback_stack.begin(); ptr--) {
         auto& [fp, name, data] = *ptr;
         bool  esc              = (*fp)(window, key, scancode, action, mods, data);
         if (esc)
@@ -107,7 +107,7 @@ void default_mouse_pos_callback(GLFWwindow* window, double x, double y) {
     Input::mouse_pos            = v2(x, y);
     Input::cursor_just_disabled = false;
 
-    for (auto ptr = Input::mouse_pos_callback_stack.end() - 1; ptr >= Input::mouse_pos_callback_stack.begin(); ptr++) {
+    for (auto ptr = Input::mouse_pos_callback_stack.end() - 1; ptr >= Input::mouse_pos_callback_stack.begin(); ptr--) {
         auto& [fp, name, data] = *ptr;
         bool  esc              = (*fp)(window, x, y, data);
         if (esc)
@@ -140,7 +140,7 @@ void default_mouse_button_callback(GLFWwindow* window, int button, int action, i
 void default_scroll_callback(GLFWwindow* window, double x, double y) {
     Input::mouse_wheel = y;
 
-    for (auto ptr = Input::scroll_callback_stack.end() - 1; ptr >= Input::scroll_callback_stack.begin(); ptr++) {
+    for (auto ptr = Input::scroll_callback_stack.end() - 1; ptr >= Input::scroll_callback_stack.begin(); ptr--) {
         auto& [fp, name, data] = *ptr;
         bool  esc              = (*fp)(window, x, y, data);
         if (esc)
