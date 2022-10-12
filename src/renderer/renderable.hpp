@@ -8,15 +8,15 @@ struct MeshGPU;
 struct MaterialGPU;
 
 struct Renderable {
-    MeshGPU*     mesh         = nullptr;
-    MaterialGPU* material     = nullptr;
-    m44          transform    = {};
-    u32          selection_id = 0;
+    string mesh_asset_path     = {};
+    string material_asset_path = {};
+    m44    transform           = {};
+    u32    selection_id        = 0;
 
     Renderable() = default;
 
-    Renderable(MeshGPU& mesh, MaterialGPU& material, m44 transform = m44::identity())
-        : mesh(&mesh), material(&material), transform(transform) {
+    Renderable(string mesh_asset_path, string material_asset_path, m44 transform = m44::identity())
+        : mesh_asset_path(std::move(mesh_asset_path)), material_asset_path(std::move(material_asset_path)), transform(std::move(transform)) {
     }
 };
 

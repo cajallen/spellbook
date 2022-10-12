@@ -51,18 +51,6 @@ void RenderScene::delete_renderable(slot<Renderable> renderable) {
     renderables.remove_element(renderable);
 }
 
-void RenderScene::_upload_dependencies() {
-    for (auto& _cpu : mesh_dependencies) {
-        game.renderer.upload_mesh(_cpu, true);
-    }
-    for (auto& _cpu : material_dependencies) {
-        game.renderer.upload_material(_cpu, true);
-    }
-    for (auto& _cpu : texture_dependencies) {
-        game.renderer.upload_texture(_cpu, true);
-    }
-}
-
 void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     struct CameraData {
         m44GPU view;
@@ -91,13 +79,9 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     buffer_scene_data             = *pubo_scene;
 
     buffer_model_mats = **vuk::allocate_buffer_cross_device(
-        allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * (renderables.size() + frame_renderables.size()), 1});
+        allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * (renderables.size()), 1});
     int i = 0;
     for (auto& renderable : renderables) {
-        m44GPU transform_gpu = (m44GPU) (renderable.transform);
-        memcpy(reinterpret_cast<m44GPU*>(buffer_model_mats.mapped_ptr) + i++, &transform_gpu, sizeof(m44GPU));
-    }
-    for (auto& renderable : frame_renderables) {
         m44GPU transform_gpu = (m44GPU) (renderable.transform);
         memcpy(reinterpret_cast<m44GPU*>(buffer_model_mats.mapped_ptr) + i++, &transform_gpu, sizeof(m44GPU));
     }
@@ -107,7 +91,6 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     ZoneScoped;
     console({.str = "render_scene render", .group = "render_scene", .frame_tags = {"render_scene"}});
 
-    _upload_dependencies();
     _upload_buffer_objects(frame_allocator);
 
     auto rg = make_shared<vuk::RenderGraph>("graph");
@@ -146,44 +129,43 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
             int  i           = 0;
             auto render_item = [&](Renderable& renderable) {
                 ZoneScoped;
-                if (renderable.mesh == nullptr || renderable.material == nullptr) {
+                MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
+                MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
+                if (mesh == nullptr || material == nullptr) {
                     i++;
                     return;
                 }
                 // Bind mesh
                 command_buffer
-                    .bind_vertex_buffer(0, renderable.mesh->vertex_buffer.get(), 0, vuk::Packed {
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, vuk::Packed {
                         vuk::Format::eR32G32B32Sfloat, // position
                         vuk::Format::eR32G32B32Sfloat, // normal
                         vuk::Format::eR32G32B32Sfloat, // tangent
                         vuk::Format::eR32G32B32Sfloat, // color
                         vuk::Format::eR32G32Sfloat     // uv
                     })
-                    .bind_index_buffer(renderable.mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
 
                 // Bind Material
                 command_buffer
-                    .set_rasterization({.cullMode = renderable.material->cull_mode})
-                    .bind_graphics_pipeline(renderable.material->pipeline);
-                renderable.material->bind_parameters(command_buffer);
-                renderable.material->bind_textures(command_buffer);
+                    .set_rasterization({.cullMode = material->cull_mode})
+                    .bind_graphics_pipeline(material->pipeline);
+                material->bind_parameters(command_buffer);
+                material->bind_textures(command_buffer);
 
                 // Set ID for selection
                 command_buffer.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, renderable.selection_id);
 
                 // Draw call
-                command_buffer.draw_indexed(renderable.mesh->index_count, 1, 0, 0, i++);
+                command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, i++);
             };
 
             // Render items
             for (Renderable& renderable : renderables) {
                 render_item(renderable);
             }
-            for (Renderable& renderable : frame_renderables) {
-                render_item(renderable);
-            }
             // Render grid
-            auto grid_view = game.renderer.find_texture("grid")->view.get();
+            auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->view.get();
             command_buffer
                 .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
                     .depthTestEnable  = true,
@@ -196,11 +178,6 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 .bind_image(0, 1, grid_view)
                 .bind_sampler(0, 1, TrilinearAnisotropic)
                 .draw(6, 1, 0, 0);
-
-            frame_renderables.clear();
-            mesh_dependencies.clear();
-            material_dependencies.clear();
-            texture_dependencies.clear();
         }});
     rg->add_pass(vuk::Pass {
         .name = "postprocess_apply",

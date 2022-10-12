@@ -58,19 +58,19 @@ string dump_json(const json& json);
 void   delete_json(json& j);
 
 
-template <typename JsonT> json_value to_jv(const vector<JsonT>& _vector);
-template <typename JsonT> json_value to_jv(const vector<shared_ptr<JsonT>>& _vector);
+template <typename JsonT> json_value                   to_jv(const vector<JsonT>& _vector);
+template <typename JsonT> json_value                   to_jv(const vector<shared_ptr<JsonT>>& _vector);
 template <typename JsonT1, typename JsonT2> json_value to_jv(umap<JsonT1, JsonT2> _map);
 template <typename JsonT1, typename JsonT2> json_value to_jv(umap<shared_ptr<JsonT1>, JsonT2> _map);
-template <typename JsonT> json_value to_jv(const umap<string, JsonT>& _map);
-inline json_value to_jv(vector<json_value> _vector);
-inline json_value to_jv(const json& input_json);
-inline json_value to_jv(const char* input_string);
-inline json_value to_jv(const string& input_string);
-inline json_value to_jv(f64 input_float);
-inline json_value to_jv(f32 input_float);
+template <typename JsonT> json_value                   to_jv(const umap<string, JsonT>& _map);
+inline json_value                                      to_jv(vector<json_value> _vector);
+inline json_value                                      to_jv(const json& input_json);
+inline json_value                                      to_jv(const char* input_string);
+inline json_value                                      to_jv(const string& input_string);
+inline json_value                                      to_jv(f64 input_float);
+inline json_value                                      to_jv(f32 input_float);
 template <int_ish T>
-json_value to_jv(T input_int);
+json_value        to_jv(T input_int);
 inline json_value to_jv(bool input_bool);
 
 
@@ -225,10 +225,10 @@ template <typename JsonS, typename JsonT>
 umap<JsonS, JsonT> from_jv_impl(const json_value& jv, umap<JsonS, JsonT>* _) {
     umap<JsonS, JsonT> t;
     for (auto& value_json_value : jv.get_list()) {
-        json value_json = from_jv<json>(value_json_value);
-        JsonS key       = from_jv<JsonS>(*value_json["key"]);
-        JsonT value     = from_jv<JsonT>(*value_json["value"]);
-        t[key]          = value;
+        json  value_json = from_jv<json>(value_json_value);
+        JsonS key        = from_jv<JsonS>(*value_json["key"]);
+        JsonT value      = from_jv<JsonT>(*value_json["value"]);
+        t[key]           = value;
     }
     return t;
 }
@@ -237,7 +237,7 @@ template <typename JsonS, typename JsonT>
 umap<shared_ptr<JsonS>, JsonT> from_jv_impl(const json_value& jv, umap<shared_ptr<JsonS>, JsonT>* _) {
     umap<shared_ptr<JsonS>, JsonT> t;
     for (auto& value_json_value : jv.get_list()) {
-        json value_json = from_jv<json>(value_json_value);
+        json  value_json = from_jv<json>(value_json_value);
         JsonS key        = make_shared<JsonS>(from_jv<JsonS>(*value_json["key"]));
         JsonT value      = from_jv<JsonT>(*value_json["value"]);
         t[key]           = value;

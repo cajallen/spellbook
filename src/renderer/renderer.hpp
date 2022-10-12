@@ -66,7 +66,6 @@ struct Renderer {
 
     plf::colony<vuk::SampledImage> sampled_images;
 
-    // MEMORY: replace CPU storage here with some hashed version
     umap<string, u64> mesh_aliases;
     umap<string, u64> material_aliases;
     umap<string, u64> texture_aliases;
@@ -94,9 +93,9 @@ struct Renderer {
     MaterialGPU& upload_material(const MaterialCPU&, bool frame_allocation = false);
     TextureGPU&  upload_texture(const TextureCPU&, bool frame_allocation = false);
 
-    MeshGPU*     find_mesh(const string& name);
-    MaterialGPU* find_material(const string& name);
-    TextureGPU*  find_texture(const string& name);
+    MeshGPU* get_mesh(const string& asset_path);
+    MaterialGPU* get_material(const string& asset_path);
+    TextureGPU* get_texture(const string& asset_path);
 
     void resize(v2i new_size);
 

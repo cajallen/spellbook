@@ -21,18 +21,16 @@ struct MaterialCPU {
     f32    metallic_factor            = 0.0f;
     f32    normal_factor              = 0.0f;
     
-    string base_color_texture         = "textures/white.tx";
-    string orm_texture                = "textures/white.tx";
-    string normal_texture             = "textures/white.tx";
-    string emissive_texture           = "textures/white.tx";
+    string color_asset_path              = "textures/white.sbtex";
+    string orm_asset_path                = "textures/white.sbtex";
+    string normal_asset_path             = "textures/white.sbtex";
+    string emissive_asset_path           = "textures/white.sbtex";
 
     f32 uv_scale = 1.0f;
 
     vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
-
-    u64 contents_hash() const;
 };
-JSON_IMPL(MaterialCPU, name, base_color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, base_color_texture, orm_texture, normal_texture, emissive_texture, uv_scale, cull_mode);
+JSON_IMPL(MaterialCPU, name, base_color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, color_asset_path, orm_asset_path, normal_asset_path, emissive_asset_path, uv_scale, cull_mode);
 
 struct MaterialDataGPU {
     v4 base_color_tint;
@@ -42,8 +40,8 @@ struct MaterialDataGPU {
 
 struct MaterialGPU { // uses master shader
     vuk::PipelineBaseInfo* pipeline;
-    vuk::ImageView         base_color_view;
-    vuk::ImageView         metallic_roughness_view;
+    vuk::ImageView         color_view;
+    vuk::ImageView         orm_view;
     vuk::ImageView         normal_view;
     vuk::ImageView         emissive_view;
     MaterialDataGPU        tints;

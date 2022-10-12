@@ -16,7 +16,7 @@ namespace spellbook {
 // clang-format off
 vector<Brush> MapEditor::brushes = {
     {"Air", palette::black, nullptr, false},
-    {"Floor", palette::green, nullptr,  false},
+    {"Floor", palette::green, nullptr, false},
     {"Path", palette::saddle_brown, nullptr, true},
     {"Spawner", palette::cadet_blue, nullptr, true},
     {"Consumer", palette::dark_gray, nullptr, true}
@@ -36,23 +36,13 @@ void MapEditor::setup() {
     ZoneScoped;
     setup(new Scene());
 }
+
 void MapEditor::setup(Scene* init_scene) {
     p_scene = init_scene;
-    for (auto& brush : brushes) {
-        MaterialCPU brush_mat = {.name  = fmt_("{}_mat", brush.name),
-            .base_color_tint            = brush.button_color,
-            .roughness_factor           = 0.9f,
-            .normal_factor              = 1.0f,
-            .base_color_texture         = brush.name == "Path" ? "white" : "tile_color",
-            .orm_texture                = "tile_mr",
-            .normal_texture             = "tile_normal"};
-        if (brush.name == "Air")
-            continue;
-        game.renderer.upload_material(brush_mat, false);
-    }
 
     MaterialCPU default_mat = {
-        .name            = "default",
+        .name = "default",
+        .file_name = "default",
         .base_color_tint = palette::black,
     };
     game.renderer.upload_material(default_mat, false);
@@ -68,32 +58,30 @@ void MapEditor::update() {
     v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
     v3i cell      = (v3i) math::floor(intersect);
     if (selected_brush != -1) {
-        auto   line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera,
-            {
-                {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f},
-                {(v3) cell + v3(1.0, 0.0, 0.05), palette::white, 0.03f},
-                {(v3) cell + v3(1.0, 1.0, 0.05), palette::white, 0.03f},
-                {(v3) cell + v3(0.0, 1.0, 0.05), palette::white, 0.03f},
-                {(v3) cell + v3(0.0, 0.0, 0.05), palette::white, 0.03f},
-                {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f}});
-        MeshGPU& mesh = game.renderer.upload_mesh(line_mesh);
-        MaterialGPU& material = *game.renderer.find_material("default");
-        p_scene->render_scene.frame_renderables.insert_back(Renderable{mesh, material, m44::identity()});
-    }
-    else if (selected_tower != -1) {
+        auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera,
+        {
+            {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f},
+            {(v3) cell + v3(1.0, 0.0, 0.05), palette::white, 0.03f},
+            {(v3) cell + v3(1.0, 1.0, 0.05), palette::white, 0.03f},
+            {(v3) cell + v3(0.0, 1.0, 0.05), palette::white, 0.03f},
+            {(v3) cell + v3(0.0, 0.0, 0.05), palette::white, 0.03f},
+            {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f}});
+        MeshGPU&     mesh     = game.renderer.upload_mesh(line_mesh);
+        MaterialGPU& material = *game.renderer.get_material("default");
+        // TODO: frame renderables
+    } else if (selected_tower != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 24; i++) {
-            f32 angle = i * math::TAU / 24.0f;
-            v3 center = (v3) cell + v3(0.5f, 0.5f, 0.0f);
+            f32 angle  = i * math::TAU / 24.0f;
+            v3  center = (v3) cell + v3(0.5f, 0.5f, 0.0f);
             vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
         }
-        
-        auto   line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
-        MeshGPU& mesh = game.renderer.upload_mesh(line_mesh);
-        MaterialGPU& material = *game.renderer.find_material("default");
-        p_scene->render_scene.frame_renderables.insert_back(Renderable{mesh, material, m44::identity()});
-    }
 
+        auto         line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
+        MeshGPU&     mesh      = game.renderer.upload_mesh(line_mesh);
+        MaterialGPU& material  = *game.renderer.get_material("default");
+        // TODO: frame renderbales
+    }
 
     // we should check if this mouse input is ours in the callback)
     if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_brush != -1) {
@@ -124,11 +112,10 @@ void MapEditor::update() {
         //     p_scene->registry.emplace<Spawner>(entity, Input::time, 2.0f, for_spawner);
         if (brush.name == "Consumer")
             p_scene->registry.emplace<Consumer>(entity, 0.5f, 0);
-    }
-    else if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_tower != -1) {
+    } else if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_tower != -1) {
         auto& tower = towers[selected_tower];
 
-        auto view  = p_scene->registry.view<Transform>();
+        auto view = p_scene->registry.view<Transform>();
         for (auto [entity, transform] : view.each()) {
             if (!p_scene->registry.any_of<Pyro, Roller>(entity))
                 continue;
@@ -149,8 +136,7 @@ void MapEditor::update() {
         } else {
             p_scene->registry.emplace<Pyro>(entity, 2.0f, Input::time, 1.0f, 0.2f);
         }
-    }
-    else if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT]) {
+    } else if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT]) {
         p_scene->render_scene.query = v2i(Input::mouse_pos) - p_scene->render_scene.viewport.start;
     }
 
@@ -164,15 +150,15 @@ void MapEditor::update() {
 void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
-        ImGuiStyle& style             = ImGui::GetStyle();
-        Viewport& viewport  = p_scene->render_scene.viewport;
-        v3        intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+        ImGuiStyle& style     = ImGui::GetStyle();
+        Viewport&   viewport  = p_scene->render_scene.viewport;
+        v3          intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
         ImGui::Text(fmt_("hovered_cell: {}", intersect).c_str());
 
         ImGui::Text("Towers");
-        int         towers_count     = towers.size();
-        float       window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        ImVec2      tower_button_sz         = ImVec2(100, 30);
+        int    towers_count      = towers.size();
+        float  window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        ImVec2 tower_button_sz   = ImVec2(100, 30);
         for (int i = 0; i < towers_count; i++) {
             Color normal_color  = towers[i].button_color;
             Color hovered_color = mix(normal_color, palette::white, 0.2);
@@ -194,15 +180,16 @@ void MapEditor::window(bool* p_open) {
                 ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (u32) palette::white, 0.0f, 0, 2.0f);
             }
             float last_button_x2 = ImGui::GetItemRectMax().x;
-            float next_button_x2 = last_button_x2 + style.ItemSpacing.x + tower_button_sz.x; // Expected position if next button was on same line
+            float next_button_x2 = last_button_x2 + style.ItemSpacing.x + tower_button_sz.x;
+            // Expected position if next button was on same line
             if (i + 1 < towers_count && next_button_x2 < window_visible_x2)
                 ImGui::SameLine();
         }
 
         ImGui::Separator();
         ImGui::Text("Brushes");
-        int         buttons_count     = brushes.size();
-        ImVec2      button_sz         = ImVec2(100, 100);
+        int    buttons_count = brushes.size();
+        ImVec2 button_sz     = ImVec2(100, 100);
         for (int i = 0; i < buttons_count; i++) {
             Color normal_color  = brushes[i].button_color;
             Color hovered_color = mix(normal_color, palette::white, 0.2);

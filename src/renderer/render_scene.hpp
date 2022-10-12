@@ -31,12 +31,8 @@ struct PostProcessData {
 
 struct RenderScene {
     string              name;
-    vector<MeshCPU>     mesh_dependencies;
-    vector<MaterialCPU> material_dependencies;
-    vector<TextureCPU>  texture_dependencies;
 
     slotmap<Renderable> renderables;
-    vector<Renderable>  frame_renderables;
     Viewport            viewport;
 
     SceneData       scene_data;
@@ -49,7 +45,6 @@ struct RenderScene {
     v2i           query = v2i(-1, -1);
     vuk::Future fut_query_result;
 
-    void _upload_dependencies();
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 
     void        setup(vuk::Allocator& allocator);

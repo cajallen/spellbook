@@ -4,6 +4,8 @@
 
 #define LNI_VECTOR_MAX_SZ 1000000000
 
+#define LNI_MAX(x, y) ((x) > (y) ? (x) : (y))
+
 namespace lni {
 
 template <typename T>
@@ -114,7 +116,7 @@ vector<T>::vector() noexcept {
 template <typename T>
 vector<T>::vector(typename vector<T>::size_type n) {
     size_type i;
-    rsrv_sz = n << 2;
+    rsrv_sz = LNI_MAX(n, 1) << 1;
     arr     = new T[rsrv_sz];
     for (i     = 0; i < n; ++i)
         arr[i] = T();
@@ -124,7 +126,7 @@ vector<T>::vector(typename vector<T>::size_type n) {
 template <typename T>
 vector<T>::vector(typename vector<T>::size_type n, const T& value) {
     size_type i;
-    rsrv_sz = n << 2;
+    rsrv_sz = LNI_MAX(n, 1) << 1;
     arr     = new T[rsrv_sz];
     for (i     = 0; i < n; ++i)
         arr[i] = value;
@@ -135,7 +137,7 @@ template <typename T>
 template <class InputIt>
 vector<T>::vector(InputIt first, InputIt last) {
     size_type i, count = last - first;
-    rsrv_sz            = count << 2;
+    rsrv_sz            = LNI_MAX(count, 1) << 1;
     vec_sz             = count;
     arr                = new T[rsrv_sz];
     for (i     = 0; i < count; ++i, ++first)
@@ -144,7 +146,7 @@ vector<T>::vector(InputIt first, InputIt last) {
 
 template <typename T>
 vector<T>::vector(std::initializer_list<T> lst) {
-    rsrv_sz = lst.size() << 2;
+    rsrv_sz = LNI_MAX(lst.size(), 1) << 1;
     arr     = new T[rsrv_sz];
     for (auto& item : lst)
         arr[vec_sz++] = item;
@@ -153,7 +155,7 @@ vector<T>::vector(std::initializer_list<T> lst) {
 template <typename T>
 vector<T>::vector(const vector<T>& other) {
     size_type i;
-    rsrv_sz = other.rsrv_sz;
+    rsrv_sz = LNI_MAX(other.rsrv_sz, 1) << 1;
     arr     = new T[rsrv_sz];
     for (i     = 0; i < other.vec_sz; ++i)
         arr[i] = other.arr[i];
@@ -183,7 +185,7 @@ vector<T>& vector<T>::operator =(const vector<T>& other) {
     }
     size_type i;
     if (rsrv_sz < other.vec_sz) {
-        rsrv_sz = other.vec_sz << 2;
+        rsrv_sz = LNI_MAX(other.vec_sz, 1) << 1;
         reallocate();
     }
     for (i     = 0; i < other.vec_sz; ++i)
@@ -196,7 +198,7 @@ template <typename T>
 vector<T>& vector<T>::operator =(vector<T>&& other) {
     size_type i;
     if (rsrv_sz < other.vec_sz) {
-        rsrv_sz = other.vec_sz << 2;
+        rsrv_sz = LNI_MAX(other.vec_sz, 1) << 1;
         reallocate();
     }
     for (i     = 0; i < other.vec_sz; ++i)
@@ -208,7 +210,7 @@ vector<T>& vector<T>::operator =(vector<T>&& other) {
 template <typename T>
 vector<T>& vector<T>::operator =(std::initializer_list<T> lst) {
     if (rsrv_sz < lst.size()) {
-        rsrv_sz = lst.size() << 2;
+        rsrv_sz = LNI_MAX(lst.size(), 1) << 1;
         reallocate();
     }
     vec_sz = 0;
@@ -221,7 +223,7 @@ template <typename T>
 void vector<T>::assign(typename vector<T>::size_type count, const T& value) {
     size_type i;
     if (count > rsrv_sz) {
-        rsrv_sz = count << 2;
+        rsrv_sz = LNI_MAX(count, 1) << 1;
         reallocate();
     }
     for (i     = 0; i < count; ++i)
@@ -234,7 +236,7 @@ template <class InputIt>
 void vector<T>::assign(InputIt first, InputIt last) {
     size_type i, count = last - first;
     if (count > rsrv_sz) {
-        rsrv_sz = count << 2;
+        rsrv_sz = LNI_MAX(count, 1) << 1;
         reallocate();
     }
     for (i     = 0; i < count; ++i, ++first)
@@ -246,7 +248,7 @@ template <typename T>
 void vector<T>::assign(std::initializer_list<T> lst) {
     size_type i, count = lst.size();
     if (count > rsrv_sz) {
-        rsrv_sz = count << 2;
+        rsrv_sz = LNI_MAX(count, 1) << 1;
         reallocate();
     }
     i = 0;
@@ -434,7 +436,7 @@ template <typename T>
 template <class ... Args>
 void vector<T>::emplace_back(Args&& ...args) {
     if (vec_sz == rsrv_sz) {
-        rsrv_sz <<= 2;
+        rsrv_sz = LNI_MAX(rsrv_sz, 1) << 2;
         reallocate();
     }
     arr[vec_sz] = std::move(T(std::forward<Args>(args) ...));
@@ -444,7 +446,7 @@ void vector<T>::emplace_back(Args&& ...args) {
 template <typename T>
 void vector<T>::push_back(const T& val) {
     if (vec_sz == rsrv_sz) {
-        rsrv_sz <<= 2;
+        rsrv_sz = LNI_MAX(rsrv_sz, 1) << 2;
         reallocate();
     }
     arr[vec_sz] = val;

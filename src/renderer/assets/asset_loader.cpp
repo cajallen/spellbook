@@ -1,23 +1,26 @@
-
 #include "asset_loader.hpp"
 
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 #include "console.hpp"
+#include "game.hpp"
 
 namespace spellbook {
 
+namespace fs = std::filesystem;
 
 void save_asset_file(const AssetFile& asset_file) {
+    string        real_output_file_name = (fs::path(game.resource_folder) / fs::path(asset_file.file_name)).string();
     std::ofstream outfile;
-    outfile.open(asset_file.file_name, std::ios::binary | std::ios::out);
-    
+    outfile.open(real_output_file_name, std::ios::binary | std::ios::out);
+
     assert_else(outfile.is_open())
         return;
 
     string json_string = dump_json(asset_file.asset_json);
-    
+
     const u32 version     = asset_file.version;
     const u32 json_length = (u32) json_string.size();
     const u32 blob_length = (u32) asset_file.binary_blob.size();
@@ -31,15 +34,21 @@ void save_asset_file(const AssetFile& asset_file) {
 }
 
 AssetFile load_asset_file(const string& file_name) {
+    std::filesystem::path file_path(file_name);
+    string                ext = file_path.extension().string();
+    assert_else(ext == mesh_extension || ext == texture_extension);
+
+    string real_input_file_name = (fs::path(game.resource_folder) / file_path).string();
+
     std::ifstream infile;
-    infile.open(file_name, std::ios::binary);
-    
+    infile.open(real_input_file_name, std::ios::binary);
+
     assert_else(infile.is_open())
         return {};
 
     AssetFile asset_file;
-    string json_string;
-    
+    string    json_string;
+
     u32 json_length = 0;
     u32 blob_length = 0;
     infile.seekg(0);

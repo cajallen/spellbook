@@ -23,13 +23,11 @@ struct MeshBounds {
 struct MeshCPU {
     string         name;
     string         file_name;
+    
     vector<Vertex> vertices;
     vector<u32>    indices;
 
     MeshBounds bounds;
-    
-    // Skips name/file_name, only references the actual mesh
-    u64 contents_hash() const;
 };
 JSON_IMPL(MeshCPU, name);
 

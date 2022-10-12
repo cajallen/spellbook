@@ -66,12 +66,12 @@ struct vector {
 
 template <typename T>
 vector<T>::vector()
-    : internal({}) {
+    : internal() {
 }
 
 template <typename T>
 vector<T>::vector(u32 capacity)
-    : internal({}) {
+    : internal() {
     this->reserve(capacity);
 }
 

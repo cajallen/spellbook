@@ -9,12 +9,5 @@
 
 namespace spellbook {
 
-u64 TextureCPU::contents_hash() const {
-    auto hash1 = hash_data(pixels.data(), pixels.bsize());
-    auto hash2 = hash_data(&format, sizeof(format));
-    auto hash3 = hash_data(&size, sizeof(size));
-    return hash1 ^ hash2 ^ hash3; // sue me
-}
-
 
 }

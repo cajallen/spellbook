@@ -95,10 +95,7 @@ void Pyro::preview_3d(Scene* scene, entt::entity entity) {
         }
 
         auto   line_mesh = generate_formatted_line(scene->render_scene.viewport.camera, std::move(vertices));
-        string mesh_name = line_mesh.name;
-        scene->render_scene.mesh_dependencies.insert_back(std::move(line_mesh));
         // TODO:
-        //scene->render_scene.frame_renderables.insert_back(Renderable("Pyro Line", mesh_name, "default", m44::identity()));
     }
 }
 void Roller::preview_3d(Scene* scene, entt::entity entity) {
@@ -137,10 +134,7 @@ void Roller::preview_3d(Scene* scene, entt::entity entity) {
         vertices.emplace_back(center + v3(preview_length, -rollee_radius, 0.0f), palette::slate_gray, 0.02f);
 
         auto line_mesh = generate_formatted_line(scene->render_scene.viewport.camera, std::move(vertices));
-        string line_mesh_name = line_mesh.name; // for later move
-        scene->render_scene.mesh_dependencies.insert_back(std::move(line_mesh));
         // TODO:
-        //scene->render_scene.frame_renderables.insert_back(Renderable("Roller Line", line_mesh_name, "default", m44::identity()));
     }
 }
 void Rollee::preview_3d(Scene* scene, entt::entity entity) {}
@@ -163,10 +157,7 @@ void Dragging::preview_3d(Scene* scene, entt::entity entity) {
         }
 
         auto   line_mesh = generate_formatted_line(scene->render_scene.viewport.camera, std::move(vertices));
-        string mesh_name = line_mesh.name;
-        scene->render_scene.mesh_dependencies.insert_back(std::move(line_mesh));
         // TODO:
-        //scene->render_scene.frame_renderables.insert_back(Renderable("Placement Line", mesh_name, "default", m44::identity()));
     }
 }
 void Collision::preview_3d(Scene* scene, entt::entity entity) {}

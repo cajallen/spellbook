@@ -20,9 +20,8 @@ struct PrefabCPU {
 
     struct Node {
         string name = {};
-        // hashed MeshCPU/MaterialCPU, can use renderer.mesh_aliases, etc.
-        u64 mesh = {};
-        u64 material = {};
+        string mesh_asset_path = {};
+        string material_asset_path = {};
         m44 transform = {};
 
         id_ptr<Node> parent = {};
@@ -39,7 +38,7 @@ struct PrefabCPU {
     vector<PrefabCPU> split();
 };
 
-JSON_IMPL(PrefabCPU::Node, name, mesh, material, transform, parent, children);
+JSON_IMPL(PrefabCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
 
 struct PrefabGPU {
     vector<slot<Renderable>> renderables;

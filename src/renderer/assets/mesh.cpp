@@ -28,11 +28,5 @@ static v3 get_tangent(Vertex a, Vertex b, Vertex c) {
     return math::normalize(unnormalized);
 }
 
-u64 MeshCPU::contents_hash() const {
-    auto hash1 = hash_data(vertices.data(), vertices.bsize());
-    auto hash2 = hash_data(indices.data(), indices.bsize());
-    return hash1 ^ hash2; // sue me
-}
-
 
 }

@@ -2,6 +2,10 @@
 
 #include "console.hpp"
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
 namespace spellbook {
 
 string get_file(const string& str, bool with_ext) {
@@ -22,7 +26,8 @@ string get_extension(const string& str) {
 
 string get_contents(const string& file_name, bool binary) {
     FILE* f = fopen(file_name.c_str(), !binary ? "r" : "rb");
-    fmt_assert_else(f, "Source: {} not found", file_name) return "";
+    fmt_assert_else(f, "Source: {} not found", file_name)
+        return "";
 
     fseek(f, 0, SEEK_END);
     size_t size = ftell(f) / sizeof(char);
@@ -37,5 +42,10 @@ string get_contents(const string& file_name, bool binary) {
     contents.resize(std::min(strlen(contents.data()), read_bytes));
     return contents;
 }
+
+bool file_exists(const string& file_name) {
+    return fs::exists(file_name);
+}
+
 
 }

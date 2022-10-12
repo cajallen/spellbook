@@ -10,6 +10,11 @@ using std::array;
 
 namespace spellbook {
 
+const string prefab_extension = ".sbpfb";
+const string texture_extension = ".sbtex";
+const string material_extension = ".sbmat";
+const string mesh_extension = ".sbmsh";
+
 struct AssetFile {
     string file_name;
 
