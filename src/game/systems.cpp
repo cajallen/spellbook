@@ -88,12 +88,12 @@ void health_draw_system(Scene* scene) {
         // }
         //
         // if (game.renderer.materials.count("health_material") == 0) {
-        //     MaterialCPU material_cpu = {.name = "health_material", .base_color_tint = palette::black, .emissive_tint = palette::green};
+        //     MaterialCPU material_cpu = {.name = "health_material", .color_tint = palette::black, .emissive_tint = palette::green};
         //     game.renderer.upload_material(material_cpu, false);
         // }
         // if (game.renderer.materials.count("health_bar_material") == 0) {
         //     MaterialCPU material_cpu = {.name = "health_bar_material",
-        //         .base_color_tint              = palette::black,
+        //         .color_tint              = palette::black,
         //         .emissive_tint                = palette::white,
         //         .cull_mode                    = vuk::CullModeFlagBits::eFront};
         //     game.renderer.upload_material(material_cpu, false);
@@ -280,7 +280,7 @@ void roller_system(Scene* scene) {
 
     static bool generated = false;
     if (!generated) {
-        MaterialCPU material_cpu = {.name = "rollee_material", .base_color_tint = palette::slate_gray};
+        MaterialCPU material_cpu = {.name = "rollee_material", .file_name = "rollee_material", .color_tint = palette::slate_gray};
         game.renderer.upload_material(material_cpu, false);
         game.renderer.upload_mesh(generate_icosphere(3), false);
         generated = true;

@@ -166,10 +166,9 @@ f32 random_f32(f32 low, f32 high) {
 
 u64 random_u64() {
     static std::random_device rd;
- 
-    std::default_random_engine e1(rd());
-    std::uniform_int_distribution<u64> uniform_dist(0);
-    return uniform_dist(e1);
+    static std::mt19937_64  random_engine(rd());
+    static std::uniform_int_distribution<u64> uniform_dist;
+    return uniform_dist(random_engine);
 }
 
 v2 project_point_onto_line(v2 point, l2 line) {

@@ -9,6 +9,7 @@
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/texture.hpp"
+#include "renderer/renderable.hpp"
 
 #include "vuk/Buffer.hpp"
 

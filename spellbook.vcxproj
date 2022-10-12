@@ -171,6 +171,7 @@
     <ClCompile Include="libs\vuk\src\RenderGraph.cpp" />
     <ClCompile Include="libs\vuk\src\RenderGraphUtil.cpp" />
     <ClCompile Include="libs\vuk\src\Util.cpp" />
+    <ClCompile Include="src\asset_editor.cpp" />
     <ClCompile Include="src\astar.cpp" />
     <ClCompile Include="src\camera_controller.cpp" />
     <ClCompile Include="src\color.cpp" />

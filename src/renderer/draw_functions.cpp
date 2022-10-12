@@ -122,7 +122,8 @@ MeshCPU generate_icosphere(int subdivisions) {
         v.color = v3(0,0,0);
     }
 
-    return MeshCPU(fmt_("icosphere_{}", subdivisions), "", vertex_list, index_list);
+    string name = fmt_("icosphere_{}", subdivisions);
+    return MeshCPU(name, name, vertex_list, index_list);
 }
 
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices) {

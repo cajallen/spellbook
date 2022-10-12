@@ -10,6 +10,7 @@
 #include "file.hpp"
 #include "matrix_math.hpp"
 #include "console.hpp"
+#include "draw_functions.hpp"
 #include "render_scene.hpp"
 
 #include "utils.hpp"
@@ -17,7 +18,7 @@
 
 namespace spellbook {
 
-Renderer::Renderer() {
+Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
 #if VALIDATION
@@ -128,14 +129,9 @@ void Renderer::setup() {
         pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "textured_3d.frag");
         context->create_named_pipeline("textured_model", pci);
     }
-
-    // TODO: forcibly convert white, grid textures
-    if (true || !file_exists("textures/white.sbtex")) {
-        TextureCPU tex_white_upload = convert_to_texture("external_resources/images/white.jpg", "textures", "white");
-        save_texture(tex_white_upload);
-    }
-    upload_texture(load_texture("textures/white.sbtex"));
-    // TODO: load defaults
+    
+    upload_defaults();
+    
     {
         // OPTIMIZATION: can thread
         for (auto scene : scenes) {
@@ -291,7 +287,7 @@ MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool fra
     material_gpu.normal_view   = get_texture(material_cpu.normal_asset_path)->view.get();
     material_gpu.emissive_view = get_texture(material_cpu.emissive_asset_path)->view.get();
     material_gpu.tints         = {
-        (v4) material_cpu.base_color_tint,
+        (v4) material_cpu.color_tint,
         (v4) material_cpu.emissive_tint,
         {material_cpu.roughness_factor, material_cpu.metallic_factor, material_cpu.normal_factor, material_cpu.uv_scale}
     };
@@ -361,6 +357,42 @@ void Renderer::debug_window(bool* p_open) {
     }
     ImGui::End();
 }
+
+
+void Renderer::upload_defaults() {
+    if (true || !file_exists("textures/white.sbtex")) {
+        TextureCPU tex_white_upload = convert_to_texture("external_resources/images/white.jpg", "textures", "white");
+        save_texture(tex_white_upload);
+    }
+    upload_texture(load_texture("textures/white.sbtex"));
+
+    if (true || !file_exists("textures/grid.sbtex")) {
+        TextureCPU tex_white_upload = convert_to_texture("external_resources/images/grid.png", "textures", "grid");
+        save_texture(tex_white_upload);
+    }
+    upload_texture(load_texture("textures/grid.sbtex"));
+    
+    MaterialCPU default_mat = {
+        .name = "default",
+        .file_name = "default",
+        .color_tint = palette::black,
+    };
+    upload_material(default_mat);
+    TextureCPU default_tex = {
+        .name = "default",
+        .file_name = "default",
+        .size = {2,2},
+        .format = vuk::Format::eR8G8B8A8Srgb,
+        .pixels = {255,0,0,255,0,255,0,255,0,0,255,255,255,255,255,255}
+    };
+    upload_texture(default_tex);
+    MeshCPU default_mesh = generate_cube(v3(0), v3(1));
+    default_mesh.name = "default";
+    default_mesh.file_name = "default";
+    upload_mesh(default_mesh);
+}
+
+
 
 void FrameTimer::update() {
     int last_index   = ptr;

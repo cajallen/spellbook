@@ -327,13 +327,13 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
             if (baseImage.name == "")
                 baseImage.name = texture_names[i];
 
-            fs::path base_color_path = _convert_to_relative(output_folder / baseImage.name);
-            base_color_path.replace_extension(texture_extension);
+            fs::path color_path = _convert_to_relative(output_folder / baseImage.name);
+            color_path.replace_extension(texture_extension);
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
             TextureCPU texture_cpu = {
                 baseImage.name,
-                base_color_path.string(),
+                color_path.string(),
                 v2i{baseImage.width, baseImage.height},
                 format,
                 vector<u8>(&*baseImage.image.begin(), &*baseImage.image.end())
@@ -342,7 +342,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
             *texture_files[i] = texture_cpu.file_name;
         }
 
-        material_cpu.base_color_tint = Color((f32) pbr.baseColorFactor[0],
+        material_cpu.color_tint = Color((f32) pbr.baseColorFactor[0],
             (f32) pbr.baseColorFactor[1],
             (f32) pbr.baseColorFactor[2],
             (f32) pbr.baseColorFactor[3]);

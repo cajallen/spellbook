@@ -19,9 +19,9 @@ struct PrefabCPU {
     string file_name;    
 
     struct Node {
-        string name = {};
-        string mesh_asset_path = {};
-        string material_asset_path = {};
+        string name = "";
+        string mesh_asset_path = "";
+        string material_asset_path = "";
         m44 transform = {};
 
         id_ptr<Node> parent = {};

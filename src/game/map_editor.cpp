@@ -43,7 +43,7 @@ void MapEditor::setup(Scene* init_scene) {
     MaterialCPU default_mat = {
         .name = "default",
         .file_name = "default",
-        .base_color_tint = palette::black,
+        .color_tint = palette::black,
     };
     game.renderer.upload_material(default_mat, false);
 }

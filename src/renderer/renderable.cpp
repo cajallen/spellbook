@@ -7,7 +7,6 @@
 
 #include "matrix_math.hpp"
 
-#include "renderer/render_scene.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
 

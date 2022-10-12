@@ -88,11 +88,7 @@ id_ptr<T>::id_ptr(const T& t, u64 value)
 }
 
 template <typename T>
-id_ptr<T>::id_ptr() {
-    auto& arch                   = archive();
-    value                        = math::random_u64();
-    arch.vals[value]             = T();
-    arch.ptrs[&arch.vals[value]] = value;
+id_ptr<T>::id_ptr() : value(0) {
 }
 
 template <typename T>

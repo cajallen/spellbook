@@ -61,7 +61,7 @@ struct Renderer {
     vkb::Instance                           vkbinstance;
     vkb::Device                             vkbdevice;
     ImGuiData                               imgui_data;
-    vector<vuk::Future>                     futures;
+    std::vector<vuk::Future>                futures;
     std::mutex                              setup_lock;
 
     plf::colony<vuk::SampledImage> sampled_images;
@@ -96,6 +96,8 @@ struct Renderer {
     MeshGPU* get_mesh(const string& asset_path);
     MaterialGPU* get_material(const string& asset_path);
     TextureGPU* get_texture(const string& asset_path);
+
+    void upload_defaults();
 
     void resize(v2i new_size);
 

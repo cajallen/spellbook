@@ -24,10 +24,10 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
 };
 
 void inspect(MaterialGPU* material) {
-    auto si_base_color = vuk::make_sampled_image(material->color_view, {});
+    auto si_color = vuk::make_sampled_image(material->color_view, {});
     ImGui::Text("Base Color");
-    ImGui::Image(&*game.renderer.sampled_images.emplace(si_base_color), {100, 100});
-    ImGui::ColorEdit4("Tint##BaseColor", material->tints.base_color_tint.data);
+    ImGui::Image(&*game.renderer.sampled_images.emplace(si_color), {100, 100});
+    ImGui::ColorEdit4("Tint##BaseColor", material->tints.color_tint.data);
 
     auto si_mr = vuk::make_sampled_image(material->orm_view, {});
     auto si_n  = vuk::make_sampled_image(material->normal_view, {});

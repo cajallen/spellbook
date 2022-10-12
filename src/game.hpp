@@ -1,5 +1,6 @@
 #pragma once
 
+#include "asset_editor.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
 #include "game/map_editor.hpp"
@@ -17,8 +18,9 @@ struct Game {
     Renderer       renderer;
     GUI            gui;
 
-    MapEditor editor;
-
+    // MapEditor editor;
+    AssetEditor editor;
+    
     string resource_folder = "resources";
 
     void startup();
