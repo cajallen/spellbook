@@ -47,7 +47,7 @@ struct json_value {
 };
 
 json               parse(string& contents);
-json               parse_file(string_view file_name);
+json               parse_file(const string& file_name);
 json               parse_json(istream& iss);
 json_value         parse_item(istream& iss);
 vector<json_value> parse_list(istream& iss);
@@ -254,39 +254,39 @@ umap<string, JsonT> from_jv_impl(const json_value& jv, umap<string, JsonT>* _) {
     return t;
 }
 
-json from_jv_impl(const json_value& jv, json* _) {
+inline json from_jv_impl(const json_value& jv, json* _) {
     return get<json>(jv.value);
 }
 
-bool from_jv_impl(const json_value& jv, bool* _) {
+inline bool from_jv_impl(const json_value& jv, bool* _) {
     return get<bool>(jv.value);
 }
 
-s32 from_jv_impl(const json_value& jv, s32* _) {
+inline s32 from_jv_impl(const json_value& jv, s32* _) {
     return (s32) get<s64>(jv.value);
 }
 
-u32 from_jv_impl(const json_value& jv, u32* _) {
+inline u32 from_jv_impl(const json_value& jv, u32* _) {
     return (u32) get<s64>(jv.value);
 }
 
-u64 from_jv_impl(const json_value& jv, u64* _) {
+inline u64 from_jv_impl(const json_value& jv, u64* _) {
     return (u64) get<s64>(jv.value);
 }
 
-s64 from_jv_impl(const json_value& jv, s64* _) {
+inline s64 from_jv_impl(const json_value& jv, s64* _) {
     return get<s64>(jv.value);
 }
 
-f32 from_jv_impl(const json_value& jv, f32* _) {
+inline f32 from_jv_impl(const json_value& jv, f32* _) {
     return (f32) get<f64>(jv.value);
 }
 
-f64 from_jv_impl(const json_value& jv, f64* _) {
+inline f64 from_jv_impl(const json_value& jv, f64* _) {
     return get<f64>(jv.value);
 }
 
-string from_jv_impl(const json_value& jv, string* _) {
+inline string from_jv_impl(const json_value& jv, string* _) {
     return get<string>(jv.value);
 }
 

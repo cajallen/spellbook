@@ -57,6 +57,6 @@ struct MaterialGPU { // uses master shader
 void inspect(MaterialGPU* material);
 
 void save_material(const MaterialCPU&);
-MaterialCPU load_material(const string_view file_name);
+MaterialCPU load_material(const string& file_name);
 
 }

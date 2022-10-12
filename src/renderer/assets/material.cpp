@@ -63,7 +63,7 @@ void save_material(const MaterialCPU& material_cpu) {
     file_dump(j, material_cpu.file_name);
 }
 
-MaterialCPU load_material(const string_view file_name) {
+MaterialCPU load_material(const string& file_name) {
     json j = parse_file(file_name);
     auto material_cpu = from_jv<MaterialCPU>(to_jv(j));
     material_cpu.file_name = file_name;

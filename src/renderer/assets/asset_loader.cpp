@@ -30,7 +30,7 @@ void save_asset_file(const AssetFile& asset_file) {
     outfile.close();
 }
 
-AssetFile load_binary_file(const string& file_name) {
+AssetFile load_asset_file(const string& file_name) {
     std::ifstream infile;
     infile.open(file_name, std::ios::binary);
     

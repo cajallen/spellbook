@@ -50,7 +50,7 @@ void save_prefab(const PrefabCPU& prefab) {
     file_dump(j, prefab.file_name);
 }
 
-PrefabCPU load_prefab(const string_view file_name) {
+PrefabCPU load_prefab(const string& file_name) {
     PrefabCPU prefab;
     json      j = parse_file(file_name);
     if (j.contains("root_node"))

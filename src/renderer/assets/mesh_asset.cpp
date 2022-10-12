@@ -27,7 +27,7 @@ MeshCPU load_mesh(const string& file_name) {
     return mesh_cpu;
 }
 
-void save_mesh(MeshCPU& mesh_cpu) {
+void save_mesh(const MeshCPU& mesh_cpu) {
     AssetFile file;
     file.file_name = mesh_cpu.file_name;
     file.type = {'M','S','H'};

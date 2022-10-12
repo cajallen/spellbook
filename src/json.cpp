@@ -21,7 +21,7 @@ json parse(string& contents) {
     return parse_json(iss);
 }
 
-json parse_file(string& file_name) {
+json parse_file(const string& file_name) {
     ifstream ifs(file_name);
     if (ifs.is_open())
         return parse_json(ifs);

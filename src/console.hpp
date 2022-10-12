@@ -38,7 +38,7 @@ struct Message {
 };
 
 FROM_JSON_IMPL(Message, str, count, color, group)
-json_value to_jv(const Message& value) {
+inline json_value to_jv(const Message& value) {
     auto j = json();
     if (!value.save)
         return {};

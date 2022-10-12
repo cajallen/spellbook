@@ -131,7 +131,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="libs\fmt\src\format.cc" />
+    <ClCompile Include="libs\fmt\src\fmt_format.cc" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
@@ -885,6 +885,7 @@
     <ClInclude Include="src\lib_ext\glfw.hpp" />
     <ClInclude Include="src\lib_ext\imgui_extra.hpp" />
     <ClInclude Include="src\lib_ext\vuk_imgui.hpp" />
+    <ClInclude Include="src\lni_vector.hpp" />
     <ClInclude Include="src\math.hpp" />
     <ClInclude Include="src\matrix.hpp" />
     <ClInclude Include="src\matrix_math.hpp" />

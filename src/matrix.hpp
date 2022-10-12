@@ -78,13 +78,13 @@ struct m44 {
     }
 };
 
-m44 from_jv_impl(const json_value& jv, m44* _) {
+inline m44 from_jv_impl(const json_value& jv, m44* _) {
     auto vec = from_jv<vector<f32>>(jv);
     m44 m;
     std::copy_n(vec.begin(), 16, m.data.begin());
     return m;
 }
-json_value to_jv(const m44& m) {
+inline json_value to_jv(const m44& m) {
     vector<f32> vec(m.data.data(), m.data.data() + m.data.size());
     return to_jv(vec);
 }
