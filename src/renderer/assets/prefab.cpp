@@ -38,37 +38,74 @@ vector<PrefabCPU> PrefabCPU::split() {
     return prefabs;
 }
 
+void inspect(PrefabCPU* prefab) {
+    if (prefab == nullptr) {
+        ImGui::Text("No prefab");
+        return;
+    }
+    ImGui::Text("file_name: %s", prefab->file_name.c_str());
+
+    std::function<void(id_ptr<PrefabCPU::Node>)> traverse;
+    traverse = [&traverse](id_ptr<PrefabCPU::Node> node) {
+        ImGui::Text("name:            %s", node->name.c_str());
+        ImGui::Text("mesh_asset_path: %s", node->mesh_asset_path.c_str());
+        ImGui::Text("mat_asset_path:  %s", node->material_asset_path.c_str());
+
+        for (auto& child : node->children) {
+            if (child.valid() && ImGui::TreeNode(node->name.c_str())) {
+                traverse(child);
+                ImGui::TreePop();
+            }
+        }
+    };
+    if (prefab->root_node.valid() && ImGui::TreeNode(prefab->root_node->name.c_str())) {
+        traverse(prefab->root_node);
+        ImGui::TreePop();
+    } else if (!prefab->root_node.valid()) {
+        ImGui::Text("No root node");
+    }
+}
+
+
 void save_prefab(const PrefabCPU& prefab) {
     json j;
     j["root_node"] = make_shared<json_value>(to_jv(prefab.root_node));
 
     vector<json_value> json_nodes;
     for (id_ptr<PrefabCPU::Node> node : prefab.nodes) {
-        json_nodes.insert_back(to_jv(node));
+        json_nodes.insert_back(to_jv_full(node));
     }
     j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
     
     string ext = std::filesystem::path(prefab.file_name).extension().string();
     assert_else(ext == prefab_extension);
     
-    file_dump(j, prefab.file_name);
+    file_dump(j, get_resource_path(prefab.file_name));
+}
+
+fs::path _convert_to_relative(const fs::path& path) {
+    return path.lexically_proximate(game.resource_folder);
 }
 
 PrefabCPU load_prefab(const string& file_name) {
-    string ext = std::filesystem::path(file_name).extension().string();
-    assert_else(ext == prefab_extension);
+    fs::path file_path = fs::path(file_name);
+    if (file_name.starts_with("resources"))
+        file_path = _convert_to_relative(file_path);
+    
+    string ext = file_path.extension().string();
+    warn_else(ext == prefab_extension)
+        return {};
     
     PrefabCPU prefab;
-    json      j = parse_file(file_name);
+    json      j = parse_file(get_resource_path(file_path.string()));
+    prefab.file_name = file_path.string();
     if (j.contains("root_node"))
         prefab.root_node = from_jv<id_ptr<PrefabCPU::Node>>(*j["root_node"]);
 
     if (j.contains("nodes")) {
         for (const json_value& jv : j["nodes"]->get_list()) {
-            // TODO:
-            auto            json_node = from_jv<json>(jv);
-            PrefabCPU::Node node      = from_jv<PrefabCPU::Node>(*json_node["node"]);
-            json_node["id"];
+            id_ptr<PrefabCPU::Node> node = from_jv_full(jv, (id_ptr<PrefabCPU::Node>*) 0);
+            prefab.nodes.insert_back(node);
         }
     }
     return prefab;
@@ -88,10 +125,6 @@ PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU& prefab) {
 }
 
 constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
-
-fs::path _convert_to_relative(const fs::path& path) {
-    return path.lexically_proximate(game.resource_folder);
-}
 
 void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer) {
     int                   buffer_id     = accessor.bufferView;
@@ -327,7 +360,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
             if (baseImage.name == "")
                 baseImage.name = texture_names[i];
 
-            fs::path color_path = _convert_to_relative(output_folder / baseImage.name);
+            fs::path color_path = (output_folder / baseImage.name).string();
             color_path.replace_extension(texture_extension);
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
@@ -336,7 +369,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
                 color_path.string(),
                 v2i{baseImage.width, baseImage.height},
                 format,
-                vector<u8>(&*baseImage.image.begin(), &*baseImage.image.end())
+                vector<u8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())
             };
             save_texture(texture_cpu);
             *texture_files[i] = texture_cpu.file_name;
@@ -399,7 +432,9 @@ m44 _calculate_matrix(tinygltf::Node& node) {
 PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder, const string& output_name) {
     // TODO: gltf can't support null materials
     fs::create_directory(game.resource_folder);
-
+    auto folder = game.resource_folder / fs::path(output_folder);
+    fs::create_directory(folder);
+    
     const fs::path file_path = fs::path(file_name);
 
     const auto& ext = file_path.extension().string();
@@ -417,11 +452,8 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
         console_error(fmt_("Conversion warning while loading \"{}\": {}", file_name, warn), "asset.import", ErrorType_Warning);
     if (!err.empty())
         console_error(fmt_("Conversion error while loading \"{}\": {}", file_name, err), "asset.import", ErrorType_Severe);
-    assert_else(!ret)
+    assert_else(ret)
         return {};
-
-    auto folder = game.resource_folder / fs::path(file_path.stem().string() + "_GLTF");
-    fs::create_directory(folder);
 
     _convert_gltf_meshes(model, output_folder);
     _convert_gltf_materials(model, output_folder);
@@ -430,7 +462,7 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
 
     // calculate parent hierarchies
     for (u32 i = 0; i < model.nodes.size(); i++) {
-        prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>());
+        prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>::emplace());
     }
     for (u32 i = 0; i < model.nodes.size(); i++) {
         auto& children = prefab.nodes[i]->children;
@@ -438,6 +470,11 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
             children.insert_back(prefab.nodes[c]);
             prefab.nodes[c]->parent = prefab.nodes[i];
         }
+    }
+
+    for (auto& node : prefab.nodes) {
+        if (!node->parent.valid())
+            prefab.root_node = node;
     }
 
     vector<u32> multimat_nodes;
@@ -453,8 +490,8 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
             string mesh_name     = _calculate_gltf_mesh_name(model, node.mesh, 0);
             string material_name = _calculate_gltf_material_name(model, material);
 
-            fs::path meshpath     = _convert_to_relative(fs::path(output_folder) / (mesh_name + mesh_extension));
-            fs::path materialpath = _convert_to_relative(fs::path(output_folder) / (material_name + material_extension));
+            fs::path meshpath     = fs::path(output_folder) / (mesh_name + mesh_extension);
+            fs::path materialpath = fs::path(output_folder) / (material_name + material_extension);
 
             prefab.nodes[i]->name                = model.nodes[i].name;
             prefab.nodes[i]->mesh_asset_path     = meshpath.string();
@@ -490,7 +527,7 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
         for (int i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
             auto primitive = mesh.primitives[i_primitive];
             int  new_node  = nodeindex++;
-            prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>());
+            prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>::emplace());
             id_ptr<PrefabCPU::Node> node = prefab.nodes.last();
 
             char buffer[50];
@@ -501,8 +538,8 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
             string material_name = _calculate_gltf_material_name(model, material);
             string mesh_name     = _calculate_gltf_mesh_name(model, multimat_node.mesh, i_primitive);
 
-            fs::path material_path = _convert_to_relative(fs::path(output_folder) / (material_name + material_extension));
-            fs::path mesh_path     = _convert_to_relative(fs::path(output_folder) / (mesh_name + mesh_extension));
+            fs::path material_path = fs::path(output_folder) / (material_name + material_extension);
+            fs::path mesh_path     = fs::path(output_folder) / (mesh_name + mesh_extension);
 
             node->name      = prefab.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
             node->mesh_asset_path      = mesh_path.string();

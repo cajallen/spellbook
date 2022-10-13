@@ -185,6 +185,7 @@
     <ClCompile Include="src\h_impl.cpp" />
     <ClCompile Include="src\input.cpp" />
     <ClCompile Include="src\json.cpp" />
+    <ClCompile Include="src\lib_ext\imgui_extra.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\math.cpp" />
     <ClCompile Include="src\matrix.cpp" />

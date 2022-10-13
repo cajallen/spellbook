@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include "asset_editor.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
@@ -21,7 +23,7 @@ struct Game {
     // MapEditor editor;
     AssetEditor editor;
     
-    string resource_folder = "resources";
+    std::filesystem::path resource_folder = "resources";
 
     void startup();
     void run();

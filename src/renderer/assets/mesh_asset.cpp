@@ -17,9 +17,14 @@ MeshCPU load_mesh(const string& file_name) {
     
     MeshInfo mesh_info = from_jv<MeshInfo>(*asset_file.asset_json["mesh_info"]);
     MeshCPU mesh_cpu = from_jv<MeshCPU>(*asset_file.asset_json["mesh_cpu"]);
+    mesh_cpu.file_name = file_name;
     
-    vector<u8> decompressed(mesh_info.vertices_bsize + mesh_info.indices_bsize);
+    vector<u8> decompressed;
+    decompressed.resize(mesh_info.vertices_bsize + mesh_info.indices_bsize);
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(), (char*) decompressed.data(), asset_file.binary_blob.size(), (s32) (decompressed.size()));
+
+    mesh_cpu.vertices.rebsize(mesh_info.vertices_bsize);
+    mesh_cpu.indices.rebsize(mesh_info.indices_bsize);
 
     memcpy(mesh_cpu.vertices.data(), decompressed.data(), mesh_info.vertices_bsize);
     memcpy(mesh_cpu.indices.data(), decompressed.data() + mesh_info.vertices_bsize, mesh_info.indices_bsize);
@@ -34,8 +39,8 @@ void save_mesh(const MeshCPU& mesh_cpu) {
     file.version = 2;
 
     MeshInfo mesh_info;
-    mesh_info.vertices_bsize = mesh_cpu.vertices.size() * sizeof(Vertex);
-    mesh_info.indices_bsize  = mesh_cpu.indices.size() * sizeof(u32);
+    mesh_info.vertices_bsize = mesh_cpu.vertices.bsize();
+    mesh_info.indices_bsize  = mesh_cpu.indices.bsize();
     mesh_info.index_bsize    = sizeof(u32);
     
     vector<u8> merged_buffer;

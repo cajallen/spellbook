@@ -39,12 +39,27 @@ struct id_ptr {
 template <typename T>
 id_ptr<T> from_jv_impl(const json_value& jv, id_ptr<T>* _) {
     json      j = from_jv<json>(jv);
-    id_ptr<T> value(from_jv<T>(*j["node"]), from_jv<u64>(*j["id"]));
+    id_ptr<T> value(from_jv<u64>(*j["id"]));
     return value;
 }
 
 template <typename T>
 json_value to_jv(const id_ptr<T>& value) {
+    auto j = json();
+    j["id"]   = make_shared<json_value>(to_jv(value.value)); 
+    return to_jv(j);
+}
+
+
+template <typename T>
+id_ptr<T> from_jv_full(const json_value& jv, id_ptr<T>* _) {
+    json      j = from_jv<json>(jv);
+    id_ptr<T> value(from_jv<T>(*j["node"]), from_jv<u64>(*j["id"]));
+    return value;
+}
+
+template <typename T>
+json_value to_jv_full(const id_ptr<T>& value) {
     auto j = json();
     j["node"] = make_shared<json_value>(to_jv(*value));
     j["id"]   = make_shared<json_value>(to_jv(value.value)); 
@@ -99,6 +114,7 @@ id_ptr<T> id_ptr<T>::emplace(Args&&...args) {
     new_id.value                        = math::random_u64();
     arch.vals[new_id.value]             = T(std::forward<Args>(args)...);
     arch.ptrs[&arch.vals[new_id.value]] = new_id.value;
+    return new_id;
 }
 
 template <typename T>

@@ -15,6 +15,7 @@
 #include "viewport.hpp"
 
 #include "renderable.hpp"
+#include "assets/mesh_asset.hpp"
 
 namespace spellbook {
 
@@ -89,6 +90,30 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
     ZoneScoped;
+
+    auto upload_item = [](Renderable& renderable) {
+        MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
+        MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
+
+        if (mesh == nullptr) {
+            if (file_exists(get_resource_path(renderable.mesh_asset_path))) {
+                game.renderer.upload_mesh(load_mesh(renderable.mesh_asset_path));
+            } else {
+                console({.str = "Renderable mesh asset not found: " + renderable.mesh_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
+            }
+        }
+        if (material == nullptr) {
+            if (file_exists(get_resource_path(renderable.material_asset_path))) {
+                game.renderer.upload_material(load_material(renderable.material_asset_path));
+            } else {
+                console({.str = "Renderable material asset not found: " + renderable.material_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
+            }
+        }
+    };
+    for (Renderable& renderable : renderables) {
+        upload_item(renderable);
+    }
+    
     console({.str = "render_scene render", .group = "render_scene", .frame_tags = {"render_scene"}});
 
     _upload_buffer_objects(frame_allocator);

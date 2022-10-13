@@ -76,19 +76,19 @@ TextureCPU convert_to_texture(const string& file_name, const string& output_fold
     int channels;
     if (ext == ".hdr") {
         assert_else(false && "NYI");
-        f32* pixel_data = stbi_loadf((char*) file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
+        f32* pixel_data = stbi_loadf(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);
             return {};
         }
         texture.format = vuk::Format::eR32G32B32A32Sfloat;
     } else {
-        u8* pixel_data = stbi_load((char*) file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
+        u8* pixel_data = stbi_load(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);
             return {};
         }
-        texture.pixels.resize(texture.size.x * texture.size.y * channels);
+        texture.pixels.resize(texture.size.x * texture.size.y * 4);
         memcpy(texture.pixels.data(), pixel_data, texture.pixels.size());
         texture.format = vuk::Format::eR8G8B8A8Srgb;
         free(pixel_data);

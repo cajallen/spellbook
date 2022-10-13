@@ -16,6 +16,8 @@
 #include "utils.hpp"
 #include "assets/texture_asset.hpp"
 
+#include "stb_image.h"
+
 namespace spellbook {
 
 Renderer::Renderer() : imgui_data() {
@@ -50,6 +52,12 @@ Renderer::Renderer() : imgui_data() {
     };
     window  = create_window_glfw("Spellbook", window_size, true);
     surface = create_surface_glfw(vkbinstance.instance, window);
+
+    GLFWimage images[1]; 
+    images[0].pixels = stbi_load("icon.png", &images[0].width, &images[0].height, 0, 4); //rgba channels 
+    glfwSetWindowIcon(window, 1, images); 
+    stbi_image_free(images[0].pixels);
+    
     selector.set_surface(surface)
             .set_minimum_version(1, 0)
             .set_required_features(vkfeatures)

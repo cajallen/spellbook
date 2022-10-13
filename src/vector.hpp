@@ -4,13 +4,13 @@
 #include <span>
 using std::span;
 
-//#include "lni_vector.hpp"
+#include "lni_vector.hpp"
 
 namespace spellbook {
 
 template <typename T>
 struct vector {
-    std::vector<T> internal;
+    lni::vector<T> internal;
 
     vector();
     vector(std::initializer_list<T> list);
@@ -36,6 +36,7 @@ struct vector {
 
     void clear();
     void resize(u32 size);
+    void rebsize(u32 size);
     void reserve(u32 capacity);
 
     [[nodiscard]] u32 find(const T& t);
@@ -186,6 +187,11 @@ void vector<T>::clear() {
 template <typename T>
 void vector<T>::resize(u32 size) {
     internal.resize(size);
+}
+
+template <typename T>
+void vector<T>::rebsize(u32 size) {
+    internal.resize(size / sizeof(T));
 }
 
 template <typename T>

@@ -66,14 +66,14 @@ void save_material(const MaterialCPU& material_cpu) {
     string ext = std::filesystem::path(material_cpu.file_name).extension().string();
     assert_else(ext == material_extension);
     
-    file_dump(j, material_cpu.file_name);
+    file_dump(j, get_resource_path(material_cpu.file_name));
 }
 
 MaterialCPU load_material(const string& file_name) {
     string ext = std::filesystem::path(file_name).extension().string();
     assert_else(ext == material_extension);
     
-    json j = parse_file(file_name);
+    json j = parse_file(get_resource_path(file_name));
     auto material_cpu = from_jv<MaterialCPU>(to_jv(j));
     material_cpu.file_name = file_name;
     return material_cpu;

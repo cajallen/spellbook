@@ -29,4 +29,6 @@ enum CompressionMode { CompressionMode_None, CompressionMode_Lz4 };
 void      save_asset_file(const AssetFile& file);
 AssetFile load_asset_file(const string& path);
 
+string get_resource_path(const string& path);
+
 }

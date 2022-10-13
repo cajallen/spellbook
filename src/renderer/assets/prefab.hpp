@@ -29,9 +29,7 @@ struct PrefabCPU {
 
         Node() = default;
     };
-
-    vector<MaterialCPU> materials = {};
-    vector<MeshCPU> meshes = {};
+    
     vector<id_ptr<Node>> nodes = {};
     id_ptr<Node> root_node = id_ptr<Node>::null();
 
@@ -47,6 +45,8 @@ struct PrefabGPU {
 void      save_prefab(const PrefabCPU&);
 PrefabCPU load_prefab(const string& file_name);
 PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU&);
-PrefabCPU convert_to_prefab(const string& input_file, const string& output_folder);
+PrefabCPU convert_to_prefab(const string& input_file, const string& output_folder, const string& output_name);
+
+void inspect(PrefabCPU* prefab);
 
 }
