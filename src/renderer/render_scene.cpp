@@ -94,6 +94,8 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
         MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
         MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
 
+        if (renderable.mesh_asset_path.empty() || renderable.material_asset_path.empty())
+            return;
         if (mesh == nullptr) {
             if (file_exists(get_resource_path(renderable.mesh_asset_path))) {
                 game.renderer.upload_mesh(load_mesh(renderable.mesh_asset_path));

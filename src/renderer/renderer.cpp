@@ -322,7 +322,8 @@ TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_alloc
 }
 
 MeshGPU* Renderer::get_mesh(const string& asset_path) {
-    assert_else(!asset_path.empty());
+    if (asset_path.empty())
+        return nullptr;
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (mesh_cache.count(hash))
         return &mesh_cache[hash];
@@ -330,7 +331,8 @@ MeshGPU* Renderer::get_mesh(const string& asset_path) {
 }
 
 MaterialGPU* Renderer::get_material(const string& asset_path) {
-    assert_else(!asset_path.empty());
+    if (asset_path.empty())
+        return nullptr;
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (material_cache.count(hash))
         return &material_cache[hash];
@@ -338,7 +340,9 @@ MaterialGPU* Renderer::get_material(const string& asset_path) {
 }
 
 TextureGPU* Renderer::get_texture(const string& asset_path) {
-    assert_else(!asset_path.empty());
+    if (asset_path.empty())
+        return nullptr;
+    
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (texture_cache.count(hash))
         return &texture_cache[hash];

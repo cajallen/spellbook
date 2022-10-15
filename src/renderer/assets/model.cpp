@@ -44,6 +44,7 @@ void inspect(ModelCPU* model) {
 
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
     traverse = [&traverse](id_ptr<ModelCPU::Node> node_ptr) {
+        ImGui::PushID(node_ptr.value);
         auto& node = *node_ptr;
         ImGui::Text("name:            %s", node.name.c_str());
         ImGui::Text("mesh_asset_path: %s", node.mesh_asset_path.c_str());
@@ -52,12 +53,13 @@ void inspect(ModelCPU* model) {
 
         ImGui::Text("Children");
         for (auto& child : node.children) {
-            if (child.valid() && ImGui::TreeNode(node.name.c_str())) {
+            if (child.valid() && ImGui::TreeNode(child->name.c_str())) {
                 traverse(child);
                 ImGui::TreePop();
             }
         }
         ImGui::Separator();
+        ImGui::PopID();
     };
     if (model->root_node.valid() && ImGui::TreeNode(model->root_node->name.c_str())) {
         traverse(model->root_node);
@@ -126,7 +128,7 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model) {
 }
 
 m44 ModelCPU::Node::calculate_transform() const {
-    return !parent.valid() ? transform : transform * parent->calculate_transform();
+    return !parent.valid() ? transform : parent->calculate_transform() * transform;
 }
 
 constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
@@ -475,13 +477,31 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         }
     }
 
+    bool multiple_valid = false;
     for (auto& node : model_cpu.nodes) {
-        if (!node->parent.valid())
+        if (!node->parent.valid()) {
+            // If we've already set a root node
+            multiple_valid = model_cpu.root_node != id_ptr<ModelCPU::Node>::null();
             model_cpu.root_node = node;
+        }
+    }
+
+    if (multiple_valid) {
+        auto root_node = id_ptr<ModelCPU::Node>::emplace();
+        for (auto& node : model_cpu.nodes) {
+            if (!node->parent.valid()) {
+                node->parent = root_node;
+                root_node->children.insert_back(node);
+            }
+        }
+        model_cpu.root_node = root_node;
+        model_cpu.nodes.insert_back(root_node);
+        root_node->name = "root_node";
+        root_node->transform = m44::identity();
     }
 
     vector<u32> multimat_nodes;
-    for (u32 i = 0; i < model_cpu.nodes.size(); i++) {
+    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
         auto& gltf_node = gltf_model.nodes[i];
         auto& model_node = *model_cpu.nodes[i];
 
