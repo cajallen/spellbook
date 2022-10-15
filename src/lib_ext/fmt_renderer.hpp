@@ -8,7 +8,7 @@
 #include "string.hpp"
 
 #include "renderer/renderable.hpp"
-#include "renderer/assets/prefab.hpp"
+#include "renderer/assets/model.hpp"
 
 
 template <> struct fmt::formatter<spellbook::Renderable> : formatter<string> {
@@ -22,8 +22,8 @@ template <> struct fmt::formatter<spellbook::Renderable> : formatter<string> {
     }
 };
 
-template <> struct fmt::formatter<spellbook::PrefabCPU> : formatter<string> {
-    template <typename FormatContext> auto format(const spellbook::PrefabCPU& p, FormatContext& ctx) {
+template <> struct fmt::formatter<spellbook::ModelCPU> : formatter<string> {
+    template <typename FormatContext> auto format(const spellbook::ModelCPU& p, FormatContext& ctx) {
         auto out = ctx.out();
         
         return out;

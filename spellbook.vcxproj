@@ -491,7 +491,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h";TRACY_ENABLE</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\renderer\assets\prefab.cpp">
+    <ClCompile Include="src\renderer\assets\model.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -896,7 +896,7 @@
     <ClInclude Include="src\renderer\assets\material.hpp" />
     <ClInclude Include="src\renderer\assets\mesh.hpp" />
     <ClInclude Include="src\renderer\assets\mesh_asset.hpp" />
-    <ClInclude Include="src\renderer\assets\prefab.hpp" />
+    <ClInclude Include="src\renderer\assets\model.hpp" />
     <ClInclude Include="src\renderer\assets\texture.hpp" />
     <ClInclude Include="src\renderer\assets\texture_asset.hpp" />
     <ClInclude Include="src\renderer\camera.hpp" />
@@ -923,6 +923,20 @@
     <Library Include="libs\GLFW\bin\glfw3.lib" />
     <Library Include="libs\GLFW\bin\glfw3dll.lib" />
     <Library Include="libs\GLFW\bin\glfw3_mt.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="src\shaders\depth_outline.comp" />
+    <Content Include="src\shaders\grid.frag" />
+    <Content Include="src\shaders\imgui.frag" />
+    <Content Include="src\shaders\imgui.frag.spv" />
+    <Content Include="src\shaders\imgui.vert" />
+    <Content Include="src\shaders\imgui.vert.spv" />
+    <Content Include="src\shaders\infinite_plane.vert" />
+    <Content Include="src\shaders\rt.rchit" />
+    <Content Include="src\shaders\rt.rgen" />
+    <Content Include="src\shaders\rt.rmiss" />
+    <Content Include="src\shaders\standard_3d.vert" />
+    <Content Include="src\shaders\textured_3d.frag" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

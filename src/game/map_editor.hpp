@@ -6,20 +6,20 @@
 #include "string.hpp"
 #include "scene.hpp"
 
-#include "renderer/assets/prefab.hpp"
+#include "renderer/assets/model.hpp"
 
 namespace spellbook {
 
 struct Tower {
     string     name;
     Color      button_color;
-    PrefabCPU* prefab;
+    ModelCPU* model;
 };
 
 struct Brush {
     string     name;
     Color      button_color;
-    PrefabCPU* prefab;
+    ModelCPU* model;
     bool       travelable;
 };
 

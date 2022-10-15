@@ -123,7 +123,11 @@ void health_draw_system(Scene* scene) {
 void transform_system(Scene* scene) {
     ZoneScoped;
     for (auto [entity, model, transform] : scene->registry.view<Model, Transform>().each()) {
-        // TODO: rewrite
+        m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
+        for (auto& slot : model.model_gpu.renderables) {
+            u32 i = model.model_gpu.renderables.index(slot);
+            scene->render_scene.renderables[slot].transform = transform_matrix * model.model_cpu.nodes[i]->calculate_transform();
+        }
     }
 }
 void spawner_system(Scene* scene) {
@@ -134,6 +138,7 @@ void spawner_system(Scene* scene) {
 
             GridSlot* p_slot = scene->registry.try_get<GridSlot>(entity);
             assert_else(p_slot);
+            u32 test = u32(entt::null);
 
             static int i          = 0;
             auto       new_entity = scene->registry.create();

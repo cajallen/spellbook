@@ -8,12 +8,18 @@
 
 #include "input.hpp"
 
+#include "game/components.hpp"
 
 namespace spellbook {
 
 void AssetEditor::setup() {
     ZoneScoped;
     p_scene = new Scene();
+
+    entity = p_scene->registry.create();
+    p_scene->registry.emplace<Name>(entity, "Asset");
+    p_scene->registry.emplace<Model>(entity);
+    p_scene->registry.emplace<Transform>(entity);
 }
 
 void AssetEditor::update() {
@@ -26,20 +32,19 @@ void AssetEditor::update() {
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Asset Editor", p_open)) {
+        auto& model_comp = p_scene->registry.get<Model>(entity);
         PathSelect("File##Convert", &convert_file, "external_resources", "DND_PREFAB");
         if (ImGui::Button("Convert")) {
-            save_prefab(convert_to_prefab(convert_file.string(), "prefabs", "prefab"));
+            save_model(convert_to_model(convert_file.string(), "models", "model"));
         }
         ImGui::Separator();
         PathSelect("File##Load", &load_file, "resources", "DND_PREFAB");
         if (ImGui::Button("Load")) {
-            prefab_cpu = load_prefab(load_file.string());
+            model_comp.model_cpu = load_model(load_file.string());
+            model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
         }
         ImGui::Separator();
-        inspect(&prefab_cpu);
-        if (ImGui::Button("Instance")) {
-            instance_prefab(p_scene->render_scene, prefab_cpu);
-        }
+        inspect(&model_comp.model_cpu);
     }
     ImGui::End();
 }

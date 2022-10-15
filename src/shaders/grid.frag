@@ -30,5 +30,5 @@ void main() {
 
     fout_color = vec4(line_value, alpha_factor * value);
     fout_normal = vec4(0,0,1,0);
-    fout_id = uvec4(0,0,0,0);
+    fout_id = uvec4(-1,-1,-1,-1);
 }

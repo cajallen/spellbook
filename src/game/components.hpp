@@ -8,7 +8,7 @@
 #include "geometry.hpp"
 #include "math.hpp"
 
-#include "renderer/assets/prefab.hpp"
+#include "renderer/assets/model.hpp"
 
 namespace spellbook {
 
@@ -20,8 +20,8 @@ struct Name {
 };
 
 struct Model {
-    PrefabCPU prefab_cpu;
-    PrefabGPU prefab_gpu;
+    ModelCPU model_cpu;
+    ModelGPU model_gpu;
     v3        offset = v3(0.0f);
 
     void inspect(Scene*);

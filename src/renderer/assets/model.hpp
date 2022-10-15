@@ -20,7 +20,7 @@ struct MaterialCPU;
 struct Renderable;
 struct RenderScene;
 
-struct PrefabCPU {
+struct ModelCPU {
     string file_name;    
 
     struct Node {
@@ -32,26 +32,26 @@ struct PrefabCPU {
         id_ptr<Node> parent = {};
         vector<id_ptr<Node>> children = {};
 
-        Node() = default;
+        m44 calculate_transform() const;
     };
     
     vector<id_ptr<Node>> nodes = {};
     id_ptr<Node> root_node = id_ptr<Node>::null();
 
-    vector<PrefabCPU> split();
+    vector<ModelCPU> split();
 };
 
-JSON_IMPL(PrefabCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
+JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
 
-struct PrefabGPU {
+struct ModelGPU {
     vector<slot<Renderable>> renderables;
 };
 
-void      save_prefab(const PrefabCPU&);
-PrefabCPU load_prefab(const fs::path& input_path);
-PrefabGPU instance_prefab(RenderScene& render_scene, const PrefabCPU&);
-PrefabCPU convert_to_prefab(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name);
+void      save_model(const ModelCPU&);
+ModelCPU load_model(const fs::path& input_path);
+ModelGPU instance_model(RenderScene& render_scene, const ModelCPU&);
+ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name);
 
-void inspect(PrefabCPU* prefab);
+void inspect(ModelCPU* model);
 
 }

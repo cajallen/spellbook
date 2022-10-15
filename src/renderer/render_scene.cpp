@@ -79,11 +79,10 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     auto [pubo_scene, fubo_scene] = vuk::create_buffer_cross_device(allocator, vuk::MemoryUsage::eCPUtoGPU, std::span(&scene_data_gpu, 1));
     buffer_scene_data             = *pubo_scene;
 
-    buffer_model_mats = **vuk::allocate_buffer_cross_device(
-        allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * (renderables.size()), 1});
+    buffer_model_mats = **vuk::allocate_buffer_cross_device(allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * renderables.size(), 1});
     int i = 0;
-    for (auto& renderable : renderables) {
-        m44GPU transform_gpu = (m44GPU) renderable.transform;
+    for (const auto& renderable : renderables) {
+        auto transform_gpu = m44GPU(renderable.transform);
         memcpy(reinterpret_cast<m44GPU*>(buffer_model_mats.mapped_ptr) + i++, &transform_gpu, sizeof(m44GPU));
     }
 }
@@ -238,7 +237,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     });
 
     if (math::contains(range2i(v2i(0), v2i(viewport.size)), query)) {
-        auto info_storage_buffer = **vuk::allocate_buffer_cross_device(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, (size_t) 64, 1});
+        auto info_storage_buffer = **vuk::allocate_buffer_cross_device(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, sizeof(u32), 1});
         rg->attach_buffer("info_storage", info_storage_buffer);
 	    rg->add_pass({
             .name  = "read",
@@ -259,12 +258,12 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     // clang-format on
 
     auto clear_color      = vuk::ClearColor {scene_data.fog_color.r, scene_data.fog_color.g, scene_data.fog_color.b, 1.0f};
-    auto info_clear_color = vuk::ClearColor {0.0f, 0.0f, 0.0f, 0.0f};
-    rg->attach_and_clear_image(
-        "forward_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_color);
+    auto info_clear_color = vuk::ClearColor {-1u, -1u, -1u, -1u};
+    auto depth_clear_value = vuk::ClearDepthStencil{0.0f, 0};
+    rg->attach_and_clear_image("forward_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_color);
     rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
     rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, info_clear_color);
-    rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, vuk::ClearDepthStencil {0.0f, 0});
+    rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
 
     rg->inference_rule("forward_input", vuk::same_extent_as("target_input"));
 
@@ -272,13 +271,6 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
 }
 
 void RenderScene::cleanup(vuk::Allocator& allocator) {}
-
-// on added item
-// add pipelines to renderer
-// add textures to renderer
-// add materials to renderer
-// add meshes to renderer
-// add renderables to renderer
 
 void inspect(RenderScene* scene) {
     ImGui::Text("Viewport");
