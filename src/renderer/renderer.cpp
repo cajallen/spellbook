@@ -17,6 +17,7 @@
 #include "assets/texture_asset.hpp"
 
 #include "stb_image.h"
+#include "assets/mesh_asset.hpp"
 
 namespace spellbook {
 
@@ -147,9 +148,8 @@ void Renderer::setup() {
         }
     }
 
-    vuk::Compiler compiler;
-    vuk::wait_for_futures_explicit(*global_allocator, compiler, futures);
-    futures.clear();
+    wait_for_futures();
+    
     setup_finished = true;
 }
 
@@ -165,9 +165,7 @@ void Renderer::render() {
     assert_else(stage == RenderStage_Inactive)
         return;
 
-    vuk::Compiler compiler;
-    vuk::wait_for_futures_explicit(*global_allocator, compiler, futures);
-    futures.clear();
+    wait_for_futures();
     stage = RenderStage_BuildingRG;
 
     auto& xdev_frame_resource = super_frame_resource->get_next_frame();
@@ -200,6 +198,7 @@ void Renderer::render() {
         auto       rg_frag_fut         = scene->render(*frame_allocator, vuk::Future{rgx, "_img"});
         vuk::Name& attachment_name_out = *attachment_names.emplace(std::string(scene->name) + "_final");
         auto       rg_frag             = rg_frag_fut.get_render_graph();
+        vuk::Compiler compiler;
         compiler.compile({&rg_frag, 1}, {});
         rg->attach_in(attachment_name_out, std::move(rg_frag_fut));
         auto si = vuk::make_sampled_image(rg->name.append("::").append(attachment_name_out.to_sv()), imgui_data.font_sci);
@@ -214,6 +213,7 @@ void Renderer::render() {
     rg->attach_swapchain("SWAPCHAIN", swapchain);
     auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN+"}, imgui_data, ImGui::GetDrawData(), sampled_images);
     stage    = RenderStage_Presenting;
+    vuk::Compiler compiler;
     present(*frame_allocator, compiler, swapchain, std::move(fut));
 
     sampled_images.clear();
@@ -245,6 +245,13 @@ Renderer::~Renderer() {
     vkb::destroy_instance(vkbinstance);
 }
 
+void Renderer::wait_for_futures() {
+    vuk::Compiler compiler;
+    vuk::wait_for_futures_explicit(*global_allocator, compiler, futures);
+    futures.clear();
+}
+
+
 void Renderer::resize(v2i new_size) {
     context->wait_idle();
     auto new_swapchain = context->add_swapchain(make_swapchain(vkbdevice, swapchain));
@@ -259,9 +266,6 @@ MeshGPU& Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     assert_else(!mesh_cpu.file_name.empty());
     u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_name.data(), mesh_cpu.file_name.size());
     mesh_aliases[mesh_cpu.name] = mesh_cpu_hash;
-    if (mesh_cache.contains(mesh_cpu_hash))
-        return mesh_cache[mesh_cpu_hash];
-
     MeshGPU         mesh_gpu;
     vuk::Allocator& alloc                = frame_allocation ? *frame_allocator : *global_allocator;
     auto            [vert_buf, vert_fut] = create_buffer_gpu(alloc, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
@@ -283,17 +287,14 @@ MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool fra
     assert_else(!material_cpu.file_name.empty());
     u64 material_cpu_hash               = hash_data(material_cpu.file_name.data(), material_cpu.file_name.size());
     material_aliases[material_cpu.name] = material_cpu_hash;
-    if (material_cache.contains(material_cpu_hash))
-        return material_cache[material_cpu_hash];
-
     if (frame_allocation); // TODO: frame allocation
 
     MaterialGPU material_gpu;
     material_gpu.pipeline      = context->get_named_pipeline("textured_model");
-    material_gpu.color_view    = get_texture(material_cpu.color_asset_path)->view.get();
-    material_gpu.orm_view      = get_texture(material_cpu.orm_asset_path)->view.get();
-    material_gpu.normal_view   = get_texture(material_cpu.normal_asset_path)->view.get();
-    material_gpu.emissive_view = get_texture(material_cpu.emissive_asset_path)->view.get();
+    material_gpu.color_view    = get_texture_or_upload(material_cpu.color_asset_path).view.get();
+    material_gpu.orm_view      = get_texture_or_upload(material_cpu.orm_asset_path).view.get();
+    material_gpu.normal_view   = get_texture_or_upload(material_cpu.normal_asset_path).view.get();
+    material_gpu.emissive_view = get_texture_or_upload(material_cpu.emissive_asset_path).view.get();
     material_gpu.tints         = {
         (v4) material_cpu.color_tint,
         (v4) material_cpu.emissive_tint,
@@ -309,8 +310,6 @@ TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_alloc
     assert_else(!tex_cpu.file_name.empty());
     u64 tex_cpu_hash              = hash_data(tex_cpu.file_name.data(), tex_cpu.file_name.size());
     texture_aliases[tex_cpu.name] = tex_cpu_hash;
-    if (texture_cache.contains(tex_cpu_hash))
-        return texture_cache[tex_cpu_hash];
     vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
     auto [tex, tex_fut] = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
     context->debug.set_name(tex, vuk::Name(tex_cpu.name));
@@ -345,6 +344,31 @@ TextureGPU* Renderer::get_texture(const string& asset_path) {
         return &texture_cache[hash];
     return nullptr;
 }
+
+MeshGPU& Renderer::get_mesh_or_upload(const string& asset_path) {
+    assert_else(!asset_path.empty());
+    u64 hash = hash_data(asset_path.data(), asset_path.size());
+    if (mesh_cache.count(hash))
+        return mesh_cache[hash];
+    return upload_mesh(load_mesh(asset_path));
+}
+
+MaterialGPU& Renderer::get_material_or_upload(const string& asset_path) {
+    assert_else(!asset_path.empty());
+    u64 hash = hash_data(asset_path.data(), asset_path.size());
+    if (material_cache.count(hash))
+        return material_cache[hash];
+    return upload_material(load_material(asset_path));
+}
+
+TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
+    assert_else(!asset_path.empty());
+    u64 hash = hash_data(asset_path.data(), asset_path.size());
+    if (texture_cache.count(hash))
+        return texture_cache[hash];
+    return upload_texture(load_texture(asset_path));
+}
+
 
 
 void Renderer::debug_window(bool* p_open) {

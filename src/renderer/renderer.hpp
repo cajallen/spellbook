@@ -87,16 +87,25 @@ struct Renderer {
     void cleanup();
     ~Renderer();
 
+    void wait_for_futures();
+
     void add_scene(RenderScene*);
 
+    // Uploads asset, stores in alias and cache, overwrites old cache entry
     MeshGPU&     upload_mesh(const MeshCPU&, bool frame_allocation = false);
     MaterialGPU& upload_material(const MaterialCPU&, bool frame_allocation = false);
     TextureGPU&  upload_texture(const TextureCPU&, bool frame_allocation = false);
 
+    // Returns an asset given the path of the .sb*** asset, nullptr if not uploaded
     MeshGPU* get_mesh(const string& asset_path);
     MaterialGPU* get_material(const string& asset_path);
     TextureGPU* get_texture(const string& asset_path);
 
+    // Returns an asset given the path of the .sb*** asset, uploads and returns if not uploaded
+    MeshGPU& get_mesh_or_upload(const string& asset_path);
+    MaterialGPU& get_material_or_upload(const string& asset_path);
+    TextureGPU& get_texture_or_upload(const string& asset_path);
+    
     void upload_defaults();
 
     void resize(v2i new_size);

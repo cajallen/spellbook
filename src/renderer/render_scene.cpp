@@ -83,7 +83,7 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
         allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * (renderables.size()), 1});
     int i = 0;
     for (auto& renderable : renderables) {
-        m44GPU transform_gpu = (m44GPU) (renderable.transform);
+        m44GPU transform_gpu = (m44GPU) renderable.transform;
         memcpy(reinterpret_cast<m44GPU*>(buffer_model_mats.mapped_ptr) + i++, &transform_gpu, sizeof(m44GPU));
     }
 }
@@ -113,6 +113,8 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     for (Renderable& renderable : renderables) {
         upload_item(renderable);
     }
+
+    game.renderer.wait_for_futures();
     
     console({.str = "render_scene render", .group = "render_scene", .frame_tags = {"render_scene"}});
 

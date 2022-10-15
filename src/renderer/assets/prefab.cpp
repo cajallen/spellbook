@@ -1,7 +1,5 @@
 ﻿#include "prefab.hpp"
 
-#include <filesystem>
-
 #include "tiny_gltf.h"
 
 #include "game.hpp"
@@ -14,8 +12,6 @@
 #include "renderer/render_scene.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
-
-namespace fs = std::filesystem;
 
 namespace spellbook {
 
@@ -87,18 +83,18 @@ fs::path _convert_to_relative(const fs::path& path) {
     return path.lexically_proximate(game.resource_folder);
 }
 
-PrefabCPU load_prefab(const string& file_name) {
-    fs::path file_path = fs::path(file_name);
-    if (file_name.starts_with("resources"))
-        file_path = _convert_to_relative(file_path);
+PrefabCPU load_prefab(const fs::path& _input_path) {
+    fs::path input_path = _input_path.string().starts_with("resources") ?
+        _input_path.lexically_proximate(game.resource_folder) : _input_path;
     
-    string ext = file_path.extension().string();
+    
+    string ext = input_path.extension().string();
     warn_else(ext == prefab_extension)
         return {};
     
     PrefabCPU prefab;
-    json      j = parse_file(get_resource_path(file_path.string()));
-    prefab.file_name = file_path.string();
+    json      j = parse_file(get_resource_path(input_path.string()));
+    prefab.file_name = input_path.string();
     if (j.contains("root_node"))
         prefab.root_node = from_jv<id_ptr<PrefabCPU::Node>>(*j["root_node"]);
 
@@ -141,7 +137,7 @@ void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, v
 
     output_buffer.resize(accessor.count * element_bsize);
 
-    for (int i = 0; i < accessor.count; i++) {
+    for (u32 i = 0; i < accessor.count; i++) {
         u8* dataindex = dataptr + stride * i;
         u8* targetptr = output_buffer.data() + element_bsize * i;
 
@@ -285,7 +281,7 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
         indices.insert_back(index);
     }
 
-    for (int i = 0; i < indices.size() / 3; i++) {
+    for (u32 i = 0; i < indices.size() / 3; i++) {
         // flip the triangle
         std::swap(indices[i * 3 + 1], indices[i * 3 + 2]);
     }
@@ -350,7 +346,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
                                &material_cpu.emissive_asset_path};
 
         array texture_names = {"baseColor", "metallicRoughness", "normals", "emissive"};
-        for (int i = 0; i < 4; i++) {
+        for (u32 i = 0; i < 4; i++) {
             int texture_index = texture_indices[i];
             if (texture_index < 0)
                 continue;
@@ -429,15 +425,13 @@ m44 _calculate_matrix(tinygltf::Node& node) {
     return matrix;
 };
 
-PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder, const string& output_name) {
+PrefabCPU convert_to_prefab(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_file) {
     // TODO: gltf can't support null materials
     fs::create_directory(game.resource_folder);
-    auto folder = game.resource_folder / fs::path(output_folder);
+    auto folder = game.resource_folder / output_folder;
     fs::create_directory(folder);
-    
-    const fs::path file_path = fs::path(file_name);
 
-    const auto& ext = file_path.extension().string();
+    const auto& ext = input_path.extension().string();
     assert_else(ext == ".gltf" || ext == ".glb")
         return {};
     tinygltf::Model    model;
@@ -445,13 +439,13 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
     string             err, warn;
 
     bool ret = ext == ".gltf"
-                   ? loader.LoadASCIIFromFile(&model, &err, &warn, file_name)
-                   : loader.LoadBinaryFromFile(&model, &err, &warn, file_name);
+                   ? loader.LoadASCIIFromFile(&model, &err, &warn, input_path.string())
+                   : loader.LoadBinaryFromFile(&model, &err, &warn, input_path.string());
 
     if (!warn.empty())
-        console_error(fmt_("Conversion warning while loading \"{}\": {}", file_name, warn), "asset.import", ErrorType_Warning);
+        console_error(fmt_("Conversion warning while loading \"{}\": {}", input_path.string(), warn), "asset.import", ErrorType_Warning);
     if (!err.empty())
-        console_error(fmt_("Conversion error while loading \"{}\": {}", file_name, err), "asset.import", ErrorType_Severe);
+        console_error(fmt_("Conversion error while loading \"{}\": {}", input_path.string(), err), "asset.import", ErrorType_Severe);
     assert_else(ret)
         return {};
 
@@ -478,44 +472,41 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
     }
 
     vector<u32> multimat_nodes;
-    for (int i = 0; i < model.nodes.size(); i++) {
-        auto& node = model.nodes[i];
+    for (u32 i = 0; i < model.nodes.size(); i++) {
+        auto& gltf_node = model.nodes[i];
+        auto& prefab_node = *prefab.nodes[i];
 
-        if (node.mesh >= 0 && model.meshes[node.mesh].primitives.size() == 1) {
-            auto mesh = model.meshes[node.mesh];
+        if (gltf_node.mesh >= 0 && model.meshes[gltf_node.mesh].primitives.size() == 1) {
+            auto mesh = model.meshes[gltf_node.mesh];
 
             auto primitive = mesh.primitives[0];
             int  material  = primitive.material;
             assert_else(material >= 0 && "Need material on node, default mat NYI");
-            string mesh_name     = _calculate_gltf_mesh_name(model, node.mesh, 0);
+            string mesh_name     = _calculate_gltf_mesh_name(model, gltf_node.mesh, 0);
             string material_name = _calculate_gltf_material_name(model, material);
 
-            fs::path meshpath     = fs::path(output_folder) / (mesh_name + mesh_extension);
-            fs::path materialpath = fs::path(output_folder) / (material_name + material_extension);
+            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
+            fs::path material_path = output_folder / (material_name + material_extension);
 
-            prefab.nodes[i]->name                = model.nodes[i].name;
-            prefab.nodes[i]->mesh_asset_path     = meshpath.string();
-            prefab.nodes[i]->material_asset_path = materialpath.string();
-            prefab.nodes[i]->transform           = _calculate_matrix(node);
+            prefab_node.name                = gltf_node.name;
+            prefab_node.mesh_asset_path     = mesh_path.string();
+            prefab_node.material_asset_path = material_path.string();
+            prefab_node.transform           = _calculate_matrix(gltf_node);
         }
         // Serving hierarchy
         else {
-            prefab.nodes[i]->name      = node.name;
-            prefab.nodes[i]->transform = _calculate_matrix(node);
+            prefab_node.name      = gltf_node.name;
+            prefab_node.transform = _calculate_matrix(gltf_node);
 
-            if (node.mesh >= 0)
+            if (gltf_node.mesh >= 0)
                 multimat_nodes.insert_back(i);
         }
     }
+    
+    prefab.root_node->transform = gltf_fixup * prefab.root_node->transform;
 
-    for (int i = 0; i < prefab.nodes.size(); i++) {
-        if (!prefab.nodes[i]->parent.valid())
-            prefab.nodes[i]->transform = gltf_fixup * prefab.nodes[i]->transform;
-    }
-
-    int nodeindex = prefab.nodes.size();
     // iterate nodes with multiple materials, convert each submesh into a node
-    for (int i = 0; i < multimat_nodes.size(); i++) {
+    for (u32 i = 0; i < multimat_nodes.size(); i++) {
         auto  multimat_node_index = multimat_nodes[i];
         auto& multimat_node       = model.nodes[multimat_node_index];
 
@@ -524,11 +515,10 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
 
         auto mesh = model.meshes[multimat_node.mesh];
 
-        for (int i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
-            auto primitive = mesh.primitives[i_primitive];
-            int  new_node  = nodeindex++;
-            prefab.nodes.insert_back(id_ptr<PrefabCPU::Node>::emplace());
-            id_ptr<PrefabCPU::Node> node = prefab.nodes.last();
+        for (u32 i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
+            auto                    primitive = mesh.primitives[i_primitive];
+            id_ptr<PrefabCPU::Node> prefab_node_ptr      = id_ptr<PrefabCPU::Node>::emplace();
+            prefab.nodes.insert_back(prefab_node_ptr);
 
             char buffer[50];
 
@@ -538,19 +528,19 @@ PrefabCPU convert_to_prefab(const string& file_name, const string& output_folder
             string material_name = _calculate_gltf_material_name(model, material);
             string mesh_name     = _calculate_gltf_mesh_name(model, multimat_node.mesh, i_primitive);
 
-            fs::path material_path = fs::path(output_folder) / (material_name + material_extension);
-            fs::path mesh_path     = fs::path(output_folder) / (mesh_name + mesh_extension);
+            fs::path material_path = output_folder / (material_name + material_extension);
+            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
 
-            node->name      = prefab.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
-            node->mesh_asset_path      = mesh_path.string();
-            node->material_asset_path  = material_path.string();
-            node->transform = m44::identity();
-            node->parent    = prefab.nodes[multimat_node_index];
-            prefab.nodes[multimat_node_index]->children.insert_back(node);
+            prefab_node_ptr->name      = prefab.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
+            prefab_node_ptr->mesh_asset_path      = mesh_path.string();
+            prefab_node_ptr->material_asset_path  = material_path.string();
+            prefab_node_ptr->transform = m44::identity();
+            prefab_node_ptr->parent    = prefab.nodes[multimat_node_index];
+            prefab.nodes[multimat_node_index]->children.insert_back(prefab_node_ptr);
         }
     }
 
-    fs::path scene_path = output_folder / fs::path(output_name);
+    fs::path scene_path = output_folder / output_file;
     scene_path.replace_extension(prefab_extension);
 
     prefab.file_name = scene_path.string();

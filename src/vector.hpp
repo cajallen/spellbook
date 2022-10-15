@@ -4,13 +4,11 @@
 #include <span>
 using std::span;
 
-#include "lni_vector.hpp"
-
 namespace spellbook {
 
 template <typename T>
 struct vector {
-    lni::vector<T> internal;
+    std::vector<T> internal;
 
     vector();
     vector(std::initializer_list<T> list);
