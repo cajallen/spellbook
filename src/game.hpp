@@ -2,10 +2,10 @@
 
 #include <filesystem>
 
-#include "asset_editor.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
 #include "game/map_editor.hpp"
+#include "game/asset_editor.hpp"
 
 #include "gui.hpp"
 #include "scene.hpp"

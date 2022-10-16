@@ -127,11 +127,179 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model) {
     return model_gpu;
 }
 
+void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
+    for (auto& r_slot : model.renderables) {
+        render_scene.renderables.remove_element(r_slot);
+    }
+}
+
 m44 ModelCPU::Node::calculate_transform() const {
     return !parent.valid() ? transform : parent->calculate_transform() * transform;
 }
 
 constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
+
+void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer);
+void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices);
+void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices);
+string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index);
+string _calculate_gltf_material_name(tinygltf::Model& model, int material_index);
+bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder);
+bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_folder);
+m44 _calculate_matrix(tinygltf::Node& node);
+
+ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name) {
+    // TODO: gltf can't support null materials
+    fs::create_directory(game.resource_folder);
+    auto folder = game.resource_folder / output_folder;
+    fs::create_directory(folder);
+
+    const auto& ext = input_path.extension().string();
+    assert_else(ext == ".gltf" || ext == ".glb")
+        return {};
+    tinygltf::Model    gltf_model;
+    tinygltf::TinyGLTF loader;
+    string             err, warn;
+
+    bool ret = ext == ".gltf"
+                   ? loader.LoadASCIIFromFile(&gltf_model, &err, &warn, input_path.string())
+                   : loader.LoadBinaryFromFile(&gltf_model, &err, &warn, input_path.string());
+
+    if (!warn.empty())
+        console_error(fmt_("Conversion warning while loading \"{}\": {}", input_path.string(), warn), "asset.import", ErrorType_Warning);
+    if (!err.empty())
+        console_error(fmt_("Conversion error while loading \"{}\": {}", input_path.string(), err), "asset.import", ErrorType_Severe);
+    assert_else(ret)
+        return {};
+
+    _convert_gltf_meshes(gltf_model, output_folder);
+    _convert_gltf_materials(gltf_model, output_folder);
+    
+    ModelCPU model_cpu;
+
+    // calculate parent hierarchies
+    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
+        model_cpu.nodes.insert_back(id_ptr<ModelCPU::Node>::emplace());
+    }
+    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
+        auto& children = model_cpu.nodes[i]->children;
+        for (u32 c : gltf_model.nodes[i].children) {
+            children.insert_back(model_cpu.nodes[c]);
+            model_cpu.nodes[c]->parent = model_cpu.nodes[i];
+        }
+    }
+
+    bool multiple_valid = false;
+    for (auto& node : model_cpu.nodes) {
+        if (!node->parent.valid()) {
+            // If we've already set a root node
+            multiple_valid = model_cpu.root_node != id_ptr<ModelCPU::Node>::null();
+            model_cpu.root_node = node;
+        }
+    }
+
+    if (multiple_valid) {
+        auto root_node = id_ptr<ModelCPU::Node>::emplace();
+        for (auto& node : model_cpu.nodes) {
+            if (!node->parent.valid()) {
+                node->parent = root_node;
+                root_node->children.insert_back(node);
+            }
+        }
+        model_cpu.root_node = root_node;
+        model_cpu.nodes.insert_back(root_node);
+        root_node->name = "root_node";
+        root_node->transform = m44::identity();
+    }
+
+    vector<u32> multimat_nodes;
+    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
+        auto& gltf_node = gltf_model.nodes[i];
+        auto& model_node = *model_cpu.nodes[i];
+
+        if (gltf_node.mesh >= 0 && gltf_model.meshes[gltf_node.mesh].primitives.size() == 1) {
+            auto mesh = gltf_model.meshes[gltf_node.mesh];
+
+            auto primitive = mesh.primitives[0];
+            int  material  = primitive.material;
+            assert_else(material >= 0 && "Need material on node, default mat NYI");
+            string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0);
+            string material_name = _calculate_gltf_material_name(gltf_model, material);
+
+            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
+            fs::path material_path = output_folder / (material_name + material_extension);
+
+            model_node.name                = gltf_node.name;
+            model_node.mesh_asset_path     = mesh_path.string();
+            model_node.material_asset_path = material_path.string();
+            model_node.transform           = _calculate_matrix(gltf_node);
+        }
+        // Serving hierarchy
+        else {
+            model_node.name      = gltf_node.name;
+            model_node.transform = _calculate_matrix(gltf_node);
+
+            if (gltf_node.mesh >= 0)
+                multimat_nodes.insert_back(i);
+        }
+    }
+    
+    model_cpu.root_node->transform = gltf_fixup * model_cpu.root_node->transform;
+
+    // iterate nodes with multiple materials, convert each submesh into a node
+    for (u32 i = 0; i < multimat_nodes.size(); i++) {
+        auto  multimat_node_index = multimat_nodes[i];
+        auto& multimat_node       = gltf_model.nodes[multimat_node_index];
+
+        if (multimat_node.mesh < 0)
+            break;
+
+        auto mesh = gltf_model.meshes[multimat_node.mesh];
+
+        for (u32 i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
+            auto                    primitive = mesh.primitives[i_primitive];
+            id_ptr<ModelCPU::Node> model_node_ptr      = id_ptr<ModelCPU::Node>::emplace();
+            model_cpu.nodes.insert_back(model_node_ptr);
+
+            char buffer[50];
+
+            itoa(i_primitive, buffer, 10);
+
+            int    material      = primitive.material;
+            string material_name = _calculate_gltf_material_name(gltf_model, material);
+            string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive);
+
+            fs::path material_path = output_folder / (material_name + material_extension);
+            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
+
+            model_node_ptr->name      = model_cpu.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
+            model_node_ptr->mesh_asset_path      = mesh_path.string();
+            model_node_ptr->material_asset_path  = material_path.string();
+            model_node_ptr->transform = m44::identity();
+            model_node_ptr->parent    = model_cpu.nodes[multimat_node_index];
+            model_cpu.nodes[multimat_node_index]->children.insert_back(model_node_ptr);
+        }
+    }
+
+    fs::path scene_path = output_folder / output_name;
+    scene_path.replace_extension(model_extension);
+
+    model_cpu.file_name = scene_path.string();
+
+    return model_cpu;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer) {
     int                   buffer_id     = accessor.bufferView;
@@ -435,147 +603,6 @@ m44 _calculate_matrix(tinygltf::Node& node) {
 
     return matrix;
 };
-
-ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name) {
-    // TODO: gltf can't support null materials
-    fs::create_directory(game.resource_folder);
-    auto folder = game.resource_folder / output_folder;
-    fs::create_directory(folder);
-
-    const auto& ext = input_path.extension().string();
-    assert_else(ext == ".gltf" || ext == ".glb")
-        return {};
-    tinygltf::Model    gltf_model;
-    tinygltf::TinyGLTF loader;
-    string             err, warn;
-
-    bool ret = ext == ".gltf"
-                   ? loader.LoadASCIIFromFile(&gltf_model, &err, &warn, input_path.string())
-                   : loader.LoadBinaryFromFile(&gltf_model, &err, &warn, input_path.string());
-
-    if (!warn.empty())
-        console_error(fmt_("Conversion warning while loading \"{}\": {}", input_path.string(), warn), "asset.import", ErrorType_Warning);
-    if (!err.empty())
-        console_error(fmt_("Conversion error while loading \"{}\": {}", input_path.string(), err), "asset.import", ErrorType_Severe);
-    assert_else(ret)
-        return {};
-
-    _convert_gltf_meshes(gltf_model, output_folder);
-    _convert_gltf_materials(gltf_model, output_folder);
-    
-    ModelCPU model_cpu;
-
-    // calculate parent hierarchies
-    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
-        model_cpu.nodes.insert_back(id_ptr<ModelCPU::Node>::emplace());
-    }
-    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
-        auto& children = model_cpu.nodes[i]->children;
-        for (u32 c : gltf_model.nodes[i].children) {
-            children.insert_back(model_cpu.nodes[c]);
-            model_cpu.nodes[c]->parent = model_cpu.nodes[i];
-        }
-    }
-
-    bool multiple_valid = false;
-    for (auto& node : model_cpu.nodes) {
-        if (!node->parent.valid()) {
-            // If we've already set a root node
-            multiple_valid = model_cpu.root_node != id_ptr<ModelCPU::Node>::null();
-            model_cpu.root_node = node;
-        }
-    }
-
-    if (multiple_valid) {
-        auto root_node = id_ptr<ModelCPU::Node>::emplace();
-        for (auto& node : model_cpu.nodes) {
-            if (!node->parent.valid()) {
-                node->parent = root_node;
-                root_node->children.insert_back(node);
-            }
-        }
-        model_cpu.root_node = root_node;
-        model_cpu.nodes.insert_back(root_node);
-        root_node->name = "root_node";
-        root_node->transform = m44::identity();
-    }
-
-    vector<u32> multimat_nodes;
-    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
-        auto& gltf_node = gltf_model.nodes[i];
-        auto& model_node = *model_cpu.nodes[i];
-
-        if (gltf_node.mesh >= 0 && gltf_model.meshes[gltf_node.mesh].primitives.size() == 1) {
-            auto mesh = gltf_model.meshes[gltf_node.mesh];
-
-            auto primitive = mesh.primitives[0];
-            int  material  = primitive.material;
-            assert_else(material >= 0 && "Need material on node, default mat NYI");
-            string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0);
-            string material_name = _calculate_gltf_material_name(gltf_model, material);
-
-            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
-            fs::path material_path = output_folder / (material_name + material_extension);
-
-            model_node.name                = gltf_node.name;
-            model_node.mesh_asset_path     = mesh_path.string();
-            model_node.material_asset_path = material_path.string();
-            model_node.transform           = _calculate_matrix(gltf_node);
-        }
-        // Serving hierarchy
-        else {
-            model_node.name      = gltf_node.name;
-            model_node.transform = _calculate_matrix(gltf_node);
-
-            if (gltf_node.mesh >= 0)
-                multimat_nodes.insert_back(i);
-        }
-    }
-    
-    model_cpu.root_node->transform = gltf_fixup * model_cpu.root_node->transform;
-
-    // iterate nodes with multiple materials, convert each submesh into a node
-    for (u32 i = 0; i < multimat_nodes.size(); i++) {
-        auto  multimat_node_index = multimat_nodes[i];
-        auto& multimat_node       = gltf_model.nodes[multimat_node_index];
-
-        if (multimat_node.mesh < 0)
-            break;
-
-        auto mesh = gltf_model.meshes[multimat_node.mesh];
-
-        for (u32 i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
-            auto                    primitive = mesh.primitives[i_primitive];
-            id_ptr<ModelCPU::Node> model_node_ptr      = id_ptr<ModelCPU::Node>::emplace();
-            model_cpu.nodes.insert_back(model_node_ptr);
-
-            char buffer[50];
-
-            itoa(i_primitive, buffer, 10);
-
-            int    material      = primitive.material;
-            string material_name = _calculate_gltf_material_name(gltf_model, material);
-            string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive);
-
-            fs::path material_path = output_folder / (material_name + material_extension);
-            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
-
-            model_node_ptr->name      = model_cpu.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
-            model_node_ptr->mesh_asset_path      = mesh_path.string();
-            model_node_ptr->material_asset_path  = material_path.string();
-            model_node_ptr->transform = m44::identity();
-            model_node_ptr->parent    = model_cpu.nodes[multimat_node_index];
-            model_cpu.nodes[multimat_node_index]->children.insert_back(model_node_ptr);
-        }
-    }
-
-    fs::path scene_path = output_folder / output_name;
-    scene_path.replace_extension(model_extension);
-
-    model_cpu.file_name = scene_path.string();
-
-    return model_cpu;
-}
 
 
 }

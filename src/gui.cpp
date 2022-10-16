@@ -57,7 +57,7 @@ void GUI::update() {
     ImGui::Begin("DockSpace Demo", nullptr, window_flags);
     ImGui::PopStyleVar(3);
 
-    ImGuiID            dockspace_id    = ImGui::GetID("MyDockspace");
+    ImGuiID            dockspace_id    = ImGui::GetID("Dockspace");
     ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
     ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
     ImGui::End();

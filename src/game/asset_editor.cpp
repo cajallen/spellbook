@@ -2,6 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "game.hpp"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "lib_ext/imgui_extra.hpp"
@@ -31,8 +32,8 @@ void AssetEditor::update() {
 
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
+    auto& model_comp = p_scene->registry.get<Model>(entity);
     if (ImGui::Begin("Asset Editor", p_open)) {
-        auto& model_comp = p_scene->registry.get<Model>(entity);
         PathSelect("File##Convert", &convert_file, "external_resources", "DND_PREFAB");
         if (ImGui::Button("Convert")) {
             save_model(convert_to_model(convert_file.string(), "models", "model"));
@@ -40,6 +41,9 @@ void AssetEditor::window(bool* p_open) {
         ImGui::Separator();
         PathSelect("File##Load", &load_file, "resources", "DND_PREFAB");
         if (ImGui::Button("Load")) {
+            if (model_comp.model_gpu.renderables.size() > 0) {
+                deinstance_model(p_scene->render_scene, model_comp.model_gpu);
+            }
             model_comp.model_cpu = load_model(load_file.string());
             model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
         }
@@ -47,6 +51,14 @@ void AssetEditor::window(bool* p_open) {
         inspect(&model_comp.model_cpu);
     }
     ImGui::End();
+
+    std::function<void()> callback = [&]() {
+        if (!model_comp.model_cpu.file_name.empty()) {
+            game.renderer.generate_thumbnail(model_comp.model_cpu, "Model");
+        }
+    };
+
+    game.renderer.start_render_callbacks.insert_back(callback);
 }
 
 

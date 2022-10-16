@@ -11,7 +11,9 @@
 #include "matrix_math.hpp"
 #include "console.hpp"
 #include "draw_functions.hpp"
+#include "game.hpp"
 #include "render_scene.hpp"
+#include "samplers.hpp"
 
 #include "utils.hpp"
 #include "assets/texture_asset.hpp"
@@ -166,6 +168,7 @@ void Renderer::render() {
         return;
 
     wait_for_futures();
+    
     stage = RenderStage_BuildingRG;
 
     auto& xdev_frame_resource = super_frame_resource->get_next_frame();
@@ -174,6 +177,10 @@ void Renderer::render() {
     std::shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
     plf::colony<vuk::Name>            attachment_names;
 
+    for (auto& callback : start_render_callbacks) {
+        callback();
+    }
+    
     size_t i = 0;
     for (auto scene : scenes) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
@@ -427,6 +434,182 @@ void Renderer::upload_defaults() {
     default_mesh.file_name = "default";
     upload_mesh(default_mesh);
 }
+
+
+void Renderer::generate_thumbnail(const ModelCPU& model, const string& name) {
+    static vuk::SampledImage* p_image = nullptr;
+    static bool initialized = false;
+
+    if (!initialized) {
+        struct CameraData {
+            m44GPU view;
+            m44GPU proj;
+            v4     position;
+        } cam_data;
+        v3 cam_position = v3(2);
+        cam_data.view     = (m44GPU) math::look(cam_position, -cam_position, v3(0,0,1));
+        cam_data.proj     = (m44GPU) math::infinite_perspective(math::PI / 2.f, 1.0f, 0.1f);
+        cam_data.position = v4(cam_position, 1.0f);
+
+        auto [pubo_camera, fubo_camera] = vuk::create_buffer_cross_device(*frame_allocator, vuk::MemoryUsage::eCPUtoGPU, std::span(&cam_data, 1));
+
+        struct SceneData {
+            v4 ambient = v4(1.f, 1.f, 1.f, 0.4f);
+            v4 fog = v4(0.04f, 0.02f, 0.04f, -1.f);
+            v4 sun_data = v4(0.5, 0.5, 0.5, 1.0f);
+            v2 rim_intensity_start = v2(0.25f, 0.55f);
+        } scene_data_gpu;
+
+        auto [pubo_scene, fubo_scene] = vuk::create_buffer_cross_device(*frame_allocator, vuk::MemoryUsage::eCPUtoGPU, std::span(&scene_data_gpu, 1));
+
+        RenderScene render_scene;
+        ModelGPU model_gpu = instance_model(render_scene, model);
+        
+        auto buffer_model_mats = **vuk::allocate_buffer_cross_device(*frame_allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * model_gpu.renderables.size(), 1});
+        int i = 0;
+        for (const auto& slot : model_gpu.renderables) {
+            auto transform_gpu = m44GPU(render_scene.renderables[slot].transform);
+            memcpy(reinterpret_cast<m44GPU*>(buffer_model_mats.mapped_ptr) + i++, &transform_gpu, sizeof(m44GPU));
+        }
+
+        auto rg = make_shared<vuk::RenderGraph>("graph");
+        
+        // Set up the pass to draw the textured cube, with a color and a depth attachment
+        // clang-format off
+        rg->add_pass({
+            .name = "forward",
+            .resources = {
+                "forward_input"_image >> vuk::eColorWrite     >> "forward_output",
+                "normal_input"_image  >> vuk::eColorWrite     >> "normal_output",
+                "depth_input"_image   >> vuk::eDepthStencilRW >> "depth_output"
+            },
+            .execute = [this, &pubo_camera, &pubo_scene, &buffer_model_mats, &model_gpu, &render_scene](vuk::CommandBuffer& command_buffer) {
+                ZoneScoped;
+                // Prepare render
+                command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+                    .set_viewport(0, vuk::Rect2D::framebuffer())
+                    .set_scissor(0, vuk::Rect2D::framebuffer())
+                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                              .depthTestEnable  = true,
+                              .depthWriteEnable = true,
+                              .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                    })
+                    .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
+                    .set_color_blend("forward_input", vuk::BlendPreset::eAlphaBlend)
+                    .set_color_blend("normal_input", vuk::BlendPreset::eOff);
+
+                // Bind buffers
+                command_buffer
+                    .bind_buffer(0, 0, *pubo_camera)
+                    .bind_buffer(0, 1, *pubo_scene)
+                    .bind_buffer(0, 2, buffer_model_mats);
+                int  i           = 0;
+                auto render_item = [&](Renderable& renderable) {
+                    ZoneScoped;
+                    MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
+                    MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
+                    if (mesh == nullptr || material == nullptr) {
+                        i++;
+                        return;
+                    }
+                    // Bind mesh
+                    command_buffer
+                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, vuk::Packed {
+                            vuk::Format::eR32G32B32Sfloat, // position
+                            vuk::Format::eR32G32B32Sfloat, // normal
+                            vuk::Format::eR32G32B32Sfloat, // tangent
+                            vuk::Format::eR32G32B32Sfloat, // color
+                            vuk::Format::eR32G32Sfloat     // uv
+                        })
+                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+
+                    // Bind Material
+                    command_buffer
+                        .set_rasterization({.cullMode = material->cull_mode})
+                        .bind_graphics_pipeline(material->pipeline);
+                    material->bind_parameters(command_buffer);
+                    material->bind_textures(command_buffer);
+
+                    // Draw call
+                    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, i++);
+                };
+
+                // Render items
+                for (auto slot : model_gpu.renderables) {
+                    render_item(render_scene.renderables[slot]);
+                }
+                // Render grid
+                auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->view.get();
+                command_buffer
+                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                        .depthTestEnable  = true,
+                        .depthWriteEnable = false,
+                        .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                    })
+                    .bind_graphics_pipeline("grid_3d")
+                    .set_rasterization({})
+                    .bind_buffer(0, 0, *pubo_camera)
+                    .bind_image(0, 1, grid_view)
+                    .bind_sampler(0, 1, TrilinearAnisotropic)
+                    .draw(6, 1, 0, 0);
+            }});
+        rg->add_pass(vuk::Pass {
+            .name = "postprocess_apply",
+            .resources = {
+                "forward_output"_image >> vuk::eComputeSampled,
+                "normal_output"_image  >> vuk::eComputeSampled,
+                "depth_output"_image   >> vuk::eComputeSampled,
+                "target_input"_image   >> vuk::eComputeWrite >> "target_output",
+            },
+            .execute =
+                [this](vuk::CommandBuffer& cmd) {
+                    cmd
+                        .bind_compute_pipeline("postprocess")
+                        .bind_image(0, 0, "forward_output")
+                        .bind_sampler(0, 0, NearestClamp)
+                        .bind_image(0, 1, "normal_output")
+                        .bind_sampler(0, 1, NearestClamp)
+                        .bind_image(0, 2, "depth_output")
+                        .bind_sampler(0, 2, NearestClamp)
+                        .bind_image(0, 3, "target_input");
+
+                    auto target      = *cmd.get_resource_image_attachment("target_input");
+                    auto target_size = target.extent.extent;
+                    cmd.specialize_constants(0, target_size.width);
+                    cmd.specialize_constants(1, target_size.height);
+
+                    cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, v4(5.0f, 6.0f, 0.05f, 3.0f));
+
+                    cmd.dispatch_invocations(target_size.width, target_size.height);
+                },
+        });
+        // clang-format on
+
+        auto clear_color      = vuk::ClearColor {scene_data_gpu.fog.r, scene_data_gpu.fog.g, scene_data_gpu.fog.b, 1.0f};
+        auto depth_clear_value = vuk::ClearDepthStencil{0.0f, 0};
+        rg->attach_and_clear_image("forward_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_color);
+        rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
+        rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
+        rg->attach_and_clear_image("target_input",
+            {.extent = vuk::Dimension3D::absolute(100u, 100u),
+             .format = vuk::Format::eR16G16B16A16Sfloat,
+             .sample_count = vuk::Samples::e1,
+             .level_count = 1,
+             .layer_count = 1},
+            (vuk::ClearColor) Color(0.07f, 0.06f, 0.07f, 0.0f));
+        
+        rg->inference_rule("forward_input", vuk::same_extent_as("target_input"));
+
+        vuk::Compiler compiler;
+        compiler.compile({&rg, 1}, {});
+        p_image = &*sampled_images.emplace(vuk::make_sampled_image(rg->name.append("::").append("target_output"), NearestClamp));
+        initialized = true;
+    }
+    
+    ImGui::Image(p_image, ImVec2(100, 100));
+}
+
+
 
 
 

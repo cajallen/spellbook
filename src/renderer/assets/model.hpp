@@ -47,9 +47,10 @@ struct ModelGPU {
     vector<slot<Renderable>> renderables;
 };
 
-void      save_model(const ModelCPU&);
+void     save_model(const ModelCPU&);
 ModelCPU load_model(const fs::path& input_path);
-ModelGPU instance_model(RenderScene& render_scene, const ModelCPU&);
+ModelGPU instance_model(RenderScene&, const ModelCPU&);
+void     deinstance_model(RenderScene&, const ModelGPU&);
 ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name);
 
 void inspect(ModelCPU* model);

@@ -6,29 +6,22 @@
 #include "string.hpp"
 #include "scene.hpp"
 
+#include "game/tower.hpp"
 #include "renderer/assets/model.hpp"
 
 namespace spellbook {
 
-struct Tower {
-    string     name;
-    Color      button_color;
-    ModelCPU* model;
-};
-
-struct Brush {
-    string     name;
-    Color      button_color;
-    ModelCPU* model;
-    bool       travelable;
+template <typename T>
+struct Button {
+    string text;
+    Color color;
+    T* item;
 };
 
 struct MapEditor {
-    static vector<Brush> brushes;
-    static vector<Tower> towers;
-
-    int    selected_brush = -1;
+    vector<Button<Tower>> towers;
     int    selected_tower = -1;
+    u32 selected_brush;
     Scene* p_scene        = nullptr;
     void   setup();
     void   setup(Scene* init_scene);

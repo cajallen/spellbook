@@ -19,5 +19,7 @@ MeshCPU generate_cube(v3 center, v3 extents);
 MeshCPU generate_icosphere(int subdivisions);
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices);
 
+void widget_thumbnail(const MeshGPU& mesh);
+
 }
 

@@ -13,17 +13,6 @@
 
 namespace spellbook {
 
-// clang-format off
-vector<Brush> MapEditor::brushes = {
-    {"Air", palette::black, nullptr, false},
-    {"Floor", palette::green, nullptr, false},
-    {"Path", palette::saddle_brown, nullptr, true},
-    {"Spawner", palette::cadet_blue, nullptr, true},
-    {"Consumer", palette::dark_gray, nullptr, true}
-};
-vector<Tower> MapEditor::towers = {};
-// clang-format on
-
 bool map_editor_mb_callback(GLFWwindow* window, int button, int action, int mods, void* data) {
     return false;
 }
@@ -85,7 +74,7 @@ void MapEditor::update() {
 
     // we should check if this mouse input is ours in the callback)
     if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_brush != -1) {
-        auto& brush = brushes[selected_brush];
+        /*auto& brush = brushes[selected_brush];
 
         bool found = false;
         auto view  = p_scene->registry.view<GridSlot, Model>();
@@ -111,7 +100,7 @@ void MapEditor::update() {
         // if (brush.name == "Spawner")
         //     p_scene->registry.emplace<Spawner>(entity, Input::time, 2.0f, for_spawner);
         if (brush.name == "Consumer")
-            p_scene->registry.emplace<Consumer>(entity, 0.5f, 0);
+            p_scene->registry.emplace<Consumer>(entity, 0.5f, 0);*/
     } else if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_tower != -1) {
         auto& tower = towers[selected_tower];
 
@@ -127,7 +116,7 @@ void MapEditor::update() {
 
         static int i      = 0;
         auto       entity = p_scene->registry.create();
-        p_scene->registry.emplace<Name>(entity, fmt_("{}_{}", tower.name, i++));
+        p_scene->registry.emplace<Name>(entity, fmt_("{}_{}", tower.text, i++));
         p_scene->registry.emplace<Transform>(entity, v3(cell));
         // TODO: add tower
         // p_scene->registry.emplace<Model>(entity, renderables, v3(0.5f, 0.5f, 0.0f));
@@ -160,14 +149,14 @@ void MapEditor::window(bool* p_open) {
         float  window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
         ImVec2 tower_button_sz   = ImVec2(100, 30);
         for (int i = 0; i < towers_count; i++) {
-            Color normal_color  = towers[i].button_color;
+            Color normal_color  = towers[i].color;
             Color hovered_color = mix(normal_color, palette::white, 0.2);
             Color pressed_color = mix(normal_color, palette::white, 0.1);
 
             ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) normal_color);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) hovered_color);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) pressed_color);
-            if (ImGui::Button(towers[i].name.c_str(), tower_button_sz) && selected_tower != i) {
+            if (ImGui::Button(towers[i].text.c_str(), tower_button_sz) && selected_tower != i) {
                 selected_tower = i;
                 selected_brush = -1;
             }
@@ -187,7 +176,7 @@ void MapEditor::window(bool* p_open) {
         }
 
         ImGui::Separator();
-        ImGui::Text("Brushes");
+        /*ImGui::Text("Brushes");
         int    buttons_count = brushes.size();
         ImVec2 button_sz     = ImVec2(100, 100);
         for (int i = 0; i < buttons_count; i++) {
@@ -215,7 +204,7 @@ void MapEditor::window(bool* p_open) {
             float next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
             if (i + 1 < buttons_count && next_button_x2 < window_visible_x2)
                 ImGui::SameLine();
-        }
+        }*/
     } else {
         selected_brush = -1;
         selected_tower = -1;

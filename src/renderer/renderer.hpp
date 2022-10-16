@@ -17,6 +17,7 @@
 
 #include "matrix.hpp"
 #include "umap.hpp"
+#include "assets/model.hpp"
 
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
@@ -75,6 +76,8 @@ struct Renderer {
 
     RenderStage stage = RenderStage_Inactive;
 
+    vector<std::function<void()>> start_render_callbacks;
+    
     void enqueue_setup(vuk::Future&& fut) {
         std::scoped_lock _(setup_lock);
         futures.emplace_back(std::move(fut));
@@ -105,6 +108,8 @@ struct Renderer {
     MeshGPU& get_mesh_or_upload(const string& asset_path);
     MaterialGPU& get_material_or_upload(const string& asset_path);
     TextureGPU& get_texture_or_upload(const string& asset_path);
+
+    void generate_thumbnail(const ModelCPU& model, const string& name);
     
     void upload_defaults();
 

@@ -218,4 +218,16 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
     return std::move(mesh_cpu);
 }
 
+
+
+void widget_thumbnail(const MeshGPU& mesh) {
+}
+
+
+
+
+
+
+
+
 }
