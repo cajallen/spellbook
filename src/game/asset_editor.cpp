@@ -52,13 +52,23 @@ void AssetEditor::window(bool* p_open) {
     }
     ImGui::End();
 
-    std::function<void()> callback = [&]() {
-        if (!model_comp.model_cpu.file_name.empty()) {
-            game.renderer.generate_thumbnail(model_comp.model_cpu, "Model");
-        }
-    };
+    static auto render_scene = new RenderScene();
+    static bool initialized = false;
+    
+    if (initialized)
+        render_scene->pause = true;
+    
+    if (!initialized && !model_comp.model_cpu.file_name.empty()) {
+        render_scene->name = "model_thumbnail";
+        render_scene->viewport.name	 = render_scene->name + "::viewport";
+        render_scene->viewport.camera = new Camera(v3(-8, 0, 4), math::d2r(euler{0, -30}));
+        render_scene->viewport.setup();
 
-    game.renderer.start_render_callbacks.insert_back(callback);
+        ModelGPU model_gpu = instance_model(*render_scene, model_comp.model_cpu);
+        
+        game.renderer.add_scene(render_scene);
+        initialized = true;
+    }
 }
 
 

@@ -274,6 +274,8 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
 
 void RenderScene::cleanup(vuk::Allocator& allocator) {}
 
+
+
 void inspect(RenderScene* scene) {
     ImGui::Text("Viewport");
     inspect(&scene->viewport);

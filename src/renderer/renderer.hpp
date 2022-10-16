@@ -108,8 +108,6 @@ struct Renderer {
     MeshGPU& get_mesh_or_upload(const string& asset_path);
     MaterialGPU& get_material_or_upload(const string& asset_path);
     TextureGPU& get_texture_or_upload(const string& asset_path);
-
-    void generate_thumbnail(const ModelCPU& model, const string& name);
     
     void upload_defaults();
 

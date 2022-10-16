@@ -43,11 +43,12 @@ struct RenderScene {
     vuk::BufferCrossDevice buffer_scene_data;
     vuk::BufferCrossDevice buffer_model_mats;
 
-    v2i           query = v2i(-1, -1);
+    v2i         query = v2i(-1, -1);
     vuk::Future fut_query_result;
-
-    void _upload_buffer_objects(vuk::Allocator& frame_allocator);
-
+    
+    bool pause;
+    vuk::Future render_result;
+    
     void        setup(vuk::Allocator& allocator);
     vuk::Future render(vuk::Allocator& allocator, vuk::Future future);
     void        cleanup(vuk::Allocator& allocator);
@@ -55,6 +56,8 @@ struct RenderScene {
     slot<Renderable> add_renderable(Renderable renderable);
     slot<Renderable> copy_renderable(slot<Renderable> renderable);
     void             delete_renderable(slot<Renderable> renderable);
+    
+    void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 };
 
 void inspect(RenderScene* render_scene);
