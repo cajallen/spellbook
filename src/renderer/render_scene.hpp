@@ -45,9 +45,12 @@ struct RenderScene {
 
     v2i         query = v2i(-1, -1);
     vuk::Future fut_query_result;
+
+    bool pause = false;
+    vuk::Texture render_target;
     
     void        setup(vuk::Allocator& allocator);
-    vuk::Future render(vuk::Allocator& allocator, vuk::Future future);
+    vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
     void        cleanup(vuk::Allocator& allocator);
 
     slot<Renderable> add_renderable(Renderable renderable);

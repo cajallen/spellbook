@@ -17,6 +17,23 @@
 #include "renderable.hpp"
 #include "assets/mesh_asset.hpp"
 
+namespace vuk {
+static Texture allocate_texture(Allocator& allocator, Format format, Extent3D extent) {
+    ImageCreateInfo ici;
+    ici.format = format;
+    ici.extent = extent;
+    ici.samples = Samples::e1;
+    ici.initialLayout = ImageLayout::eUndefined;
+    ici.tiling = ImageTiling::eOptimal;
+    ici.usage = ImageUsageFlagBits::eTransferSrc | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled;
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    auto tex = allocator.get_context().allocate_texture(allocator, ici);
+    return std::move(tex);
+}
+}
+
+
 namespace spellbook {
 
 void RenderScene::setup(vuk::Allocator& allocator) {
@@ -31,6 +48,10 @@ void RenderScene::setup(vuk::Allocator& allocator) {
         pci2.add_glsl(get_contents("src/shaders/grid.frag"), "grid.frag");
         game.renderer.context->create_named_pipeline("grid_3d", pci2);
     }
+
+    
+    // temp size
+    render_target = vuk::allocate_texture(allocator, game.renderer.swapchain->format, vuk::Extent3D{100, 100, 1});
 }
 
 slot<Renderable> RenderScene::add_renderable(Renderable renderable) {
@@ -90,6 +111,12 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
     ZoneScoped;
 
+    if (pause) {
+        auto rg = make_shared<vuk::RenderGraph>("graph");
+        rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
+        vuk::Future {rg, "target_output"};
+    }
+    
     auto upload_item = [](const Renderable& renderable) {
         MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
         MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
@@ -122,7 +149,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     _upload_buffer_objects(frame_allocator);
 
     auto rg = make_shared<vuk::RenderGraph>("graph");
-    rg->attach_in("target_input", std::move(target));
+    rg->attach_in("target_input", target);
     // Set up the pass to draw the textured cube, with a color and a depth attachment
     // clang-format off
     rg->add_pass({

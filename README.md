@@ -6,3 +6,11 @@ The engine, built in parallel and from relative scratch, that the game runs on. 
 
 ## Project goals
 The primary goal of this project is to avoid theoretical gains, and focus on making tangible progress. 
+
+
+## Temp Build Instructions
+1. Initialize submodules
+2. Rename libs/fmt/src/format.cc to libs/fmt_src/fmt_format.cc
+3. If step 2 upsets you, tell me how to avoid the incremental compilation error that results from not doing that
+4. Fix Vulkan include header paths and paths for linker
+5. If step 4 upsets you, give me a working CMake file 
