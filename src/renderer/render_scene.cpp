@@ -149,7 +149,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     _upload_buffer_objects(frame_allocator);
 
     auto rg = make_shared<vuk::RenderGraph>("graph");
-    rg->attach_in("target_input", target);
+    rg->attach_in("target_input", std::move(target));
     // Set up the pass to draw the textured cube, with a color and a depth attachment
     // clang-format off
     rg->add_pass({
