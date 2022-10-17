@@ -131,7 +131,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="libs\fmt\src\fmt_format.cc" />
+    <ClCompile Include="libs\fmt\src\format.cc">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)\$(InputName)_fmt.obj</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)\$(InputName)_fmt.obj</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
