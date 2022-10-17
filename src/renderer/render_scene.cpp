@@ -90,7 +90,7 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
     ZoneScoped;
 
-    auto upload_item = [](Renderable& renderable) {
+    auto upload_item = [](const Renderable& renderable) {
         MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
         MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
 

@@ -14,6 +14,8 @@
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
 
+#include "game/asset_browser.hpp"
+
 namespace spellbook {
 
 vector<ModelCPU> ModelCPU::split() {
@@ -155,7 +157,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     fs::create_directory(folder);
 
     const auto& ext = input_path.extension().string();
-    assert_else(ext == ".gltf" || ext == ".glb")
+    assert_else(possible_model_asset(input_path))
         return {};
     tinygltf::Model    gltf_model;
     tinygltf::TinyGLTF loader;

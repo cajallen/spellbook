@@ -177,6 +177,7 @@
     <ClCompile Include="src\console.cpp" />
     <ClCompile Include="src\file.cpp" />
     <ClCompile Include="src\game.cpp" />
+    <ClCompile Include="src\game\asset_browser.cpp" />
     <ClCompile Include="src\game\asset_editor.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -941,6 +942,7 @@
     <ClInclude Include="libs\vuk\src\RenderPass.hpp" />
     <ClInclude Include="libs\vuk\src\RGImage.hpp" />
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp" />
+    <ClInclude Include="src\game\asset_browser.hpp" />
     <ClInclude Include="src\game\asset_editor.hpp" />
     <ClInclude Include="src\game\general.hpp" />
     <ClInclude Include="src\game\tower.hpp" />

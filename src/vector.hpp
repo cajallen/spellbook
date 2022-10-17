@@ -226,7 +226,7 @@ bool vector<T>::empty() const {
 
 template <typename T>
 bool vector<T>::contains(const T& t) const {
-    return internal.contains(t);
+    return std::find(internal.begin(), internal.end(), t) != internal.end();
 }
 
 template <typename T>

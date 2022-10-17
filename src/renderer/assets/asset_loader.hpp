@@ -1,12 +1,14 @@
 #pragma once
 
 #include <array>
+#include <filesystem>
 
 #include "json.hpp"
 #include "vector.hpp"
 #include "string.hpp"
 
 using std::array;
+namespace fs = std::filesystem;
 
 namespace spellbook {
 

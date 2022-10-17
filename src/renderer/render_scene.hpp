@@ -46,9 +46,6 @@ struct RenderScene {
     v2i         query = v2i(-1, -1);
     vuk::Future fut_query_result;
     
-    bool pause;
-    vuk::Future render_result;
-    
     void        setup(vuk::Allocator& allocator);
     vuk::Future render(vuk::Allocator& allocator, vuk::Future future);
     void        cleanup(vuk::Allocator& allocator);

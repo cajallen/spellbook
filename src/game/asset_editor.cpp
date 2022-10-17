@@ -2,6 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "asset_browser.hpp"
 #include "game.hpp"
 #include "imgui/misc/cpp/imgui_stdlib.h"
 
@@ -33,13 +34,19 @@ void AssetEditor::update() {
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
     auto& model_comp = p_scene->registry.get<Model>(entity);
+
+    if (other_file == "") {
+        other_file = fs::path("C:/spellbook/resources/");
+    }
+    asset_browser("Asset Browser", &other_file);
+    
     if (ImGui::Begin("Asset Editor", p_open)) {
-        PathSelect("File##Convert", &convert_file, "external_resources", "DND_PREFAB");
+        PathSelect("File##Convert", &convert_file, "external_resources", [](const fs::path& path) { return possible_model_asset(path); }, "DND_MODEL_ASSET");
         if (ImGui::Button("Convert")) {
             save_model(convert_to_model(convert_file.string(), "models", "model"));
         }
         ImGui::Separator();
-        PathSelect("File##Load", &load_file, "resources", "DND_PREFAB");
+        PathSelect("File##Load", &load_file, "resources", [](const fs::path& path) { return possible_model(path); }, "DND_MODEL");
         if (ImGui::Button("Load")) {
             if (model_comp.model_gpu.renderables.size() > 0) {
                 deinstance_model(p_scene->render_scene, model_comp.model_gpu);
@@ -52,23 +59,21 @@ void AssetEditor::window(bool* p_open) {
     }
     ImGui::End();
 
-    static auto render_scene = new RenderScene();
-    static bool initialized = false;
-    
-    if (initialized)
-        render_scene->pause = true;
-    
-    if (!initialized && !model_comp.model_cpu.file_name.empty()) {
-        render_scene->name = "model_thumbnail";
-        render_scene->viewport.name	 = render_scene->name + "::viewport";
-        render_scene->viewport.camera = new Camera(v3(-8, 0, 4), math::d2r(euler{0, -30}));
-        render_scene->viewport.setup();
-
-        ModelGPU model_gpu = instance_model(*render_scene, model_comp.model_cpu);
-        
-        game.renderer.add_scene(render_scene);
-        initialized = true;
-    }
+    // static auto render_scene = new RenderScene();
+    // static bool initialized = false;
+    //
+    // if (!initialized && !model_comp.model_cpu.file_name.empty()) {
+    //     render_scene->name = "model_thumbnail";
+    //     render_scene->viewport.name	 = render_scene->name + "::viewport";
+    //     v3 cam_position = 4.f * v3(1, 1, 1);
+    //     render_scene->viewport.camera = new Camera(cam_position, math::vector2euler(-cam_position));
+    //     render_scene->viewport.setup();
+    //
+    //     ModelGPU model_gpu = instance_model(*render_scene, model_comp.model_cpu);
+    //     
+    //     game.renderer.add_scene(render_scene);
+    //     initialized = true;
+    // }
 }
 
 

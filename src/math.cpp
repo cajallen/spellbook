@@ -238,7 +238,7 @@ v3 euler2vector(euler e) {
 
 euler vector2euler(v3 v) {
     v         = math::normalize(v);
-    f32 pitch = math::asin(-v.z);
+    f32 pitch = math::asin(v.z);
     f32 yaw   = math::atan2(v.y, v.x);
     return euler{yaw, pitch};
 }

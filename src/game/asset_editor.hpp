@@ -14,7 +14,8 @@ struct AssetEditor {
 
     fs::path convert_file = {};
     fs::path load_file    = {};
-
+    fs::path other_file = {};
+    
     entt::entity entity;
     
     void      setup();

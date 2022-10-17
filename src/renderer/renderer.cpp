@@ -23,7 +23,8 @@
 
 namespace spellbook {
 
-Renderer::Renderer() : imgui_data() {
+Renderer::Renderer()
+    : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
 #if VALIDATION
@@ -56,11 +57,11 @@ Renderer::Renderer() : imgui_data() {
     window  = create_window_glfw("Spellbook", window_size, true);
     surface = create_surface_glfw(vkbinstance.instance, window);
 
-    GLFWimage images[1]; 
+    GLFWimage images[1];
     images[0].pixels = stbi_load("icon.png", &images[0].width, &images[0].height, 0, 4); //rgba channels 
-    glfwSetWindowIcon(window, 1, images); 
+    glfwSetWindowIcon(window, 1, images);
     stbi_image_free(images[0].pixels);
-    
+
     selector.set_surface(surface)
             .set_minimum_version(1, 0)
             .set_required_features(vkfeatures)
@@ -140,9 +141,9 @@ void Renderer::setup() {
         pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "textured_3d.frag");
         context->create_named_pipeline("textured_model", pci);
     }
-    
+
     upload_defaults();
-    
+
     {
         // OPTIMIZATION: can thread
         for (auto scene : scenes) {
@@ -151,7 +152,7 @@ void Renderer::setup() {
     }
 
     wait_for_futures();
-    
+
     setup_finished = true;
 }
 
@@ -168,7 +169,7 @@ void Renderer::render() {
         return;
 
     wait_for_futures();
-    
+
     stage = RenderStage_BuildingRG;
 
     auto& xdev_frame_resource = super_frame_resource->get_next_frame();
@@ -179,25 +180,11 @@ void Renderer::render() {
     for (auto& callback : start_render_callbacks) {
         callback();
     }
-    
+
     size_t i = 0;
     for (auto scene : scenes) {
-        ImGui::Begin(scene->name.c_str());
-        vuk::Name attachment_name = vuk::Name(scene->name + "_final");
-        if (scene->pause) {
-            if (ImGui::Button("Update")) {
-                scene->pause = false;
-            }
-        }
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-        if (scene->pause) {
-            rg->attach_in(attachment_name, scene->render_result);
-            auto si = vuk::make_sampled_image(rg->name.append("::").append(attachment_name.to_sv()), imgui_data.font_sci);
-            ImGui::Image(&*sampled_images.emplace(si), ImGui::GetContentRegionAvail());
-            ImGui::PopStyleVar();
-            ImGui::End();
-            continue;
-        }
+        ImGui::Begin(scene->name.c_str());
         v2i output_size       = (v2i) ImGui::GetContentRegionAvail();
         output_size.x         = output_size.x <= 0 ? 1 : output_size.x;
         output_size.y         = output_size.y <= 0 ? 1 : output_size.y;
@@ -215,11 +202,12 @@ void Renderer::render() {
              .layer_count = 1},
             (vuk::ClearColor) Color(0.07f, 0.06f, 0.07f, 0.0f));
 
-        scene->render_result         = scene->render(*frame_allocator, vuk::Future{rgx, "_img"});
-        auto       rg_frag             = scene->render_result.get_render_graph();
+        auto          rg_frag_fut     = scene->render(*frame_allocator, vuk::Future{rgx, "_img"});
+        auto          attachment_name = vuk::Name(scene->name + "_final");
+        auto          rg_frag         = rg_frag_fut.get_render_graph();
         vuk::Compiler compiler;
         compiler.compile({&rg_frag, 1}, {});
-        rg->attach_in(attachment_name, scene->render_result);
+        rg->attach_in(attachment_name, std::move(rg_frag_fut));
         auto si = vuk::make_sampled_image(rg->name.append("::").append(attachment_name.to_sv()), imgui_data.font_sci);
         ImGui::Image(&*sampled_images.emplace(si), ImGui::GetContentRegionAvail());
         ImGui::PopStyleVar();
@@ -233,8 +221,9 @@ void Renderer::render() {
     auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN+"}, imgui_data, ImGui::GetDrawData(), sampled_images);
     stage    = RenderStage_Presenting;
     vuk::Compiler compiler;
+    try {
     present(*frame_allocator, compiler, swapchain, std::move(fut));
-
+    } catch (vuk::PresentException& e) {}
     sampled_images.clear();
     frame_allocator.reset();
 
@@ -327,7 +316,7 @@ MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool fra
 
 TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
     assert_else(!tex_cpu.file_name.empty());
-    u64 tex_cpu_hash              = hash_data(tex_cpu.file_name.data(), tex_cpu.file_name.size());
+    u64 tex_cpu_hash = hash_data(tex_cpu.file_name.data(), tex_cpu.file_name.size());
     texture_aliases[tex_cpu.name] = tex_cpu_hash;
     vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
     auto [tex, tex_fut] = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
@@ -361,7 +350,7 @@ MaterialGPU* Renderer::get_material(const string& asset_path) {
 TextureGPU* Renderer::get_texture(const string& asset_path) {
     if (asset_path.empty())
         return nullptr;
-    
+
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (texture_cache.count(hash))
         return &texture_cache[hash];
@@ -391,7 +380,6 @@ TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
         return texture_cache[hash];
     return upload_texture(load_texture(asset_path));
 }
-
 
 
 void Renderer::debug_window(bool* p_open) {
@@ -426,7 +414,7 @@ void Renderer::upload_defaults() {
         save_texture(tex_white_upload);
     }
     upload_texture(load_texture("textures/grid.sbtex"));
-    
+
     MaterialCPU default_mat = {
         .name = "default",
         .file_name = "default",
@@ -436,18 +424,16 @@ void Renderer::upload_defaults() {
     TextureCPU default_tex = {
         .name = "default",
         .file_name = "default",
-        .size = {2,2},
+        .size = {2, 2},
         .format = vuk::Format::eR8G8B8A8Srgb,
-        .pixels = {255,0,0,255,0,255,0,255,0,0,255,255,255,255,255,255}
+        .pixels = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255}
     };
     upload_texture(default_tex);
-    MeshCPU default_mesh = generate_cube(v3(0), v3(1));
-    default_mesh.name = "default";
+    MeshCPU default_mesh   = generate_cube(v3(0), v3(1));
+    default_mesh.name      = "default";
     default_mesh.file_name = "default";
     upload_mesh(default_mesh);
 }
-
-
 
 
 void FrameTimer::update() {
