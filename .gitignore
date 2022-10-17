@@ -1,4 +1,7 @@
 resources
+!resources/textures/grid.sbtex
+!resources/textures/white.sbtex
+
 external_resources
 imgui.ini
 

@@ -47,7 +47,7 @@ struct RenderScene {
     vuk::Future fut_query_result;
     
     void        setup(vuk::Allocator& allocator);
-    vuk::Future render(vuk::Allocator& allocator, vuk::Future future);
+    vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
     void        cleanup(vuk::Allocator& allocator);
 
     slot<Renderable> add_renderable(Renderable renderable);

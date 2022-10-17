@@ -6,3 +6,8 @@ The engine, built in parallel and from relative scratch, that the game runs on. 
 
 ## Project goals
 The primary goal of this project is to avoid theoretical gains, and focus on making tangible progress. 
+
+## Temp Build Instructions
+1. Initialize submodules
+2. Fix Vulkan include header paths and paths for linker
+3. If step 4 upsets you, give me a working CMake file 
