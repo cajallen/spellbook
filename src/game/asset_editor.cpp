@@ -34,10 +34,10 @@ void AssetEditor::update() {
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
     auto& model_comp = p_scene->registry.get<Model>(entity);
-
-    if (other_file.empty()) {
+    
+    if (other_file.empty())
         other_file = fs::current_path() / "resources";
-    }
+
     asset_browser("Asset Browser", &other_file);
     
     if (ImGui::Begin("Asset Editor", p_open)) {

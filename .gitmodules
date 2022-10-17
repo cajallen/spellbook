@@ -1,21 +1,21 @@
 [submodule "libs/entt"]
 	path = libs/entt
-	url = git@github.com:skypjack/entt.git
+	url = https://github.com/skypjack/entt.git
 [submodule "libs/tinygltf"]
 	path = libs/tinygltf
-	url = git@github.com:syoyo/tinygltf.git
+	url = https://github.com/syoyo/tinygltf.git
 [submodule "libs/fmt"]
 	path = libs/fmt
-	url = git@github.com:fmtlib/fmt.git
+	url = https://github.com/fmtlib/fmt.git
 [submodule "libs/vuk"]
 	path = libs/vuk
-	url = git@github.com:martty/vuk.git
+	url = https://github.com/martty/vuk.git
 [submodule "libs/imgui"]
 	path = libs/imgui
-	url = git@github.com:ocornut/imgui.git
+	url = https://github.com/ocornut/imgui.git
 [submodule "libs/vk-bootstrap"]
 	path = libs/vk-bootstrap
-	url = git@github.com:charles-lunarg/vk-bootstrap.git
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
 [submodule "libs/tracy"]
 	path = libs/tracy
-	url = git@github.com:wolfpld/tracy.git
+	url = https://github.com/wolfpld/tracy.git
