@@ -114,7 +114,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     if (pause) {
         auto rg = make_shared<vuk::RenderGraph>("graph");
         rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
-        vuk::Future {rg, "target_output"};
+        return vuk::Future {rg, "target_output"};
     }
     
     auto upload_item = [](const Renderable& renderable) {
@@ -305,6 +305,7 @@ void RenderScene::cleanup(vuk::Allocator& allocator) {}
 
 void inspect(RenderScene* scene) {
     ImGui::Text("Viewport");
+    ImGui::Checkbox("Pause", &scene->pause);
     inspect(&scene->viewport);
     ImGui::ColorEdit4("Ambient", scene->scene_data.ambient.data);
     ImGui::DragFloat("Rim Start", &scene->scene_data.rim_intensity_start.y, 0.01f);
