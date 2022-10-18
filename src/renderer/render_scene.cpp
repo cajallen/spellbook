@@ -17,6 +17,23 @@
 #include "renderable.hpp"
 #include "assets/mesh_asset.hpp"
 
+namespace vuk {
+static Texture allocate_texture(Allocator& allocator, Format format, Extent3D extent) {
+    ImageCreateInfo ici;
+    ici.format = format;
+    ici.extent = extent;
+    ici.samples = Samples::e1;
+    ici.initialLayout = ImageLayout::eUndefined;
+    ici.tiling = ImageTiling::eOptimal;
+    ici.usage         = ImageUsageFlagBits::eStorage | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled;
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    auto tex = allocator.get_context().allocate_texture(allocator, ici);
+    return std::move(tex);
+}
+}
+
+
 namespace spellbook {
 
 void RenderScene::setup(vuk::Allocator& allocator) {
@@ -31,6 +48,11 @@ void RenderScene::setup(vuk::Allocator& allocator) {
         pci2.add_glsl(get_contents("src/shaders/grid.frag"), "grid.frag");
         game.renderer.context->create_named_pipeline("grid_3d", pci2);
     }
+}
+
+void RenderScene::update_size(v2i new_size) {
+    render_target = vuk::allocate_texture(*game.renderer.global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
+    viewport.update_size(new_size);
 }
 
 slot<Renderable> RenderScene::add_renderable(Renderable renderable) {
@@ -90,6 +112,12 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
     ZoneScoped;
 
+    if (pause) {
+        auto rg = make_shared<vuk::RenderGraph>("graph");
+        rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
+        return vuk::Future {rg, "target_output"};
+    }
+    
     auto upload_item = [](const Renderable& renderable) {
         MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
         MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
@@ -278,6 +306,7 @@ void RenderScene::cleanup(vuk::Allocator& allocator) {}
 
 void inspect(RenderScene* scene) {
     ImGui::Text("Viewport");
+    ImGui::Checkbox("Pause", &scene->pause);
     inspect(&scene->viewport);
     ImGui::ColorEdit4("Ambient", scene->scene_data.ambient.data);
     ImGui::DragFloat("Rim Start", &scene->scene_data.rim_intensity_start.y, 0.01f);

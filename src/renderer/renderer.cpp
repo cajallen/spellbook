@@ -190,20 +190,15 @@ void Renderer::render() {
         output_size.x         = output_size.x <= 0 ? 1 : output_size.x;
         output_size.y         = output_size.y <= 0 ? 1 : output_size.y;
         scene->viewport.start = (v2i) ImGui::GetWindowPos() + (v2i) ImGui::GetCursorPos();
-        scene->viewport.update_size(output_size);
         scene->viewport.window_hovered = ImGui::IsWindowHovered();
-        scene->viewport.pre_render(); // prepares matrices
+        if (scene->viewport.size != output_size)
+            scene->update_size(output_size);
+        scene->viewport.pre_render();
 
         std::shared_ptr<vuk::RenderGraph> rgx = std::make_shared<vuk::RenderGraph>(vuk::Name(scene->name));
-        rgx->attach_and_clear_image("_img",
-            {.extent = vuk::Dimension3D::absolute((u32) output_size.x, (u32) output_size.y),
-             .format = vuk::Format::eR16G16B16A16Sfloat,
-             .sample_count = vuk::Samples::e1,
-             .level_count = 1,
-             .layer_count = 1},
-            (vuk::ClearColor) Color(0.07f, 0.06f, 0.07f, 0.0f));
-
-        auto          rg_frag_fut     = scene->render(*frame_allocator, vuk::Future{rgx, "_img"});
+        rgx->attach_image("target_uncleared", vuk::ImageAttachment::from_texture(scene->render_target));
+        rgx->clear_image("target_uncleared", "target", vuk::ClearColor{0.1f, 0.1f, 0.1f, 1.0f});
+        auto          rg_frag_fut     = scene->render(*frame_allocator, vuk::Future{rgx, "target"});
         auto          attachment_name = vuk::Name(scene->name + "_final");
         auto          rg_frag         = rg_frag_fut.get_render_graph();
         vuk::Compiler compiler;

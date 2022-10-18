@@ -50,8 +50,10 @@ void Game::step(bool skip_input) {
 }
 
 void Game::shutdown() {
-    for (Scene* scene : scenes)
+    for (Scene* scene : scenes) {
         scene->cleanup();
+        delete scene;
+    }
     renderer.cleanup();
 }
 

@@ -10,4 +10,3 @@ The primary goal of this project is to avoid theoretical gains, and focus on mak
 ## Temp Build Instructions
 1. Initialize submodules
 2. Fix Vulkan include header paths and paths for linker
-3. If step 4 upsets you, give me a working CMake file 

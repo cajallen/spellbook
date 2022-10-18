@@ -89,6 +89,7 @@ void Scene::update() {
 
 void Scene::cleanup() {
 	render_scene.cleanup(*game.renderer.global_allocator);
+    // TODO: should remove render scene from render scenes list
 }
 
 
