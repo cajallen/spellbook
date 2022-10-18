@@ -25,7 +25,7 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
     data.font_texture = std::move(tex);
     vuk::Compiler comp;
     stub.wait(allocator, comp);
-    ctx.debug.set_name(data.font_texture, "ImGui/font");
+    ctx.set_name(data.font_texture, "ImGui/font");
     vuk::SamplerCreateInfo sci;
     sci.minFilter = sci.magFilter = vuk::Filter::eLinear;
     sci.mipmapMode                = vuk::SamplerMipmapMode::eLinear;

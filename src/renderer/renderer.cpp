@@ -67,9 +67,7 @@ Renderer::Renderer()
             .set_required_features(vkfeatures)
             .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     auto phys_ret = selector.select();
-    assert_else(phys_ret.has_value()) {
-        // error
-    }
+    assert_else(phys_ret.has_value());
     vkb::PhysicalDevice vkbphysical_device = phys_ret.value();
     physical_device                        = vkbphysical_device.physical_device;
 
@@ -92,9 +90,7 @@ Renderer::Renderer()
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR, .synchronization2 = true};
     device_builder = device_builder.add_pNext(&vk12features).add_pNext(&vk11features).add_pNext(&sync_feat);
     auto dev_ret   = device_builder.build();
-    assert_else(dev_ret.has_value()) {
-        // error
-    }
+    assert_else(dev_ret.has_value());
     vkbdevice                        = dev_ret.value();
     graphics_queue                   = vkbdevice.get_queue(vkb::QueueType::graphics).value();
     auto graphics_queue_family_index = vkbdevice.get_queue_index(vkb::QueueType::graphics).value();
@@ -103,16 +99,21 @@ Renderer::Renderer()
     device                           = vkbdevice.device;
 
     vuk::ContextCreateParameters::FunctionPointers fps;
+#define VUK_EX_LOAD_FP(name) fps.name = (PFN_##name)vkGetDeviceProcAddr(device, #name);
+    VUK_EX_LOAD_FP(vkSetDebugUtilsObjectNameEXT);
+    VUK_EX_LOAD_FP(vkCmdBeginDebugUtilsLabelEXT);
+    VUK_EX_LOAD_FP(vkCmdEndDebugUtilsLabelEXT);
 
     context.emplace(vuk::ContextCreateParameters{instance,
-                                                 device,
-                                                 physical_device,
-                                                 graphics_queue,
-                                                 graphics_queue_family_index,
-                                                 VK_NULL_HANDLE,
-                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                 transfer_queue,
-                                                 transfer_queue_family_index});
+         device,
+         physical_device,
+         graphics_queue,
+         graphics_queue_family_index,
+         VK_NULL_HANDLE,
+         VK_QUEUE_FAMILY_IGNORED,
+         transfer_queue,
+         transfer_queue_family_index,
+        fps});
     const unsigned num_inflight_frames = 3;
     super_frame_resource.emplace(*context, num_inflight_frames);
     global_allocator.emplace(*super_frame_resource);
@@ -320,7 +321,7 @@ TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_alloc
     texture_aliases[tex_cpu.name] = tex_cpu_hash;
     vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
     auto [tex, tex_fut] = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
-    context->debug.set_name(tex, vuk::Name(tex_cpu.name));
+    context->set_name(tex, vuk::Name(tex_cpu.name));
     enqueue_setup(std::move(tex_fut));
 
     if (frame_allocation); // TODO: frame allocation
