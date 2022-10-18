@@ -48,6 +48,8 @@ struct RenderScene {
 
     bool pause = false;
     vuk::Texture render_target;
+
+    void update_size(v2i new_size);
     
     void        setup(vuk::Allocator& allocator);
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);

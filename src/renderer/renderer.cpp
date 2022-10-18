@@ -189,9 +189,10 @@ void Renderer::render() {
         output_size.x         = output_size.x <= 0 ? 1 : output_size.x;
         output_size.y         = output_size.y <= 0 ? 1 : output_size.y;
         scene->viewport.start = (v2i) ImGui::GetWindowPos() + (v2i) ImGui::GetCursorPos();
-        scene->viewport.update_size(output_size);
         scene->viewport.window_hovered = ImGui::IsWindowHovered();
-        scene->viewport.pre_render(); // prepares matrices
+        if (scene->viewport.size != output_size)
+            scene->update_size(output_size);
+        scene->viewport.pre_render();
 
         std::shared_ptr<vuk::RenderGraph> rgx = std::make_shared<vuk::RenderGraph>(vuk::Name(scene->name));
         rgx->attach_image("target_uncleared", vuk::ImageAttachment::from_texture(scene->render_target));

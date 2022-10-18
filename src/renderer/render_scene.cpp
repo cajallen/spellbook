@@ -25,7 +25,7 @@ static Texture allocate_texture(Allocator& allocator, Format format, Extent3D ex
     ici.samples = Samples::e1;
     ici.initialLayout = ImageLayout::eUndefined;
     ici.tiling = ImageTiling::eOptimal;
-    ici.usage = ImageUsageFlagBits::eTransferSrc | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled;
+    ici.usage         = ImageUsageFlagBits::eStorage | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled;
     ici.mipLevels = 1;
     ici.arrayLayers = 1;
     auto tex = allocator.get_context().allocate_texture(allocator, ici);
@@ -48,10 +48,11 @@ void RenderScene::setup(vuk::Allocator& allocator) {
         pci2.add_glsl(get_contents("src/shaders/grid.frag"), "grid.frag");
         game.renderer.context->create_named_pipeline("grid_3d", pci2);
     }
+}
 
-    
-    // temp size
-    render_target = vuk::allocate_texture(allocator, game.renderer.swapchain->format, vuk::Extent3D{100, 100, 1});
+void RenderScene::update_size(v2i new_size) {
+    render_target = vuk::allocate_texture(*game.renderer.global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
+    viewport.update_size(new_size);
 }
 
 slot<Renderable> RenderScene::add_renderable(Renderable renderable) {
