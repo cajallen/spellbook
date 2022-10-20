@@ -1,14 +1,8 @@
 #pragma once
 
-#include <utility>
-
-#include "vector.hpp"
-#include "string.hpp"
-
 #include "camera.hpp"
 #include "console.hpp"
 #include "geometry.hpp"
-#include "input.hpp"
 
 namespace spellbook {
 

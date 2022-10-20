@@ -16,6 +16,7 @@ const string model_extension = ".sbmod";
 const string texture_extension = ".sbtex";
 const string material_extension = ".sbmat";
 const string mesh_extension = ".sbmsh";
+const string tower_extension = ".sbtow";
 
 struct AssetFile {
     string file_name;

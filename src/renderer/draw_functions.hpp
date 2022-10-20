@@ -1,9 +1,7 @@
 #pragma once
 
 #include "renderer.hpp"
-#include "render_scene.hpp"
-#include "vertex.hpp"
-#include "math.hpp"
+#include "camera.hpp"
 
 #include "vector.hpp"
 

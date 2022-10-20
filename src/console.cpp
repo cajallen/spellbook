@@ -1,9 +1,7 @@
 #include "console.hpp"
 
-#include <intrin.h>
 #include <sstream>
 #include <direct.h>
-#include <stdio.h>
 #include <filesystem>
 #include <iostream>
 

@@ -3,7 +3,6 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
-#include "hash.hpp"
 #include "vector.hpp"
 #include "string.hpp"
 #include "json.hpp"

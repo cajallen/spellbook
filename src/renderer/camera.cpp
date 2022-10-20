@@ -3,13 +3,8 @@
 #include <imgui.h>
 
 #include "math.hpp"
-#include "input.hpp"
-
 #include "matrix.hpp"
-#include "quaternion.hpp"
 #include "matrix_math.hpp"
-
-#include "viewport.hpp"
 
 #include "lib_ext/imgui_extra.hpp"
 

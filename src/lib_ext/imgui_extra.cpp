@@ -4,7 +4,6 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include "game/asset_browser.hpp"
-#include "renderer/assets/asset_loader.hpp"
 
 
 bool DragMat3(const string& name, spellbook::m33* matrix, f32 speed, const string& format) {

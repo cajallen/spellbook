@@ -5,9 +5,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iterator>
-
-#include "vector.hpp"
+#include <vector>
 
 template <typename T> class slotmap;
 

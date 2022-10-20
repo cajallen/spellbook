@@ -1,6 +1,7 @@
 #include "systems.hpp"
 
 #include <tracy/Tracy.hpp>
+#include <entt/entt.hpp>
 
 #include "lib_ext/fmt_geometry.hpp"
 
@@ -10,6 +11,7 @@
 #include "matrix_math.hpp"
 #include "scene.hpp"
 #include "components.hpp"
+#include "input.hpp"
 
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"

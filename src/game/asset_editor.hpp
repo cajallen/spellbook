@@ -3,7 +3,7 @@
 #include <filesystem>
 
 #include "scene.hpp"
-#include "renderer/assets/model.hpp"
+#include "tower.hpp"
 
 namespace fs = std::filesystem;
 
@@ -17,6 +17,8 @@ struct AssetEditor {
     fs::path other_file = {};
     
     entt::entity entity;
+
+    TowerPrefab tower_prefab;
     
     void      setup();
     void      update();

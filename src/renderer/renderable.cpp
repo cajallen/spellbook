@@ -2,13 +2,7 @@
 
 #include <imgui.h>
 
-#include "lib_ext/fmt_geometry.hpp"
 #include "lib_ext/imgui_extra.hpp"
-
-#include "matrix_math.hpp"
-
-#include "renderer/assets/mesh.hpp"
-#include "renderer/assets/material.hpp"
 
 namespace spellbook {
 

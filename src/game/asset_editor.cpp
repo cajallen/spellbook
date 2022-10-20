@@ -4,7 +4,6 @@
 
 #include "asset_browser.hpp"
 #include "game.hpp"
-#include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "lib_ext/imgui_extra.hpp"
 
@@ -45,16 +44,26 @@ void AssetEditor::window(bool* p_open) {
         if (ImGui::Button("Convert")) {
             save_model(convert_to_model(convert_file.string(), "models", "model"));
         }
+
         ImGui::Separator();
-        PathSelect("File##Load", &load_file, "resources", [](const fs::path& path) { return possible_model(path); }, "DND_MODEL");
-        if (ImGui::Button("Load")) {
-            if (model_comp.model_gpu.renderables.size() > 0) {
-                deinstance_model(p_scene->render_scene, model_comp.model_gpu);
-            }
-            model_comp.model_cpu = load_model(load_file.string());
-            model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
+
+        ImGui::Text("Tower");
+        PathSelect("File", &tower_prefab.file_path, "resources", possible_tower, "DND_TOWER");
+        PathSelect("Model", &tower_prefab.model_path, "resources", possible_model, "DND_MODEL");
+        EnumCombo("Type", &tower_prefab.type);
+
+        if (ImGui::Button("Save")) {
+            file_dump(from_jv<json>(to_jv(tower_prefab)), tower_prefab.file_path);
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Load")) {
+            fs::path tower_path = tower_prefab.file_path;
+            tower_prefab = from_jv<TowerPrefab>(to_jv(parse_file(tower_path)));
+            tower_prefab.file_path = tower_path;
+        }
+        
         ImGui::Separator();
+        
         inspect(&model_comp.model_cpu);
     }
     ImGui::End();

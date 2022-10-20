@@ -21,7 +21,7 @@ json parse(string& contents) {
     return parse_json(iss);
 }
 
-json parse_file(const string& file_name) {
+json parse_file(const fs::path& file_name) {
     ifstream ifs(file_name);
     if (ifs.is_open())
         return parse_json(ifs);
@@ -145,7 +145,8 @@ string parse_quote(istream& iss) {
     return out;
 }
 
-void file_dump(const json& json, string file_name) {
+void file_dump(const json& json, const fs::path& file_name) {
+    create_directories(file_name.parent_path());
     ofstream ofs(file_name);
     ofs << dump_json(json);
 }

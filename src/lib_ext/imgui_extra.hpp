@@ -2,13 +2,14 @@
 
 #include <filesystem>
 #include <functional>
+#include <type_traits>
+
+#include <imgui.h>
+#include <magic_enum.hpp>
 
 #include "matrix.hpp"
 #include "string.hpp"
 
-#include "geometry.hpp"
-
-#include "renderer/assets/asset_loader.hpp"
 
 namespace fs = std::filesystem;
 
@@ -31,3 +32,24 @@ void PathTarget(fs::path* out, const string& dnd_key);
 void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories = true);
 
 void PathSelectBody(fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, bool* p_open = nullptr, bool open_subdirectories = true);
+
+
+template <typename J>
+concept enum_concept = std::is_enum_v<J>;
+template <enum_concept T>
+bool EnumCombo(const string& label, T* value, ImGuiComboFlags flags = 0) {
+    bool ret = false;
+    if (ImGui::BeginCombo(label.c_str(), magic_enum::enum_name(*value).data(), flags)) {
+        for (int i = 0; i < magic_enum::enum_count<T>(); i++) {
+            const bool is_selected = *value == T(i);
+            if (ImGui::Selectable(magic_enum::enum_name((T) i).data(), is_selected)) {
+                *value = T(i);
+                ret = true;
+            }
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    return ret;
+}

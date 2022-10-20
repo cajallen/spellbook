@@ -3,6 +3,9 @@
 #include <memory>
 #include <variant>
 #include <type_traits>
+#include <filesystem>
+
+#include "magic_enum.hpp"
 
 #include "vector.hpp"
 #include "string.hpp"
@@ -13,6 +16,8 @@ using std::istream;
 using std::make_shared;
 using std::shared_ptr;
 using std::variant;
+namespace fs = std::filesystem;
+
 
 template <class... Ts> struct overloaded : Ts... {
     using Ts::operator()...;
@@ -23,7 +28,11 @@ template <class... Ts> overloaded(Ts ...) -> overloaded<Ts...>;
 namespace spellbook {
 
 template <typename J>
-concept int_ish = std::is_integral_v<J> || std::is_enum_v<J>;
+concept enum_concept = std::is_enum_v<J>;
+template <typename J>
+concept int_concept = std::is_integral_v<J>;
+template <typename J>
+concept float_concept = std::is_floating_point_v<J>;
 
 struct json_value;
 using json = umap<string, shared_ptr<json_value>>;
@@ -35,10 +44,7 @@ using json_variant = variant<json, vector<json_value>, string, bool, s64, f64>;
 
 struct json_value {
     json_variant value;
-
-    json_value() {
-    }
-
+    
     vector<json_value> get_list() const {
         return get<vector<json_value>>(value);
     }
@@ -47,13 +53,13 @@ struct json_value {
 };
 
 json               parse(string& contents);
-json               parse_file(const string& file_name);
+json               parse_file(const fs::path& file_name);
 json               parse_json(istream& iss);
 json_value         parse_item(istream& iss);
 vector<json_value> parse_list(istream& iss);
 string             parse_quote(istream& iss);
 
-void   file_dump(const json& json, string file_name);
+void   file_dump(const json& json, const fs::path& file_name);
 string dump_json(const json& json);
 void   delete_json(json& j);
 
@@ -67,11 +73,14 @@ inline json_value                                      to_jv(vector<json_value> 
 inline json_value                                      to_jv(const json& input_json);
 inline json_value                                      to_jv(const char* input_string);
 inline json_value                                      to_jv(const string& input_string);
-inline json_value                                      to_jv(f64 input_float);
-inline json_value                                      to_jv(f32 input_float);
-template <int_ish T>
-json_value        to_jv(T input_int);
+inline json_value                                      to_jv(const fs::path& input_path);
 inline json_value to_jv(bool input_bool);
+template <int_concept T>
+json_value        to_jv(T input_int);
+template <float_concept T>
+json_value        to_jv(T input_float);
+template <enum_concept T>
+json_value        to_jv(T input_enum);
 
 
 template <typename JsonT> json_value to_jv(const vector<JsonT>& _vector) {
@@ -167,29 +176,36 @@ inline json_value to_jv(const string& input_string) {
     jv.value = json_variant{input_string};
     return jv;
 }
-
-inline json_value to_jv(f64 input_float) {
+inline json_value to_jv(const fs::path& input_path) {
     json_value jv;
-    jv.value = json_variant{input_float};
-    return jv;
-}
-
-inline json_value to_jv(f32 input_float) {
-    json_value jv;
-    jv.value = json_variant{(f64) input_float};
-    return jv;
-}
-
-template <int_ish T>
-json_value to_jv(T input_int) {
-    json_value jv;
-    jv.value = json_variant{(s64) input_int};
+    jv.value = json_variant{input_path.string()};
     return jv;
 }
 
 inline json_value to_jv(bool input_bool) {
     json_value jv;
     jv.value = json_variant{input_bool};
+    return jv;
+}
+
+template <float_concept T>
+json_value to_jv(T input_float) {
+    json_value jv;
+    jv.value = json_variant{(f64) input_float};
+    return jv;
+}
+
+template <int_concept T>
+json_value to_jv(T input_int) {
+    json_value jv;
+    jv.value = json_variant{(s64) input_int};
+    return jv;
+}
+
+template <enum_concept T>
+json_value to_jv(T input_enum) {
+    json_value jv;
+    jv.value = json_variant{string(magic_enum::enum_name(input_enum))};
     return jv;
 }
 
@@ -262,32 +278,27 @@ inline bool from_jv_impl(const json_value& jv, bool* _) {
     return get<bool>(jv.value);
 }
 
-inline s32 from_jv_impl(const json_value& jv, s32* _) {
-    return (s32) get<s64>(jv.value);
-}
-
-inline u32 from_jv_impl(const json_value& jv, u32* _) {
-    return (u32) get<s64>(jv.value);
-}
-
-inline u64 from_jv_impl(const json_value& jv, u64* _) {
-    return (u64) get<s64>(jv.value);
-}
-
-inline s64 from_jv_impl(const json_value& jv, s64* _) {
-    return get<s64>(jv.value);
-}
-
-inline f32 from_jv_impl(const json_value& jv, f32* _) {
-    return (f32) get<f64>(jv.value);
-}
-
-inline f64 from_jv_impl(const json_value& jv, f64* _) {
-    return get<f64>(jv.value);
-}
-
 inline string from_jv_impl(const json_value& jv, string* _) {
     return get<string>(jv.value);
+}
+
+inline fs::path from_jv_impl(const json_value& jv, fs::path* _) {
+    return fs::path(get<string>(jv.value));
+}
+
+template <int_concept T>
+T from_jv_impl(const json_value& jv, T* _) {
+    return (T) get<s64>(jv.value);
+}
+
+template <float_concept T>
+T from_jv_impl(const json_value& jv, T* _) {
+    return (T) get<f64>(jv.value);
+}
+
+template <enum_concept T>
+T from_jv_impl(const json_value& jv, T* _) {
+    return magic_enum::enum_cast<T>(get<string>(jv.value)).value_or(T(0));
 }
 
 }
@@ -314,8 +325,7 @@ inline string from_jv_impl(const json_value& jv, string* _) {
 
 #define FROM_JSON_ELE(var)                                                    \
     if (j.contains(#var)) {                                                   \
-        typedef std::conditional<std::is_enum_v<decltype(value.var)>, s32, decltype(value.var)>::type CastableT; \
-        value.var  = (decltype(value.var)) from_jv<CastableT>(*j.at(#var));              \
+        value.var = from_jv<decltype(value.var)>(*j.at(#var));              \
     }
 
 #define FROM_JSON_IMPL(Type, ...)                           \
@@ -327,10 +337,7 @@ inline string from_jv_impl(const json_value& jv, string* _) {
     }
 
 #define TO_JSON_ELE(var)                                                      \
-    {                                                                              \
-        typedef std::conditional<std::is_enum_v<decltype(value.var)>, s32, decltype(value.var)>::type CastableT; \
-        j[#var] = make_shared<json_value>(to_jv((CastableT) value.var));  \
-    }
+        j[#var] = make_shared<json_value>(to_jv(value.var));
 
 #define TO_JSON_IMPL(Type, ...)                 \
     inline json_value to_jv(const Type& value) { \

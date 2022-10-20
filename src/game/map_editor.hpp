@@ -2,12 +2,9 @@
 
 #include "color.hpp"
 #include "vector.hpp"
-#include "geometry.hpp"
-#include "string.hpp"
 #include "scene.hpp"
 
 #include "game/tower.hpp"
-#include "renderer/assets/model.hpp"
 
 namespace spellbook {
 
@@ -19,7 +16,7 @@ struct Button {
 };
 
 struct MapEditor {
-    vector<Button<Tower>> towers;
+    vector<Button<TowerPrefab>> towers;
     int    selected_tower = -1;
     u32 selected_brush;
     Scene* p_scene        = nullptr;

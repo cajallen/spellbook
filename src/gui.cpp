@@ -8,6 +8,8 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "input.hpp"
+
 namespace spellbook {
 
 bool* GUI::window_open(string window_name) {

@@ -19,3 +19,6 @@
 [submodule "libs/tracy"]
 	path = libs/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "libs/magic_enum"]
+	path = libs/magic_enum
+	url = https://github.com/Neargye/magic_enum.git

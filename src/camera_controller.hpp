@@ -6,6 +6,8 @@
 #include "renderer/camera.hpp"
 #include "renderer/viewport.hpp"
 
+struct GLFWwindow;
+
 namespace spellbook {
 
 struct CameraController {

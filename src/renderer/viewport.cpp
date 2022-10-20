@@ -1,9 +1,11 @@
 #include "viewport.hpp"
 
 #include <imgui.h>
+#include <GLFW/glfw3.h>
 
 #include "lib_ext/fmt_geometry.hpp"
 
+#include "input.hpp"
 #include "matrix_math.hpp"
 
 namespace spellbook {

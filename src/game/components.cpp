@@ -6,7 +6,6 @@
 
 #include "scene.hpp"
 
-#include "renderer/renderable.hpp"
 #include "renderer/draw_functions.hpp"
 
 

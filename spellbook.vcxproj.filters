@@ -821,6 +821,9 @@
     <ClInclude Include="src\geometry.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="libs\magic_enum\include\magic_enum.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libs\GLFW\bin\glfw3.dll" />

@@ -5,9 +5,7 @@
 #include "lib_ext/fmt_geometry.hpp"
 
 #include "math.hpp"
-#include "matrix_math.hpp"
 #include "game.hpp"
-#include "console.hpp"
 
 #include "game/components.hpp"
 #include "game/systems.hpp"

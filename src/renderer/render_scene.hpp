@@ -1,17 +1,14 @@
 #pragma once
 
-#include "vector.hpp"
+#include <vuk/Buffer.hpp>
+
 #include "string.hpp"
 
+#include "slotmap.hpp"
 #include "viewport.hpp"
 #include "renderer.hpp"
-#include "slotmap.hpp"
-#include "renderer/assets/material.hpp"
-#include "renderer/assets/mesh.hpp"
-#include "renderer/assets/texture.hpp"
 #include "renderer/renderable.hpp"
 
-#include "vuk/Buffer.hpp"
 
 namespace spellbook {
 

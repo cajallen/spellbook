@@ -4,7 +4,6 @@
 
 #include "vector.hpp"
 #include "string.hpp"
-#include "slotmap.hpp"
 
 #include "camera_controller.hpp"
 

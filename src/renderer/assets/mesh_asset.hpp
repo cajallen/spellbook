@@ -4,7 +4,6 @@
 
 #include "json.hpp"
 
-#include "renderer/vertex.hpp"
 #include "renderer/assets/asset_loader.hpp"
 #include "renderer/assets/mesh.hpp"
 

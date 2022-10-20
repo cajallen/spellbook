@@ -3,10 +3,10 @@
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
-#include "math.hpp"
 #include "lib_ext/imgui_extra.hpp"
 
 #include "umap.hpp"
+#include "renderer/assets/asset_loader.hpp"
 
 namespace spellbook {
 
@@ -111,6 +111,11 @@ bool possible_mesh_asset(const fs::path& path) {
 bool possible_texture_asset(const fs::path& path) {
     return vector<string>{".png", ".jpg", ".jpeg"}.contains(path.extension().string());
 }
+
+bool possible_tower(const fs::path& path) {
+    return path.extension().string() == tower_extension;
+}
+
 
 
 

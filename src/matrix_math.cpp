@@ -2,8 +2,6 @@
 
 #include "math.hpp"
 
-#include "console.hpp"
-
 namespace spellbook::math {
 
 m44 infinite_perspective(f32 v_fov_r, f32 aspect_xy, f32 near) {

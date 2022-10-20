@@ -4,21 +4,22 @@
 #include <vuk/Partials.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <tracy/Tracy.hpp>
+#include <stb_image.h>
 
 #include "lib_ext/fmt_geometry.hpp"
 
 #include "file.hpp"
-#include "matrix_math.hpp"
+#include "hash.hpp"
+#include "math.hpp"
+#include "input.hpp"
 #include "console.hpp"
 #include "draw_functions.hpp"
 #include "game.hpp"
 #include "render_scene.hpp"
 #include "samplers.hpp"
-
 #include "utils.hpp"
-#include "assets/texture_asset.hpp"
 
-#include "stb_image.h"
+#include "assets/texture_asset.hpp"
 #include "assets/mesh_asset.hpp"
 
 namespace spellbook {
@@ -399,13 +400,13 @@ void Renderer::debug_window(bool* p_open) {
 
 
 void Renderer::upload_defaults() {
-    if (!file_exists(get_resource_path("textures/white.sbtex"))) {
+    if (true || !file_exists(get_resource_path("textures/white.sbtex"))) {
         TextureCPU tex_white_upload = convert_to_texture("external_resources/images/white.jpg", "textures", "white");
         save_texture(tex_white_upload);
     }
     upload_texture(load_texture("textures/white.sbtex"));
 
-    if (!file_exists(get_resource_path("textures/grid.sbtex"))) {
+    if (true || !file_exists(get_resource_path("textures/grid.sbtex"))) {
         TextureCPU tex_white_upload = convert_to_texture("external_resources/images/grid.png", "textures", "grid");
         save_texture(tex_white_upload);
     }

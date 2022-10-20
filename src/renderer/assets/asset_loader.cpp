@@ -1,7 +1,6 @@
 #include "asset_loader.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <filesystem>
 
 #include "console.hpp"
