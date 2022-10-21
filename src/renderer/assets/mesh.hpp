@@ -27,6 +27,8 @@ struct MeshCPU {
     vector<u32>    indices;
 
     MeshBounds bounds;
+
+    void fix_tangents();
 };
 JSON_IMPL(MeshCPU, name);
 

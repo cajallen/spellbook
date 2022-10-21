@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <imgui.h>
+#include <vuk/Pipeline.hpp>
 
 #include "asset_loader.hpp"
 #include "console.hpp"
@@ -17,10 +18,10 @@ void MaterialGPU::bind_parameters(vuk::CommandBuffer& cbuf) {
     *cbuf.map_scratch_buffer<MaterialDataGPU>(0, 3) = tints;
 };
 void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
-    cbuf.bind_image(0, 4, color_view).bind_sampler(0, 4, TrilinearClamp);
-    cbuf.bind_image(0, 5, orm_view).bind_sampler(0, 5, TrilinearClamp);
-    cbuf.bind_image(0, 6, normal_view).bind_sampler(0, 6, TrilinearClamp);
-    cbuf.bind_image(0, 7, emissive_view).bind_sampler(0, 7, TrilinearClamp);
+    cbuf.bind_image(0, 4, color_view).bind_sampler(0, 4, TrilinearAnisotropic);
+    cbuf.bind_image(0, 5, orm_view).bind_sampler(0, 5, TrilinearAnisotropic);
+    cbuf.bind_image(0, 6, normal_view).bind_sampler(0, 6, TrilinearAnisotropic);
+    cbuf.bind_image(0, 7, emissive_view).bind_sampler(0, 7, TrilinearAnisotropic);
 };
 
 void inspect(MaterialGPU* material) {

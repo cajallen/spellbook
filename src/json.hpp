@@ -3,7 +3,6 @@
 #include <memory>
 #include <variant>
 #include <type_traits>
-#include <filesystem>
 
 #include "magic_enum.hpp"
 
@@ -16,13 +15,8 @@ using std::istream;
 using std::make_shared;
 using std::shared_ptr;
 using std::variant;
-namespace fs = std::filesystem;
 
-
-template <class... Ts> struct overloaded : Ts... {
-    using Ts::operator()...;
-};
-
+template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts ...) -> overloaded<Ts...>;
 
 namespace spellbook {
@@ -53,13 +47,13 @@ struct json_value {
 };
 
 json               parse(string& contents);
-json               parse_file(const fs::path& file_name);
+json               parse_file(const string& file_name);
 json               parse_json(istream& iss);
 json_value         parse_item(istream& iss);
 vector<json_value> parse_list(istream& iss);
 string             parse_quote(istream& iss);
 
-void   file_dump(const json& json, const fs::path& file_name);
+void   file_dump(const json& json, const string& file_name);
 string dump_json(const json& json);
 void   delete_json(json& j);
 
@@ -73,7 +67,6 @@ inline json_value                                      to_jv(vector<json_value> 
 inline json_value                                      to_jv(const json& input_json);
 inline json_value                                      to_jv(const char* input_string);
 inline json_value                                      to_jv(const string& input_string);
-inline json_value                                      to_jv(const fs::path& input_path);
 inline json_value to_jv(bool input_bool);
 template <int_concept T>
 json_value        to_jv(T input_int);
@@ -153,40 +146,11 @@ template <typename JsonT> json_value to_jv(const umap<string, JsonT>& _map) {
     return jv;
 }
 
-inline json_value to_jv(vector<json_value> _vector) {
-    json_value jv;
-    jv.value = json_variant{_vector};
-    return jv;
-}
-
-inline json_value to_jv(const json& input_json) {
-    json_value jv;
-    jv.value = json_variant{input_json};
-    return jv;
-}
-
-inline json_value to_jv(const char* input_string) {
-    json_value jv;
-    jv.value = json_variant{string(input_string)};
-    return jv;
-}
-
-inline json_value to_jv(const string& input_string) {
-    json_value jv;
-    jv.value = json_variant{input_string};
-    return jv;
-}
-inline json_value to_jv(const fs::path& input_path) {
-    json_value jv;
-    jv.value = json_variant{input_path.string()};
-    return jv;
-}
-
-inline json_value to_jv(bool input_bool) {
-    json_value jv;
-    jv.value = json_variant{input_bool};
-    return jv;
-}
+json_value to_jv(vector<json_value> _vector);
+json_value to_jv(const json& input_json);
+json_value to_jv(const char* input_string);
+json_value to_jv(const string& input_string);
+json_value to_jv(bool input_bool);
 
 template <float_concept T>
 json_value to_jv(T input_float) {
@@ -270,21 +234,9 @@ umap<string, JsonT> from_jv_impl(const json_value& jv, umap<string, JsonT>* _) {
     return t;
 }
 
-inline json from_jv_impl(const json_value& jv, json* _) {
-    return get<json>(jv.value);
-}
-
-inline bool from_jv_impl(const json_value& jv, bool* _) {
-    return get<bool>(jv.value);
-}
-
-inline string from_jv_impl(const json_value& jv, string* _) {
-    return get<string>(jv.value);
-}
-
-inline fs::path from_jv_impl(const json_value& jv, fs::path* _) {
-    return fs::path(get<string>(jv.value));
-}
+json from_jv_impl(const json_value& jv, json* _);
+bool from_jv_impl(const json_value& jv, bool* _);
+string from_jv_impl(const json_value& jv, string* _);
 
 template <int_concept T>
 T from_jv_impl(const json_value& jv, T* _) {

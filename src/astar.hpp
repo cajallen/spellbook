@@ -1,8 +1,8 @@
 #pragma once
 
-#include "vector.hpp"
 #include <functional>
 
+#include "vector.hpp"
 #include "geometry.hpp"
 #include "math.hpp"
 

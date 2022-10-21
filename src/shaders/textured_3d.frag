@@ -88,6 +88,7 @@ vec3 calculate_lighting() {
     vec4 albedo = texture(s_base_color, uv) * base_color_tint;
     
     float NdotL = dot(normal, to_light);
+    
     float toon_diffuse = smoothstep(0.0, 0.03, NdotL);
     
     vec3 reflection_dir = reflect(to_light, normal);

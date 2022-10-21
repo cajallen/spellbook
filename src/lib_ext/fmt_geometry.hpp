@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <fmt/compile.h>
 
+#include "color.hpp"
 #include "geometry.hpp"
 #include "quaternion.hpp"
 #include "matrix.hpp"

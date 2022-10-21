@@ -4,8 +4,9 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <filesystem>
 
-#include "dtoa.h"
+#include <dtoa.h>
 
 using std::visit;
 using std::ifstream;
@@ -16,12 +17,53 @@ using std::to_string;
 
 namespace spellbook {
 
+json_value to_jv(vector<json_value> _vector) {
+    json_value jv;
+    jv.value = json_variant {_vector};
+    return jv;
+}
+
+json_value to_jv(const json& input_json) {
+    json_value jv;
+    jv.value = json_variant {input_json};
+    return jv;
+}
+json_value to_jv(const char* input_string) {
+    json_value jv;
+    jv.value = json_variant {string(input_string)};
+    return jv;
+}
+
+json_value to_jv(const string& input_string) {
+    json_value jv;
+    jv.value = json_variant {input_string};
+    return jv;
+}
+
+json_value to_jv(bool input_bool) {
+    json_value jv;
+    jv.value = json_variant {input_bool};
+    return jv;
+}
+
+json from_jv_impl(const json_value& jv, json* _) {
+    return get<json>(jv.value);
+}
+
+bool from_jv_impl(const json_value& jv, bool* _) {
+    return get<bool>(jv.value);
+}
+
+string from_jv_impl(const json_value& jv, string* _) {
+    return get<string>(jv.value);
+}
+
 json parse(string& contents) {
     istringstream iss(contents);
     return parse_json(iss);
 }
 
-json parse_file(const fs::path& file_name) {
+json parse_file(const string& file_name) {
     ifstream ifs(file_name);
     if (ifs.is_open())
         return parse_json(ifs);
@@ -145,8 +187,8 @@ string parse_quote(istream& iss) {
     return out;
 }
 
-void file_dump(const json& json, const fs::path& file_name) {
-    create_directories(file_name.parent_path());
+void file_dump(const json& json, const string& file_name) {
+    create_directories(std::filesystem::path(file_name).parent_path());
     ofstream ofs(file_name);
     ofs << dump_json(json);
 }

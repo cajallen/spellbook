@@ -19,7 +19,7 @@
 namespace spellbook {
 
 vector<ModelCPU> ModelCPU::split() {
-    auto traverse = [](ModelCPU& model, id_ptr<ModelCPU::Node> node, auto&& traverse) -> void {
+    auto traverse = [](ModelCPU& model, id_ptr<Node> node, auto&& traverse) -> void {
         for (id_ptr<Node> child : node->children) {
             model.nodes.insert_back(child);
             traverse(model, child, traverse);
@@ -359,6 +359,25 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
                 vertices[i].normal[X] = *(dtf + (i * 3) + X);
                 vertices[i].normal[Y] = *(dtf + (i * 3) + Y);
                 vertices[i].normal[Z] = *(dtf + (i * 3) + Z);
+            } else {
+                assert_else(false);
+            }
+        } else {
+            assert_else(false);
+        }
+    }
+
+    tinygltf::Accessor& tangent_accessor = model.accessors[primitive.attributes["TANGENT"]];
+    vector<u8>          tangent_data;
+    _unpack_gltf_buffer(model, tangent_accessor, tangent_data);
+    for (int i = 0; i < vertices.size(); i++) {
+        if (tangent_accessor.type == TINYGLTF_TYPE_VEC3) {
+            if (tangent_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+                float* dtf = (float*) tangent_data.data();
+
+                vertices[i].tangent[X] = *(dtf + (i * 3) + X);
+                vertices[i].tangent[Y] = *(dtf + (i * 3) + Y);
+                vertices[i].tangent[Z] = *(dtf + (i * 3) + Z);
             } else {
                 assert_else(false);
             }

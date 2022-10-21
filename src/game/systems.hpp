@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene.hpp"
+struct Scene;
 
 namespace spellbook {
 

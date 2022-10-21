@@ -1,14 +1,13 @@
 #pragma once
 
-#include <filesystem>
-
 #include "renderer/renderer.hpp"
 #include "game/asset_editor.hpp"
 
+#include "string.hpp"
+#include "vector.hpp"
 #include "gui.hpp"
 #include "scene.hpp"
 
-#include "vector.hpp"
 
 namespace spellbook {
 
@@ -20,7 +19,7 @@ struct Game {
     // MapEditor editor;
     AssetEditor editor;
     
-    std::filesystem::path resource_folder = "resources";
+    string resource_folder = "resources";
 
     void startup();
     void run();

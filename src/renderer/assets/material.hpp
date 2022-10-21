@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vuk/Pipeline.hpp>
 #include <vuk/CommandBuffer.hpp>
 
 #include "string.hpp"
@@ -8,6 +7,10 @@
 #include "geometry.hpp"
 #include "color.hpp"
 
+
+namespace vuk {
+struct PipelineBaseInfo;
+}
 
 namespace spellbook {
 

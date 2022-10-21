@@ -16,6 +16,8 @@
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
 
+#include "scene.hpp"
+
 namespace spellbook {
 
 void travel_system(Scene* scene) {
