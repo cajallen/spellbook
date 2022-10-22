@@ -16,7 +16,7 @@ struct Renderable {
     Renderable() = default;
 
     Renderable(string mesh_asset_path, string material_asset_path, m44 transform = m44::identity())
-        : mesh_asset_path(std::move(mesh_asset_path)), material_asset_path(std::move(material_asset_path)), transform(std::move(transform)) {
+        : mesh_asset_path(std::move(mesh_asset_path)), material_asset_path(std::move(material_asset_path)), transform(transform) {
     }
 };
 

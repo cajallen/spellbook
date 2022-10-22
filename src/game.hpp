@@ -11,6 +11,8 @@
 
 namespace spellbook {
 
+const string general_extension = ".sbgen";
+
 struct Game {
     vector<Scene*> scenes;
     Renderer       renderer;
@@ -20,6 +22,7 @@ struct Game {
     AssetEditor editor;
     
     string resource_folder = "resources";
+    string user_folder = "user";
 
     void startup();
     void run();

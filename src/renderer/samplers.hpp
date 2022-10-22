@@ -2,52 +2,26 @@
 
 #include <vuk/Image.hpp>
 
+#include "json.hpp"
+
 namespace spellbook {
 
-// Commonly used sampler presets.
-constexpr auto LinearClamp = vuk::SamplerCreateInfo{
-	.magFilter = vuk::Filter::eLinear,
-	.minFilter = vuk::Filter::eLinear,
-	.addressModeU = vuk::SamplerAddressMode::eClampToEdge,
-	.addressModeV = vuk::SamplerAddressMode::eClampToEdge };
+enum Filter { Filter_Linear, Filter_Nearest, Filter_Cubic };
+enum Address { Address_Repeat, Address_Clamp, Address_Mirrored, Address_Border };
 
-constexpr auto TrilinearClamp = vuk::SamplerCreateInfo{
-	.magFilter = vuk::Filter::eLinear,
-	.minFilter = vuk::Filter::eLinear,
-	.mipmapMode = vuk::SamplerMipmapMode::eLinear,
-	.addressModeU = vuk::SamplerAddressMode::eClampToEdge,
-	.addressModeV = vuk::SamplerAddressMode::eClampToEdge };
-
-constexpr auto NearestClamp = vuk::SamplerCreateInfo{
-	.magFilter = vuk::Filter::eNearest,
-	.minFilter = vuk::Filter::eNearest,
-	.addressModeU = vuk::SamplerAddressMode::eClampToEdge,
-	.addressModeV = vuk::SamplerAddressMode::eClampToEdge };
-
-constexpr auto TrilinearMirror = vuk::SamplerCreateInfo {
-	.magFilter = vuk::Filter::eLinear,
-	.minFilter = vuk::Filter::eLinear,
-	.mipmapMode = vuk::SamplerMipmapMode::eLinear,
-    .addressModeU = vuk::SamplerAddressMode::eMirroredRepeat,
-    .addressModeV = vuk::SamplerAddressMode::eMirroredRepeat
+struct Sampler {
+    Filter filter_type = Filter_Linear;
+    Address address_mode = Address_Repeat;
+    bool is_anisotropic = false;
+    bool mipped = true;
+    
+    Sampler& filter(Filter input);
+    Sampler& address(Address input);
+    Sampler& anisotropy(bool enable = true);
+    Sampler& mips(bool enable = true);
+    vuk::SamplerCreateInfo get() const;
 };
 
-constexpr auto LinearMirrorNoMip = vuk::SamplerCreateInfo {
-	.magFilter = vuk::Filter::eLinear,
-	.minFilter = vuk::Filter::eLinear,
-    .addressModeU = vuk::SamplerAddressMode::eMirroredRepeat,
-    .addressModeV = vuk::SamplerAddressMode::eMirroredRepeat,
-    .maxLod = 0.f
-};
-
-constexpr auto TrilinearAnisotropic = vuk::SamplerCreateInfo{
-	.magFilter = vuk::Filter::eLinear,
-	.minFilter = vuk::Filter::eLinear,
-	.mipmapMode = vuk::SamplerMipmapMode::eLinear,
-	.addressModeU = vuk::SamplerAddressMode::eRepeat,
-	.addressModeV = vuk::SamplerAddressMode::eRepeat,
-    .anisotropyEnable = VK_TRUE,
-    .maxAnisotropy	= 16.0f
-};
+JSON_IMPL(Sampler, filter_type, address_mode, is_anisotropic, mipped);
 
 }

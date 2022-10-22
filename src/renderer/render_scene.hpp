@@ -49,6 +49,9 @@ struct RenderScene {
     void update_size(v2i new_size);
     
     void        setup(vuk::Allocator& allocator);
+    void        image(v2i size);
+    void        settings_gui();
+    void        pre_render();
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
     void        cleanup(vuk::Allocator& allocator);
 
@@ -58,7 +61,5 @@ struct RenderScene {
     
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 };
-
-void inspect(RenderScene* render_scene);
 
 }

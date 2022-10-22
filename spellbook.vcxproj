@@ -147,6 +147,7 @@
     <ClCompile Include="src\renderer\renderable.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\render_scene.cpp" />
+    <ClCompile Include="src\renderer\samplers.cpp" />
     <ClCompile Include="src\renderer\viewport.cpp" />
     <ClCompile Include="src\scene.cpp" />
     <ClCompile Include="src\var_system.cpp" />

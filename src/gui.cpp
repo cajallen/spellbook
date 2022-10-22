@@ -1,16 +1,42 @@
 #include "gui.hpp"
-#include "imgui.h"
-#include "renderer/camera.hpp"
 
+#include <filesystem>
+
+#include <imgui.h>
+#include <tracy/Tracy.hpp>
+
+#include "input.hpp"
 #include "game.hpp"
 #include "var_system.hpp"
 #include "console.hpp"
 
-#include <tracy/Tracy.hpp>
+#include "renderer/camera.hpp"
 
-#include "input.hpp"
+namespace fs = std::filesystem;
 
 namespace spellbook {
+
+void GUI::setup() {
+    fs::path gui_file = fs::path(game.user_folder) / ("gui" + general_extension);
+
+    if (!fs::exists(gui_file))
+        return;
+    
+    json j = parse_file(gui_file.string());
+    FROM_JSON_MEMBER(windows);
+    FROM_JSON_MEMBER(item_state);
+}
+
+void GUI::shutdown() {
+    fs::path gui_file = fs::path(game.user_folder) / ("gui" + general_extension);
+    fs::create_directories(gui_file.parent_path());
+    
+    auto j = json();
+    TO_JSON_MEMBER(windows);
+    TO_JSON_MEMBER(item_state);
+    file_dump(j, gui_file.string());
+}
+
 
 bool* GUI::window_open(string window_name) {
     if (windows.count(window_name) == 0) {
@@ -78,7 +104,11 @@ void GUI::update() {
         Console::window(p_open);
     for (auto scene : game.scenes) {
         if (*(p_open = window_open(scene->name + " info")))
-            scene->window(p_open);
+            scene->settings_window(p_open);
+    }
+    for (auto scene : game.scenes) {
+        if (*(p_open = window_open(scene->name + " output")))
+            scene->output_window(p_open);
     }
     if (*(p_open = window_open("input")))
         Input::debug_window(p_open);

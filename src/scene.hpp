@@ -24,7 +24,8 @@ struct Scene {
     void cleanup();
 
     void inspect_entity(entt::entity entity);
-    void window(bool* p_open);
+    void settings_window(bool* p_open);
+    void output_window(bool* p_open);
 
     void model_cleanup(entt::registry&, entt::entity);
     void dragging_cleanup(entt::registry&, entt::entity);

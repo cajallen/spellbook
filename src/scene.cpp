@@ -125,7 +125,7 @@ void Scene::inspect_entity(entt::entity entity) {
 	}
 }
 
-void Scene::window(bool* p_open) {
+void Scene::settings_window(bool* p_open) {
     ZoneScoped;
 	if (ImGui::Begin((name + " Info").c_str(), p_open)) {
 		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
@@ -149,13 +149,27 @@ void Scene::window(bool* p_open) {
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Render Scene")) {
-				inspect(&render_scene);
+			    render_scene.settings_gui();
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
 		}
 	}
 	ImGui::End();
+}
+
+void Scene::output_window(bool* p_open) {
+    ZoneScoped;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    if (ImGui::Begin((name + " Output").c_str(), p_open)) {
+        render_scene.viewport.window_hovered = ImGui::IsWindowHovered();
+        render_scene.image((v2i) ImGui::GetContentRegionAvail());
+    } else {
+        render_scene.viewport.window_hovered = false;
+        render_scene.pause = true;
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 }

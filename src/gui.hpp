@@ -22,17 +22,19 @@ struct WindowState {
 };
 
 struct GUI {
-    umap<void*, InterfaceInfo> item_state;
+    // u64 should come from id_ptr
+    umap<u64, InterfaceInfo> item_state;
     umap<string, WindowState>  windows;
 
+    void setup();
     void _main_menu_bar();
     void update();
+    void shutdown();
 
     bool* window_open(string window_name);
 };
 
 JSON_IMPL(InterfaceInfo, opened, color);
 JSON_IMPL(WindowState, opened);
-JSON_IMPL(GUI, windows);
 
 }

@@ -1,5 +1,6 @@
 #include "draw_functions.hpp"
 
+#include "hash.hpp"
 #include "lib_ext/fmt_geometry.hpp"
 
 namespace spellbook {
@@ -30,7 +31,9 @@ v2 position2uv(v3 v) {
 
 
 MeshCPU generate_cube(v3 center, v3 extents) {
-	return MeshCPU{fmt_("cube_c{:.2f}_e{:.2f}", center, extents), "", vector<Vertex>  {
+    string name = fmt_("cube_center:{:.2f}_extents:{:.2f}", center, extents);
+    
+	return MeshCPU{name, name, vector<Vertex>  {
         // back
         Vertex {center + extents * v3{-1, -1, -1}, {0, 0, -1}, {-1, 0, 0}, {0, 0, 0}, {1, 1}},
         Vertex {center + extents * v3{1, 1, -1}, {0, 0, -1}, {-1, 0, 0}, {0, 0, 0}, {0, 0}},
@@ -79,6 +82,8 @@ MeshCPU generate_cube(v3 center, v3 extents) {
 }
 
 MeshCPU generate_icosphere(int subdivisions) {
+    string name = fmt_("icosphere_subdivisions:{}", subdivisions);
+    
     vector<u32> index_list = icosphere::triangles;
     vector<Vertex> vertex_list = icosphere::vertices;
     for (int s = 0; s < subdivisions; s++) {
@@ -121,12 +126,13 @@ MeshCPU generate_icosphere(int subdivisions) {
         v.uv = icosphere::position2uv(v.position);
         v.color = v3(0,0,0);
     }
-
-    string name = fmt_("icosphere_{}", subdivisions);
+    
     return MeshCPU(name, name, vertex_list, index_list);
 }
 
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices) {
+    string name = fmt_("line_hash:{:#x}", hash_data(vertices.data(), vertices.size()));
+    
     if (!(vertices.size() >= 2))
         return {};
     struct Segment {
@@ -192,9 +198,9 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
 
     MeshCPU mesh_cpu;
-    static int fl_index = 0;
-    mesh_cpu.name = fmt_("formatted_line_{}", fl_index++);
-    int quad_count = (segments.size() - 1);
+    mesh_cpu.name = name;
+    mesh_cpu.file_name = name;
+    int quad_count = segments.size() - 1;
     mesh_cpu.vertices.reserve(quad_count * 6);
     mesh_cpu.indices.reserve(quad_count * 6);
 
@@ -215,12 +221,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
         mesh_cpu.indices.insert_back(i*6+4);
         mesh_cpu.indices.insert_back(i*6+5);
     }
-    return std::move(mesh_cpu);
-}
-
-
-
-void widget_thumbnail(const MeshGPU& mesh) {
+    return mesh_cpu;
 }
 
 
