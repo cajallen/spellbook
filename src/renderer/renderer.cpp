@@ -58,10 +58,10 @@ Renderer::Renderer()
     window  = create_window_glfw("Spellbook", window_size, true);
     surface = create_surface_glfw(vkbinstance.instance, window);
 
-    GLFWimage images[1];
-    images[0].pixels = stbi_load("icon.png", &images[0].width, &images[0].height, 0, 4); //rgba channels 
-    glfwSetWindowIcon(window, 1, images);
-    stbi_image_free(images[0].pixels);
+    GLFWimage image;
+    image.pixels = stbi_load("icon.png", &image.width, &image.height, nullptr, 4);
+    glfwSetWindowIcon(window, 1, &image);
+    stbi_image_free(image.pixels);
 
     selector.set_surface(surface)
             .set_minimum_version(1, 0)
@@ -179,15 +179,15 @@ void Renderer::render() {
     frame_allocator.emplace(xdev_frame_resource);
     std::shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
 
-    size_t i = 0;
     for (auto scene : scenes) {
         scene->pre_render();
 
         std::shared_ptr<vuk::RenderGraph> rgx = std::make_shared<vuk::RenderGraph>(vuk::Name(scene->name));
         rgx->attach_image("input_uncleared", vuk::ImageAttachment::from_texture(scene->render_target));
         rgx->clear_image("input_uncleared", vuk::Name(scene->name + "_input"), vuk::ClearColor{0.1f, 0.1f, 0.1f, 1.0f});
-        auto          rg_frag_fut     = scene->render(*frame_allocator, vuk::Future{rgx, vuk::Name(scene->name + "_input")});
-        rg->attach_in(vuk::Name(scene->name + "_final"), std::move(rg_frag_fut));
+        auto scene_fut     = scene->render(*frame_allocator, vuk::Future{rgx, vuk::Name(scene->name + "_input")});
+        auto transition_fut = vuk::transition(std::move(scene_fut), vuk::eFragmentSampled);
+        rg->attach_in(vuk::Name(scene->name + "_final"), std::move(transition_fut));
     }
 
     ImGui::Render();

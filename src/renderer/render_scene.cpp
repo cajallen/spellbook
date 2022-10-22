@@ -52,8 +52,7 @@ void RenderScene::setup(vuk::Allocator& allocator) {
 
 void RenderScene::image(v2i size) {
     viewport.start = (v2i) ImGui::GetWindowPos() + (v2i) ImGui::GetCursorPos();
-    viewport.size.x = math::max(size.x, 2);
-    viewport.size.y = math::max(size.y, 2);
+    update_size(math::max(size, v2i(2, 2)));
 
     auto si = vuk::make_sampled_image(render_target.view.get(), Sampler().get());
     ImGui::Image(&*game.renderer.imgui_images.emplace(si), ImGui::GetContentRegionAvail());
@@ -328,7 +327,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
     rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, info_clear_color);
     rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
-
+    
     rg->inference_rule("forward_input", vuk::same_extent_as("target_input"));
 
     return vuk::Future {rg, "target_output"};
