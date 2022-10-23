@@ -143,7 +143,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
     vector<Segment> segments;
     segments.reserve(vertices.size() + (vertices.size() - 2) * 2);
-    for (int i = 0; i < vertices.size(); i++) {
+    for (u32 i = 0; i < vertices.size(); i++) {
         FormattedVertex& vertex = vertices[i];
         v3 cam_vec = math::normalize(vertex.position - camera->position);
         // End vertices don't have corners to deal with

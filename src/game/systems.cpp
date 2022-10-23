@@ -11,6 +11,7 @@
 #include "matrix_math.hpp"
 #include "scene.hpp"
 #include "components.hpp"
+#include "hash.hpp"
 #include "input.hpp"
 
 #include "renderer/render_scene.hpp"
@@ -78,32 +79,41 @@ void grid_slot_transform_system(Scene* scene) {
 // Creates the frame renderable for health bars
 void health_draw_system(Scene* scene) {
     ZoneScoped;
-    static int health_draw_system_i;
+
+    // dependencies
+    string mesh_name = fmt_("cube_c{:.2f}_e{:.2f}", v3(0), v3(1));
+    u64 cube_hash = hash_data(mesh_name.data(), mesh_name.size());
+    if (game.renderer.mesh_cache.contains(cube_hash)) {
+        game.renderer.upload_mesh(generate_cube(v3(0), v3(1)));
+    }
+
+    string health_name = "health_material";
+    u64 health_hash = hash_data(health_name.data(), health_name.size());
+    if (game.renderer.mesh_cache.contains(health_hash)) {
+        MaterialCPU material_cpu = {
+            .name          = health_name,
+            .color_tint    = palette::black,
+            .emissive_tint = palette::green
+        };
+        game.renderer.upload_material(material_cpu);
+    }
+
+    string health_bar_name = "health_bar_material";
+    u64 health_bar_hash = hash_data(health_bar_name.data(), health_bar_name.size());
+    if (game.renderer.mesh_cache.contains(health_bar_hash)) {
+        MaterialCPU material_cpu = {
+            .name          = health_bar_name,
+            .color_tint    = palette::black,
+            .emissive_tint = palette::white,
+            .cull_mode     = vuk::CullModeFlagBits::eFront
+        };
+        game.renderer.upload_material(material_cpu);
+    }
+
     auto       health_draw_system = scene->registry.view<Transform, Health, Model>();
-    health_draw_system_i          = 0;
     for (auto [entity, transform, health, model] : health_draw_system.each()) {
-        Name*  p_name = scene->registry.try_get<Name>(entity);
-        string name   = p_name ? fmt_("{}:health", p_name->name) : fmt_("nameless_{}:health", health_draw_system_i++);
-
-        string mesh_name = fmt_("cube_c{:.2f}_e{:.2f}", v3(0), v3(1));
-        // TODO:
-        // if (game.renderer.meshes.count(mesh_name) == 0) {
-        //     game.renderer.upload_mesh(generate_cube(v3(0), v3(1)), false);
-        // }
-        //
-        // if (game.renderer.materials.count("health_material") == 0) {
-        //     MaterialCPU material_cpu = {.name = "health_material", .color_tint = palette::black, .emissive_tint = palette::green};
-        //     game.renderer.upload_material(material_cpu, false);
-        // }
-        // if (game.renderer.materials.count("health_bar_material") == 0) {
-        //     MaterialCPU material_cpu = {.name = "health_bar_material",
-        //         .color_tint              = palette::black,
-        //         .emissive_tint                = palette::white,
-        //         .cull_mode                    = vuk::CullModeFlagBits::eFront};
-        //     game.renderer.upload_material(material_cpu, false);
-        // }
-
-        if (health.value <= 0.0f) continue;
+        if (health.value <= 0.0f)
+            continue;
 
         float dir_to_camera = math::angle_to(scene->cameras.first().position.xy, transform.translation.xy);
         float thickness = 0.03f;
@@ -116,10 +126,10 @@ void health_draw_system(Scene* scene) {
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) * 
                            math::scale(v3(0.5f + thickness, 0.1f + thickness, 0.1f + thickness));
 
-        // auto renderable1 = Renderable(name, mesh_name, "health_material", inner_matrix);
-        // auto renderable2 = Renderable(name + "_bar", mesh_name, "health_bar_material", outer_matrix);
-        // scene->render_scene.frame_renderables.insert_back(renderable1);
-        // scene->render_scene.frame_renderables.insert_back(renderable2);
+        auto renderable1 = Renderable{mesh_name, health_name, inner_matrix, true};
+        auto renderable2 = Renderable{mesh_name, health_bar_name, outer_matrix, true};
+        scene->render_scene.renderables.emplace(renderable1);
+        scene->render_scene.renderables.emplace(renderable2);
     }
 }
 
@@ -128,9 +138,9 @@ void transform_system(Scene* scene) {
     ZoneScoped;
     for (auto [entity, model, transform] : scene->registry.view<Model, Transform>().each()) {
         m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
-        for (auto& slot : model.model_gpu.renderables) {
-            u32 i = model.model_gpu.renderables.index(slot);
-            scene->render_scene.renderables[slot].transform = transform_matrix * model.model_cpu.nodes[i]->calculate_transform();
+        int i = 0;
+        for (auto renderable : model.model_gpu.renderables) {
+            renderable->transform = transform_matrix * model.model_cpu.nodes[i++]->calculate_transform();
         }
     }
 }
@@ -142,16 +152,8 @@ void spawner_system(Scene* scene) {
 
             GridSlot* p_slot = scene->registry.try_get<GridSlot>(entity);
             assert_else(p_slot);
-            u32 test = u32(entt::null);
-
-            static int i          = 0;
-            auto       new_entity = scene->registry.create();
-            scene->registry.emplace<Name>(new_entity, fmt_("fruit_{}", i++));
-            scene->registry.emplace<Transform>(new_entity, (v3) p_slot->position);
-            // TODO: scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
-            scene->registry.emplace<Health>(new_entity, 1.0f);
-            scene->registry.emplace<Traveler>(new_entity);
-            scene->registry.emplace<Collision>(new_entity, 0.3f);
+            
+            // TODO:
         }
     }
 }
@@ -212,7 +214,9 @@ void selection_id_system(Scene* scene) {
     ZoneScoped;
     auto model_view = scene->registry.view<Model>();
     for (auto [entity, model] : model_view.each()) {
-        // TODO: set selection_ids
+        for (auto p_renderable : model.model_gpu.renderables) {
+            p_renderable->selection_id = (u32) entity;
+        }
     }
 }
 
@@ -290,8 +294,8 @@ void roller_system(Scene* scene) {
     static bool generated = false;
     if (!generated) {
         MaterialCPU material_cpu = {.name = "rollee_material", .file_name = "rollee_material", .color_tint = palette::slate_gray};
-        game.renderer.upload_material(material_cpu, false);
-        game.renderer.upload_mesh(generate_icosphere(3), false);
+        game.renderer.upload_material(material_cpu);
+        game.renderer.upload_mesh(generate_icosphere(3));
         generated = true;
     }
 

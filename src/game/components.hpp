@@ -2,11 +2,13 @@
 
 #include <entt/entt.hpp>
 
+#include "enemy.hpp"
 #include "string.hpp"
 #include "umap.hpp"
 
 #include "geometry.hpp"
 #include "math.hpp"
+#include "stat.hpp"
 
 #include "renderer/assets/model.hpp"
 
@@ -14,14 +16,13 @@ namespace spellbook {
 
 struct Scene;
 
-// components
 struct Name {
     string name;
 };
 
 struct Model {
-    ModelCPU model_cpu;
-    ModelGPU model_gpu;
+    ModelCPU model_cpu = {};
+    ModelGPU model_gpu = {};
     v3        offset = v3(0.0f);
 
     void inspect(Scene*);
@@ -38,15 +39,15 @@ struct Transform {
 };
 
 struct GridSlot {
-    v3i  position;
-    bool path;
+    v3i  position = v3i(0);
+    bool path = false;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Traveler {
-    vector<v3i> targets;
+    vector<v3i> targets = {};
     float       velocity = math::random_f32(0.1f, 1.0f);
 
     void inspect(Scene*);
@@ -54,15 +55,18 @@ struct Traveler {
 };
 
 struct Health {
-    float value;
+    float value = 0.0f;
+    StatEffect max = {};
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Spawner {
-    float last_spawn;
-    float rate;
+    float last_spawn = -FLT_MAX;
+    float rate = FLT_MAX;
+
+    EnemyPrefab enemy_prefab;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
@@ -70,62 +74,62 @@ struct Spawner {
 
 struct Consumer {
     f32 consume_distance = 0.01f;
-    int amount_consumed;
+    int amount_consumed = 0;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Killed {
-    f32 when;
+    f32 when = -FLT_MAX;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Pyro {
-    f32 radius;
-    f32 last_tick;
-    f32 rate;
-    f32 damage;
+    f32 radius = 0.0f;
+    f32 last_tick = -FLT_MAX;
+    f32 rate = FLT_MAX;
+    f32 damage = 0.0f;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Roller {
-    f32 last_tick;
-    f32 rate;
-    f32 damage;
-    f32 rollee_speed;
-    f32 rollee_radius;
-    f32 rollee_lifetime;
+    f32 last_tick = -FLT_MAX;
+    f32 rate = FLT_MAX;
+    f32 damage = 0.0f;
+    f32 rollee_speed = 0.0f;
+    f32 rollee_radius = 0.0f;
+    f32 rollee_lifetime = 0.0f;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Rollee {
-    entt::entity roller;
-    v3           velocity;
-    f32          lifetime;
+    entt::entity roller = {};
+    v3           velocity = v3(0.0f);
+    f32          lifetime = 0.0f;
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Dragging {
-    f32 when;
-    v3  start_position;
-    v3  start_intersect;
+    f32 when = 0.0f;
+    v3  start_position = v3(0.0f);
+    v3  start_intersect = v3(0.0f);
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
 struct Collision {
-    f32                radius;
-    uset<entt::entity> with;
+    f32                radius = 0.0f;
+    uset<entt::entity> with = {};
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);

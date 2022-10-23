@@ -297,6 +297,7 @@
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp" />
     <ClInclude Include="src\game\asset_browser.hpp" />
     <ClInclude Include="src\game\asset_editor.hpp" />
+    <ClInclude Include="src\game\enemy.hpp" />
     <ClInclude Include="src\game\general.hpp" />
     <ClInclude Include="src\game\tower.hpp" />
     <ClInclude Include="src\hash.hpp" />

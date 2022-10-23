@@ -179,6 +179,7 @@ void Renderer::render() {
     frame_allocator.emplace(xdev_frame_resource);
     std::shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
 
+    std::vector resources{"SWAPCHAIN+"_image >> vuk::eColorWrite >> "SWAPCHAIN++"};
     for (auto scene : scenes) {
         scene->pre_render();
 
@@ -186,21 +187,35 @@ void Renderer::render() {
         rgx->attach_image("input_uncleared", vuk::ImageAttachment::from_texture(scene->render_target));
         rgx->clear_image("input_uncleared", vuk::Name(scene->name + "_input"), vuk::ClearColor{0.1f, 0.1f, 0.1f, 1.0f});
         auto scene_fut     = scene->render(*frame_allocator, vuk::Future{rgx, vuk::Name(scene->name + "_input")});
-        auto transition_fut = vuk::transition(std::move(scene_fut), vuk::eFragmentSampled);
-        rg->attach_in(vuk::Name(scene->name + "_final"), std::move(transition_fut));
+        rg->attach_in(vuk::Name(scene->name + "_final"), std::move(scene_fut));
+
+        resources.emplace_back(vuk::Resource {vuk::Name(scene->name + "_final"), vuk::Resource::Type::eImage, vuk::Access::eFragmentSampled});
     }
 
     ImGui::Render();
     // NOTE: When we render in 3D, we're using reverse depth. We have no need for that here because we don't have depth precision issues
     rg->clear_image("SWAPCHAIN", "SWAPCHAIN+", vuk::ClearColor{0.4f, 0.2f, 0.4f, 1.0f});
     rg->attach_swapchain("SWAPCHAIN", swapchain);
-    auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN+"}, imgui_data, ImGui::GetDrawData(), imgui_images);
+    
+    rg->add_pass({.name = "force_transition", .resources = std::move(resources)});
+
+    auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN++"}, imgui_data, ImGui::GetDrawData(), imgui_images);
     stage    = RenderStage_Presenting;
     vuk::Compiler compiler;
     try {
     present(*frame_allocator, compiler, swapchain, std::move(fut));
     } catch (vuk::PresentException& e) {}
     imgui_images.clear();
+
+    for (auto scene : scenes) {
+        for (auto it = scene->renderables.begin(); it != scene->renderables.end();) {
+            if (it->frame_allocated)
+                scene->renderables.erase(it);
+            else
+                ++it;
+        }
+    }
+    
     frame_allocator.reset();
 
     stage = RenderStage_Inactive;
@@ -246,7 +261,7 @@ void Renderer::resize(v2i new_size) {
 }
 
 
-MeshGPU& Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
+string Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     assert_else(!mesh_cpu.file_name.empty());
     u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_name.data(), mesh_cpu.file_name.size());
     mesh_aliases[mesh_cpu.name] = mesh_cpu_hash;
@@ -264,10 +279,10 @@ MeshGPU& Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     if (frame_allocation); // TODO: frame allocation
 
     mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
-    return mesh_cache[mesh_cpu_hash];
+    return mesh_cpu.file_name;
 }
 
-MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
+string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     assert_else(!material_cpu.file_name.empty());
     u64 material_cpu_hash               = hash_data(material_cpu.file_name.data(), material_cpu.file_name.size());
     material_aliases[material_cpu.name] = material_cpu_hash;
@@ -288,10 +303,10 @@ MaterialGPU& Renderer::upload_material(const MaterialCPU& material_cpu, bool fra
     material_gpu.cull_mode = material_cpu.cull_mode;
 
     material_cache[material_cpu_hash] = std::move(material_gpu);
-    return material_cache[material_cpu_hash];
+    return material_cpu.file_name;
 }
 
-TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
+string Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
     assert_else(!tex_cpu.file_name.empty());
     u64 tex_cpu_hash = hash_data(tex_cpu.file_name.data(), tex_cpu.file_name.size());
     texture_aliases[tex_cpu.name] = tex_cpu_hash;
@@ -303,7 +318,7 @@ TextureGPU& Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_alloc
     if (frame_allocation); // TODO: frame allocation
 
     texture_cache[tex_cpu_hash] = std::move(tex);
-    return texture_cache[tex_cpu_hash];
+    return tex_cpu.file_name;
 }
 
 MeshGPU* Renderer::get_mesh(const string& asset_path) {
@@ -339,7 +354,8 @@ MeshGPU& Renderer::get_mesh_or_upload(const string& asset_path) {
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (mesh_cache.count(hash))
         return mesh_cache[hash];
-    return upload_mesh(load_mesh(asset_path));
+    upload_mesh(load_mesh(asset_path));
+    return mesh_cache[hash];
 }
 
 MaterialGPU& Renderer::get_material_or_upload(const string& asset_path) {
@@ -347,7 +363,8 @@ MaterialGPU& Renderer::get_material_or_upload(const string& asset_path) {
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (material_cache.count(hash))
         return material_cache[hash];
-    return upload_material(load_material(asset_path));
+    upload_material(load_material(asset_path));
+    return material_cache[hash];
 }
 
 TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
@@ -355,7 +372,8 @@ TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
     u64 hash = hash_data(asset_path.data(), asset_path.size());
     if (texture_cache.count(hash))
         return texture_cache[hash];
-    return upload_texture(load_texture(asset_path));
+    upload_texture(load_texture(asset_path));
+    return texture_cache[hash];
 }
 
 
@@ -380,17 +398,30 @@ void Renderer::debug_window(bool* p_open) {
 
 
 void Renderer::upload_defaults() {
-    if (true || !file_exists(get_resource_path("textures/white.sbtex"))) {
-        TextureCPU tex_white_upload = convert_to_texture("external_resources/images/white.jpg", "textures", "white");
-        save_texture(tex_white_upload);
-    }
-    upload_texture(load_texture("textures/white.sbtex"));
+    TextureCPU tex_white_upload {
+        .file_name = "textures/white.sbtex",
+        .size = v2i(8, 8),
+        .format = vuk::Format::eR8G8B8A8Srgb,
+        .pixels = vector<u8>(8 * 8 * 4, 255)
+    };
+    upload_texture(tex_white_upload);
 
-    if (true || !file_exists(get_resource_path("textures/grid.sbtex"))) {
-        TextureCPU tex_white_upload = convert_to_texture("external_resources/images/grid.png", "textures", "grid");
-        save_texture(tex_white_upload);
+    constexpr u32 grid_size = 256;
+    TextureCPU tex_grid_upload {
+        .file_name = "textures/grid.sbtex",
+        .size = v2i(grid_size, grid_size),
+        .format = vuk::Format::eR8G8B8A8Srgb,
+        .pixels = vector<u8>(grid_size * grid_size * 4, 255)
+    };
+    // do border
+    for (u32 i = 0; i < (grid_size - 1); i++) {
+        for (u32 pixel_pos : vector<u32>{i, i * grid_size + (grid_size - 1), (grid_size - 1) * grid_size + i + 1, i * grid_size + grid_size}) {
+            tex_grid_upload.pixels[pixel_pos * 4 + 0] = 0;
+            tex_grid_upload.pixels[pixel_pos * 4 + 1] = 0;
+            tex_grid_upload.pixels[pixel_pos * 4 + 2] = 0;
+        }
     }
-    upload_texture(load_texture("textures/grid.sbtex"));
+    upload_texture(tex_grid_upload);
 
     MaterialCPU default_mat = {
         .name = "default",

@@ -53,18 +53,22 @@ void AssetEditor::window(bool* p_open) {
         ImGui::Separator();
 
         ImGui::Text("Tower");
-        PathSelect("File", &tower_prefab.file_path, "resources", possible_tower, "DND_TOWER");
-        PathSelect("Model", &tower_prefab.model_path, "resources", possible_model, "DND_MODEL");
+        auto tower_path = fs::path(tower_prefab.file_path);
+        auto model_path = fs::path(tower_prefab.model_path);
+        PathSelect("File", &tower_path, "resources", possible_tower, "DND_TOWER");
+        PathSelect("Model", &model_path, "resources", possible_model, "DND_MODEL");
+        tower_prefab.file_path = tower_path.string();
+        tower_prefab.model_path = model_path.string();
         EnumCombo("Type", &tower_prefab.type);
 
         if (ImGui::Button("Save")) {
-            file_dump(from_jv<json>(to_jv(tower_prefab)), tower_prefab.file_path.string());
+            file_dump(from_jv<json>(to_jv(tower_prefab)), tower_prefab.file_path);
         }
         ImGui::SameLine();
         if (ImGui::Button("Load")) {
-            fs::path tower_path = tower_prefab.file_path;
-            tower_prefab = from_jv<TowerPrefab>(to_jv(parse_file(tower_path.string())));
-            tower_prefab.file_path = tower_path;
+            string backup_path = tower_prefab.file_path;
+            tower_prefab = from_jv<TowerPrefab>(to_jv(parse_file(tower_prefab.file_path)));
+            tower_prefab.file_path = backup_path;
         }
         
         ImGui::Separator();

@@ -79,23 +79,18 @@ void RenderScene::update_size(v2i new_size) {
     viewport.update_size(new_size);
 }
 
-slot<Renderable> RenderScene::add_renderable(Renderable renderable) {
+Renderable* RenderScene::add_renderable(Renderable renderable) {
     // console({.str = fmt_("Adding renderable: {}", renderable), .group = "renderables"});
-    return renderables.add_element(std::move(renderable));
+    return &*renderables.emplace(std::move(renderable));
 }
-slot<Renderable> RenderScene::copy_renderable(slot<Renderable> renderable) {
-    assert_else(renderables.valid(renderable)) return {};
-
-    Renderable copy = renderables[renderable];
+Renderable* RenderScene::copy_renderable(Renderable* renderable) {
     // console({.str = fmt_("Copying renderable: {}", copy), .group = "renderables"});
-    return renderables.add_element(std::move(copy));
+    return &*renderables.emplace(*renderable);
 }
 
-void RenderScene::delete_renderable(slot<Renderable> renderable) {
-    if (!renderables.valid(renderable))
-        return;
+void RenderScene::delete_renderable(Renderable* renderable) {
     // console({.str = fmt_("Deleting renderable"), .group = "renderables"});
-    renderables.remove_element(renderable);
+    renderables.erase(renderables.get_iterator(renderable));
 }
 
 void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {

@@ -30,7 +30,7 @@ struct PostProcessData {
 struct RenderScene {
     string              name;
 
-    slotmap<Renderable> renderables;
+    plf::colony<Renderable> renderables;
     Viewport            viewport;
 
     SceneData       scene_data;
@@ -55,9 +55,9 @@ struct RenderScene {
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
     void        cleanup(vuk::Allocator& allocator);
 
-    slot<Renderable> add_renderable(Renderable renderable);
-    slot<Renderable> copy_renderable(slot<Renderable> renderable);
-    void             delete_renderable(slot<Renderable> renderable);
+    Renderable* add_renderable(Renderable renderable);
+    Renderable* copy_renderable(Renderable* renderable);
+    void        delete_renderable(Renderable* renderable);
     
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 };
