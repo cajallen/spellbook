@@ -131,7 +131,7 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model) {
 
 void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
     for (auto& r_slot : model.renderables) {
-        render_scene.renderables.remove_element(r_slot);
+        render_scene.renderables.erase(render_scene.renderables.get_iterator(r_slot));
     }
 }
 

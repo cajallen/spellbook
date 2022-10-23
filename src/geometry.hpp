@@ -570,10 +570,10 @@ typedef line_<v4>  l4;
 struct euler {
     // TODO: add 0 direction static const
     union {
-        f32 data[3];
         struct {
             f32 yaw, pitch, roll;
         };
+        f32 data[3];
     };
     
     constexpr euler operator*(f32 f) {

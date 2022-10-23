@@ -28,13 +28,6 @@ void MapEditor::setup() {
 
 void MapEditor::setup(Scene* init_scene) {
     p_scene = init_scene;
-
-    MaterialCPU default_mat = {
-        .name = "default",
-        .file_name = "default",
-        .color_tint = palette::black,
-    };
-    game.renderer.upload_material(default_mat, false);
 }
 
 void MapEditor::update() {
@@ -55,9 +48,12 @@ void MapEditor::update() {
             {(v3) cell + v3(0.0, 1.0, 0.05), palette::white, 0.03f},
             {(v3) cell + v3(0.0, 0.0, 0.05), palette::white, 0.03f},
             {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f}});
-        MeshGPU&     mesh     = game.renderer.upload_mesh(line_mesh);
-        MaterialGPU& material = *game.renderer.get_material("default");
-        // TODO: frame renderables
+        Renderable brush_preview;
+        brush_preview.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
+        brush_preview.material_asset_path = "default";
+        brush_preview.frame_allocated = true;
+
+        p_scene->render_scene.add_renderable(brush_preview);
     } else if (selected_tower != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 24; i++) {
@@ -67,9 +63,12 @@ void MapEditor::update() {
         }
 
         auto         line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
-        MeshGPU&     mesh      = game.renderer.upload_mesh(line_mesh);
-        MaterialGPU& material  = *game.renderer.get_material("default");
-        // TODO: frame renderbales
+        Renderable tower_preview;
+        tower_preview.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
+        tower_preview.material_asset_path = "default";
+        tower_preview.frame_allocated = true;
+
+        p_scene->render_scene.add_renderable(tower_preview);
     }
 
     // we should check if this mouse input is ours in the callback)

@@ -18,36 +18,33 @@ void MaterialGPU::bind_parameters(vuk::CommandBuffer& cbuf) {
     *cbuf.map_scratch_buffer<MaterialDataGPU>(0, 3) = tints;
 };
 void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
-    cbuf.bind_image(0, 4, color_view).bind_sampler(0, 4, TrilinearAnisotropic);
-    cbuf.bind_image(0, 5, orm_view).bind_sampler(0, 5, TrilinearAnisotropic);
-    cbuf.bind_image(0, 6, normal_view).bind_sampler(0, 6, TrilinearAnisotropic);
-    cbuf.bind_image(0, 7, emissive_view).bind_sampler(0, 7, TrilinearAnisotropic);
+    assert_else(color.is_global && orm.is_global && normal.is_global && emissive.is_global);
+    cbuf.bind_image(0, 4, color.global.iv).bind_sampler(0, 4, color.global.sci);
+    cbuf.bind_image(0, 5, orm.global.iv).bind_sampler(0, 5, orm.global.sci);
+    cbuf.bind_image(0, 6, normal.global.iv).bind_sampler(0, 6, normal.global.sci);
+    cbuf.bind_image(0, 7, emissive.global.iv).bind_sampler(0, 7, emissive.global.sci);
 };
 
 void inspect(MaterialGPU* material) {
-    auto si_color = vuk::make_sampled_image(material->color_view, {});
     ImGui::Text("Base Color");
-    ImGui::Image(&*game.renderer.sampled_images.emplace(si_color), {100, 100});
+    ImGui::Image(&*game.renderer.imgui_images.emplace(material->color), {100, 100});
     ImGui::ColorEdit4("Tint##BaseColor", material->tints.color_tint.data);
-
-    auto si_mr = vuk::make_sampled_image(material->orm_view, {});
-    auto si_n  = vuk::make_sampled_image(material->normal_view, {});
-    auto si_e  = vuk::make_sampled_image(material->emissive_view, {});
+    
     ImGui::BeginGroup();
-    ImGui::Text("Metal/Rough");
-    ImGui::Image(&*game.renderer.sampled_images.emplace(si_mr), {100, 100});
+    ImGui::Text("ORM");
+    ImGui::Image(&*game.renderer.imgui_images.emplace(material->orm), {100, 100});
     ImGui::EndGroup();
     ImGui::SameLine();
 
     ImGui::BeginGroup();
     ImGui::Text("Normals");
-    ImGui::Image(&*game.renderer.sampled_images.emplace(si_n), {100, 100});
+    ImGui::Image(&*game.renderer.imgui_images.emplace(material->normal), {100, 100});
     ImGui::EndGroup();
     ImGui::SameLine();
 
     ImGui::BeginGroup();
     ImGui::Text("Emissive");
-    ImGui::Image(&*game.renderer.sampled_images.emplace(si_e), {100, 100});
+    ImGui::Image(&*game.renderer.imgui_images.emplace(material->emissive), {100, 100});
     ImGui::EndGroup();
     ImGui::ColorEdit4("Emissive Tint", material->tints.emissive_tint.data);
 

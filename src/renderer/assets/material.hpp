@@ -1,11 +1,13 @@
 #pragma once
 
 #include <vuk/CommandBuffer.hpp>
+#include <vuk/SampledImage.hpp>
 
 #include "string.hpp"
 
 #include "geometry.hpp"
 #include "color.hpp"
+#include "renderer/samplers.hpp"
 
 
 namespace vuk {
@@ -18,22 +20,35 @@ struct MaterialCPU {
     string name;
     string file_name;
 
-    Color  color_tint            = palette::white;
-    Color  emissive_tint              = palette::black;
-    f32    roughness_factor           = 0.5f;
-    f32    metallic_factor            = 0.0f;
-    f32    normal_factor              = 0.0f;
-    
-    string color_asset_path              = "textures/white.sbtex";
-    string orm_asset_path                = "textures/white.sbtex";
-    string normal_asset_path             = "textures/white.sbtex";
-    string emissive_asset_path           = "textures/white.sbtex";
+    Color color_tint       = palette::white;
+    Color emissive_tint    = palette::black;
+    f32   roughness_factor = 0.5f;
+    f32   metallic_factor  = 0.0f;
+    f32   normal_factor    = 0.0f;
 
-    f32 uv_scale = 1.0f;
+    string color_asset_path    = "textures/white.sbtex";
+    string orm_asset_path      = "textures/white.sbtex";
+    string normal_asset_path   = "textures/white.sbtex";
+    string emissive_asset_path = "textures/white.sbtex";
+
+    Sampler sampler = Sampler().anisotropy(true);
 
     vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
 };
-JSON_IMPL(MaterialCPU, name, color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, color_asset_path, orm_asset_path, normal_asset_path, emissive_asset_path, uv_scale, cull_mode);
+
+JSON_IMPL(MaterialCPU,
+    name,
+    color_tint,
+    roughness_factor,
+    metallic_factor,
+    normal_factor,
+    emissive_tint,
+    color_asset_path,
+    orm_asset_path,
+    normal_asset_path,
+    emissive_asset_path,
+    sampler,
+    cull_mode);
 
 struct MaterialDataGPU {
     v4 color_tint;
@@ -41,23 +56,24 @@ struct MaterialDataGPU {
     v4 roughness_metallic_normal_scale;
 };
 
-struct MaterialGPU { // uses master shader
+struct MaterialGPU {
+    // uses master shader
     vuk::PipelineBaseInfo* pipeline;
-    vuk::ImageView         color_view;
-    vuk::ImageView         orm_view;
-    vuk::ImageView         normal_view;
-    vuk::ImageView         emissive_view;
+    vuk::SampledImage      color    = vuk::SampledImage(vuk::SampledImage::Global{});
+    vuk::SampledImage      orm      = vuk::SampledImage(vuk::SampledImage::Global{});
+    vuk::SampledImage      normal   = vuk::SampledImage(vuk::SampledImage::Global{});
+    vuk::SampledImage      emissive = vuk::SampledImage(vuk::SampledImage::Global{});
     MaterialDataGPU        tints;
 
     vuk::CullModeFlags cull_mode;
-    
+
     void bind_parameters(vuk::CommandBuffer& cbuf);
     void bind_textures(vuk::CommandBuffer& cbuf);
 };
 
 void inspect(MaterialGPU* material);
 
-void save_material(const MaterialCPU&);
+void        save_material(const MaterialCPU&);
 MaterialCPU load_material(const string& file_name);
 
 }

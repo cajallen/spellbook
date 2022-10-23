@@ -16,7 +16,10 @@ using std::make_shared;
 using std::shared_ptr;
 using std::variant;
 
-template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template <class... Ts> struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+
 template <class... Ts> overloaded(Ts ...) -> overloaded<Ts...>;
 
 namespace spellbook {
@@ -38,7 +41,7 @@ using json_variant = variant<json, vector<json_value>, string, bool, s64, f64>;
 
 struct json_value {
     json_variant value;
-    
+
     vector<json_value> get_list() const {
         return get<vector<json_value>>(value);
     }
@@ -67,13 +70,13 @@ inline json_value                                      to_jv(vector<json_value> 
 inline json_value                                      to_jv(const json& input_json);
 inline json_value                                      to_jv(const char* input_string);
 inline json_value                                      to_jv(const string& input_string);
-inline json_value to_jv(bool input_bool);
+inline json_value                                      to_jv(bool input_bool);
 template <int_concept T>
-json_value        to_jv(T input_int);
+json_value to_jv(T input_int);
 template <float_concept T>
-json_value        to_jv(T input_float);
+json_value to_jv(T input_float);
 template <enum_concept T>
-json_value        to_jv(T input_enum);
+json_value to_jv(T input_enum);
 
 
 template <typename JsonT> json_value to_jv(const vector<JsonT>& _vector) {
@@ -234,8 +237,8 @@ umap<string, JsonT> from_jv_impl(const json_value& jv, umap<string, JsonT>* _) {
     return t;
 }
 
-json from_jv_impl(const json_value& jv, json* _);
-bool from_jv_impl(const json_value& jv, bool* _);
+json   from_jv_impl(const json_value& jv, json* _);
+bool   from_jv_impl(const json_value& jv, bool* _);
 string from_jv_impl(const json_value& jv, string* _);
 
 template <int_concept T>
@@ -275,33 +278,39 @@ T from_jv_impl(const json_value& jv, T* _) {
 #define PASTE15(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) PASTE2(func, v1) PASTE14(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14)
 #define PASTE16(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) PASTE2(func, v1) PASTE15(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15)
 
-#define FROM_JSON_ELE(var)                                                    \
-    if (j.contains(#var)) {                                                   \
-        value.var = from_jv<decltype(value.var)>(*j.at(#var));              \
+#define FROM_JSON_ELE(var)                                     \
+    if (j.contains(#var)) {                                    \
+        value.var = from_jv<decltype(value.var)>(*j.at(#var)); \
+    }
+#define FROM_JSON_MEMBER(var)                      \
+    if (j.contains(#var))                          \
+        var = from_jv<decltype(var)>(*j.at(#var));
+
+#define FROM_JSON_IMPL(Type, ...)                             \
+    inline Type from_jv_impl(const json_value& jv, Type* _) { \
+       json j = from_jv<json>(jv);                            \
+       Type value;                                            \
+       EXPAND(PASTE(FROM_JSON_ELE, __VA_ARGS__))              \
+       return value;                                          \
     }
 
-#define FROM_JSON_IMPL(Type, ...)                           \
-    inline Type from_jv_impl(const json_value& jv, Type* _) {      \
-       json j = from_jv<json>(jv);                          \
-       Type value;                                          \
-       EXPAND(PASTE(FROM_JSON_ELE, __VA_ARGS__))            \
-       return value;                                        \
-    }
-
-#define TO_JSON_ELE(var)                                                      \
+#define TO_JSON_ELE(var) \
         j[#var] = make_shared<json_value>(to_jv(value.var));
 
-#define TO_JSON_IMPL(Type, ...)                 \
+#define TO_JSON_MEMBER(var) \
+    j[#var] = make_shared<json_value>(to_jv(var));
+
+#define TO_JSON_IMPL(Type, ...)                  \
     inline json_value to_jv(const Type& value) { \
-        auto j = json(); \
-        EXPAND(PASTE(TO_JSON_ELE, __VA_ARGS__)) \
-        return to_jv(j);        \
+        auto j = json();                         \
+        EXPAND(PASTE(TO_JSON_ELE, __VA_ARGS__))  \
+        return to_jv(j);                         \
     }
 
 #define JSON_IMPL(Type, ...)          \
     FROM_JSON_IMPL(Type, __VA_ARGS__) \
     TO_JSON_IMPL(Type, __VA_ARGS__)
 
-#define JSON_IMPL_TEMPLATE(Template, Type, ...)          \
-Template FROM_JSON_IMPL(Type, __VA_ARGS__) \
+#define JSON_IMPL_TEMPLATE(Template, Type, ...) \
+Template FROM_JSON_IMPL(Type, __VA_ARGS__)      \
 Template TO_JSON_IMPL(Type, __VA_ARGS__)

@@ -43,7 +43,7 @@ struct ModelCPU {
 JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
 
 struct ModelGPU {
-    vector<slot<Renderable>> renderables;
+    vector<Renderable*> renderables;
 };
 
 void     save_model(const ModelCPU&);

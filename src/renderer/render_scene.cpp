@@ -50,28 +50,47 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     }
 }
 
+void RenderScene::image(v2i size) {
+    viewport.start = (v2i) ImGui::GetWindowPos() + (v2i) ImGui::GetCursorPos();
+    update_size(math::max(size, v2i(2, 2)));
+
+    auto si = vuk::make_sampled_image(render_target.view.get(), Sampler().get());
+    ImGui::Image(&*game.renderer.imgui_images.emplace(si), ImGui::GetContentRegionAvail());
+}
+
+void RenderScene::settings_gui() {
+    ImGui::Checkbox("Pause", &pause);
+    if (ImGui::TreeNode("Lighting")) {
+        ImGui::ColorEdit4("Ambient", scene_data.ambient.data);
+        ImGui::DragFloat("Rim Start", &scene_data.rim_intensity_start.y, 0.01f);
+        ImGui::DragFloat("Rim Intensity", &scene_data.rim_intensity_start.x, 0.01f);
+        ImGui::DragFloat3("Sun Direction", scene_data.sun_direction.data, 0.01f);
+        ImGui::DragFloat("Sun Intensity", &scene_data.sun_intensity, 0.01f);
+        ImGui::DragFloat2("Outline(D)", &post_process_data.outline.x, 0.1f);
+        ImGui::DragFloat2("Outline(N)", &post_process_data.outline.z, 0.002f);   
+        ImGui::TreePop();
+    }
+    ImGui::Text("Viewport");
+    inspect(&viewport);
+}
+
 void RenderScene::update_size(v2i new_size) {
     render_target = vuk::allocate_texture(*game.renderer.global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
     viewport.update_size(new_size);
 }
 
-slot<Renderable> RenderScene::add_renderable(Renderable renderable) {
+Renderable* RenderScene::add_renderable(Renderable renderable) {
     // console({.str = fmt_("Adding renderable: {}", renderable), .group = "renderables"});
-    return renderables.add_element(std::move(renderable));
+    return &*renderables.emplace(std::move(renderable));
 }
-slot<Renderable> RenderScene::copy_renderable(slot<Renderable> renderable) {
-    assert_else(renderables.valid(renderable)) return {};
-
-    Renderable copy = renderables[renderable];
+Renderable* RenderScene::copy_renderable(Renderable* renderable) {
     // console({.str = fmt_("Copying renderable: {}", copy), .group = "renderables"});
-    return renderables.add_element(std::move(copy));
+    return &*renderables.emplace(*renderable);
 }
 
-void RenderScene::delete_renderable(slot<Renderable> renderable) {
-    if (!renderables.valid(renderable))
-        return;
+void RenderScene::delete_renderable(Renderable* renderable) {
     // console({.str = fmt_("Deleting renderable"), .group = "renderables"});
-    renderables.remove_element(renderable);
+    renderables.erase(renderables.get_iterator(renderable));
 }
 
 void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
@@ -109,9 +128,18 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     }
 }
 
+void RenderScene::pre_render() {
+    if (viewport.size.x < 2 || viewport.size.y < 2) {
+        update_size(v2i(2, 2));
+        console_error("RenderScene::pre_render without RenderScene::image call", "renderer", ErrorType_Warning);
+    }
+    viewport.pre_render();
+}
+
+
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
     ZoneScoped;
-
+    
     if (pause) {
         auto rg = make_shared<vuk::RenderGraph>("graph");
         rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
@@ -232,7 +260,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 .set_rasterization({})
                 .bind_buffer(0, 0, buffer_camera_data)
                 .bind_image(0, 1, grid_view)
-                .bind_sampler(0, 1, TrilinearAnisotropic)
+                .bind_sampler(0, 1, Sampler().anisotropy(true).get())
                 .draw(6, 1, 0, 0);
         }});
     rg->add_pass(vuk::Pass {
@@ -248,11 +276,11 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 cmd
                     .bind_compute_pipeline("postprocess")
                     .bind_image(0, 0, "forward_output")
-                    .bind_sampler(0, 0, NearestClamp)
+                    .bind_sampler(0, 0, Sampler().filter(Filter_Nearest).get())
                     .bind_image(0, 1, "normal_output")
-                    .bind_sampler(0, 1, NearestClamp)
+                    .bind_sampler(0, 1, Sampler().filter(Filter_Nearest).get())
                     .bind_image(0, 2, "depth_output")
-                    .bind_sampler(0, 2, NearestClamp)
+                    .bind_sampler(0, 2, Sampler().filter(Filter_Nearest).get())
                     .bind_image(0, 3, "target_input");
 
                 auto target      = *cmd.get_resource_image_attachment("target_input");
@@ -294,7 +322,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
     rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, info_clear_color);
     rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
-
+    
     rg->inference_rule("forward_input", vuk::same_extent_as("target_input"));
 
     return vuk::Future {rg, "target_output"};
@@ -302,19 +330,5 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
 
 void RenderScene::cleanup(vuk::Allocator& allocator) {}
 
-
-
-void inspect(RenderScene* scene) {
-    ImGui::Text("Viewport");
-    ImGui::Checkbox("Pause", &scene->pause);
-    inspect(&scene->viewport);
-    ImGui::ColorEdit4("Ambient", scene->scene_data.ambient.data);
-    ImGui::DragFloat("Rim Start", &scene->scene_data.rim_intensity_start.y, 0.01f);
-    ImGui::DragFloat("Rim Intensity", &scene->scene_data.rim_intensity_start.x, 0.01f);
-    ImGui::DragFloat3("Sun Direction", scene->scene_data.sun_direction.data, 0.01f);
-    ImGui::DragFloat("Sun Intensity", &scene->scene_data.sun_intensity, 0.01f);
-    ImGui::DragFloat2("Outline(D)", &scene->post_process_data.outline.x, 0.1f);
-    ImGui::DragFloat2("Outline(N)", &scene->post_process_data.outline.z, 0.002f);
-}
 
 }

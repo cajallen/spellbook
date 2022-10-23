@@ -147,6 +147,7 @@
     <ClCompile Include="src\renderer\renderable.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\render_scene.cpp" />
+    <ClCompile Include="src\renderer\samplers.cpp" />
     <ClCompile Include="src\renderer\viewport.cpp" />
     <ClCompile Include="src\scene.cpp" />
     <ClCompile Include="src\var_system.cpp" />
@@ -296,6 +297,7 @@
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp" />
     <ClInclude Include="src\game\asset_browser.hpp" />
     <ClInclude Include="src\game\asset_editor.hpp" />
+    <ClInclude Include="src\game\enemy.hpp" />
     <ClInclude Include="src\game\general.hpp" />
     <ClInclude Include="src\game\tower.hpp" />
     <ClInclude Include="src\hash.hpp" />

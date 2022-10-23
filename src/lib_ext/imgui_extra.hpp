@@ -33,7 +33,6 @@ void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, 
 
 void PathSelectBody(fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, bool* p_open = nullptr, bool open_subdirectories = true);
 
-
 template <typename J>
 concept enum_concept = std::is_enum_v<J>;
 template <enum_concept T>

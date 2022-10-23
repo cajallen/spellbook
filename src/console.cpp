@@ -73,7 +73,7 @@ void console_error(string message, string group, ErrorType type) {
         default: {
             console({.str = fmt_("ERROR: {}", message), .group = group, .color = palette::crimson});
         } break;
-    };
+    }
 }
 
 void Console::show_message(Message& msg) {

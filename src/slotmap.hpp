@@ -43,20 +43,20 @@ template <typename T> class slotmap {
 			--elementPointer;
 			return returnValue;
 		}
-		iterator& operator+=(size_t amount) {
+		iterator& operator+=(u64 amount) {
 			elementPointer += amount;
 			return *this;
 		}
-		iterator& operator-=(size_t amount) {
+		iterator& operator-=(u64 amount) {
 			elementPointer -= amount;
 			return *this;
 		}
-		iterator operator-(size_t amount) const {
+		iterator operator-(u64 amount) const {
 			iterator returnValue = iterator(elementPointer);
 			returnValue.elementPointer -= amount;
 			return returnValue;
 		}
-		iterator operator+(size_t amount) const {
+		iterator operator+(u64 amount) const {
 			iterator returnValue = iterator(elementPointer);
 			returnValue.elementPointer += amount;
 			return returnValue;
@@ -118,20 +118,20 @@ template <typename T> class slotmap {
 			--elementPointer;
 			return returnValue;
 		}
-		const_iterator& operator+=(size_t amount) {
+		const_iterator& operator+=(u64 amount) {
 			elementPointer += amount;
 			return *this;
 		}
-		const_iterator& operator-=(size_t amount) {
+		const_iterator& operator-=(u64 amount) {
 			elementPointer -= amount;
 			return *this;
 		}
-		const_iterator operator-(size_t amount) const {
+		const_iterator operator-(u64 amount) const {
 			const_iterator returnValue = const_iterator(elementPointer);
 			returnValue.elementPointer -= amount;
 			return returnValue;
 		}
-		const_iterator operator+(size_t amount) const {
+		const_iterator operator+(u64 amount) const {
 			const_iterator returnValue = const_iterator(elementPointer);
 			returnValue.elementPointer += amount;
 			return returnValue;
@@ -183,7 +183,7 @@ template <typename T> class slotmap {
 
 	inline void clear();
 
-	inline size_t size() const;
+	inline u64 size() const;
 
 	inline iterator			 begin();
 	inline iterator			 end();
@@ -192,14 +192,13 @@ template <typename T> class slotmap {
 	inline iterator			 find(slot<T> handle);
 	inline const_iterator	 find(slot<T> handle) const;
 	inline slot<T> handle(const iterator& handleIterator);
-
- private:
+    
 	// All elements.
-	std::vector<T>		elements;
-	std::vector<size_t> keys;
-	std::vector<size_t> eraseMap;
-	size_t				freeKeyHead = 0;
-	size_t				freeKeyTail = 0;
+	std::vector<T>   elements;
+	std::vector<u64> keys;
+	std::vector<u64> eraseMap;
+	u64				 freeKeyHead = 0;
+	u64				 freeKeyTail = 0;
 };
 
 template <typename T> inline slot<T> slotmap<T>::add_element(const T& newElement) {
@@ -208,18 +207,18 @@ template <typename T> inline slot<T> slotmap<T>::add_element(const T& newElement
 	elements.push_back(newElement);
 	eraseMap.push_back(freeKeyHead);
 	if (freeKeyHead == freeKeyTail) {
-		size_t newFreeSlotIndex = keys.size();
+		u64 newFreeSlotIndex = keys.size();
 
 		keys.push_back(newFreeSlotIndex);
 
 		keys[freeKeyTail] = newFreeSlotIndex;
 		freeKeyTail		  = newFreeSlotIndex;
 	}
-	size_t nextFreeIndex = keys[freeKeyHead];
+	u64 nextFreeIndex = keys[freeKeyHead];
 
 	keys[freeKeyHead] = elements.size() - 1;
 
-	size_t returnIndex = freeKeyHead;
+	u64 returnIndex = freeKeyHead;
 	freeKeyHead		   = nextFreeIndex;
 
 	return {returnIndex};
@@ -231,18 +230,18 @@ template <typename T> inline slot<T> slotmap<T>::add_element(T&& newElement) {
 	elements.push_back(std::forward<T>(newElement));
 	eraseMap.push_back(freeKeyHead);
 	if (freeKeyHead == freeKeyTail) {
-		size_t newFreeSlotIndex = keys.size();
+		u64 newFreeSlotIndex = keys.size();
 
 		keys.push_back(newFreeSlotIndex);
 
 		keys[freeKeyTail] = newFreeSlotIndex;
 		freeKeyTail		  = newFreeSlotIndex;
 	}
-	size_t nextFreeIndex = keys[freeKeyHead];
+	u64 nextFreeIndex = keys[freeKeyHead];
 
 	keys[freeKeyHead] = elements.size() - 1;
 
-	size_t returnIndex = freeKeyHead;
+	u64 returnIndex = freeKeyHead;
 	freeKeyHead		   = nextFreeIndex;
 
 	return {returnIndex};
@@ -263,7 +262,7 @@ template <typename T> inline const T& slotmap<T>::element_at(slot<T> handle) con
 template <typename T> inline void slotmap<T>::remove_element(slot<T> handle) {
 	assert(keys.size() > handle.value);
 
-	size_t eraseElementIndex = keys[handle.value];
+	u64 eraseElementIndex = keys[handle.value];
 
 	// Move last element in, update erase table
 	elements[eraseElementIndex] = std::move(elements[elements.size() - 1]);
@@ -304,7 +303,7 @@ template <typename T> inline void slotmap<T>::clear() {
 	elements.clear();
 }
 
-template <typename T> inline size_t slotmap<T>::size() const {
+template <typename T> inline u64 slotmap<T>::size() const {
 	return elements.size();
 }
 
@@ -348,8 +347,8 @@ template <typename T> inline bool slotmap<T>::valid(slot<T> handle) const {
 
 namespace std {
 template <typename T> struct hash<slot<T>> {
-	size_t operator()(const slot<T>& handle) const {
-		return std::hash<size_t>()(handle.value);
+	u64 operator()(const slot<T>& handle) const {
+		return std::hash<u64>()(handle.value);
 	}
 };
 

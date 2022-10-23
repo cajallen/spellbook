@@ -14,6 +14,7 @@ struct vector {
     vector(std::initializer_list<T> list);
     explicit vector(const T* begin, const T* end);
     explicit vector(u32 capacity);
+    explicit vector(u32 size, const T& t);
 
     template <typename... Args>
     void emplace_back(Args&&...args);
@@ -82,6 +83,11 @@ vector<T>::vector(std::initializer_list<T> list)
 template <typename T>
 vector<T>::vector(const T* begin, const T* end)
     : internal(begin, end) {
+}
+
+template <typename T>
+vector<T>::vector(u32 size, const T& t) 
+    : internal(size, t) {
 }
 
 template <typename T>

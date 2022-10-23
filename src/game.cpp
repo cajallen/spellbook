@@ -29,6 +29,8 @@ void Game::startup() {
     scenes.insert_back(editor.p_scene);
     scenes.last()->name = "Test Scene";
     scenes.last()->setup();
+
+    gui.setup();
 }
 
 void Game::run() {
@@ -50,6 +52,7 @@ void Game::step(bool skip_input) {
 }
 
 void Game::shutdown() {
+    gui.shutdown();
     for (Scene* scene : scenes) {
         scene->cleanup();
         delete scene;

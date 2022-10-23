@@ -39,13 +39,12 @@ struct FrameTimer {
 
 struct RenderScene;
 
+enum RenderStage { RenderStage_Inactive, RenderStage_Setup, RenderStage_BuildingRG, RenderStage_Presenting };
+
 struct Renderer {
+    RenderStage stage = RenderStage_Setup;
     FrameTimer           frame_timer;
     vector<RenderScene*> scenes;
-
-    bool setup_finished = false;
-
-    enum RenderStage { RenderStage_Inactive, RenderStage_BuildingRG, RenderStage_Presenting };
 
     v2i                                     window_size = {1920, 1080};
     VkDevice                                device;
@@ -61,11 +60,11 @@ struct Renderer {
     VkSurfaceKHR                            surface;
     vkb::Instance                           vkbinstance;
     vkb::Device                             vkbdevice;
-    ImGuiData                               imgui_data;
     std::vector<vuk::Future>                futures;
     std::mutex                              setup_lock;
 
-    plf::colony<vuk::SampledImage> sampled_images;
+    ImGuiData                      imgui_data;
+    plf::colony<vuk::SampledImage> imgui_images;
 
     umap<string, u64> mesh_aliases;
     umap<string, u64> material_aliases;
@@ -73,10 +72,6 @@ struct Renderer {
     umap<u64, MeshGPU>     mesh_cache;
     umap<u64, MaterialGPU> material_cache;
     umap<u64, TextureGPU>  texture_cache;
-
-    RenderStage stage = RenderStage_Inactive;
-
-    vector<std::function<void()>> start_render_callbacks;
     
     void enqueue_setup(vuk::Future&& fut) {
         std::scoped_lock _(setup_lock);
@@ -95,9 +90,9 @@ struct Renderer {
     void add_scene(RenderScene*);
 
     // Uploads asset, stores in alias and cache, overwrites old cache entry
-    MeshGPU&     upload_mesh(const MeshCPU&, bool frame_allocation = false);
-    MaterialGPU& upload_material(const MaterialCPU&, bool frame_allocation = false);
-    TextureGPU&  upload_texture(const TextureCPU&, bool frame_allocation = false);
+    string upload_mesh(const MeshCPU&, bool frame_allocation = false);
+    string upload_material(const MaterialCPU&, bool frame_allocation = false);
+    string upload_texture(const TextureCPU&, bool frame_allocation = false);
 
     // Returns an asset given the path of the .sb*** asset, nullptr if not uploaded
     MeshGPU* get_mesh(const string& asset_path);
