@@ -93,10 +93,14 @@ fs::path _convert_to_relative(const fs::path& path) {
 }
 
 ModelCPU load_model(const fs::path& _input_path) {
-    fs::path input_path = _input_path.string().starts_with("resources") ?
-        _input_path.lexically_proximate(game.resource_folder) : _input_path;
+    fs::path input_path = _input_path;
+    if (_input_path.string().starts_with("resources"))
+        input_path = _input_path.lexically_proximate("resources");
+    if (_input_path.string().starts_with(game.resource_folder))
+        input_path = _input_path.lexically_proximate(game.resource_folder);
     
-    
+    warn_else(fs::exists(get_resource_path(input_path.string())))
+        return {};
     string ext = input_path.extension().string();
     warn_else(ext == model_extension)
         return {};
@@ -131,7 +135,7 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model) {
 
 void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
     for (auto& r_slot : model.renderables) {
-        render_scene.renderables.erase(render_scene.renderables.get_iterator(r_slot));
+        render_scene.delete_renderable(r_slot);
     }
 }
 

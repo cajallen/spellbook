@@ -21,6 +21,7 @@
 
 #include "assets/texture_asset.hpp"
 #include "assets/mesh_asset.hpp"
+#include "lib_ext/imgui_extra.hpp"
 
 namespace spellbook {
 
@@ -131,7 +132,7 @@ void Renderer::add_scene(RenderScene* scene) {
 void Renderer::setup() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui::StyleColorsDark();
+    StyleColorsSpellbook();
     ImGui_ImplGlfw_InitForVulkan(window, false);
     imgui_data = ImGui_ImplVuk_Init(*global_allocator);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -210,7 +211,7 @@ void Renderer::render() {
     for (auto scene : scenes) {
         for (auto it = scene->renderables.begin(); it != scene->renderables.end();) {
             if (it->frame_allocated)
-                scene->renderables.erase(it);
+                it = scene->renderables.erase(it);
             else
                 ++it;
         }

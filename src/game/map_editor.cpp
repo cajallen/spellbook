@@ -9,6 +9,7 @@
 #include "components.hpp"
 #include "input.hpp"
 
+#include "asset_browser.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
@@ -39,15 +40,15 @@ void MapEditor::update() {
 
     v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
     v3i cell      = (v3i) math::floor(intersect);
-    if (selected_brush != -1) {
+    if (selected_tile != -1) {
         auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera,
         {
-            {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f},
-            {(v3) cell + v3(1.0, 0.0, 0.05), palette::white, 0.03f},
-            {(v3) cell + v3(1.0, 1.0, 0.05), palette::white, 0.03f},
-            {(v3) cell + v3(0.0, 1.0, 0.05), palette::white, 0.03f},
-            {(v3) cell + v3(0.0, 0.0, 0.05), palette::white, 0.03f},
-            {(v3) cell + v3(0.5, 0.0, 0.05), palette::white, 0.03f}});
+            {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, 0.03f},
+            {(v3) cell + v3(1.f, 0.f, 0.05f), palette::white, 0.03f},
+            {(v3) cell + v3(1.f, 1.f, 0.05f), palette::white, 0.03f},
+            {(v3) cell + v3(0.f, 1.f, 0.05f), palette::white, 0.03f},
+            {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, 0.03f},
+            {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, 0.03f}});
         Renderable brush_preview;
         brush_preview.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
         brush_preview.material_asset_path = "default";
@@ -62,7 +63,7 @@ void MapEditor::update() {
             vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
         }
 
-        auto         line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
+        auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
         Renderable tower_preview;
         tower_preview.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
         tower_preview.material_asset_path = "default";
@@ -72,60 +73,54 @@ void MapEditor::update() {
     }
 
     // we should check if this mouse input is ours in the callback)
-    if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_brush != -1) {
-        /*auto& brush = brushes[selected_brush];
-
-        bool found = false;
-        auto view  = p_scene->registry.view<GridSlot, Model>();
-        for (auto [entity, obj, model] : view.each()) {
-            if (obj.position == cell) {
-                found = true;
-                // TODO: remove renderables
-                p_scene->registry.destroy(entity);
-                break;
+    bool input_used = false;
+    if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f) {
+        if (selected_tile != -1) {
+            auto view  = p_scene->registry.view<GridSlot, LogicTransform, Model>();
+            for (auto [entity, obj, logic_pos, model] : view.each()) {
+                if (math::length(logic_pos.position - v3(cell)) < 0.1f) {
+                    deinstance_model(p_scene->render_scene, model.model_gpu);
+                    p_scene->registry.destroy(entity);
+                    break;
+                }
             }
+
+            instance_prefab(p_scene, tiles[selected_tile].item, cell);
+            input_used = true;
         }
-
-        if (brush.name == "Air")
-            return;
-
-        static int i      = 0;
-        auto       entity = p_scene->registry.create();
-        p_scene->registry.emplace<Name>(entity, fmt_("{}_{}", brush.name, i++));
-        p_scene->registry.emplace<Transform>(entity);
-        // TODO: add brush
-        // p_scene->registry.emplace<Model>(entity, renderables, v3(0.0f));
-        p_scene->registry.emplace<GridSlot>(entity, cell, brush.travelable);
-        // if (brush.name == "Spawner")
-        //     p_scene->registry.emplace<Spawner>(entity, Input::time, 2.0f, for_spawner);
-        if (brush.name == "Consumer")
-            p_scene->registry.emplace<Consumer>(entity, 0.5f, 0);*/
-    } else if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f && selected_tower != -1) {
-        auto& tower = towers[selected_tower];
-
-        auto view = p_scene->registry.view<Transform>();
-        for (auto [entity, transform] : view.each()) {
-            if (!p_scene->registry.any_of<Pyro, Roller>(entity))
-                continue;
-            if (math::length(transform.translation.xy - (v2) cell.xy) < 0.1f) {
-                p_scene->registry.destroy(entity);
-                break;
+        else if (selected_tower != -1) {
+            auto view = p_scene->registry.view<LogicTransform, Model>();
+            for (auto [entity, logic_pos, model] : view.each()) {
+                if (!p_scene->registry.any_of<Pyro, Roller>(entity))
+                    continue;
+                if (math::length(logic_pos.position - v3(cell)) < 0.1f) {
+                    deinstance_model(p_scene->render_scene, model.model_gpu);
+                    p_scene->registry.destroy(entity);
+                    break;
+                }
             }
-        }
 
-        static int i      = 0;
-        auto       entity = p_scene->registry.create();
-        p_scene->registry.emplace<Name>(entity, fmt_("{}_{}", tower.text, i++));
-        p_scene->registry.emplace<Transform>(entity, v3(cell));
-        // TODO: add tower
-        // p_scene->registry.emplace<Model>(entity, renderables, v3(0.5f, 0.5f, 0.0f));
-        if (selected_tower == 1) {
-            p_scene->registry.emplace<Roller>(entity, Input::time, 4.0f, 0.3f, 1.5f, 0.3f, 2.0f);
-        } else {
-            p_scene->registry.emplace<Pyro>(entity, 2.0f, Input::time, 1.0f, 0.2f);
+            instance_prefab(p_scene, towers[selected_tower].item, cell);
+            input_used = true;
         }
-    } else if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT]) {
+        else if (selected_enemy != -1) {
+            auto view = p_scene->registry.view<Traveler, LogicTransform, Model>();
+            for (auto [entity, traveler, logic_pos, model] : view.each()) {
+                if (math::length(logic_pos.position - v3(cell)) < 0.1f) {
+                    deinstance_model(p_scene->render_scene, model.model_gpu);
+                    p_scene->registry.destroy(entity);
+                    break;
+                }
+            }
+
+            instance_prefab(p_scene, towers[selected_tower].item, cell);
+            input_used = true;
+        }
+    }
+    
+    if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT] && !input_used) {
         p_scene->render_scene.query = v2i(Input::mouse_pos) - p_scene->render_scene.viewport.start;
+        input_used = true;
     }
 
     if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT] && p_scene->registry.valid(p_scene->selected_entity)) {
@@ -143,70 +138,24 @@ void MapEditor::window(bool* p_open) {
         v3          intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
         ImGui::Text(fmt_("hovered_cell: {}", intersect).c_str());
 
-        ImGui::Text("Towers");
-        int    towers_count      = towers.size();
-        float  window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        ImVec2 tower_button_sz   = ImVec2(100, 30);
-        for (int i = 0; i < towers_count; i++) {
-            Color normal_color  = towers[i].color;
-            Color hovered_color = mix(normal_color, palette::white, 0.2);
-            Color pressed_color = mix(normal_color, palette::white, 0.1);
-
-            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) normal_color);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) hovered_color);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) pressed_color);
-            if (ImGui::Button(towers[i].text.c_str(), tower_button_sz) && selected_tower != i) {
-                selected_tower = i;
-                selected_brush = -1;
-            }
-            ImGui::PopStyleColor(3);
-
-            if (selected_tower == i) {
-                v2 min = v2(ImGui::GetItemRectMin()) - v2(1);
-                v2 max = v2(ImGui::GetItemRectMax()) + v2(1);
-
-                ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (u32) palette::white, 0.0f, 0, 2.0f);
-            }
-            float last_button_x2 = ImGui::GetItemRectMax().x;
-            float next_button_x2 = last_button_x2 + style.ItemSpacing.x + tower_button_sz.x;
-            // Expected position if next button was on same line
-            if (i + 1 < towers_count && next_button_x2 < window_visible_x2)
-                ImGui::SameLine();
+        if (show_buttons("Towers", towers, &selected_tower)) {
+            selected_tile = -1;
+            selected_enemy = -1;
         }
-
         ImGui::Separator();
-        /*ImGui::Text("Brushes");
-        int    buttons_count = brushes.size();
-        ImVec2 button_sz     = ImVec2(100, 100);
-        for (int i = 0; i < buttons_count; i++) {
-            Color normal_color  = brushes[i].button_color;
-            Color hovered_color = mix(normal_color, palette::white, 0.2);
-            Color pressed_color = mix(normal_color, palette::white, 0.1);
-
-            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) normal_color);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) hovered_color);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) pressed_color);
-            if (ImGui::Button(brushes[i].name.c_str(), button_sz) && selected_brush != i) {
-                selected_brush = i;
-                selected_tower = -1;
-            }
-            ImGui::PopStyleColor(3);
-
-            if (selected_brush == i) {
-                v2 min = v2(ImGui::GetItemRectMin()) - v2(1);
-                v2 max = v2(ImGui::GetItemRectMax()) + v2(1);
-
-                ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (u32) palette::white, 0.0f, 0, 2.0f);
-            }
-
-            float last_button_x2 = ImGui::GetItemRectMax().x;
-            float next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
-            if (i + 1 < buttons_count && next_button_x2 < window_visible_x2)
-                ImGui::SameLine();
-        }*/
+        if (show_buttons("Tiles", tiles, &selected_tile)) {
+            selected_tower = -1;
+            selected_enemy = -1;
+        }
+        ImGui::Separator();
+        if (show_buttons("Enemies", enemies, &selected_enemy)) {
+            selected_tile = -1;
+            selected_tower = -1;
+        }
     } else {
-        selected_brush = -1;
+        selected_tile = -1;
         selected_tower = -1;
+        selected_enemy = -1;
     }
     ImGui::End();
 }

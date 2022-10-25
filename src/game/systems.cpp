@@ -24,14 +24,14 @@ namespace spellbook {
 void travel_system(Scene* scene) {
     ZoneScoped;
     // construct grid to use for pathfinding
-    auto slots     = scene->registry.view<GridSlot>();
-    auto entities  = scene->registry.view<Traveler, Transform>();
+    auto slots     = scene->registry.view<GridSlot, LogicTransform>();
+    auto entities  = scene->registry.view<Traveler, ModelTransform>();
     auto consumers = scene->registry.view<Consumer>();
 
     astar::Navigation nav;
-    for (auto [entity, slot] : slots.each()) {
+    for (auto [entity, slot, logic_pos] : slots.each()) {
         if (slot.path)
-            nav.positions.insert_back(slot.position.xy);
+            nav.positions.insert_back(v2i(logic_pos.position.xy));
     }
 
     // handle actual traveling
@@ -42,9 +42,10 @@ void travel_system(Scene* scene) {
             int       random_consumer = math::random_s32() % s32(consumers.size());
             auto      consumer_entity = consumers[random_consumer];
             GridSlot* p_slot          = scene->registry.try_get<GridSlot>(consumer_entity);
-            assert_else(p_slot);
+            LogicTransform* p_logic_position          = scene->registry.try_get<LogicTransform>(consumer_entity);
+            assert_else(p_slot && p_logic_position);
 
-            auto path = nav.find_path(math::round_cast(transform.translation.xy), p_slot->position.xy);
+            auto path = nav.find_path(math::round_cast(transform.translation.xy), v2i(p_logic_position->position.xy));
             for (auto it = path.begin(); it != path.end(); ++it) {
                 traveler.targets.emplace_back(it->x, it->y, 0);
             }
@@ -60,7 +61,7 @@ void travel_system(Scene* scene) {
             traveler.targets.remove_back();
             velocity = v3(0);
         }
-        f32 max_velocity = traveler.velocity * Input::delta_time;
+        f32 max_velocity = traveler.max_speed.get_stat() * Input::delta_time;
         f32 min_velocity = 0.0f;
         if (!at_target)
             transform.translation += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
@@ -70,9 +71,9 @@ void travel_system(Scene* scene) {
 // Sets the transform on Grid Slots
 void grid_slot_transform_system(Scene* scene) {
     ZoneScoped;
-    auto entities = scene->registry.view<Transform, GridSlot>();
-    for (auto [entity, transform, grid_slot] : entities.each()) {
-        transform.translation = (v3) grid_slot.position;
+    auto entities = scene->registry.view<ModelTransform, GridSlot, LogicTransform>();
+    for (auto [entity, transform, grid_slot, logic_pos] : entities.each()) {
+        transform.translation = (v3) logic_pos.position;
     }
 }
 
@@ -110,7 +111,7 @@ void health_draw_system(Scene* scene) {
         game.renderer.upload_material(material_cpu);
     }
 
-    auto       health_draw_system = scene->registry.view<Transform, Health, Model>();
+    auto       health_draw_system = scene->registry.view<ModelTransform, Health, Model>();
     for (auto [entity, transform, health, model] : health_draw_system.each()) {
         if (health.value <= 0.0f)
             continue;
@@ -118,11 +119,11 @@ void health_draw_system(Scene* scene) {
         float dir_to_camera = math::angle_to(scene->cameras.first().position.xy, transform.translation.xy);
         float thickness = 0.03f;
 
-        m44 inner_matrix = math::translate(transform.translation + model.offset) * 
+        m44 inner_matrix = math::translate(transform.translation) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
                            math::translate(v3(-(1.0f - health.value) / 2.0f, 0.0f, 1.0f)) *
                            math::scale(v3(health.value * 0.5f, 0.1f, 0.1f));
-        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 1.0) + transform.translation + model.offset) *
+        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 1.0) + transform.translation) *
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) * 
                            math::scale(v3(0.5f + thickness, 0.1f + thickness, 0.1f + thickness));
 
@@ -136,7 +137,7 @@ void health_draw_system(Scene* scene) {
 // Uses the transform for models
 void transform_system(Scene* scene) {
     ZoneScoped;
-    for (auto [entity, model, transform] : scene->registry.view<Model, Transform>().each()) {
+    for (auto [entity, model, transform] : scene->registry.view<Model, ModelTransform>().each()) {
         m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
         int i = 0;
         for (auto renderable : model.model_gpu.renderables) {
@@ -160,8 +161,8 @@ void spawner_system(Scene* scene) {
 
 void consumer_system(Scene* scene) {
     ZoneScoped;
-    auto consumers = scene->registry.view<Consumer, Transform>();
-    auto consumees = scene->registry.view<Traveler, Transform>();
+    auto consumers = scene->registry.view<Consumer, ModelTransform>();
+    auto consumees = scene->registry.view<Traveler, ModelTransform>();
 
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
         for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
@@ -193,8 +194,8 @@ void health_system(Scene* scene) {
 
 void pyro_system(Scene* scene) {
     ZoneScoped;
-    auto pyros = scene->registry.view<Pyro, Transform>();
-    auto enemies = scene->registry.view<Health, Transform, Traveler>();
+    auto pyros = scene->registry.view<Pyro, ModelTransform>();
+    auto enemies = scene->registry.view<Health, ModelTransform, Traveler>();
 
     for (auto [e_pyro, pyro, pyro_transform] : pyros.each()) {
         if (Input::time <= pyro.last_tick + pyro.rate)
@@ -231,7 +232,7 @@ void dragging_update_system(Scene* scene) {
         if (scene->registry.valid((entt::entity) result_int)) {
             scene->selected_entity = (entt::entity) result_int;
             v3  intersect = math::intersect_axis_plane(scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-            auto transform = scene->registry.try_get<Transform>(scene->selected_entity);
+            auto transform = scene->registry.try_get<ModelTransform>(scene->selected_entity);
             assert_else(transform);
 
             scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, transform->translation, intersect);
@@ -246,7 +247,7 @@ void dragging_system(Scene* scene) {
 
     constexpr f32 raise_speed = 4.0f;
 
-    auto _view = scene->registry.view<Dragging, Transform>();
+    auto _view = scene->registry.view<Dragging, ModelTransform>();
     for (auto [entity, dragging, transform] : _view.each()) {
         v3 offset = intersect - dragging.start_intersect;
         v3 position = dragging.start_position + offset;
@@ -259,17 +260,17 @@ void dragging_system(Scene* scene) {
 void collision_update_system(Scene* scene) {
     ZoneScoped;
 
-    auto view = scene->registry.view<Transform, Collision>();
+    auto view = scene->registry.view<ModelTransform, Collision>();
     for (auto it1 = view.begin(); it1 != view.end(); it1++) {
         auto  entity1    = *it1;
-        auto& transform1 = view.get<Transform>(entity1);
+        auto& transform1 = view.get<ModelTransform>(entity1);
         auto& collision1 = view.get<Collision>(entity1);
 
         auto begin2 = it1;
         begin2++;
         for (auto it2 = begin2; it2 != view.end(); it2++) {
             auto entity2 = *it2;
-            auto& transform2 = view.get<Transform>(entity2);
+            auto& transform2 = view.get<ModelTransform>(entity2);
             auto& collision2 = view.get<Collision>(entity2);
 
             if (math::length(transform1.translation - transform2.translation) < (collision1.radius + collision2.radius)) {
@@ -289,7 +290,7 @@ void collision_update_system(Scene* scene) {
 
 void roller_system(Scene* scene) {
     ZoneScoped;
-    auto rollers = scene->registry.view<Roller, Transform>();
+    auto rollers = scene->registry.view<Roller, ModelTransform>();
 
     static bool generated = false;
     if (!generated) {
@@ -314,7 +315,7 @@ void roller_system(Scene* scene) {
             // model.insert_back(scene->render_scene.add_renderable(Renderable{fmt_("rollee_{}_renderable", rollee_index), "icosphere_3", "rollee_material", math::scale(roller.rollee_radius)}));
 
             scene->registry.emplace<Name>(new_entity, fmt_("rollee_{}", rollee_index));
-            scene->registry.emplace<Transform>(new_entity, transform.translation + v3(0.2f * dirs[i], 0.0f), euler(), roller.rollee_radius);
+            scene->registry.emplace<ModelTransform>(new_entity, transform.translation + v3(0.2f * dirs[i], 0.0f), euler(), roller.rollee_radius);
             // TODO: scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
             scene->registry.emplace<Rollee>(new_entity, entity, roller.rollee_speed * v3(dirs[i], 0.0f), roller.rollee_lifetime);
             scene->registry.emplace<Collision>(new_entity, roller.rollee_radius);
@@ -339,7 +340,7 @@ void rollee_system(Scene* scene) {
             continue;
         }
 
-        auto p_transform = scene->registry.try_get<Transform>(entity);
+        auto p_transform = scene->registry.try_get<ModelTransform>(entity);
         if (p_transform) {
             p_transform->translation += rollee.velocity * Input::delta_time;
         }

@@ -1,5 +1,7 @@
 #include "game.hpp"
 
+#include <filesystem>
+
 #include <vulkan/vulkan.h>
 
 #include <tracy/Tracy.hpp>
@@ -16,18 +18,28 @@
 #include "renderer/utils.hpp"
 
 
+namespace fs = std::filesystem;
+
 namespace spellbook {
 
 Game game;
 
 void Game::startup() {
+    external_resource_folder = (fs::current_path() / "external_resources").string();
+    resource_folder = (fs::current_path() / "resources").string();
+    user_folder = (fs::current_path() / "user").string();
+
     Console::setup();
     renderer.setup();
     Input::setup();
 
-    editor.setup();
-    scenes.insert_back(editor.p_scene);
-    scenes.last()->name = "Test Scene";
+    map_editor.setup();
+    asset_editor.setup();
+    scenes.insert_back(map_editor.p_scene);
+    scenes.last()->name = "Map Edit Scene";
+    scenes.last()->setup();
+    scenes.insert_back(asset_editor.p_scene);
+    scenes.last()->name = "Asset Scene";
     scenes.last()->setup();
 
     gui.setup();
@@ -44,7 +56,8 @@ void Game::step(bool skip_input) {
         Input::update();
     renderer.update();
     gui.update();
-    editor.update();
+    map_editor.update();
+    asset_editor.update();
     for (Scene* scene : scenes)
         scene->update();
     renderer.render();

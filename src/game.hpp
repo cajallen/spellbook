@@ -2,6 +2,7 @@
 
 #include "renderer/renderer.hpp"
 #include "game/asset_editor.hpp"
+#include "game/map_editor.hpp"
 
 #include "string.hpp"
 #include "vector.hpp"
@@ -18,11 +19,12 @@ struct Game {
     Renderer       renderer;
     GUI            gui;
 
-    // MapEditor editor;
-    AssetEditor editor;
+    MapEditor map_editor;
+    AssetEditor asset_editor;
     
-    string resource_folder = "resources";
-    string user_folder = "user";
+    string external_resource_folder;
+    string resource_folder;
+    string user_folder;
 
     void startup();
     void run();

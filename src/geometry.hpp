@@ -598,6 +598,16 @@ v3    string2v3(string word);
 v4    string2v4(string word);
 euler string2euler(string word);
 
+
+
+inline v3_<f32> operator%(v3_<f32> v1, v3_<f32> v2) {
+    return v3_(std::fmod(v1.x, v2.x), std::fmod(v1.y, v2.y), std::fmod(v1.z, v2.z));
+}
+inline v3_<f32> operator%(v3_<f32> v, f32 s) {
+    return v3_(std::fmod(v.x, s), std::fmod(v.y, s), std::fmod(v.z, s));
+}
+
+
 }
 
 namespace std {

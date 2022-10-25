@@ -16,11 +16,6 @@ namespace spellbook {
 void AssetEditor::setup() {
     ZoneScoped;
     p_scene = new Scene();
-
-    entity = p_scene->registry.create();
-    p_scene->registry.emplace<Name>(entity, "Asset");
-    p_scene->registry.emplace<Model>(entity);
-    p_scene->registry.emplace<Transform>(entity);
 }
 
 void AssetEditor::update() {
@@ -32,48 +27,31 @@ void AssetEditor::update() {
 
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
-    auto& model_comp = p_scene->registry.get<Model>(entity);
 
-    if (other_file.empty())
-        other_file = fs::current_path() / "resources";
-    
-    asset_browser("Asset Browser", &other_file);
-    
     if (ImGui::Begin("Asset Editor", p_open)) {
-        PathSelect("File##Convert", &convert_file, "external_resources", possible_model_asset, "DND_MODEL_ASSET");
-        if (ImGui::Button("Convert")) {
-            save_model(convert_to_model(convert_file.string(), "models", "model"));
-        }
-        PathSelect("Load", &load_file, "resources", possible_model, "DND_MODEL");
-        if (ImGui::Button("Load")) {
-            model_comp.model_cpu = load_model(load_file.string());
-            model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
-        }
-
-        ImGui::Separator();
-
-        ImGui::Text("Tower");
-        auto tower_path = fs::path(tower_prefab.file_path);
-        auto model_path = fs::path(tower_prefab.model_path);
-        PathSelect("File", &tower_path, "resources", possible_tower, "DND_TOWER");
-        PathSelect("Model", &model_path, "resources", possible_model, "DND_MODEL");
-        tower_prefab.file_path = tower_path.string();
-        tower_prefab.model_path = model_path.string();
-        EnumCombo("Type", &tower_prefab.type);
-
-        if (ImGui::Button("Save")) {
-            file_dump(from_jv<json>(to_jv(tower_prefab)), tower_prefab.file_path);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Load")) {
-            string backup_path = tower_prefab.file_path;
-            tower_prefab = from_jv<TowerPrefab>(to_jv(parse_file(tower_prefab.file_path)));
-            tower_prefab.file_path = backup_path;
-        }
+        if (ImGui::BeginTabBar("Asset Types")) {
+            if (ImGui::BeginTabItem("Tower")) {
+                auto tower_path = fs::path(tower_prefab.file_path);
+                auto model_path = fs::path(tower_prefab.model_path);
+                PathSelect("File", &tower_path, "resources", possible_tower, "DND_TOWER");
+                PathSelect("Model", &model_path, "resources", possible_model, "DND_MODEL");
+                tower_prefab.file_path = tower_path.string();
+                tower_prefab.model_path = model_path.string();
+                EnumCombo("Type", &tower_prefab.type);
         
-        ImGui::Separator();
-        
-        inspect(&model_comp.model_cpu);
+                if (ImGui::Button("Save")) {
+                    file_dump(from_jv<json>(to_jv(tower_prefab)), tower_prefab.file_path);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Load")) {
+                    string backup_path = tower_prefab.file_path;
+                    tower_prefab = from_jv<TowerPrefab>(to_jv(parse_file(tower_prefab.file_path)));
+                    tower_prefab.file_path = backup_path;
+                }
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
     }
     ImGui::End();
 

@@ -26,6 +26,8 @@ struct GUI {
     umap<u64, InterfaceInfo> item_state;
     umap<string, WindowState>  windows;
 
+    string asset_browser_file;
+    
     void setup();
     void _main_menu_bar();
     void update();

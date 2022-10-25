@@ -18,7 +18,7 @@ void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
     // TODO:
 }
 void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
-    auto transform = registry.try_get<Transform>(entity);
+    auto transform = registry.try_get<ModelTransform>(entity);
     if (transform) {
         transform->translation = math::round(transform->translation);
         transform->translation.z = 0.0f;
@@ -69,7 +69,7 @@ void Scene::update() {
 
     for (auto entity : registry.view<Name>()) {
         PREVIEW_COMPONENT(Model, model)
-        PREVIEW_COMPONENT(Transform, transform)
+        PREVIEW_COMPONENT(ModelTransform, model_transform)
         PREVIEW_COMPONENT(GridSlot, grid_slot)
         PREVIEW_COMPONENT(Traveler, traveler)
         PREVIEW_COMPONENT(Health, health)
@@ -107,7 +107,7 @@ void Scene::inspect_entity(entt::entity entity) {
         ImGui::Text("ID: %d", (u32) entity);
 
         INSPECT_COMPONENT(Model, model)
-        INSPECT_COMPONENT(Transform, transform)
+        INSPECT_COMPONENT(ModelTransform, model_transform)
         INSPECT_COMPONENT(GridSlot, grid_slot)
         INSPECT_COMPONENT(Traveler, traveler)
         INSPECT_COMPONENT(Health, health)

@@ -46,7 +46,7 @@ struct Renderer {
     FrameTimer           frame_timer;
     vector<RenderScene*> scenes;
 
-    v2i                                     window_size = {1920, 1080};
+    v2i                                     window_size = {2560, 1440};
     VkDevice                                device;
     VkPhysicalDevice                        physical_device;
     VkQueue                                 graphics_queue;

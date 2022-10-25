@@ -1,7 +1,10 @@
 ﻿#pragma once
 
+#include <entt/fwd.hpp>
+
 #include "string.hpp"
 #include "json.hpp"
+#include "geometry.hpp"
 
 namespace spellbook {
 
@@ -19,5 +22,10 @@ struct TowerPrefab {
 };
 
 JSON_IMPL(TowerPrefab, type, model_path);
+
+struct Scene;
+entt::entity instance_prefab(Scene*, const TowerPrefab&, v3i location);
+
+void inspect(TowerPrefab*);
 
 }

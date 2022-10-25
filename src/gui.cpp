@@ -9,6 +9,7 @@
 #include "game.hpp"
 #include "var_system.hpp"
 #include "console.hpp"
+#include "game/asset_browser.hpp"
 
 #include "renderer/camera.hpp"
 
@@ -25,6 +26,11 @@ void GUI::setup() {
     json j = parse_file(gui_file.string());
     FROM_JSON_MEMBER(windows);
     FROM_JSON_MEMBER(item_state);
+    FROM_JSON_MEMBER(asset_browser_file);
+    if (!fs::exists(fs::path(asset_browser_file))) {
+        asset_browser_file = fs::current_path().string();
+    }
+    
 }
 
 void GUI::shutdown() {
@@ -34,6 +40,8 @@ void GUI::shutdown() {
     auto j = json();
     TO_JSON_MEMBER(windows);
     TO_JSON_MEMBER(item_state);
+    TO_JSON_MEMBER(asset_browser_file);
+
     file_dump(j, gui_file.string());
 }
 
@@ -96,8 +104,10 @@ void GUI::update() {
 
     if (*(p_open = window_open("demo")))
         ImGui::ShowDemoWindow(p_open);
-    if (*(p_open = window_open("editor")))
-        game.editor.window(p_open);
+    if (*(p_open = window_open("map_editor")))
+        game.map_editor.window(p_open);
+    if (*(p_open = window_open("asset_editor")))
+        game.asset_editor.window(p_open);
     if (*(p_open = window_open("var_system")))
         VarSystem::window(p_open);
     if (*(p_open = window_open("console")))
@@ -114,6 +124,13 @@ void GUI::update() {
         Input::debug_window(p_open);
     if (*(p_open = window_open("renderer")))
         game.renderer.debug_window(p_open);
+    if (*(p_open = window_open("colors")))
+        color_window(p_open);
+    if (*(p_open = window_open("asset_browser"))) {
+        std::filesystem::path asset_browser_path = asset_browser_file;
+        asset_browser("Asset Browser", p_open, &asset_browser_path);
+        asset_browser_file = asset_browser_path.string();
+    }
 }
 
 }

@@ -14,17 +14,15 @@ namespace spellbook {
 void Model::inspect(Scene* scene) {
 
 }
-void Transform::inspect(Scene* scene) {
+void ModelTransform::inspect(Scene* scene) {
     ImGui::DragFloat3("Translation", translation.data, 0.01f);
     ImGui::DragFloat3("Rotation", rotation.data, 0.5f);
     ImGui::DragFloat("Scale", &scale, 0.01f);
 }
 void GridSlot::inspect(Scene* scene) {
-    ImGui::DragInt3("Position", position.data, 0.01f);
     ImGui::Checkbox("Path", &path);
 }
 void Traveler::inspect(Scene* scene) {
-    ImGui::DragFloat("Velocity", &velocity, 0.01f);
 }
 void Health::inspect(Scene* scene) {
     ImGui::DragFloat("Position", &value, 0.01f);
@@ -69,7 +67,7 @@ void Collision::inspect(Scene* scene) {
 }
 
 void Model::preview_3d(Scene* scene, entt::entity entity) {}
-void Transform::preview_3d(Scene* scene, entt::entity entity) {}
+void ModelTransform::preview_3d(Scene* scene, entt::entity entity) {}
 void GridSlot::preview_3d(Scene* scene, entt::entity entity) {}
 void Traveler::preview_3d(Scene* scene, entt::entity entity) {}
 void Health::preview_3d(Scene* scene, entt::entity entity) {}
@@ -82,7 +80,7 @@ void Pyro::preview_3d(Scene* scene, entt::entity entity) {
     if (!show)
         return;
 
-    auto p_transform = scene->registry.try_get<Transform>(entity);
+    auto p_transform = scene->registry.try_get<ModelTransform>(entity);
     if (p_transform) {
         vector<FormattedVertex> vertices;
         v3                      circ_pos = math::round(p_transform->translation);
@@ -103,7 +101,7 @@ void Roller::preview_3d(Scene* scene, entt::entity entity) {
     if (!show)
         return;
 
-    auto p_transform = scene->registry.try_get<Transform>(entity);
+    auto p_transform = scene->registry.try_get<ModelTransform>(entity);
     if (p_transform) {
         constexpr f32 preview_length = 2.0f;
 
@@ -144,7 +142,7 @@ void Dragging::preview_3d(Scene* scene, entt::entity entity) {
     if (!show)
         return;
 
-    auto p_transform = scene->registry.try_get<Transform>(entity);
+    auto p_transform = scene->registry.try_get<ModelTransform>(entity);
     if (p_transform) {
         vector<FormattedVertex> vertices;
         v3                      circ_pos = math::round(p_transform->translation);

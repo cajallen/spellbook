@@ -31,7 +31,7 @@ struct RenderScene {
     string              name;
 
     plf::colony<Renderable> renderables;
-    Viewport            viewport;
+    Viewport                viewport;
 
     SceneData       scene_data;
     PostProcessData post_process_data;

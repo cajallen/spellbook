@@ -3,7 +3,9 @@
 #include <filesystem>
 
 #include "scene.hpp"
+#include "enemy.hpp"
 #include "tower.hpp"
+#include "tile.hpp"
 
 namespace fs = std::filesystem;
 
@@ -12,13 +14,12 @@ namespace spellbook {
 struct AssetEditor {
     Scene*   p_scene = nullptr;
 
-    fs::path convert_file = {};
-    fs::path load_file    = {};
-    fs::path other_file = {};
-    
-    entt::entity entity;
-
+    ModelCPU model_cpu;
+    MeshCPU mesh_cpu;
+    MaterialCPU material_cpu;
     TowerPrefab tower_prefab;
+    TilePrefab tile_prefab;
+    EnemyPrefab enemy_prefab;
     
     void      setup();
     void      update();

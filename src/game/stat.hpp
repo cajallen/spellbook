@@ -38,6 +38,11 @@ struct Stat {
         }
         return base * mult + add;
     }
+
+    Stat() {}
+    Stat(f32 initial) {
+        effects["ctor"] = {.type = StatEffect::Type_Base, .value = initial};
+    }
 };
 
 }

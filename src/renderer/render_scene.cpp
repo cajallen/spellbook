@@ -93,6 +93,7 @@ void RenderScene::delete_renderable(Renderable* renderable) {
     renderables.erase(renderables.get_iterator(renderable));
 }
 
+
 void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     struct CameraData {
         m44GPU view;

@@ -137,7 +137,7 @@ template <typename T> T copy_sign(T value, T sign) {
 template <typename T> v2_<T> abs(v2_<T> v) {
     return v2_<T>(math::abs(v.x), math::abs(v.y));
 }
-template <typename T> v3_<T> abs(v3_<T> v) {
+template <typename T> constexpr v3_<T> abs(v3_<T> v) {
     return v3_<T>(math::abs(v.x), math::abs(v.y), math::abs(v.z));
 }
 template <typename T> v4_<T> abs(v4_<T> v) {
@@ -185,7 +185,7 @@ template <typename T> v4_<T> copy_sign(v4_<T> value, v4_<T> sign) {
         math::copy_sign(value.x, sign.x), math::copy_sign(value.y, sign.y), math::copy_sign(value.z, sign.z), math::copy_sign(value.w, sign.w));
 }
 
-template <typename T> const T& clamp(const T& value, const T& minValue, const T& maxValue) {
+template <typename T> constexpr const T& clamp(const T& value, const T& minValue, const T& maxValue) {
     if (value < minValue)
         return minValue;
     else if (value > maxValue)
@@ -194,10 +194,10 @@ template <typename T> const T& clamp(const T& value, const T& minValue, const T&
         return value;
 }
 
-template <typename T> v2_<T> clamp(v2_<T> value, v2_<T> low, v2_<T> high) {
+template <typename T> constexpr v2_<T> clamp(v2_<T> value, v2_<T> low, v2_<T> high) {
     return v2_<T>(math::clamp(value.x, low.x, high.x), math::clamp(value.y, low.y, high.y));
 }
-template <typename T> v3_<T> clamp(v3_<T> value, v3_<T> low, v3_<T> high) {
+template <typename T> constexpr v3_<T> clamp(v3_<T> value, v3_<T> low, v3_<T> high) {
     return v3_<T>(math::clamp(value.x, low.x, high.x), math::clamp(value.y, low.y, high.y), math::clamp(value.z, low.z, high.z));
 }
 
@@ -310,8 +310,8 @@ template <typename T> bool intersect_of_line_segments(const v2_<T> p0, const v2_
     return true;
 }
 
-template <typename T> T mix(T a, T b, f32 x) {
-    return a*(1-x)+b*x;
+template <typename T> constexpr T mix(T a, T b, f32 x) {
+    return a*(1.f-x)+b*x;
 }
 
 inline f32 smoothstep(f32 edge0, f32 edge1, f32 x) {

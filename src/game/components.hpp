@@ -23,13 +23,19 @@ struct Name {
 struct Model {
     ModelCPU model_cpu = {};
     ModelGPU model_gpu = {};
-    v3        offset = v3(0.0f);
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
 };
 
-struct Transform {
+struct LogicTransform {
+    v3 position = v3(0.f);
+    
+    void inspect(Scene*);
+    void preview_3d(Scene* scene, entt::entity entity);
+};
+
+struct ModelTransform {
     v3    translation = v3(0.0f);
     euler rotation    = euler();
     f32   scale       = 1.0f;
@@ -39,7 +45,6 @@ struct Transform {
 };
 
 struct GridSlot {
-    v3i  position = v3i(0);
     bool path = false;
 
     void inspect(Scene*);
@@ -48,7 +53,7 @@ struct GridSlot {
 
 struct Traveler {
     vector<v3i> targets = {};
-    float       velocity = math::random_f32(0.1f, 1.0f);
+    Stat max_speed = {};
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
@@ -56,7 +61,7 @@ struct Traveler {
 
 struct Health {
     float value = 0.0f;
-    StatEffect max = {};
+    Stat max_health = {};
 
     void inspect(Scene*);
     void preview_3d(Scene* scene, entt::entity entity);
