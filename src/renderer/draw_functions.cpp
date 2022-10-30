@@ -33,7 +33,7 @@ v2 position2uv(v3 v) {
 MeshCPU generate_cube(v3 center, v3 extents) {
     string name = fmt_("cube_center:{:.2f}_extents:{:.2f}", center, extents);
     
-	return MeshCPU{name, name, vector<Vertex>  {
+	return MeshCPU{name, vector<Vertex>  {
         // back
         Vertex {center + extents * v3{-1, -1, -1}, {0, 0, -1}, {-1, 0, 0}, {0, 0, 0}, {1, 1}},
         Vertex {center + extents * v3{1, 1, -1}, {0, 0, -1}, {-1, 0, 0}, {0, 0, 0}, {0, 0}},
@@ -127,11 +127,11 @@ MeshCPU generate_icosphere(int subdivisions) {
         v.color = v3(0,0,0);
     }
     
-    return MeshCPU(name, name, vertex_list, index_list);
+    return MeshCPU(name, vertex_list, index_list);
 }
 
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices) {
-    string name = fmt_("line_hash:{:#x}", hash_data(vertices.data(), vertices.size()));
+    string name = fmt_("line_hash:{:#x}", hash_data(vertices.data(), vertices.bsize()));
     
     if (!(vertices.size() >= 2))
         return {};
@@ -198,8 +198,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
 
     MeshCPU mesh_cpu;
-    mesh_cpu.name = name;
-    mesh_cpu.file_name = name;
+    mesh_cpu.file_path = name;
     int quad_count = segments.size() - 1;
     mesh_cpu.vertices.reserve(quad_count * 6);
     mesh_cpu.indices.reserve(quad_count * 6);

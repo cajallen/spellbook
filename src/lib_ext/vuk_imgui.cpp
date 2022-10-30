@@ -8,6 +8,8 @@
 
 #include "file.hpp"
 
+#include "icons/font_awesome4.h"
+
 namespace spellbook {
 
 ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
@@ -16,6 +18,12 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
     io.BackendRendererName = "imgui_impl_vuk";
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
 
+    io.Fonts->AddFontDefault();
+
+    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
+    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FA, 14.0f, &icons_config, icons_ranges);
+    
     unsigned char* pixels;
     v2i dimensions;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &dimensions.x, &dimensions.y);
@@ -33,6 +41,8 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
     data.font_sci                                          = sci;
     data.font_si                                           = std::make_unique<vuk::SampledImage>(
         vuk::SampledImage::Global {*data.font_texture.view, sci, vuk::ImageLayout::eShaderReadOnlyOptimal});
+    
+
     io.Fonts->TexID = (ImTextureID) data.font_si.get();
     {
         vuk::PipelineBaseCreateInfo pci;

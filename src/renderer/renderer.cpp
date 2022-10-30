@@ -263,9 +263,8 @@ void Renderer::resize(v2i new_size) {
 
 
 string Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
-    assert_else(!mesh_cpu.file_name.empty());
-    u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_name.data(), mesh_cpu.file_name.size());
-    mesh_aliases[mesh_cpu.name] = mesh_cpu_hash;
+    assert_else(!mesh_cpu.file_path.empty());
+    u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_path.data(), mesh_cpu.file_path.size());
     MeshGPU         mesh_gpu;
     vuk::Allocator& alloc                = frame_allocation ? *frame_allocator : *global_allocator;
     auto            [vert_buf, vert_fut] = create_buffer_gpu(alloc, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
@@ -280,13 +279,12 @@ string Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     if (frame_allocation); // TODO: frame allocation
 
     mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
-    return mesh_cpu.file_name;
+    return mesh_cpu.file_path;
 }
 
 string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
-    assert_else(!material_cpu.file_name.empty());
-    u64 material_cpu_hash               = hash_data(material_cpu.file_name.data(), material_cpu.file_name.size());
-    material_aliases[material_cpu.name] = material_cpu_hash;
+    assert_else(!material_cpu.file_path.empty());
+    u64 material_cpu_hash               = hash_data(material_cpu.file_path.data(), material_cpu.file_path.size());
     if (frame_allocation); // TODO: frame allocation
 
     MaterialGPU material_gpu;
@@ -304,22 +302,21 @@ string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_all
     material_gpu.cull_mode = material_cpu.cull_mode;
 
     material_cache[material_cpu_hash] = std::move(material_gpu);
-    return material_cpu.file_name;
+    return material_cpu.file_path;
 }
 
 string Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
-    assert_else(!tex_cpu.file_name.empty());
-    u64 tex_cpu_hash = hash_data(tex_cpu.file_name.data(), tex_cpu.file_name.size());
-    texture_aliases[tex_cpu.name] = tex_cpu_hash;
+    assert_else(!tex_cpu.file_path.empty());
+    u64 tex_cpu_hash = hash_data(tex_cpu.file_path.data(), tex_cpu.file_path.size());
     vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
     auto [tex, tex_fut] = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
-    context->set_name(tex, vuk::Name(tex_cpu.name));
+    context->set_name(tex, vuk::Name(tex_cpu.file_path));
     enqueue_setup(std::move(tex_fut));
 
     if (frame_allocation); // TODO: frame allocation
 
     texture_cache[tex_cpu_hash] = std::move(tex);
-    return tex_cpu.file_name;
+    return tex_cpu.file_path;
 }
 
 MeshGPU* Renderer::get_mesh(const string& asset_path) {
@@ -400,7 +397,7 @@ void Renderer::debug_window(bool* p_open) {
 
 void Renderer::upload_defaults() {
     TextureCPU tex_white_upload {
-        .file_name = "textures/white.sbtex",
+        .file_path = "textures/white.sbtex",
         .size = v2i(8, 8),
         .format = vuk::Format::eR8G8B8A8Srgb,
         .pixels = vector<u8>(8 * 8 * 4, 255)
@@ -409,7 +406,7 @@ void Renderer::upload_defaults() {
 
     constexpr u32 grid_size = 256;
     TextureCPU tex_grid_upload {
-        .file_name = "textures/grid.sbtex",
+        .file_path = "textures/grid.sbtex",
         .size = v2i(grid_size, grid_size),
         .format = vuk::Format::eR8G8B8A8Srgb,
         .pixels = vector<u8>(grid_size * grid_size * 4, 255)
@@ -425,22 +422,19 @@ void Renderer::upload_defaults() {
     upload_texture(tex_grid_upload);
 
     MaterialCPU default_mat = {
-        .name = "default",
-        .file_name = "default",
+        .file_path = "default",
         .color_tint = palette::black,
     };
     upload_material(default_mat);
     TextureCPU default_tex = {
-        .name = "default",
-        .file_name = "default",
+        .file_path = "default",
         .size = {2, 2},
         .format = vuk::Format::eR8G8B8A8Srgb,
         .pixels = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255}
     };
     upload_texture(default_tex);
     MeshCPU default_mesh   = generate_cube(v3(0), v3(1));
-    default_mesh.name      = "default";
-    default_mesh.file_name = "default";
+    default_mesh.file_path = "default";
     upload_mesh(default_mesh);
 }
 

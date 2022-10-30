@@ -16,7 +16,7 @@ MeshCPU load_mesh(const string& file_name) {
     
     MeshInfo mesh_info = from_jv<MeshInfo>(*asset_file.asset_json["mesh_info"]);
     MeshCPU mesh_cpu = from_jv<MeshCPU>(*asset_file.asset_json["mesh_cpu"]);
-    mesh_cpu.file_name = file_name;
+    mesh_cpu.file_path = file_name;
     
     vector<u8> decompressed;
     decompressed.resize(mesh_info.vertices_bsize + mesh_info.indices_bsize);
@@ -33,7 +33,7 @@ MeshCPU load_mesh(const string& file_name) {
 
 void save_mesh(const MeshCPU& mesh_cpu) {
     AssetFile file;
-    file.file_name = mesh_cpu.file_name;
+    file.file_name = mesh_cpu.file_path;
     file.type = {'M','S','H'};
     file.version = 2;
 

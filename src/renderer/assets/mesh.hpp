@@ -20,8 +20,7 @@ struct MeshBounds {
 };
 
 struct MeshCPU {
-    string         name;
-    string         file_name;
+    string         file_path;
     
     vector<Vertex> vertices;
     vector<u32>    indices;
@@ -30,7 +29,8 @@ struct MeshCPU {
 
     void fix_tangents();
 };
-JSON_IMPL(MeshCPU, name);
+JSON_IMPL(MeshBounds, valid, extents, origin, radius);
+JSON_IMPL(MeshCPU, bounds);
 
 struct MeshGPU {
     vuk::Unique<vuk::BufferGPU> vertex_buffer;

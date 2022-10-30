@@ -42,7 +42,7 @@ void inspect(ModelCPU* model) {
         ImGui::Text("No model");
         return;
     }
-    ImGui::Text("file_name: %s", model->file_name.c_str());
+    ImGui::Text("file_name: %s", model->file_path.c_str());
 
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
     traverse = [&traverse](id_ptr<ModelCPU::Node> node_ptr) {
@@ -82,10 +82,10 @@ void save_model(const ModelCPU& model) {
     }
     j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
     
-    string ext = std::filesystem::path(model.file_name).extension().string();
+    string ext = std::filesystem::path(model.file_path).extension().string();
     assert_else(ext == model_extension);
     
-    file_dump(j, get_resource_path(model.file_name));
+    file_dump(j, get_resource_path(model.file_path));
 }
 
 fs::path _convert_to_relative(const fs::path& path) {
@@ -107,7 +107,7 @@ ModelCPU load_model(const fs::path& _input_path) {
     
     ModelCPU model;
     json      j = parse_file(get_resource_path(input_path.string()));
-    model.file_name = input_path.string();
+    model.file_path = input_path.string();
     if (j.contains("root_node"))
         model.root_node = from_jv<id_ptr<ModelCPU::Node>>(*j["root_node"]);
 
@@ -290,7 +290,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     fs::path scene_path = output_folder / output_name;
     scene_path.replace_extension(model_extension);
 
-    model_cpu.file_name = scene_path.string();
+    model_cpu.file_path = scene_path.string();
 
     return model_cpu;
 }
@@ -522,8 +522,8 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
         for (auto i_primitive = 0; i_primitive < gltf_mesh.primitives.size(); i_primitive++) {
             MeshCPU mesh_cpu;
 
-            mesh_cpu.name      = _calculate_gltf_mesh_name(model, i_mesh, i_primitive);
-            mesh_cpu.file_name = (output_folder / (mesh_cpu.name + mesh_extension)).string();
+            string name = _calculate_gltf_mesh_name(model, i_mesh, i_primitive);
+            mesh_cpu.file_path = (output_folder / (name + mesh_extension)).string();
 
             auto& primitive = gltf_mesh.primitives[i_primitive];
             _extract_gltf_indices(primitive, model, mesh_cpu.indices);
@@ -565,14 +565,13 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
             TextureCPU texture_cpu = {
-                baseImage.name,
                 color_path.string(),
                 v2i{baseImage.width, baseImage.height},
                 format,
                 vector<u8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())
             };
             save_texture(texture_cpu);
-            *texture_files[i] = texture_cpu.file_name;
+            *texture_files[i] = texture_cpu.file_path;
         }
 
         material_cpu.color_tint = Color((f32) pbr.baseColorFactor[0],
@@ -584,7 +583,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
         material_cpu.metallic_factor  = pbr.metallicFactor;
         material_cpu.normal_factor    = material_cpu.normal_asset_path == "textures/white.sbtex" ? 0.0f : 0.5f;
         fs::path material_path        = output_folder / (matname + material_extension);
-        material_cpu.file_name        = material_path.string();
+        material_cpu.file_path        = material_path.string();
 
         if (glmat.alphaMode.compare("BLEND") == 0) {
             // new_material.transparency = TransparencyMode_Transparent;

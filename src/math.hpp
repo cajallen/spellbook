@@ -319,4 +319,12 @@ inline f32 smoothstep(f32 edge0, f32 edge1, f32 x) {
     return x * x * (3 - 2 * x);
 }
 
+inline f32 mod(f32 input, f32 divisor) {
+    return std::fmod(input, divisor);
+}
+
+inline f32 fract(f32 input) {
+    return math::mod(input, 1);
+}
+
 }

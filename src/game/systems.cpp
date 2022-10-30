@@ -84,15 +84,15 @@ void health_draw_system(Scene* scene) {
     // dependencies
     string mesh_name = fmt_("cube_c{:.2f}_e{:.2f}", v3(0), v3(1));
     u64 cube_hash = hash_data(mesh_name.data(), mesh_name.size());
-    if (game.renderer.mesh_cache.contains(cube_hash)) {
+    if (!game.renderer.mesh_cache.contains(cube_hash)) {
         game.renderer.upload_mesh(generate_cube(v3(0), v3(1)));
     }
 
     string health_name = "health_material";
     u64 health_hash = hash_data(health_name.data(), health_name.size());
-    if (game.renderer.mesh_cache.contains(health_hash)) {
+    if (!game.renderer.mesh_cache.contains(health_hash)) {
         MaterialCPU material_cpu = {
-            .name          = health_name,
+            .file_path     = health_name,
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
@@ -101,9 +101,9 @@ void health_draw_system(Scene* scene) {
 
     string health_bar_name = "health_bar_material";
     u64 health_bar_hash = hash_data(health_bar_name.data(), health_bar_name.size());
-    if (game.renderer.mesh_cache.contains(health_bar_hash)) {
+    if (!game.renderer.mesh_cache.contains(health_bar_hash)) {
         MaterialCPU material_cpu = {
-            .name          = health_bar_name,
+            .file_path     = health_bar_name,
             .color_tint    = palette::black,
             .emissive_tint = palette::white,
             .cull_mode     = vuk::CullModeFlagBits::eFront
@@ -294,7 +294,7 @@ void roller_system(Scene* scene) {
 
     static bool generated = false;
     if (!generated) {
-        MaterialCPU material_cpu = {.name = "rollee_material", .file_name = "rollee_material", .color_tint = palette::slate_gray};
+        MaterialCPU material_cpu = { .file_path = "rollee_material", .color_tint = palette::slate_gray};
         game.renderer.upload_material(material_cpu);
         game.renderer.upload_mesh(generate_icosphere(3));
         generated = true;

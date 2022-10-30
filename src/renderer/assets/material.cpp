@@ -61,19 +61,19 @@ void inspect(MaterialGPU* material) {
 void save_material(const MaterialCPU& material_cpu) {
     auto j = from_jv<json>(to_jv(material_cpu));
     
-    string ext = std::filesystem::path(material_cpu.file_name).extension().string();
+    string ext = std::filesystem::path(material_cpu.file_path).extension().string();
     assert_else(ext == material_extension);
     
-    file_dump(j, get_resource_path(material_cpu.file_name));
+    file_dump(j, get_resource_path(material_cpu.file_path));
 }
 
-MaterialCPU load_material(const string& file_name) {
-    string ext = std::filesystem::path(file_name).extension().string();
+MaterialCPU load_material(const string& file_path) {
+    string ext = std::filesystem::path(file_path).extension().string();
     assert_else(ext == material_extension);
     
-    json j = parse_file(get_resource_path(file_name));
+    json j = parse_file(get_resource_path(file_path));
     auto material_cpu = from_jv<MaterialCPU>(to_jv(j));
-    material_cpu.file_name = file_name;
+    material_cpu.file_path = file_path;
     return material_cpu;
 }
 

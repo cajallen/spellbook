@@ -30,6 +30,7 @@ void PathTarget(fs::path* out, const string& dnd_key);
 
 // A widget to select paths
 void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories = true, const std::function<void(const fs::path&)>& context_callback = {});
+void PathSelect(const string& hint, string* out, const string& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories = true, const std::function<void(const fs::path&)>& context_callback = {});
 
 void PathSelectBody(fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, bool* p_open = nullptr, bool open_subdirectories = true, const std::function<void(const fs::path&)>& context_callback = {});
 

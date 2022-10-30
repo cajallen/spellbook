@@ -26,17 +26,19 @@ struct MapEditor {
     vector<Button<EnemyPrefab>> enemies;
     
     u32 selected_tower = -1;
-    u32 selected_tile = -1;
+    u32 selected_tile  = -1;
     u32 selected_enemy = -1;
     Scene* p_scene        = nullptr;
 
     string browser_string = "C:/spellbook";
     
-    void   setup();
-    void   setup(Scene* init_scene);
-    void   update();
-    void   window(bool* p_open);
+    void setup();
+    void setup(Scene* init_scene);
+    void update();
+    void window(bool* p_open);
 };
+
+JSON_IMPL_TEMPLATE(template <typename T>, Button<T>, text, color, item);
 
 template <typename T>
 bool show_buttons(const string& name, vector<Button<T>>& buttons, u32* selected) {

@@ -12,6 +12,15 @@ namespace fs = std::filesystem;
 namespace spellbook {
 
 struct AssetEditor {
+    enum Tab {
+        Tab_Model,
+        Tab_Mesh,
+        Tab_Material,
+        Tab_Tower,
+        Tab_Tile,
+        Tab_Enemy
+    };
+    
     Scene*   p_scene = nullptr;
 
     ModelCPU model_cpu;
@@ -20,6 +29,9 @@ struct AssetEditor {
     TowerPrefab tower_prefab;
     TilePrefab tile_prefab;
     EnemyPrefab enemy_prefab;
+
+    // Used as readonly
+    Tab tab;
     
     void      setup();
     void      update();

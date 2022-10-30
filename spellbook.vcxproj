@@ -125,6 +125,7 @@
     <ClCompile Include="src\game\enemy.cpp" />
     <ClCompile Include="src\game\map_editor.cpp" />
     <ClCompile Include="src\game\systems.cpp" />
+    <ClCompile Include="src\game\test_scene.cpp" />
     <ClCompile Include="src\game\tile.cpp" />
     <ClCompile Include="src\game\tower.cpp" />
     <ClCompile Include="src\gui.cpp" />
@@ -302,6 +303,7 @@
     <ClInclude Include="src\game\asset_editor.hpp" />
     <ClInclude Include="src\game\enemy.hpp" />
     <ClInclude Include="src\game\general.hpp" />
+    <ClInclude Include="src\game\test_scene.hpp" />
     <ClInclude Include="src\game\tile.hpp" />
     <ClInclude Include="src\game\tower.hpp" />
     <ClInclude Include="src\hash.hpp" />
@@ -323,6 +325,7 @@
     <ClInclude Include="src\lib_ext\fmt_geometry.hpp" />
     <ClInclude Include="src\lib_ext\fmt_renderer.hpp" />
     <ClInclude Include="src\lib_ext\glfw.hpp" />
+    <ClInclude Include="src\lib_ext\icons\font_awesome4.h" />
     <ClInclude Include="src\lib_ext\imgui_extra.hpp" />
     <ClInclude Include="src\lib_ext\vuk_imgui.hpp" />
     <ClInclude Include="src\lni_vector.hpp" />
@@ -348,6 +351,7 @@
     <ClInclude Include="src\renderer\viewport.hpp" />
     <ClInclude Include="src\scene.hpp" />
     <ClInclude Include="src\slotmap.hpp" />
+    <ClInclude Include="src\spline.hpp" />
     <ClInclude Include="src\string.hpp" />
     <ClInclude Include="src\umap.hpp" />
     <ClInclude Include="src\var_system.hpp" />

@@ -17,8 +17,7 @@ struct PipelineBaseInfo;
 namespace spellbook {
 
 struct MaterialCPU {
-    string name;
-    string file_name;
+    string file_path;
 
     Color color_tint       = palette::white;
     Color emissive_tint    = palette::black;
@@ -36,19 +35,8 @@ struct MaterialCPU {
     vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
 };
 
-JSON_IMPL(MaterialCPU,
-    name,
-    color_tint,
-    roughness_factor,
-    metallic_factor,
-    normal_factor,
-    emissive_tint,
-    color_asset_path,
-    orm_asset_path,
-    normal_asset_path,
-    emissive_asset_path,
-    sampler,
-    cull_mode);
+JSON_IMPL(MaterialCPU, color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, color_asset_path,
+        orm_asset_path, normal_asset_path, emissive_asset_path, sampler, cull_mode);
 
 struct MaterialDataGPU {
     v4 color_tint;

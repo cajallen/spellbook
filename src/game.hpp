@@ -3,6 +3,7 @@
 #include "renderer/renderer.hpp"
 #include "game/asset_editor.hpp"
 #include "game/map_editor.hpp"
+#include "game/test_scene.hpp"
 
 #include "string.hpp"
 #include "vector.hpp"
@@ -19,8 +20,9 @@ struct Game {
     Renderer       renderer;
     GUI            gui;
 
-    MapEditor map_editor;
+    // MapEditor map_editor;
     AssetEditor asset_editor;
+    // TestScene test_scene;
     
     string external_resource_folder;
     string resource_folder;

@@ -24,7 +24,7 @@ TextureCPU load_texture(const string& file_name) {
 
     TextureInfo texture_info = from_jv<TextureInfo>(*asset_file.asset_json["texture_info"]);
     TextureCPU  texture_cpu  = from_jv<TextureCPU>(*asset_file.asset_json["texture_cpu"]);
-    texture_cpu.file_name = file_name;
+    texture_cpu.file_path = file_name;
     
     texture_cpu.pixels.resize(texture_info.pixels_bsize);
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(),
@@ -37,7 +37,7 @@ TextureCPU load_texture(const string& file_name) {
 
 void save_texture(TextureCPU& texture_cpu) {
     AssetFile file;
-    file.file_name = texture_cpu.file_name;
+    file.file_name = texture_cpu.file_path;
     file.type      = {'T', 'E', 'X'};
     file.version   = 2;
 
@@ -71,8 +71,7 @@ TextureCPU convert_to_texture(const string& file_name, const string& output_fold
 
     TextureCPU texture;
     fs::path   out_path = fs::path(output_folder) / fs::path(output_name + texture_extension);
-    texture.file_name   = out_path.string();
-    texture.name        = output_name;
+    texture.file_path   = out_path.string();
     int channels;
     if (ext == ".hdr") {
         assert_else(false && "NYI");

@@ -5,6 +5,7 @@
 
 #include "imgui_internal.h"
 #include "game/asset_browser.hpp"
+#include "icons/font_awesome4.h"
 #include "renderer/assets/model.hpp"
 
 
@@ -140,16 +141,22 @@ void PathTarget(fs::path* out, const string& dnd_key) {
     }
 }
 
+void PathSelect(const string& hint, string* out, const string& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    fs::path out_input = fs::path(*out);
+    PathSelect(hint, &out_input, base_folder, filter, dnd_key, open_subdirectories, context_callback);
+    *out = out_input.string();
+}
+
 void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     ImGui::PushID(hint.c_str());
     ImGui::BeginGroup();
     {
+        if (ImGui::Button(ICON_FA_FOLDER))
+            ImGui::OpenPopup("File Select");
+        ImGui::SameLine();
         string out_string = out->string();
         if (ImGui::InputText(hint.c_str(), &out_string))
             *out = fs::path(out_string);
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Select"))
-            ImGui::OpenPopup("File Select");
     }
     ImGui::EndGroup();
     PathTarget(out, dnd_key);
