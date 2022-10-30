@@ -2,10 +2,10 @@
 A currently unnamed tower defense game, inspired by Super Auto Pets and SNKRX.
 
 # Spellbook
-The engine, built in parallel and from relative scratch, that the game runs on. There is very minimal isolation between the game and the engine (and the editor for that matter), so this is more of a concept than a real thing. From these reasons comes this as a working name.
+The engine, built in parallel and from relative scratch, that the game runs on. I'm using this as a working name because it has a name.
 
 ## Project goals
-The primary goal of this project is to avoid theoretical gains, and focus on making tangible progress. 
+The primary goal of this project is to make the game without getting lost in rabbit holes or bike shed planning.
 
 ## Temp Build Instructions
 1. Initialize submodules
