@@ -42,7 +42,7 @@ Renderer::Renderer()
                 return VK_FALSE;
             })
 #endif
-        .set_app_name("cargo_container")
+        .set_app_name("star_stealer")
         .set_engine_name("spellbook")
         .require_api_version(1, 2, 0)
         .set_app_version(0, 1, 0);

@@ -1,12 +1,13 @@
 #include "texture_asset.hpp"
 
-#include <lz4.h>
-#include <iostream>
 #include <filesystem>
+#include <iostream>
+#include <lz4.h>
 #include <stb_image.h>
 
 #include "game.hpp"
 #include "console.hpp"
+#include "file.hpp"
 
 #include "lib_ext/fmt_geometry.hpp"
 
@@ -70,7 +71,7 @@ TextureCPU convert_to_texture(const string& file_name, const string& output_fold
     const auto& ext = file_path.extension().string();
 
     TextureCPU texture;
-    fs::path   out_path = fs::path(output_folder) / fs::path(output_name + texture_extension);
+    fs::path   out_path = fs::path(output_folder) / fs::path(output_name + extension(FileType_Texture));
     texture.file_path   = out_path.string();
     int channels;
     if (ext == ".hdr") {

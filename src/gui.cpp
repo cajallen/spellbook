@@ -9,6 +9,8 @@
 #include "game.hpp"
 #include "var_system.hpp"
 #include "console.hpp"
+#include "file.hpp"
+
 #include "game/asset_browser.hpp"
 
 #include "renderer/camera.hpp"
@@ -104,8 +106,8 @@ void GUI::update() {
 
     if (*(p_open = window_open("demo")))
         ImGui::ShowDemoWindow(p_open);
-    // if (*(p_open = window_open("map_editor")))
-    //     game.map_editor.window(p_open);
+    if (*(p_open = window_open("map_editor")))
+        game.map_editor.window(p_open);
     if (*(p_open = window_open("asset_editor")))
         game.asset_editor.window(p_open);
     // if (*(p_open = window_open("test_scene")))

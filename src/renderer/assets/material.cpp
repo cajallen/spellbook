@@ -4,9 +4,13 @@
 #include <imgui.h>
 #include <vuk/Pipeline.hpp>
 
+#include "lib_ext/imgui_extra.hpp"
+
 #include "asset_loader.hpp"
 #include "console.hpp"
 #include "game.hpp"
+#include "file.hpp"
+#include "game/asset_browser.hpp"
 
 #include "renderer/renderer.hpp"
 #include "renderer/samplers.hpp"
@@ -24,6 +28,23 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     cbuf.bind_image(0, 6, normal.global.iv).bind_sampler(0, 6, normal.global.sci);
     cbuf.bind_image(0, 7, emissive.global.iv).bind_sampler(0, 7, emissive.global.sci);
 };
+
+void inspect(MaterialCPU* material) {
+    PathSelect("File", &material->file_path, "resources", FileType_Material);
+
+    ImGui::ColorEdit4("color_tint", material->color_tint.data, ImGuiColorEditFlags_DisplayHSV);
+    ImGui::ColorEdit4("emissive_tint", material->emissive_tint.data, ImGuiColorEditFlags_DisplayHSV);
+    ImGui::DragFloat("roughness_factor", &material->roughness_factor, 0.01f);
+    ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
+    ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
+
+    PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+    PathSelect("orm_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+    PathSelect("normal_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+    PathSelect("emissive_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+
+    EnumCombo("cull_mode", &material->cull_mode);
+}
 
 void inspect(MaterialGPU* material) {
     ImGui::Text("Base Color");
@@ -52,26 +73,22 @@ void inspect(MaterialGPU* material) {
     ImGui::DragFloat("Metallic Factor", &material->tints.roughness_metallic_normal_scale.y, 0.01f);
     ImGui::DragFloat("Normal Factor", &material->tints.roughness_metallic_normal_scale.z, 0.01f);
     ImGui::DragFloat("UV Scale", &material->tints.roughness_metallic_normal_scale.w, 0.01f);
-
-    s32 cull_mode = (s32) (u32) material->cull_mode;
-    ImGui::Combo("Cull Mode", &cull_mode, "None\0Front\0Back\0Both\0");
-    material->cull_mode = (vuk::CullModeFlags) cull_mode;
 }
 
 void save_material(const MaterialCPU& material_cpu) {
     auto j = from_jv<json>(to_jv(material_cpu));
     
     string ext = std::filesystem::path(material_cpu.file_path).extension().string();
-    assert_else(ext == material_extension);
+    assert_else(ext == extension(FileType_Material));
     
-    file_dump(j, get_resource_path(material_cpu.file_path));
+    file_dump(j, to_resource_path(material_cpu.file_path).string());
 }
 
 MaterialCPU load_material(const string& file_path) {
     string ext = std::filesystem::path(file_path).extension().string();
-    assert_else(ext == material_extension);
+    assert_else(ext == extension(FileType_Material));
     
-    json j = parse_file(get_resource_path(file_path));
+    json j = parse_file(to_resource_path(file_path).string());
     auto material_cpu = from_jv<MaterialCPU>(to_jv(j));
     material_cpu.file_path = file_path;
     return material_cpu;

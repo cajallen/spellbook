@@ -23,12 +23,7 @@ void TestScene::update() {
     }
     if (control_points.size() >= 2) {
         auto line_mesh = generate_formatted_line(viewport.camera, formatted_vertices);
-        Renderable control_line;
-        control_line.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
-        control_line.material_asset_path = "default";
-        control_line.frame_allocated = true;
-
-        p_scene->render_scene.add_renderable(control_line);
+        p_scene->render_scene.quick_mesh(line_mesh);
     }
 
     vector<FormattedVertex> formatted_vertices2;
@@ -39,23 +34,13 @@ void TestScene::update() {
     }
     if (formatted_vertices2.size() > 2) {
         auto line_mesh = generate_formatted_line(viewport.camera, formatted_vertices2);
-        Renderable t_curve;
-        t_curve.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
-        t_curve.material_asset_path = "default";
-        t_curve.frame_allocated = true;
-        
-        p_scene->render_scene.add_renderable(t_curve);
+        p_scene->render_scene.quick_mesh(line_mesh);
     }
     // auto line_mesh = generate_formatted_line(viewport.camera, {
     //         {p + v3(0.f,0.f,0.03f), palette::spellbook_1, 0.04f},
     //         {p - v3(0.f,0.f,0.03f), palette::spellbook_1, 0.04f}
     // });
-    // Renderable t_dot;
-    // t_dot.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
-    // t_dot.material_asset_path = "default";
-    // t_dot.frame_allocated = true;
-    //
-    // p_scene->render_scene.add_renderable(t_dot);
+    // p_scene->render_scene.quick_mesh(line_mesh);
 
 }
 

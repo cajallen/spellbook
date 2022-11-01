@@ -19,7 +19,6 @@ void health_draw_system(Scene* scene);
 // Uses the transform for models
 void transform_system(Scene* scene);
 
-void spawner_system(Scene* scene);
 void consumer_system(Scene* scene);
 void health_system(Scene* scene);
 void disposal_system(Scene* scene);

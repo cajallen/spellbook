@@ -47,10 +47,10 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
     {
         vuk::PipelineBaseCreateInfo pci;
         auto                        vpath = "src/shaders/imgui.vert.spv";
-        auto                        vcont = get_contents<u32>(vpath);
+        auto                        vcont = get_contents_u32(vpath);
         pci.add_spirv(std::vector(vcont.begin(), vcont.end()), vpath);
         auto fpath = "src/shaders/imgui.frag.spv";
-        auto fcont = get_contents<u32>(fpath);
+        auto fcont = get_contents_u32(fpath);
         pci.add_spirv(std::vector(fcont.begin(), fcont.end()), fpath);
         ctx.create_named_pipeline("imgui", pci);
     }

@@ -1,12 +1,14 @@
 ﻿#include "model.hpp"
 
-#include "tiny_gltf.h"
+#include <tiny_gltf.h>
+
+#include "lib_ext/imgui_extra.hpp"
 
 #include "game.hpp"
 #include "matrix_math.hpp"
 #include "mesh_asset.hpp"
 #include "texture_asset.hpp"
-#include "lib_ext/imgui_extra.hpp"
+#include "file.hpp"
 
 #include "renderer/renderer.hpp"
 #include "renderer/renderable.hpp"
@@ -15,6 +17,7 @@
 #include "renderer/assets/material.hpp"
 
 #include "game/asset_browser.hpp"
+#include "lib_ext/icons/font_awesome4.h"
 
 namespace spellbook {
 
@@ -38,36 +41,35 @@ vector<ModelCPU> ModelCPU::split() {
 }
 
 void inspect(ModelCPU* model) {
-    if (model == nullptr) {
-        ImGui::Text("No model");
-        return;
-    }
-    ImGui::Text("file_name: %s", model->file_path.c_str());
+    PathSelect("File", &model->file_path, "resources", FileType_Model);
 
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
-    traverse = [&traverse](id_ptr<ModelCPU::Node> node_ptr) {
-        ImGui::PushID(node_ptr.value);
-        auto& node = *node_ptr;
-        ImGui::Text("name:            %s", node.name.c_str());
-        ImGui::Text("mesh_asset_path: %s", node.mesh_asset_path.c_str());
-        ImGui::Text("mat_asset_path:  %s", node.material_asset_path.c_str());
-        DragMat4("Transform", &node.transform, 0.01f, "%.2f");
-
-        ImGui::Text("Children");
-        for (auto& child : node.children) {
-            if (child.valid() && ImGui::TreeNode(child->name.c_str())) {
+    traverse = [&traverse, &model](id_ptr<ModelCPU::Node> node) {
+        string id_str = fmt_("{}###{}", node->name, node.value);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if (ImGui::TreeNode(id_str.c_str())) {
+            ImGui::InputText("Name", &node->name);
+            PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Texture);
+            PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
+            DragMat4("Transform", &node->transform, 0.02f, "%.2f");
+            for (auto child : node->children) {
                 traverse(child);
-                ImGui::TreePop();
             }
+            if (ImGui::Button(ICON_FA_PLUS_CIRCLE, {-ImGui::GetStyle().FramePadding.x, 0})) {
+                model->nodes.insert_back(id_ptr<ModelCPU::Node>::emplace());
+                            
+                model->nodes.last()->parent = node;
+                node->children.emplace_back(model->nodes.last());
+            }
+            ImGui::Separator();
+            ImGui::TreePop();
         }
-        ImGui::Separator();
-        ImGui::PopID();
     };
-    if (model->root_node.valid() && ImGui::TreeNode(model->root_node->name.c_str())) {
+
+    if (model->root_node.valid()) {
         traverse(model->root_node);
-        ImGui::TreePop();
-    } else if (!model->root_node.valid()) {
-        ImGui::Text("No root node");
+    } else {
+        ImGui::Text("No Root Node");
     }
 }
 
@@ -83,30 +85,25 @@ void save_model(const ModelCPU& model) {
     j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
     
     string ext = std::filesystem::path(model.file_path).extension().string();
-    assert_else(ext == model_extension);
+    assert_else(ext == extension(FileType_Model));
     
-    file_dump(j, get_resource_path(model.file_path));
+    file_dump(j, to_resource_path(model.file_path).string());
 }
 
 fs::path _convert_to_relative(const fs::path& path) {
     return path.lexically_proximate(game.resource_folder);
 }
 
-ModelCPU load_model(const fs::path& _input_path) {
-    fs::path input_path = _input_path;
-    if (_input_path.string().starts_with("resources"))
-        input_path = _input_path.lexically_proximate("resources");
-    if (_input_path.string().starts_with(game.resource_folder))
-        input_path = _input_path.lexically_proximate(game.resource_folder);
-    
-    warn_else(fs::exists(get_resource_path(input_path.string())))
+ModelCPU load_model(const fs::path& input_path) {
+    fs::path absolute_path = to_resource_path(input_path);
+    warn_else(fs::exists(absolute_path))
         return {};
     string ext = input_path.extension().string();
-    warn_else(ext == model_extension)
+    warn_else(ext == extension(FileType_Model))
         return {};
     
     ModelCPU model;
-    json      j = parse_file(get_resource_path(input_path.string()));
+    json      j = parse_file(absolute_path.string());
     model.file_path = input_path.string();
     if (j.contains("root_node"))
         model.root_node = from_jv<id_ptr<ModelCPU::Node>>(*j["root_node"]);
@@ -161,7 +158,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     fs::create_directory(folder);
 
     const auto& ext = input_path.extension().string();
-    assert_else(possible_model_asset(input_path))
+    assert_else(path_filter(FileType_ModelAsset)(input_path))
         return {};
     tinygltf::Model    gltf_model;
     tinygltf::TinyGLTF loader;
@@ -232,8 +229,8 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0);
             string material_name = _calculate_gltf_material_name(gltf_model, material);
 
-            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
-            fs::path material_path = output_folder / (material_name + material_extension);
+            fs::path mesh_path     = output_folder / (mesh_name + extension(FileType_Mesh));
+            fs::path material_path = output_folder / (material_name + extension(FileType_Material));
 
             model_node.name                = gltf_node.name;
             model_node.mesh_asset_path     = mesh_path.string();
@@ -275,8 +272,8 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             string material_name = _calculate_gltf_material_name(gltf_model, material);
             string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive);
 
-            fs::path material_path = output_folder / (material_name + material_extension);
-            fs::path mesh_path     = output_folder / (mesh_name + mesh_extension);
+            fs::path material_path = output_folder / (material_name + extension(FileType_Material));
+            fs::path mesh_path     = output_folder / (mesh_name + extension(FileType_Mesh));
 
             model_node_ptr->name      = model_cpu.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
             model_node_ptr->mesh_asset_path      = mesh_path.string();
@@ -288,7 +285,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     }
 
     fs::path scene_path = output_folder / output_name;
-    scene_path.replace_extension(model_extension);
+    scene_path.replace_extension(extension(FileType_Model));
 
     model_cpu.file_path = scene_path.string();
 
@@ -382,6 +379,16 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
                 vertices[i].tangent[X] = *(dtf + (i * 3) + X);
                 vertices[i].tangent[Y] = *(dtf + (i * 3) + Y);
                 vertices[i].tangent[Z] = *(dtf + (i * 3) + Z);
+            } else {
+                assert_else(false);
+            }
+        } else if (tangent_accessor.type == TINYGLTF_TYPE_VEC4) {
+            if (tangent_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+                float* dtf = (float*) tangent_data.data();
+
+                vertices[i].tangent[X] = *(dtf + (i * 4) + X);
+                vertices[i].tangent[Y] = *(dtf + (i * 4) + Y);
+                vertices[i].tangent[Z] = *(dtf + (i * 4) + Z);
             } else {
                 assert_else(false);
             }
@@ -523,7 +530,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
             MeshCPU mesh_cpu;
 
             string name = _calculate_gltf_mesh_name(model, i_mesh, i_primitive);
-            mesh_cpu.file_path = (output_folder / (name + mesh_extension)).string();
+            mesh_cpu.file_path = (output_folder / (name + extension(FileType_Mesh))).string();
 
             auto& primitive = gltf_mesh.primitives[i_primitive];
             _extract_gltf_indices(primitive, model, mesh_cpu.indices);
@@ -561,7 +568,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
                 baseImage.name = texture_names[i];
 
             fs::path color_path = (output_folder / baseImage.name).string();
-            color_path.replace_extension(texture_extension);
+            color_path.replace_extension(extension(FileType_Texture));
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
             TextureCPU texture_cpu = {
@@ -582,7 +589,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
         material_cpu.roughness_factor = pbr.roughnessFactor;
         material_cpu.metallic_factor  = pbr.metallicFactor;
         material_cpu.normal_factor    = material_cpu.normal_asset_path == "textures/white.sbtex" ? 0.0f : 0.5f;
-        fs::path material_path        = output_folder / (matname + material_extension);
+        fs::path material_path        = output_folder / (matname + extension(FileType_Material));
         material_cpu.file_path        = material_path.string();
 
         if (glmat.alphaMode.compare("BLEND") == 0) {

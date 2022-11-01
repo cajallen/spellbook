@@ -61,7 +61,7 @@ void travel_system(Scene* scene) {
             traveler.targets.remove_back();
             velocity = v3(0);
         }
-        f32 max_velocity = traveler.max_speed.get_stat() * Input::delta_time;
+        f32 max_velocity = traveler.max_speed.value() * Input::delta_time;
         f32 min_velocity = 0.0f;
         if (!at_target)
             transform.translation += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
@@ -142,19 +142,6 @@ void transform_system(Scene* scene) {
         int i = 0;
         for (auto renderable : model.model_gpu.renderables) {
             renderable->transform = transform_matrix * model.model_cpu.nodes[i++]->calculate_transform();
-        }
-    }
-}
-void spawner_system(Scene* scene) {
-    ZoneScoped;
-    for (auto [entity, spawner] : scene->registry.view<Spawner>().each()) {
-        if (spawner.last_spawn + spawner.rate < Input::time) {
-            spawner.last_spawn += spawner.rate;
-
-            GridSlot* p_slot = scene->registry.try_get<GridSlot>(entity);
-            assert_else(p_slot);
-            
-            // TODO:
         }
     }
 }

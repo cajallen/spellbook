@@ -31,13 +31,9 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
 }
 
 void inspect(TilePrefab* tile_prefab) {
+    PathSelect("File", &tile_prefab->file_path, "resources", FileType_Tile, true);
     EnumCombo("Type", &tile_prefab->type);
-    fs::path model_path = tile_prefab->model_path;
-    fs::path file_path = tile_prefab->file_path;
-    PathSelect("Model", &model_path, "resources", possible_model, "DND_MODEL", true);
-    PathSelect("File", &file_path, "resources", possible_file, "DND_FILE", true);
-    tile_prefab->model_path = model_path.string();
-    tile_prefab->file_path = file_path.string();
+    PathSelect("Model", &tile_prefab->model_path, "resources", FileType_Model, true);
 }
 
 }

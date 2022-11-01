@@ -331,5 +331,16 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
 
 void RenderScene::cleanup(vuk::Allocator& allocator) {}
 
+void RenderScene::quick_mesh(const MeshCPU& mesh_cpu) {
+    Renderable r;
+    r.mesh_asset_path = game.renderer.upload_mesh(mesh_cpu);
+    r.material_asset_path = "default";
+    r.frame_allocated = true;
+
+    add_renderable(r);
+}
+
+
+
 
 }

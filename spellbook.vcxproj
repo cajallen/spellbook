@@ -124,6 +124,8 @@
     <ClCompile Include="src\game\components.cpp" />
     <ClCompile Include="src\game\enemy.cpp" />
     <ClCompile Include="src\game\map_editor.cpp" />
+    <ClCompile Include="src\game\spawner.cpp" />
+    <ClCompile Include="src\game\stat.cpp" />
     <ClCompile Include="src\game\systems.cpp" />
     <ClCompile Include="src\game\test_scene.cpp" />
     <ClCompile Include="src\game\tile.cpp" />
@@ -303,6 +305,8 @@
     <ClInclude Include="src\game\asset_editor.hpp" />
     <ClInclude Include="src\game\enemy.hpp" />
     <ClInclude Include="src\game\general.hpp" />
+    <ClInclude Include="src\game\map.hpp" />
+    <ClInclude Include="src\game\spawner.hpp" />
     <ClInclude Include="src\game\test_scene.hpp" />
     <ClInclude Include="src\game\tile.hpp" />
     <ClInclude Include="src\game\tower.hpp" />

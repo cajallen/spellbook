@@ -201,7 +201,7 @@ template <typename T> class slotmap {
 	u64				 freeKeyTail = 0;
 };
 
-template <typename T> inline slot<T> slotmap<T>::add_element(const T& newElement) {
+template <typename T> slot<T> slotmap<T>::add_element(const T& newElement) {
 	if (keys.size() == 0)
 		keys.push_back(0);
 	elements.push_back(newElement);
@@ -224,7 +224,7 @@ template <typename T> inline slot<T> slotmap<T>::add_element(const T& newElement
 	return {returnIndex};
 }
 
-template <typename T> inline slot<T> slotmap<T>::add_element(T&& newElement) {
+template <typename T> slot<T> slotmap<T>::add_element(T&& newElement) {
 	if (keys.size() == 0)
 		keys.push_back(0);
 	elements.push_back(std::forward<T>(newElement));
@@ -247,19 +247,19 @@ template <typename T> inline slot<T> slotmap<T>::add_element(T&& newElement) {
 	return {returnIndex};
 }
 
-template <typename T> inline T& slotmap<T>::element_at(slot<T> handle) {
+template <typename T> T& slotmap<T>::element_at(slot<T> handle) {
 	assert(keys.size() > handle.value);
 	assert(eraseMap[keys[handle.value]] == handle.value);
 	return elements[keys[handle.value]];
 }
 
-template <typename T> inline const T& slotmap<T>::element_at(slot<T> handle) const {
+template <typename T> const T& slotmap<T>::element_at(slot<T> handle) const {
 	assert(keys.size() > handle.value);
 	assert(eraseMap[keys[handle.value]] == handle.value);
 	return elements[keys[handle.value]];
 }
 
-template <typename T> inline void slotmap<T>::remove_element(slot<T> handle) {
+template <typename T> void slotmap<T>::remove_element(slot<T> handle) {
 	assert(keys.size() > handle.value);
 
 	u64 eraseElementIndex = keys[handle.value];
@@ -281,7 +281,7 @@ template <typename T> inline void slotmap<T>::remove_element(slot<T> handle) {
 	freeKeyTail		   = handle.value;
 }
 
-template <typename T> inline void slotmap<T>::remove_value(T& value) {
+template <typename T> void slotmap<T>::remove_value(T& value) {
 	slotmap<T>::iterator it = begin();
 	for (; it != end(); it++) {
 		if (*it == value)
@@ -291,55 +291,55 @@ template <typename T> inline void slotmap<T>::remove_value(T& value) {
 		remove_element(handle(it));
 }
 
-template <typename T> inline T& slotmap<T>::operator[](slot<T> handle) {
+template <typename T> T& slotmap<T>::operator[](slot<T> handle) {
 	return element_at(handle);
 }
 
-template <typename T> inline const T& slotmap<T>::operator[](slot<T> handle) const {
+template <typename T> const T& slotmap<T>::operator[](slot<T> handle) const {
 	return element_at(handle);
 }
 
-template <typename T> inline void slotmap<T>::clear() {
+template <typename T> void slotmap<T>::clear() {
 	elements.clear();
 }
 
-template <typename T> inline u64 slotmap<T>::size() const {
+template <typename T> u64 slotmap<T>::size() const {
 	return elements.size();
 }
 
-template <typename T> inline slotmap<T>::iterator slotmap<T>::begin() {
+template <typename T> slotmap<T>::iterator slotmap<T>::begin() {
 	return iterator(elements.data());
 }
 
-template <typename T> inline slotmap<T>::iterator slotmap<T>::end() {
+template <typename T> slotmap<T>::iterator slotmap<T>::end() {
 	return iterator(elements.data() + elements.size());
 }
 
-template <typename T> inline slotmap<T>::const_iterator slotmap<T>::cbegin() const {
+template <typename T> slotmap<T>::const_iterator slotmap<T>::cbegin() const {
 	return const_iterator(elements.data());
 }
 
-template <typename T> inline slotmap<T>::const_iterator slotmap<T>::cend() const {
+template <typename T> slotmap<T>::const_iterator slotmap<T>::cend() const {
 	return const_iterator(elements.data() + elements.size());
 }
 
-template <typename T> inline slotmap<T>::iterator slotmap<T>::find(slot<T> handle) {
+template <typename T> slotmap<T>::iterator slotmap<T>::find(slot<T> handle) {
 	if (handle.value >= keys.size())
 		return iterator(elements.data() + elements.size());
 	return iterator(elements.data() + keys[handle.value]);
 }
 
-template <typename T> inline slotmap<T>::const_iterator slotmap<T>::find(slot<T> handle) const {
+template <typename T> slotmap<T>::const_iterator slotmap<T>::find(slot<T> handle) const {
 	if (handle.value >= keys.size())
 		return const_iterator(elements.data() + elements.size());
 	return const_iterator(elements.data() + keys[handle.value]);
 }
 
-template <typename T> inline slot<T> slotmap<T>::handle(const slotmap<T>::iterator& handleIterator) {
+template <typename T> slot<T> slotmap<T>::handle(const slotmap<T>::iterator& handleIterator) {
 	return {eraseMap[static_cast<T*>(handleIterator) - elements.data()], this};
 }
 
-template <typename T> inline bool slotmap<T>::valid(slot<T> handle) const {
+template <typename T> bool slotmap<T>::valid(slot<T> handle) const {
 	if (keys.size() <= handle.value) return false;
 	if (eraseMap.size() <= keys[handle.value]) return false;
 	return eraseMap[keys[handle.value]] == handle.value;

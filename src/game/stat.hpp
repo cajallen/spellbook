@@ -15,7 +15,7 @@ struct StatEffect {
 struct Stat {
     umap<string, StatEffect> effects;
 
-    inline f32 get_stat() {
+    f32 value() {
         f32 base = 0.0f;
         f32 mult = 1.0f;
         f32 add  = 0.0f;
@@ -44,5 +44,7 @@ struct Stat {
         effects["ctor"] = {.type = StatEffect::Type_Base, .value = initial};
     }
 };
+
+void inspect(Stat* stat);
 
 }

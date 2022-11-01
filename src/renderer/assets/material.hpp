@@ -59,6 +59,7 @@ struct MaterialGPU {
     void bind_textures(vuk::CommandBuffer& cbuf);
 };
 
+void inspect(MaterialCPU* material);
 void inspect(MaterialGPU* material);
 
 void        save_material(const MaterialCPU&);

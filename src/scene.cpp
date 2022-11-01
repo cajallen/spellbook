@@ -8,6 +8,7 @@
 #include "game.hpp"
 
 #include "game/components.hpp"
+#include "game/spawner.hpp"
 #include "game/systems.hpp"
 #include "renderer/draw_functions.hpp"
 
@@ -45,8 +46,6 @@ void Scene::setup() {
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
 }
 
-#define PREVIEW_COMPONENT(Component, component) if (auto* component = registry.try_get<Component>(entity)) { component->preview_3d(this, entity); }
-
 void Scene::update() {
 	ZoneScoped;
 	controller.update();
@@ -68,19 +67,7 @@ void Scene::update() {
     disposal_system(this);
 
     for (auto entity : registry.view<Name>()) {
-        PREVIEW_COMPONENT(Model, model)
-        PREVIEW_COMPONENT(ModelTransform, model_transform)
-        PREVIEW_COMPONENT(GridSlot, grid_slot)
-        PREVIEW_COMPONENT(Traveler, traveler)
-        PREVIEW_COMPONENT(Health, health)
-        PREVIEW_COMPONENT(Spawner, spawner)
-        PREVIEW_COMPONENT(Consumer, consumer)
-        PREVIEW_COMPONENT(Killed, killed)
-        PREVIEW_COMPONENT(Pyro, pyro)
-        PREVIEW_COMPONENT(Roller, roller)
-        PREVIEW_COMPONENT(Rollee, rollee)
-        PREVIEW_COMPONENT(Dragging, dragging)
-        PREVIEW_COMPONENT(Collision, collision)
+        preview_3d_components(this, entity);
     }
 
 }
@@ -91,7 +78,6 @@ void Scene::cleanup() {
 }
 
 
-#define INSPECT_COMPONENT(Component, component) if (auto* component = registry.try_get<Component>(entity)) { if (ImGui::TreeNode(#Component)) { component->inspect(this); ImGui::TreePop(); } }
 
 void Scene::inspect_entity(entt::entity entity) {
 	if (!registry.any_of<Name>(entity))
@@ -106,19 +92,7 @@ void Scene::inspect_entity(entt::entity entity) {
 
         ImGui::Text("ID: %d", (u32) entity);
 
-        INSPECT_COMPONENT(Model, model)
-        INSPECT_COMPONENT(ModelTransform, model_transform)
-        INSPECT_COMPONENT(GridSlot, grid_slot)
-        INSPECT_COMPONENT(Traveler, traveler)
-        INSPECT_COMPONENT(Health, health)
-        INSPECT_COMPONENT(Spawner, spawner)
-        INSPECT_COMPONENT(Consumer, consumer)
-        INSPECT_COMPONENT(Killed, killed)
-        INSPECT_COMPONENT(Pyro, pyro)
-        INSPECT_COMPONENT(Roller, roller)
-        INSPECT_COMPONENT(Rollee, rollee)
-        INSPECT_COMPONENT(Dragging, dragging)
-        INSPECT_COMPONENT(Collision, collision)
+	    inspect_components(this, entity);
 
 		ImGui::PopID();
 		ImGui::TreePop();

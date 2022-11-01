@@ -5,6 +5,7 @@
 
 #include "console.hpp"
 #include "game.hpp"
+#include "file.hpp"
 
 namespace spellbook {
 
@@ -12,7 +13,7 @@ namespace fs = std::filesystem;
 
 void save_asset_file(const AssetFile& asset_file) {
     std::ofstream outfile;
-    outfile.open(get_resource_path(asset_file.file_name), std::ios::binary | std::ios::out);
+    outfile.open(to_resource_path(asset_file.file_name), std::ios::binary | std::ios::out);
 
     assert_else(outfile.is_open())
         return;
@@ -32,12 +33,12 @@ void save_asset_file(const AssetFile& asset_file) {
 }
 
 AssetFile load_asset_file(const string& file_name) {
-    std::filesystem::path file_path(get_resource_path(file_name));
+    std::filesystem::path file_path(to_resource_path(file_name));
     string                ext = file_path.extension().string();
-    assert_else(ext == mesh_extension || ext == texture_extension);
+    assert_else(ext == extension(FileType_Mesh) || ext == extension(FileType_Texture));
     
     std::ifstream infile;
-    infile.open(get_resource_path(file_name), std::ios::binary);
+    infile.open(to_resource_path(file_name), std::ios::binary);
 
     assert_else(infile.is_open())
         return {};
@@ -60,10 +61,6 @@ AssetFile load_asset_file(const string& file_name) {
     asset_file.asset_json = parse(json_string);
 
     return asset_file;
-}
-
-string get_resource_path(const string& path) {
-    return (game.resource_folder / fs::path(path)).string();
 }
 
 }

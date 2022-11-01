@@ -7,6 +7,7 @@
 #include "vector.hpp"
 #include "scene.hpp"
 
+#include "map.hpp"
 #include "game/tower.hpp"
 #include "game/tile.hpp"
 #include "game/enemy.hpp"
@@ -21,21 +22,23 @@ struct Button {
 };
 
 struct MapEditor {
-    vector<Button<TowerPrefab>> towers;
-    vector<Button<TilePrefab>>  tiles;
-    vector<Button<EnemyPrefab>> enemies;
+    Map map;
+    
+    vector<Button<TowerPrefab>> tower_buttons;
+    vector<Button<TilePrefab>>  tile_buttons;
+    vector<Button<EnemyPrefab>> enemy_buttons;
     
     u32 selected_tower = -1;
     u32 selected_tile  = -1;
     u32 selected_enemy = -1;
     Scene* p_scene        = nullptr;
 
-    string browser_string = "C:/spellbook";
-    
+
     void setup();
     void setup(Scene* init_scene);
     void update();
     void window(bool* p_open);
+    void shutdown();
 };
 
 JSON_IMPL_TEMPLATE(template <typename T>, Button<T>, text, color, item);

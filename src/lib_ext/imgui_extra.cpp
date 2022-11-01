@@ -9,6 +9,8 @@
 #include "renderer/assets/model.hpp"
 
 
+namespace spellbook {
+
 bool DragMat3(const string& name, spellbook::m33* matrix, f32 speed, const string& format) {
     bool changed = false;
 
@@ -102,28 +104,16 @@ void InspectDirectory(const fs::path& path, fs::path* p_selected, const std::fun
 }
 
 
-void PathSource(const fs::path& in_path, string dnd_key) {
-    if (dnd_key.empty()) {
-        if (spellbook::possible_folder(in_path))
-            dnd_key = "DND_FOLDER";
-        if (spellbook::possible_file(in_path))
-            dnd_key = "DND_UNKNOWN_FILE";
-        if (spellbook::possible_model(in_path))
-            dnd_key = "DND_MODEL";
-        if (spellbook::possible_model_asset(in_path))
-            dnd_key = "DND_MODEL_ASSET";
-        if (spellbook::possible_texture(in_path))
-            dnd_key = "DND_TEXTURE";
-        if (spellbook::possible_texture_asset(in_path))
-            dnd_key = "DND_TEXTURE_ASSET";
-        if (spellbook::possible_mesh(in_path))
-            dnd_key = "DND_MESH";
-        if (spellbook::possible_material(in_path))
-            dnd_key = "DND_MATERIAL";
+void PathSource(const fs::path& in_path, string dnd_key_string) {
+    if (dnd_key_string.empty()) {
+        magic_enum::enum_for_each<FileType>([&in_path, &dnd_key_string] (auto val) {
+            if (path_filter(val)(in_path))
+                dnd_key_string = dnd_key(val);
+        });
     }
     
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-        ImGui::SetDragDropPayload(dnd_key.c_str(), in_path.string().c_str(), in_path.string().size());
+        ImGui::SetDragDropPayload(dnd_key_string.c_str(), in_path.string().c_str(), in_path.string().size());
         ImGui::Text("%s", in_path.string().c_str());
         ImGui::EndDragDropSource();
     }
@@ -141,13 +131,13 @@ void PathTarget(fs::path* out, const string& dnd_key) {
     }
 }
 
-void PathSelect(const string& hint, string* out, const string& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+void PathSelect(const string& hint, string* out, const string& base_folder, FileType file_type, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     fs::path out_input = fs::path(*out);
-    PathSelect(hint, &out_input, base_folder, filter, dnd_key, open_subdirectories, context_callback);
+    PathSelect(hint, &out_input, base_folder, file_type, open_subdirectories, context_callback);
     *out = out_input.string();
 }
 
-void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, const string& dnd_key, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, FileType file_type, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     ImGui::PushID(hint.c_str());
     ImGui::BeginGroup();
     {
@@ -159,7 +149,7 @@ void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, 
             *out = fs::path(out_string);
     }
     ImGui::EndGroup();
-    PathTarget(out, dnd_key);
+    PathTarget(out, dnd_key(file_type));
 
     bool open = true;
     
@@ -167,7 +157,7 @@ void PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, 
     ImGui::SetNextWindowPos(ImVec2(300, 200), ImGuiCond_FirstUseEver);
     if (ImGui::BeginPopupModal("File Select", &open)) {
         bool close_popup = false;
-        PathSelectBody(out, base_folder, filter, &close_popup, open_subdirectories);
+        PathSelectBody(out, base_folder, path_filter(file_type), &close_popup, open_subdirectories);
         if (close_popup)
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
@@ -186,8 +176,6 @@ void PathSelectBody(fs::path* out, const fs::path& base_folder, const std::funct
     if (p_open != nullptr)
         *p_open = ImGui::Button("Select", ImVec2(-FLT_MIN, 0));
 }
-
-namespace spellbook {
 
 void StyleColorsSpellbook(ImGuiStyle* dst)
 {

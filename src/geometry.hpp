@@ -2,6 +2,7 @@
 
 #include "string.hpp"
 #include "json.hpp"
+#include "hash.hpp"
 
 namespace vuk {
 struct Extent2D;
@@ -617,6 +618,21 @@ template <> struct less<spellbook::v2i> {
         if (lhs.x == rhs.x)
             return lhs.y < rhs.y;
         return lhs.x < rhs.x;
+    }
+};
+
+
+template <typename T>
+struct hash<spellbook::v2_<T>> {
+    u64 operator()(const spellbook::v2_<T>& vec) const {
+        return spellbook::hash_data(vec.data, sizeof(spellbook::v2_<T>));
+    }
+};
+
+template <typename T>
+struct hash<spellbook::v3_<T>> {
+    u64 operator()(const spellbook::v3_<T>& vec) const {
+        return spellbook::hash_data(vec.data, sizeof(spellbook::v3_<T>));
     }
 };
 

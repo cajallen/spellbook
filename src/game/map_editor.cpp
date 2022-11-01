@@ -8,6 +8,7 @@
 #include "game.hpp"
 #include "components.hpp"
 #include "input.hpp"
+#include "file.hpp"
 
 #include "asset_browser.hpp"
 #include "renderer/draw_functions.hpp"
@@ -25,6 +26,16 @@ bool map_editor_mp_callback(GLFWwindow* window, double xpos, double ypos, void* 
 void MapEditor::setup() {
     ZoneScoped;
     setup(new Scene());
+
+    fs::path map_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
+
+    if (!fs::exists(map_file))
+        return;
+    
+    json j = parse_file(map_file.string());
+    FROM_JSON_MEMBER(tower_buttons);
+    FROM_JSON_MEMBER(tile_buttons);
+    FROM_JSON_MEMBER(enemy_buttons);
 }
 
 void MapEditor::setup(Scene* init_scene) {
@@ -49,12 +60,8 @@ void MapEditor::update() {
             {(v3) cell + v3(0.f, 1.f, 0.05f), palette::white, 0.03f},
             {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, 0.03f},
             {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, 0.03f}});
-        Renderable brush_preview;
-        brush_preview.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
-        brush_preview.material_asset_path = "default";
-        brush_preview.frame_allocated = true;
 
-        p_scene->render_scene.add_renderable(brush_preview);
+        p_scene->render_scene.quick_mesh(line_mesh);
     } else if (selected_tower != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 24; i++) {
@@ -64,12 +71,7 @@ void MapEditor::update() {
         }
 
         auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
-        Renderable tower_preview;
-        tower_preview.mesh_asset_path = game.renderer.upload_mesh(line_mesh);
-        tower_preview.material_asset_path = "default";
-        tower_preview.frame_allocated = true;
-
-        p_scene->render_scene.add_renderable(tower_preview);
+        p_scene->render_scene.quick_mesh(line_mesh);
     }
 
     // we should check if this mouse input is ours in the callback)
@@ -85,7 +87,7 @@ void MapEditor::update() {
                 }
             }
 
-            instance_prefab(p_scene, tiles[selected_tile].item, cell);
+            instance_prefab(p_scene, tile_buttons[selected_tile].item, cell);
             input_used = true;
         }
         else if (selected_tower != -1) {
@@ -100,7 +102,7 @@ void MapEditor::update() {
                 }
             }
 
-            instance_prefab(p_scene, towers[selected_tower].item, cell);
+            instance_prefab(p_scene, tower_buttons[selected_tower].item, cell);
             input_used = true;
         }
         else if (selected_enemy != -1) {
@@ -113,7 +115,7 @@ void MapEditor::update() {
                 }
             }
 
-            instance_prefab(p_scene, towers[selected_tower].item, cell);
+            instance_prefab(p_scene, tower_buttons[selected_tower].item, cell);
             input_used = true;
         }
     }
@@ -138,17 +140,17 @@ void MapEditor::window(bool* p_open) {
         v3          intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
         ImGui::Text(fmt_("hovered_cell: {}", intersect).c_str());
 
-        if (show_buttons("Towers", towers, &selected_tower)) {
+        if (show_buttons("Towers", tower_buttons, &selected_tower)) {
             selected_tile = -1;
             selected_enemy = -1;
         }
         ImGui::Separator();
-        if (show_buttons("Tiles", tiles, &selected_tile)) {
+        if (show_buttons("Tiles", tile_buttons, &selected_tile)) {
             selected_tower = -1;
             selected_enemy = -1;
         }
         ImGui::Separator();
-        if (show_buttons("Enemies", enemies, &selected_enemy)) {
+        if (show_buttons("Enemies", enemy_buttons, &selected_enemy)) {
             selected_tile = -1;
             selected_tower = -1;
         }
@@ -158,6 +160,18 @@ void MapEditor::window(bool* p_open) {
         selected_enemy = -1;
     }
     ImGui::End();
+}
+
+void MapEditor::shutdown() {
+    fs::path map_editor_file = fs::path(game.user_folder) / ("map_editor" + FileType_General);
+    fs::create_directories(map_editor_file.parent_path());
+    
+    auto j = json();
+    TO_JSON_MEMBER(tower_buttons);
+    TO_JSON_MEMBER(tile_buttons);
+    TO_JSON_MEMBER(enemy_buttons);
+
+    file_dump(j, map_editor_file.string());
 }
 
 }

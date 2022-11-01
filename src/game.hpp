@@ -13,14 +13,12 @@
 
 namespace spellbook {
 
-const string general_extension = ".sbgen";
-
 struct Game {
     vector<Scene*> scenes;
     Renderer       renderer;
     GUI            gui;
 
-    // MapEditor map_editor;
+    MapEditor map_editor;
     AssetEditor asset_editor;
     // TestScene test_scene;
     
