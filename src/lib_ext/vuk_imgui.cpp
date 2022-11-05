@@ -20,9 +20,11 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
 
     io.Fonts->AddFontDefault();
 
-    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
-    ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FA, 14.0f, &icons_config, icons_ranges);
+    if (file_exists(FONT_ICON_FILE_NAME_FA)) {
+        static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+        ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
+        io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FA, 14.0f, &icons_config, icons_ranges);
+    }
     
     unsigned char* pixels;
     v2i dimensions;
