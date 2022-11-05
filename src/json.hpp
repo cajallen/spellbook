@@ -4,7 +4,7 @@
 #include <variant>
 #include <type_traits>
 
-#include "magic_enum.hpp"
+#include <magic_enum.hpp>
 
 #include "vector.hpp"
 #include "string.hpp"
@@ -66,11 +66,11 @@ template <typename JsonT> json_value                   to_jv(const vector<shared
 template <typename JsonT1, typename JsonT2> json_value to_jv(umap<JsonT1, JsonT2> _map);
 template <typename JsonT1, typename JsonT2> json_value to_jv(umap<shared_ptr<JsonT1>, JsonT2> _map);
 template <typename JsonT> json_value                   to_jv(const umap<string, JsonT>& _map);
-inline json_value                                      to_jv(vector<json_value> _vector);
-inline json_value                                      to_jv(const json& input_json);
-inline json_value                                      to_jv(const char* input_string);
-inline json_value                                      to_jv(const string& input_string);
-inline json_value                                      to_jv(bool input_bool);
+json_value                                      to_jv(vector<json_value> _vector);
+json_value                                      to_jv(const json& input_json);
+json_value                                      to_jv(const char* input_string);
+json_value                                      to_jv(const string& input_string);
+json_value                                      to_jv(bool input_bool);
 template <int_concept T>
 json_value to_jv(T input_int);
 template <float_concept T>

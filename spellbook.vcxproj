@@ -248,6 +248,7 @@
     <ClInclude Include="libs\tracy\public\tracy\Tracy.hpp" />
     <ClInclude Include="libs\vk-bootstrap\src\VkBootstrap.h" />
     <ClInclude Include="libs\vk-bootstrap\src\VkBootstrapDispatch.h" />
+    <ClInclude Include="libs\vuk\ext\robin-hood-hashing\src\include\robin_hood.h" />
     <ClInclude Include="libs\vuk\ext\SPIRV-Cross\spirv.h" />
     <ClInclude Include="libs\vuk\ext\SPIRV-Cross\spirv.hpp" />
     <ClInclude Include="libs\vuk\ext\SPIRV-Cross\spirv_cfg.hpp" />
