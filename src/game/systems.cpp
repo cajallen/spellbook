@@ -25,7 +25,7 @@ void travel_system(Scene* scene) {
     ZoneScoped;
     // construct grid to use for pathfinding
     auto slots     = scene->registry.view<GridSlot, LogicTransform>();
-    auto entities  = scene->registry.view<Traveler, ModelTransform>();
+    auto entities  = scene->registry.view<Traveler, LogicTransform>();
     auto consumers = scene->registry.view<Consumer>();
 
     astar::Navigation nav;
@@ -41,21 +41,20 @@ void travel_system(Scene* scene) {
         if (!has_path && !consumers.empty()) {
             int       random_consumer = math::random_s32() % s32(consumers.size());
             auto      consumer_entity = consumers[random_consumer];
-            GridSlot* p_slot          = scene->registry.try_get<GridSlot>(consumer_entity);
             LogicTransform* p_logic_position          = scene->registry.try_get<LogicTransform>(consumer_entity);
-            assert_else(p_slot && p_logic_position);
+            assert_else(p_logic_position);
 
-            auto path = nav.find_path(math::round_cast(transform.translation.xy), v2i(p_logic_position->position.xy));
+            auto path = nav.find_path(math::round_cast(transform.position.xy), v2i(p_logic_position->position.xy));
             for (auto it = path.begin(); it != path.end(); ++it) {
                 traveler.targets.emplace_back(it->x, it->y, 0);
             }
         }
-        assert_else(!math::is_nan(transform.translation.x)) {
-            transform.translation = v3(0, 0, 0);
+        assert_else(!math::is_nan(transform.position.x)) {
+            transform.position = v3(0, 0, 0);
         }
 
-        v3i  target_position = has_path ? traveler.targets.last() : math::round_cast(transform.translation);
-        v3   velocity        = v3(target_position) - transform.translation;
+        v3i  target_position = has_path ? traveler.targets.last() : math::round_cast(transform.position);
+        v3   velocity        = v3(target_position) - transform.position;
         bool at_target       = math::length(velocity) < 0.01f;
         if (at_target && has_path) {
             traveler.targets.remove_back();
@@ -64,16 +63,7 @@ void travel_system(Scene* scene) {
         f32 max_velocity = traveler.max_speed.value() * Input::delta_time;
         f32 min_velocity = 0.0f;
         if (!at_target)
-            transform.translation += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
-    }
-}
-
-// Sets the transform on Grid Slots
-void grid_slot_transform_system(Scene* scene) {
-    ZoneScoped;
-    auto entities = scene->registry.view<ModelTransform, GridSlot, LogicTransform>();
-    for (auto [entity, transform, grid_slot, logic_pos] : entities.each()) {
-        transform.translation = (v3) logic_pos.position;
+            transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
     }
 }
 
@@ -137,7 +127,19 @@ void health_draw_system(Scene* scene) {
 // Uses the transform for models
 void transform_system(Scene* scene) {
     ZoneScoped;
+    for (auto [entity, attach, transform] : scene->registry.view<LogicTransformAttach, LogicTransform>().each()) {
+        if (scene->registry.valid(attach.to)) {
+            transform = scene->registry.get<LogicTransform>(attach.to);
+        } else {
+            console_error("Invalid attachment", "components.transform", ErrorType_Warning);
+            scene->registry.erase<LogicTransformAttach>(entity);
+        }
+    }
     for (auto [entity, model, transform] : scene->registry.view<Model, ModelTransform>().each()) {
+        auto link = scene->registry.try_get<TransformLink>(entity);
+        if (link != nullptr) {
+            transform.translation = scene->registry.get<LogicTransform>(entity).position + link->offset;
+        }
         m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
         int i = 0;
         for (auto renderable : model.model_gpu.renderables) {
@@ -146,14 +148,39 @@ void transform_system(Scene* scene) {
     }
 }
 
+void tower_system(Scene* scene) {
+    ZoneScoped;
+    for (auto [entity, tower, transform] : scene->registry.view<Tower, ModelTransform>().each()) {
+        tower.current_rotation += tower.rotation_speed * Input::delta_time;
+        transform.rotation.yaw = tower.current_rotation;
+
+        auto& clouds_transform = scene->registry.get<ModelTransform>(tower.clouds);
+        clouds_transform.rotation.yaw = 0.75 * tower.current_rotation;
+        clouds_transform.scale = math::abs(math::sin(Input::time));
+    }
+
+    pyro_system(scene);
+    roller_system(scene);
+    rollee_system(scene);
+}
+
+
 void consumer_system(Scene* scene) {
     ZoneScoped;
-    auto consumers = scene->registry.view<Consumer, ModelTransform>();
-    auto consumees = scene->registry.view<Traveler, ModelTransform>();
+    auto consumers = scene->registry.view<Consumer, LogicTransform>();
+    auto consumees = scene->registry.view<Traveler, LogicTransform>();
 
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
+        auto consumer_mtransform = scene->registry.try_get<ModelTransform>(e_consumer);
+        if (consumer_mtransform) {
+            consumer_mtransform->rotation.yaw += Input::delta_time * math::TAU / 6.f;
+            consumer_mtransform->rotation.pitch += Input::delta_time * math::TAU / 11.f;
+            consumer_mtransform->rotation.roll += Input::delta_time * math::TAU / 19.f;
+        }
         for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
-            f32 dist = math::length(v2(consumer_transform.translation.xy) - consumee_transform.translation.xy);
+            if (scene->registry.any_of<Killed>(e_consumee))
+                continue;
+            f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_transform.position.xy);
             if (dist < consumer.consume_distance) {
                 scene->registry.emplace<Killed>(e_consumee, Input::time);
                 console({.str=fmt_("Om nom nom"), .group = "system.consumer"});
@@ -164,7 +191,7 @@ void consumer_system(Scene* scene) {
 
 void disposal_system(Scene* scene) {
     ZoneScoped;
-
+    
     auto killed = scene->registry.view<Killed>();
     scene->registry.destroy(killed.begin(), killed.end());
 }
@@ -234,13 +261,13 @@ void dragging_system(Scene* scene) {
 
     constexpr f32 raise_speed = 4.0f;
 
-    auto _view = scene->registry.view<Dragging, ModelTransform>();
+    auto _view = scene->registry.view<Dragging, LogicTransform>();
     for (auto [entity, dragging, transform] : _view.each()) {
         v3 offset = intersect - dragging.start_intersect;
         v3 position = dragging.start_position + offset;
 
-        transform.translation.z = math::min(transform.translation.z + raise_speed * Input::delta_time, 0.5f);
-        transform.translation.xy = position.xy;
+        transform.position.z = math::min(transform.position.z + raise_speed * Input::delta_time, 0.5f);
+        transform.position.xy = position.xy;
     }
 }
 

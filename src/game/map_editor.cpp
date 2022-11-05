@@ -25,7 +25,7 @@ bool map_editor_mp_callback(GLFWwindow* window, double xpos, double ypos, void* 
 
 void MapEditor::setup() {
     ZoneScoped;
-    setup(new Scene());
+    p_scene = new Scene();
 
     fs::path map_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
 
@@ -35,12 +35,10 @@ void MapEditor::setup() {
     json j = parse_file(map_file.string());
     FROM_JSON_MEMBER(tower_buttons);
     FROM_JSON_MEMBER(tile_buttons);
-    FROM_JSON_MEMBER(enemy_buttons);
+    FROM_JSON_MEMBER(spawner_buttons);
+    FROM_JSON_MEMBER(consumer_buttons);
 }
 
-void MapEditor::setup(Scene* init_scene) {
-    p_scene = init_scene;
-}
 
 void MapEditor::update() {
     ZoneScoped;
@@ -78,44 +76,20 @@ void MapEditor::update() {
     bool input_used = false;
     if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f) {
         if (selected_tile != -1) {
-            auto view  = p_scene->registry.view<GridSlot, LogicTransform, Model>();
-            for (auto [entity, obj, logic_pos, model] : view.each()) {
-                if (math::length(logic_pos.position - v3(cell)) < 0.1f) {
-                    deinstance_model(p_scene->render_scene, model.model_gpu);
-                    p_scene->registry.destroy(entity);
-                    break;
-                }
-            }
-
-            instance_prefab(p_scene, tile_buttons[selected_tile].item, cell);
+            v3i new_pos = cell - v3i(0,0,1);
+            instance_and_write_prefab(load_tile(tile_buttons[selected_tile].item_path), new_pos);
             input_used = true;
         }
         else if (selected_tower != -1) {
-            auto view = p_scene->registry.view<LogicTransform, Model>();
-            for (auto [entity, logic_pos, model] : view.each()) {
-                if (!p_scene->registry.any_of<Pyro, Roller>(entity))
-                    continue;
-                if (math::length(logic_pos.position - v3(cell)) < 0.1f) {
-                    deinstance_model(p_scene->render_scene, model.model_gpu);
-                    p_scene->registry.destroy(entity);
-                    break;
-                }
-            }
-
-            instance_prefab(p_scene, tower_buttons[selected_tower].item, cell);
+            instance_and_write_prefab(load_tower(tower_buttons[selected_tower].item_path), cell);
             input_used = true;
         }
-        else if (selected_enemy != -1) {
-            auto view = p_scene->registry.view<Traveler, LogicTransform, Model>();
-            for (auto [entity, traveler, logic_pos, model] : view.each()) {
-                if (math::length(logic_pos.position - v3(cell)) < 0.1f) {
-                    deinstance_model(p_scene->render_scene, model.model_gpu);
-                    p_scene->registry.destroy(entity);
-                    break;
-                }
-            }
-
-            instance_prefab(p_scene, tower_buttons[selected_tower].item, cell);
+        else if (selected_spawner != -1) {
+            instance_and_write_prefab(load_spawner(spawner_buttons[selected_spawner].item_path), cell);
+            input_used = true;
+        }
+        else if (selected_consumer != -1) {
+            instance_and_write_prefab(load_consumer(consumer_buttons[selected_consumer].item_path), cell);
             input_used = true;
         }
     }
@@ -142,34 +116,45 @@ void MapEditor::window(bool* p_open) {
 
         if (show_buttons("Towers", tower_buttons, &selected_tower)) {
             selected_tile = -1;
-            selected_enemy = -1;
+            selected_spawner = -1;
+            selected_consumer = -1;
         }
         ImGui::Separator();
         if (show_buttons("Tiles", tile_buttons, &selected_tile)) {
             selected_tower = -1;
-            selected_enemy = -1;
+            selected_spawner = -1;
+            selected_consumer = -1;
         }
         ImGui::Separator();
-        if (show_buttons("Enemies", enemy_buttons, &selected_enemy)) {
+        if (show_buttons("Spawners", spawner_buttons, &selected_spawner)) {
             selected_tile = -1;
             selected_tower = -1;
+            selected_consumer = -1;
+        }
+        ImGui::Separator();
+        if (show_buttons("Consumers", consumer_buttons, &selected_consumer)) {
+            selected_tile = -1;
+            selected_tower = -1;
+            selected_spawner = -1;
         }
     } else {
         selected_tile = -1;
         selected_tower = -1;
-        selected_enemy = -1;
+        selected_spawner = -1;
+        selected_consumer = -1;
     }
     ImGui::End();
 }
 
 void MapEditor::shutdown() {
-    fs::path map_editor_file = fs::path(game.user_folder) / ("map_editor" + FileType_General);
+    fs::path map_editor_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
     fs::create_directories(map_editor_file.parent_path());
     
     auto j = json();
     TO_JSON_MEMBER(tower_buttons);
     TO_JSON_MEMBER(tile_buttons);
-    TO_JSON_MEMBER(enemy_buttons);
+    TO_JSON_MEMBER(spawner_buttons);
+    TO_JSON_MEMBER(consumer_buttons);
 
     file_dump(j, map_editor_file.string());
 }

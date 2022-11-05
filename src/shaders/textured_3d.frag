@@ -42,32 +42,19 @@ vec2 random2(vec2 p) {
     return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
 }
 
+float map(float value, float min_in, float max_in, float min_out, float max_out) {
+    return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in);
+}
+
+float map_contained(float value, float min_in, float max_in, float min_out, float max_out) {
+    if (value < min_in || value >= max_in)
+        return 0.0;
+    return map(value, min_in, max_in, min_out, max_out);
+}
+
 
 vec2 calculate_uv() {
     return fin.uv * roughness_metallic_normals_scale.w;
-    float scale = 20.0;
-    vec2 st = fin.uv * scale;
-        
-    vec2 i_st = floor(st);
-    vec2 f_st = fract(st);
-    float m_dist = 1000.0;  // minimum distance
-    vec2 uv = st;
-    for(int y = -1; y <= 1; ++y){
-        for(int x = -1; x <= 1; ++x){
-        	vec2 neighbor = vec2(float(x),float(y));
-            vec2 point = random2(i_st + neighbor);
-            point = 0.5 + 0.5*sin(6.2831*point);
-            vec2 diff = neighbor + point - f_st;
-            float dist = length(diff);
-
-            // Keep the closer distance
-            if(dist < m_dist){
-            	m_dist = dist;
-                uv = st + diff;
-            }
-        }
-    }
-    return uv / scale;
 }
 
 vec3 calculate_lighting() {
@@ -88,8 +75,43 @@ vec3 calculate_lighting() {
     vec4 albedo = texture(s_base_color, uv) * base_color_tint;
     
     float NdotL = dot(normal, to_light);
+
+    const float transition = 0.05;
+    const float transition1_start = -0.2;
+    const float transition2_start = -transition1_start - transition;
+    const float range = 0.15;
+    const float mid_out = 0.5;
     
-    float toon_diffuse = smoothstep(0.0, 0.03, NdotL);
+    float toon_diffuse = 0.0;
+    if (NdotL < transition1_start) {
+        float out_min = 0.0;
+        float out_max = range;
+        toon_diffuse = map(NdotL, -1.0, transition1_start, out_min, out_max);
+    }
+    else if (NdotL < transition1_start + transition) {
+        // transition1
+        float out_min = range;
+        float out_max = mid_out - 0.5 * range;
+        toon_diffuse = map(NdotL, transition1_start, transition1_start + transition, out_min, out_max);
+    }
+    else if (NdotL < transition2_start) {
+        // middle
+        float out_min = mid_out - 0.5 * range;
+        float out_max = mid_out + 0.5 * range;
+        toon_diffuse = map(NdotL, transition1_start + transition, transition2_start, out_min, out_max);
+    }
+    else if (NdotL < transition2_start + transition) {
+        // transition2
+        float out_min = mid_out + 0.5 * range;
+        float out_max = 1.0 - range;
+        toon_diffuse = map(NdotL, transition2_start, transition2_start + transition, out_min, out_max);
+    }
+    else {
+        // high
+        float out_min = 1.0 - range;
+        float out_max = 1.0;
+        toon_diffuse = map(NdotL, transition2_start + transition, 1.0, out_min, out_max);
+    }
     
     vec3 reflection_dir = reflect(to_light, normal);
     float specular = pow(clamp(dot(view_dir, reflection_dir), 0.0, 1.0), smoothness * 100);

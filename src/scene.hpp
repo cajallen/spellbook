@@ -6,6 +6,10 @@
 #include "string.hpp"
 
 #include "camera_controller.hpp"
+#include "game/consumer.hpp"
+#include "game/spawner.hpp"
+#include "game/tile.hpp"
+#include "game/tower.hpp"
 
 #include "renderer/render_scene.hpp"
 
@@ -29,6 +33,19 @@ struct Scene {
 
     void model_cleanup(entt::registry&, entt::entity);
     void dragging_cleanup(entt::registry&, entt::entity);
+    void tower_cleanup(entt::registry&, entt::entity);
+
+    
+    entt::entity get_tower(v3i);
+    entt::entity get_tile(v3i);
+    entt::entity get_spawner(v3i);
+    entt::entity get_consumer(v3i);
+    vector<entt::entity> get_enemies(v3i);
+
+    entt::entity get(v3i, TowerPrefab* t);
+    entt::entity get(v3i, TilePrefab* t);
+    entt::entity get(v3i, SpawnerPrefab* t);
+    entt::entity get(v3i, ConsumerPrefab* t);
 };
 
 }

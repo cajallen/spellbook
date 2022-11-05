@@ -11,7 +11,7 @@ void inspect(Stat* stat) {
     ImGui::Text("Value: %.2f", stat->value());
 
     ImGui::PushID(stat);
-    ImGui::BeginTable("StatTable", 0);
+    ImGui::BeginTable("StatTable", 3);
     ImGui::TableSetupColumn("Name");
     ImGui::TableSetupColumn("Type");
     ImGui::TableSetupColumn("Value");

@@ -17,15 +17,17 @@ enum TowerType {
 
 struct TowerPrefab {
     TowerType type;
-    string model_path;
+    string globe_path;
+    string clouds_path;
     string file_path;
 };
 
-JSON_IMPL(TowerPrefab, type, model_path);
+JSON_IMPL(TowerPrefab, type, globe_path, clouds_path);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const TowerPrefab&, v3i location);
-
 void inspect(TowerPrefab*);
+void save_tower(const TowerPrefab&);
+TowerPrefab load_tower(const string& input_path);
 
 }

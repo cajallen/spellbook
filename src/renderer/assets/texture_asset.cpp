@@ -36,7 +36,7 @@ TextureCPU load_texture(const string& file_name) {
     return texture_cpu;
 }
 
-void save_texture(TextureCPU& texture_cpu) {
+void save_texture(const TextureCPU& texture_cpu) {
     AssetFile file;
     file.file_name = texture_cpu.file_path;
     file.type      = {'T', 'E', 'X'};

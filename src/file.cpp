@@ -4,6 +4,17 @@
 
 #include "console.hpp"
 #include "game.hpp"
+#include "game/consumer.hpp"
+
+#include "renderer/assets/model.hpp"
+#include "renderer/assets/mesh.hpp"
+#include "renderer/assets/material.hpp"
+#include "renderer/assets/texture.hpp"
+
+#include "game/tower.hpp"
+#include "game/tile.hpp"
+#include "game/enemy.hpp"
+#include "game/spawner.hpp"
 
 namespace fs = std::filesystem;
 
@@ -88,6 +99,8 @@ string extension(FileType type) {
             return ".sbenm";
         case (FileType_Spawner):
             return ".sbspw";
+        case (FileType_Consumer):
+            return ".sbcon";
     }
     warn_else(false && "extension NYI");
     return "NYI";
@@ -99,30 +112,22 @@ std::function<bool(const fs::path&)> path_filter(FileType type) {
              return [](const fs::path& path) { return is_directory(path); };
          case (FileType_Unknown):
              return [](const fs::path& path) { return is_regular_file(path); };
-         case (FileType_General):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_General); };
-         case (FileType_Model):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Model); };
          case (FileType_ModelAsset):
              return [](const fs::path& path) { return vector<string>{".gltf", ".glb"}.contains(path.extension().string()); };
-         case (FileType_Texture):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Texture); };
          case (FileType_TextureAsset):
              return [](const fs::path& path) { return vector<string>{".png", ".jpg", ".jpeg"}.contains(path.extension().string()); };
+         case (FileType_General):
+         case (FileType_Model):
+         case (FileType_Texture):
          case (FileType_Mesh):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Mesh); };
          case (FileType_Material):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Material); };
          case (FileType_Map):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Map); };
          case (FileType_Tower):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Tower); };
          case (FileType_Tile):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Tile); };
          case (FileType_Enemy):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Enemy); };
          case (FileType_Spawner):
-             return [](const fs::path& path) { return path.extension().string() == extension(FileType_Spawner); };
+         case (FileType_Consumer):
+             return [type](const fs::path& path) { return path.extension().string() == extension(type); };
      }
      warn_else(false && "extension NYI");
      return [](const fs::path& path) { return true; };
@@ -158,9 +163,35 @@ string dnd_key(FileType type) {
             return "DND_ENEMY";
         case (FileType_Spawner):
             return "DND_SPAWNER";
+        case (FileType_Consumer):
+            return "DND_CONSUMER";
     }
     warn_else(false && "extension NYI");
     return "DND_UNKNOWN";
+}
+
+FileType from_typeinfo(const type_info& input) {
+    if (input == typeid(ModelCPU))
+        return FileType_Model;
+    if (input == typeid(TextureCPU))
+        return FileType_Texture;
+    if (input == typeid(MeshCPU))
+        return FileType_Mesh;
+    if (input == typeid(MaterialCPU))
+        return FileType_Material;
+    if (input == typeid(TowerPrefab))
+        return FileType_Tower;
+    if (input == typeid(TilePrefab))
+        return FileType_Tile;
+    if (input == typeid(EnemyPrefab))
+        return FileType_Enemy;
+    if (input == typeid(SpawnerPrefab))
+        return FileType_Spawner;
+    if (input == typeid(ConsumerPrefab))
+        return FileType_Consumer;
+    
+    warn_else(false && "extension NYI");
+    return FileType_Unknown;
 }
 
 fs::path to_resource_path(const fs::path& path) {

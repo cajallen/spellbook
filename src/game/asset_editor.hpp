@@ -1,5 +1,6 @@
 #pragma once
 
+#include "consumer.hpp"
 #include "scene.hpp"
 #include "enemy.hpp"
 #include "spawner.hpp"
@@ -18,7 +19,8 @@ struct AssetEditor {
         Tab_Tower,
         Tab_Tile,
         Tab_Enemy,
-        Tab_Spawner
+        Tab_Spawner,
+        Tab_Consumer
     };
     
     Scene*   p_scene = nullptr;
@@ -30,7 +32,8 @@ struct AssetEditor {
     TilePrefab tile_prefab;
     EnemyPrefab enemy_prefab;
     SpawnerPrefab spawner_prefab;
-
+    ConsumerPrefab consumer_prefab;
+    
     // Used as readonly
     Tab tab;
     

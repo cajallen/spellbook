@@ -9,19 +9,19 @@
 
 namespace spellbook {
 
-std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> simple_select_enemy(EnemyPrefab input_enemy_prefab, f32 input_cost, f32 input_cooldown) {
-    return [&](f32* cost_left, f32* cooldown) -> EnemyPrefab* {
+std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> simple_select_enemy(EnemyPrefab* input_enemy_prefab, f32 input_cost, f32 input_cooldown) {
+    return [input_enemy_prefab, input_cost, input_cooldown](f32* cost_left, f32* cooldown) -> EnemyPrefab* {
         if (*cost_left < input_cost)
             return nullptr;
         *cooldown += input_cooldown;
         *cost_left -= input_cost;
-        return &input_enemy_prefab;
+        return input_enemy_prefab;
     };
 }
 
 std::function<bool(f32 cost_total)> simple_wave(f32 input_threshold) {
-    return [&](f32 cost_total) -> bool {
-        return input_threshold >= cost_total;
+    return [input_threshold](f32 cost_total) -> bool {
+        return cost_total >= input_threshold;
     };
 }
 
@@ -31,6 +31,8 @@ void spawner_system(Scene* scene) {
         spawner.cooldown -= Input::delta_time;
         
         if (spawner.wave_happening) {
+            if (spawner.cooldown > 0)
+                continue;
             auto enemy_prefab = spawner.select_enemy(&spawner.cost_total, &spawner.cooldown);
             if (enemy_prefab == nullptr) {
                 spawner.wave_happening = false;
@@ -54,14 +56,14 @@ void inspect(SpawnerPrefab* spawner_prefab) {
     PathSelect("file_path", &spawner_prefab->file_path, "resources", FileType_Spawner, true);
 
     EnumCombo("enemy_selection", &spawner_prefab->enemy_selection);
-    inspect(&spawner_prefab->enemy_prefab);
-    ImGui::DragFloat("enemy_cost", &spawner_prefab->enemy_cost, 0.01f);;
-    ImGui::DragFloat("enemy_cooldown", &spawner_prefab->enemy_cooldown, 0.01f);;
+    PathSelect("enemy_path", &spawner_prefab->enemy_prefab_path, "resources", FileType_Enemy);
+    ImGui::DragFloat("enemy_cost", &spawner_prefab->enemy_cost, 0.01f);
+    ImGui::DragFloat("enemy_cooldown", &spawner_prefab->enemy_cooldown, 0.01f);
 
     EnumCombo("wave_selection", &spawner_prefab->wave_selection);
-    ImGui::DragFloat("wave_cost", &spawner_prefab->wave_cost, 0.01f);;
+    ImGui::DragFloat("wave_cost", &spawner_prefab->wave_cost, 0.01f);
     
-    ImGui::DragFloat("delta_cost", &spawner_prefab->delta_cost, 0.01f);;
+    ImGui::DragFloat("delta_cost", &spawner_prefab->delta_cost, 0.01f);
 }
 
 void save_spawner(const SpawnerPrefab& spawner_prefab) {
@@ -92,13 +94,14 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     static int i      = 0;
     
     auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", "brush", i++));
+    scene->registry.emplace<Name>(entity, fmt_("{}_{}", "spawner", i++));
     scene->registry.emplace<LogicTransform>(entity, v3(location));
+    
     Spawner spawner;
     spawner.delta_cost = spawner_prefab.delta_cost;
     switch (spawner_prefab.enemy_selection) {
         case (SpawnerPrefab::EnemySelection_Simple):
-            spawner.select_enemy = simple_select_enemy(spawner_prefab.enemy_prefab, spawner_prefab.enemy_cost, spawner_prefab.enemy_cooldown);
+            spawner.select_enemy = simple_select_enemy(new EnemyPrefab(load_enemy(spawner_prefab.enemy_prefab_path)), spawner_prefab.enemy_cost, spawner_prefab.enemy_cooldown);
             break;
     }
     switch (spawner_prefab.wave_selection) {
@@ -106,6 +109,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
             spawner.wave_start = simple_wave(spawner_prefab.wave_cost);
             break;
     }
+    spawner.cost_total = spawner_prefab.wave_cost - 1.f;
     scene->registry.emplace<Spawner>(entity, spawner);
     
     return entity;

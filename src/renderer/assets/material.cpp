@@ -39,9 +39,9 @@ void inspect(MaterialCPU* material) {
     ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
 
     PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
-    PathSelect("orm_asset_path", &material->color_asset_path, "resources", FileType_Texture);
-    PathSelect("normal_asset_path", &material->color_asset_path, "resources", FileType_Texture);
-    PathSelect("emissive_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+    PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
+    PathSelect("normal_asset_path", &material->normal_asset_path, "resources", FileType_Texture);
+    PathSelect("emissive_asset_path", &material->emissive_asset_path, "resources", FileType_Texture);
 
     EnumCombo("cull_mode", &material->cull_mode);
 }

@@ -123,7 +123,7 @@ bool cc_on_key(GLFWwindow* window, int key, int scancode, int action, int mods, 
     if (!cc.viewport->hovered && !cc.viewport->focused && cc.nav_mode != CameraController::NavigationMode_Fly)
         return false;
 
-    if (key == GLFW_KEY_Z && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
         auto new_mode = cc.nav_mode == CameraController::NavigationMode_Fly ? CameraController::NavigationMode_None
                                                                             : CameraController::NavigationMode_Fly;
         cc.change_state(new_mode);

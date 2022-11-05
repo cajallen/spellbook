@@ -28,5 +28,12 @@ static v3 get_tangent(Vertex a, Vertex b, Vertex c) {
     return math::normalize(unnormalized);
 }
 
+void MeshCPU::fix_tangents() {
+    for (int i = 0; (i + 2) < indices.size(); i+=3) {
+        v3 tangent = get_tangent(vertices[indices[i+0]],vertices[indices[i+1]],vertices[indices[i+2]]);
+        vertices[indices[i+0]].tangent = vertices[indices[i+1]].tangent = vertices[indices[i+2]].tangent = tangent;
+    }
+}
+
 
 }

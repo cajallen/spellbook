@@ -28,6 +28,6 @@ JSON_IMPL(TextureInfo, compression_mode, pixels_bsize);
 
 TextureCPU convert_to_texture(const string& file_name, const string& output_folder, const string& output_name);
 TextureCPU load_texture(const string& file_name);
-void       save_texture(TextureCPU& texture_cpu);
+void       save_texture(const TextureCPU& texture_cpu);
 
 }

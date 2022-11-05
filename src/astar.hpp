@@ -12,16 +12,15 @@ using HeuristicFunction = std::function<u32(v2i, v2i)>;
 struct Node {
     u32   G, H;
     v2i   position;
-    Node* parent;
+    shared_ptr<Node> parent;
 
-    Node(v2i coord_, Node* parent_ = nullptr);
+    Node(v2i coord_, shared_ptr<Node> parent_ = nullptr);
     u32 get_score();
 };
 
 struct Navigation {
     bool  _detect_collision(v2i position);
-    Node* _find_node_on_list(vector<Node*>& nodes, v2i position);
-    void  _release_nodes(vector<Node*>& nodes);
+    shared_ptr<Node> _find_node_on_list(vector<shared_ptr<Node>>& nodes, v2i position);
 
     // includes start/end, reverse order (target first)
     vector<v2i> find_path(v2i source, v2i target);

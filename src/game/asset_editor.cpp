@@ -66,11 +66,11 @@ void AssetEditor::window(bool* p_open) {
                 inspect(&tower_prefab);
                 
                 if (ImGui::Button("Save")) {
-                    save_model(tower_prefab);
+                    save_tower(tower_prefab);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Load")) {
-                    tower_prefab = load_model(tower_prefab.file_path);
+                    tower_prefab = load_tower(tower_prefab.file_path);
                 }
                 ImGui::EndTabItem();
             }
@@ -80,11 +80,11 @@ void AssetEditor::window(bool* p_open) {
                 inspect(&tile_prefab);
                 
                 if (ImGui::Button("Save")) {
-                    save_model(tile_prefab);
+                    save_tile(tile_prefab);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Load")) {
-                    tile_prefab = load_model(tile_prefab.file_path);
+                    tile_prefab = load_tile(tile_prefab.file_path);
                 }
                 ImGui::EndTabItem();
             }
@@ -94,11 +94,11 @@ void AssetEditor::window(bool* p_open) {
                 inspect(&enemy_prefab);
                 
                 if (ImGui::Button("Save")) {
-                    save_model(enemy_prefab);
+                    save_enemy(enemy_prefab);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Load")) {
-                    enemy_prefab = load_model(enemy_prefab.file_path);
+                    enemy_prefab = load_enemy(enemy_prefab.file_path);
                 }
                 ImGui::EndTabItem();
             }
@@ -113,6 +113,20 @@ void AssetEditor::window(bool* p_open) {
                 ImGui::SameLine();
                 if (ImGui::Button("Load")) {
                     spawner_prefab = load_spawner(spawner_prefab.file_path);
+                }
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Consumer")) {
+                tab = Tab_Consumer;
+                inspect(&consumer_prefab);
+                
+                if (ImGui::Button("Save")) {
+                    save_consumer(consumer_prefab);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Load")) {
+                    consumer_prefab = load_consumer(consumer_prefab.file_path);
                 }
                 ImGui::EndTabItem();
             }

@@ -10,7 +10,7 @@ namespace spellbook {
 
 struct Scene;
 
-std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> simple_select_enemy(EnemyPrefab enemy_prefab, f32 cost, f32 cooldown);
+std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> simple_select_enemy(EnemyPrefab* enemy_prefab, f32 cost, f32 cooldown);
 std::function<bool(f32 cost_total)> simple_wave(f32 threshold);
 
 struct SpawnerPrefab {
@@ -24,7 +24,7 @@ struct SpawnerPrefab {
     };
 
     EnemySelection enemy_selection;
-    EnemyPrefab enemy_prefab;
+    string enemy_prefab_path;
     f32 enemy_cost;
     f32 enemy_cooldown;
 
@@ -45,7 +45,7 @@ struct Spawner {
     f32 cooldown = 0.0f;
 };
 
-JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_prefab, enemy_cost, enemy_cooldown, wave_selection, wave_cost, delta_cost);
+JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_prefab_path, enemy_cost, enemy_cooldown, wave_selection, wave_cost, delta_cost);
 
 void spawner_system(Scene* scene);
 

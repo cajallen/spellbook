@@ -19,7 +19,7 @@ struct SceneData {
     v3  fog_color           = v3(0.04f, 0.02f, 0.04f);
     f32 fog_depth           = -1.0f;
     v2  rim_intensity_start = v2(0.25f, 0.55f);
-    v3  sun_direction       = v3(0.5f, 0.5f, 0.5f);
+    v3  sun_direction       = v3(0.3f, 0.6f, 0.8f);
     f32 sun_intensity       = 1.0f;
 };
 

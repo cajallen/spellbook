@@ -20,7 +20,7 @@ namespace fs = std::filesystem;
 namespace spellbook {
 
 void GUI::setup() {
-    fs::path gui_file = fs::path(game.user_folder) / ("gui" + general_extension);
+    fs::path gui_file = fs::path(game.user_folder) / ("gui" + extension(FileType_General));
 
     if (!fs::exists(gui_file))
         return;
@@ -36,7 +36,7 @@ void GUI::setup() {
 }
 
 void GUI::shutdown() {
-    fs::path gui_file = fs::path(game.user_folder) / ("gui" + general_extension);
+    fs::path gui_file = fs::path(game.user_folder) / ("gui" + extension(FileType_General));
     fs::create_directories(gui_file.parent_path());
     
     auto j = json();

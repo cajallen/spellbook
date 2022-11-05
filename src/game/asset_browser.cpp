@@ -8,7 +8,9 @@
 #include "game.hpp"
 #include "umap.hpp"
 #include "file.hpp"
+#include "lib_ext/icons/font_awesome4.h"
 #include "renderer/assets/asset_loader.hpp"
+#include "renderer/assets/texture_asset.hpp"
 
 namespace spellbook {
 
@@ -39,23 +41,26 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         }
         if (path_filter(FileType_TextureAsset)(path)) {
             if (ImGui::Selectable("Convert")) {
-                
+                popup_set_input = path;
+                popup_set_folder = path.parent_path();
+                popup_set_name = path.stem().string();
+                popup_open = true;
             }
         }
     };
 
     // Header
     {
-        if (ImGui::Button("^")) {
+        if (ImGui::Button(ICON_FA_CHEVRON_UP)) {
             *out = out->parent_path();
         }
         ImGui::SameLine();
         string out_as_string = out->string();
-        ImGui::SetNextItemWidth(-100.f);
+        ImGui::SetNextItemWidth(-200.f);
         ImGui::InputText("##Current", &out_as_string, ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(60.f);
-        ImGui::Combo("Type", (s32*) &asset_type_map[window_name], "Any\0Model\0Model Asset\0Texture\0Texture Asset\0Material\0Mesh\0\0");
+        ImGui::SetNextItemWidth(160.f);
+        EnumCombo("Type", &asset_type_map[window_name]);
     }
 
     // Body
@@ -63,8 +68,14 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
     
 
     // Popup
-    if (popup_open)
-        ImGui::OpenPopup("Convert Model Asset");
+    if (popup_open) {
+        if (path_filter(FileType_ModelAsset)(popup_set_input))
+            ImGui::OpenPopup("Convert Model Asset");
+        if (path_filter(FileType_TextureAsset)(popup_set_input))
+            ImGui::OpenPopup("Convert Texture Asset");
+        
+    }
+    
     if (ImGui::BeginPopupModal("Convert Model Asset")) {
         struct ModelConvertInfo {
             fs::path input;
@@ -88,6 +99,34 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         ImGui::InputText("Output name", &model_convert_map[window_name].name);
         if (ImGui::Button("Convert")) {
             save_model(convert_to_model(model_convert_map[window_name].input, model_convert_map[window_name].folder_path, model_convert_map[window_name].name));
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopupModal("Convert Texture Asset")) {
+        struct TextureConvertInfo {
+            fs::path input;
+            fs::path folder_path;
+            string name;
+        };
+        static umap<string, TextureConvertInfo> texture_convert_map;
+        
+        if (!texture_convert_map.contains(window_name))
+            texture_convert_map[window_name] = {};
+
+        if (!popup_set_input.empty())
+            texture_convert_map[window_name].input = popup_set_input;
+        if (!popup_set_folder.empty())
+            texture_convert_map[window_name].folder_path = popup_set_folder.lexically_proximate(game.external_resource_folder);
+        if (!popup_set_name.empty())
+            texture_convert_map[window_name].name = popup_set_name;
+
+        PathSelect("Input", &texture_convert_map[window_name].input, game.external_resource_folder, FileType_ModelAsset);
+        PathSelect("Output folder", &texture_convert_map[window_name].folder_path, game.resource_folder, FileType_Directory);
+        ImGui::InputText("Output name", &texture_convert_map[window_name].name);
+        if (ImGui::Button("Convert")) {
+            save_texture(convert_to_texture(texture_convert_map[window_name].input.string(), texture_convert_map[window_name].folder_path.string(), texture_convert_map[window_name].name));
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

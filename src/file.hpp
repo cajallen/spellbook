@@ -8,6 +8,8 @@
 #include "console.hpp"
 #include "game/asset_browser.hpp"
 
+namespace fs = std::filesystem;
+
 namespace spellbook {
 
 enum FileType {
@@ -24,12 +26,14 @@ enum FileType {
     FileType_Tower,
     FileType_Tile,
     FileType_Enemy,
-    FileType_Spawner
+    FileType_Spawner,
+    FileType_Consumer
 };
 
 string extension(FileType type);
 std::function<bool(const fs::path&)> path_filter(FileType type);
 string dnd_key(FileType type);
+FileType from_typeinfo(const type_info& input);
 
 string get_file(const string& str, bool with_ext = false);
 string get_folder(const string& str);

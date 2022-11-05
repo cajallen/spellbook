@@ -9,8 +9,7 @@
 namespace spellbook {
 
 enum EnemyType {
-    EnemyType_Empty,
-    EnemyType_Banana
+    EnemyType_Empty
 };
 
 struct EnemyPrefab {
@@ -22,11 +21,12 @@ struct EnemyPrefab {
     f32 max_speed = 0.0f;
 };
 
-JSON_IMPL(EnemyPrefab, type, model_path);
+JSON_IMPL(EnemyPrefab, type, model_path, max_health, max_speed);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const EnemyPrefab&, v3i location);
-
 void inspect(EnemyPrefab*);
+void save_enemy(const EnemyPrefab&);
+EnemyPrefab load_enemy(const string& input_path);
 
 }

@@ -49,7 +49,7 @@ void inspect(ModelCPU* model) {
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
-            PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Texture);
+            PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
             PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
             DragMat4("Transform", &node->transform, 0.02f, "%.2f");
             for (auto child : node->children) {
@@ -376,9 +376,11 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
             if (tangent_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
                 float* dtf = (float*) tangent_data.data();
 
-                vertices[i].tangent[X] = *(dtf + (i * 3) + X);
-                vertices[i].tangent[Y] = *(dtf + (i * 3) + Y);
-                vertices[i].tangent[Z] = *(dtf + (i * 3) + Z);
+                if (tangent_data.size() > sizeof(float) * (i * 3 + Z)) {
+                    vertices[i].tangent[X] = *(dtf + (i * 3) + X);
+                    vertices[i].tangent[Y] = *(dtf + (i * 3) + Y);
+                    vertices[i].tangent[Z] = *(dtf + (i * 3) + Z);
+                }
             } else {
                 assert_else(false);
             }
@@ -386,9 +388,11 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
             if (tangent_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
                 float* dtf = (float*) tangent_data.data();
 
-                vertices[i].tangent[X] = *(dtf + (i * 4) + X);
-                vertices[i].tangent[Y] = *(dtf + (i * 4) + Y);
-                vertices[i].tangent[Z] = *(dtf + (i * 4) + Z);
+                if (tangent_data.size() > sizeof(float) * (i * 4 + Z)) {
+                    vertices[i].tangent[X] = *(dtf + (i * 4) + X);
+                    vertices[i].tangent[Y] = *(dtf + (i * 4) + Y);
+                    vertices[i].tangent[Z] = *(dtf + (i * 4) + Z);
+                }
             } else {
                 assert_else(false);
             }
@@ -499,26 +503,21 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 }
 
 string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index) {
-    char buffer0[50];
-    char buffer1[50];
-    itoa(mesh_index, buffer0, 10);
-    itoa(primitive_index, buffer1, 10);
+    char prim_buffer[50];
+    itoa(primitive_index, prim_buffer, 10);
 
-    string meshname = "MESH_" + string{&buffer0[0]} + "_" + model.meshes[mesh_index].name;
+    string meshname = model.meshes[mesh_index].name;
 
     bool multiprim = model.meshes[mesh_index].primitives.size() > 1;
     if (multiprim) {
-        meshname += "_PRIM_" + string{&buffer1[0]};
+        meshname += "_sub_" + string{&prim_buffer[0]};
     }
 
     return meshname;
 }
 
 string _calculate_gltf_material_name(tinygltf::Model& model, int material_index) {
-    char buffer[50];
-
-    itoa(material_index, buffer, 10);
-    string matname = "MAT_" + string{&buffer[0]} + "_" + model.materials[material_index].name;
+    string matname = model.materials[material_index].name;
     return matname;
 }
 
@@ -536,6 +535,10 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
             _extract_gltf_indices(primitive, model, mesh_cpu.indices);
             _extract_gltf_vertices(primitive, model, mesh_cpu.vertices);
 
+            if (math::length(mesh_cpu.vertices.last().tangent) < 0.1f) {
+                mesh_cpu.fix_tangents();
+            }
+            
             save_mesh(mesh_cpu);
         }
     }

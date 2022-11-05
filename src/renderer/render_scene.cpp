@@ -154,14 +154,14 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
         if (renderable.mesh_asset_path.empty() || renderable.material_asset_path.empty())
             return;
         if (mesh == nullptr) {
-            if (file_exists(get_resource_path(renderable.mesh_asset_path))) {
+            if (exists(to_resource_path(renderable.mesh_asset_path))) {
                 game.renderer.upload_mesh(load_mesh(renderable.mesh_asset_path));
             } else {
                 console({.str = "Renderable mesh asset not found: " + renderable.mesh_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
             }
         }
         if (material == nullptr) {
-            if (file_exists(get_resource_path(renderable.material_asset_path))) {
+            if (exists(to_resource_path(renderable.material_asset_path))) {
                 game.renderer.upload_material(load_material(renderable.material_asset_path));
             } else {
                 console({.str = "Renderable material asset not found: " + renderable.material_asset_path, .group = "assets", .frame_tags = {"render_scene"}});

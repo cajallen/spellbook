@@ -3,6 +3,7 @@
 GLFWwindow* create_window_glfw(const string& title, spellbook::v2i window_size, bool resize) {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_MAXIMIZED , GLFW_TRUE);
     if (!resize)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 

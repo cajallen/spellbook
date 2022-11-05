@@ -16,8 +16,9 @@ namespace spellbook {
 
 void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
     Model& model = registry.get<Model>(entity);
-    // TODO:
+    deinstance_model(render_scene, model.model_gpu);
 }
+
 void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     auto transform = registry.try_get<ModelTransform>(entity);
     if (transform) {
@@ -26,6 +27,9 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     }
 }
 
+void Scene::tower_cleanup(entt::registry& registry, entt::entity entity) {
+    registry.destroy(registry.get<Tower>(entity).clouds);
+}
 
 
 void Scene::setup() {
@@ -40,10 +44,9 @@ void Scene::setup() {
 
 	game.renderer.add_scene(&render_scene);
 
-    // TODO: ship entity
-
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
+    registry.on_destroy<Tower>().connect<&Scene::tower_cleanup>(*this);
 }
 
 void Scene::update() {
@@ -55,10 +58,7 @@ void Scene::update() {
     dragging_system(this);
     spawner_system(this);
     travel_system(this);
-    pyro_system(this);
-    roller_system(this);
-    rollee_system(this);
-    grid_slot_transform_system(this);
+    tower_system(this);
     transform_system(this);
     selection_id_system(this);
     consumer_system(this);
@@ -145,5 +145,73 @@ void Scene::output_window(bool* p_open) {
     ImGui::End();
     ImGui::PopStyleVar();
 }
+
+entt::entity Scene::get_tower(v3i pos) {
+    auto view = registry.view<LogicTransform, Tower>();
+    for (auto [entity, logic_pos, tower] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+            return entity;
+        }
+    }
+    return entt::null;
+}
+
+entt::entity Scene::get_tile(v3i pos) {
+    auto view = registry.view<LogicTransform, GridSlot>();
+    for (auto [entity, logic_pos, tile] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+            return entity;
+        }
+    }
+    return entt::null;
+}
+
+vector<entt::entity> Scene::get_enemies(v3i pos) {
+    vector<entt::entity> entities;
+    auto view = registry.view<LogicTransform, Traveler>();
+    for (auto [entity, logic_pos, traveler] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+            entities.insert_back(entity);
+        }
+    }
+    return entities;
+}
+
+entt::entity Scene::get_spawner(v3i pos) {
+    auto view = registry.view<LogicTransform, Spawner>();
+    for (auto [entity, logic_pos, spawner] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+            return entity;
+        }
+    }
+    return entt::null;
+}
+
+entt::entity Scene::get_consumer(v3i pos) {
+    auto view = registry.view<LogicTransform, Consumer>();
+    for (auto [entity, logic_pos, traveler] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+            return entity;
+        }
+    }
+    return entt::null;
+}
+
+entt::entity Scene::get(v3i pos, TowerPrefab* t) {
+    return get_tower(pos);
+}
+
+entt::entity Scene::get(v3i pos, TilePrefab* t) {
+    return get_tile(pos);
+}
+
+entt::entity Scene::get(v3i pos, SpawnerPrefab* t) {
+    return get_spawner(pos);
+}
+
+entt::entity Scene::get(v3i pos, ConsumerPrefab* t) {
+    return get_consumer(pos);
+}
+
 
 }

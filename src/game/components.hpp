@@ -28,13 +28,22 @@ struct Model {
 };
 
 struct LogicTransform {
-    v3 position = v3(0.f);
+    v3 position = v3(0.0f);
 };
 
 struct ModelTransform {
     v3    translation = v3(0.0f);
     euler rotation    = euler();
     f32   scale       = 1.0f;
+};
+
+struct TransformLink {
+    v3 offset = v3(0.5f);
+};
+
+struct LogicTransformAttach {
+    entt::entity to = entt::null;
+    v3 offset = v3(0.0f);
 };
 
 struct GridSlot {
@@ -58,6 +67,13 @@ struct Consumer {
 
 struct Killed {
     f32 when = -FLT_MAX;
+};
+
+struct Tower {
+    f32 rotation_speed = 1.0f;
+    f32 current_rotation = 0.0f;
+
+    entt::entity clouds;
 };
 
 struct Pyro {
