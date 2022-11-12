@@ -24,7 +24,7 @@ static Texture allocate_texture(Allocator& allocator, Format format, Extent3D ex
     ici.extent = extent;
     ici.samples = Samples::e1;
     ici.initialLayout = ImageLayout::eUndefined;
-    ici.tiling = ImageTiling::eOptimal;
+    ici.tiling        = ImageTiling::eOptimal;
     ici.usage         = ImageUsageFlagBits::eStorage | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled;
     ici.mipLevels = 1;
     ici.arrayLayers = 1;
@@ -62,8 +62,7 @@ void RenderScene::settings_gui() {
     ImGui::Checkbox("Pause", &pause);
     if (ImGui::TreeNode("Lighting")) {
         ImGui::ColorEdit4("Ambient", scene_data.ambient.data);
-        ImGui::DragFloat("Rim Start", &scene_data.rim_intensity_start.y, 0.01f);
-        ImGui::DragFloat("Rim Intensity", &scene_data.rim_intensity_start.x, 0.01f);
+        ImGui::DragFloat3("rim_alpha_width_start", scene_data.rim_alpha_width_start.data, 0.01f);
         ImGui::DragFloat3("Sun Direction", scene_data.sun_direction.data, 0.01f);
         ImGui::DragFloat("Sun Intensity", &scene_data.sun_intensity, 0.01f);
         ImGui::DragFloat2("Outline(D)", &post_process_data.outline.x, 0.1f);
@@ -111,11 +110,11 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
         v4 ambient;
         v4 fog;
         v4 sun_data;
-        v2 rim_intensity_start;
+        v4 rim_alpha_width_start;
     } scene_data_gpu;
-    scene_data_gpu.ambient             = scene_data.ambient;
-    scene_data_gpu.fog                 = v4(scene_data.fog_color, scene_data.fog_depth);
-    scene_data_gpu.rim_intensity_start = scene_data.rim_intensity_start;
+    scene_data_gpu.ambient             = scene_data.ambient.rgba;
+    scene_data_gpu.fog                 = v4(scene_data.fog_color.rgb, scene_data.fog_depth);
+    scene_data_gpu.rim_alpha_width_start = v4(scene_data.rim_alpha_width_start, 0.0f);
     scene_data_gpu.sun_data            = v4(scene_data.sun_direction, scene_data.sun_intensity);
 
     auto [pubo_scene, fubo_scene] = vuk::create_buffer_cross_device(allocator, vuk::MemoryUsage::eCPUtoGPU, std::span(&scene_data_gpu, 1));
@@ -316,7 +315,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     }
     // clang-format on
 
-    auto clear_color      = vuk::ClearColor {scene_data.fog_color.r, scene_data.fog_color.g, scene_data.fog_color.b, 1.0f};
+    auto clear_color      = vuk::ClearColor(scene_data.fog_color);
     auto info_clear_color = vuk::ClearColor {-1u, -1u, -1u, -1u};
     auto depth_clear_value = vuk::ClearDepthStencil{0.0f, 0};
     rg->attach_and_clear_image("forward_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_color);
@@ -329,7 +328,9 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     return vuk::Future {rg, "target_output"};
 }
 
-void RenderScene::cleanup(vuk::Allocator& allocator) {}
+void RenderScene::cleanup(vuk::Allocator& allocator) {
+    game.renderer.scenes.remove_value(this);
+}
 
 void RenderScene::quick_mesh(const MeshCPU& mesh_cpu) {
     Renderable r;

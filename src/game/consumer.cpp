@@ -32,8 +32,8 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
 }
 
 void inspect(ConsumerPrefab* consumer_prefab) {
-    PathSelect("File", &consumer_prefab->file_path, "resources", FileType_Consumer, true);
-    PathSelect("Model", &consumer_prefab->model_path, "resources", FileType_Model, true);
+    ImGui::PathSelect("File", &consumer_prefab->file_path, "resources", FileType_Consumer, true);
+    ImGui::PathSelect("Model", &consumer_prefab->model_path, "resources", FileType_Model, true);
 }
 
 void save_consumer(const ConsumerPrefab& consumer_prefab) {

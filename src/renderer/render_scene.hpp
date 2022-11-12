@@ -15,12 +15,12 @@ namespace spellbook {
 struct Renderable;
 
 struct SceneData {
-    v4  ambient             = v4(1.0f, 1.0f, 1.0f, 0.3f);
-    v3  fog_color           = v3(0.04f, 0.02f, 0.04f);
-    f32 fog_depth           = -1.0f;
-    v2  rim_intensity_start = v2(0.25f, 0.55f);
-    v3  sun_direction       = v3(0.3f, 0.6f, 0.8f);
-    f32 sun_intensity       = 1.0f;
+    Color ambient             = Color(palette::white, 0.1);
+    Color fog_color           = palette::black;
+    f32 fog_depth             = -1.0f;
+    v3  rim_alpha_width_start = v3(0.25f, 0.2f, 0.6f);
+    v3  sun_direction         = v3(-0.3f, 0.6f, 0.1f);
+    f32 sun_intensity         = 1.0f;
 };
 
 struct PostProcessData {

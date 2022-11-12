@@ -17,6 +17,7 @@ namespace spellbook {
 void AssetEditor::setup() {
     ZoneScoped;
     p_scene = new Scene();
+    p_scene->setup("Asset Editor");
 }
 
 void AssetEditor::update() {

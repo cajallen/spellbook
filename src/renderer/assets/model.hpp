@@ -48,9 +48,11 @@ struct ModelGPU {
 
 void     save_model(const ModelCPU&);
 ModelCPU load_model(const fs::path& input_path);
-ModelGPU instance_model(RenderScene&, const ModelCPU&);
+ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
 void     deinstance_model(RenderScene&, const ModelGPU&);
 ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name);
+
+ModelCPU quick_model(const string& name, const string& mesh, const string& material);
 
 void inspect(ModelCPU* model);
 

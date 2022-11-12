@@ -29,4 +29,6 @@ void pyro_system(Scene* scene);
 void roller_system(Scene* scene);
 void rollee_system(Scene* scene);
 
+void spawner_draw_system(Scene* scene);
+
 }

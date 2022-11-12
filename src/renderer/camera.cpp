@@ -55,9 +55,9 @@ void inspect(Camera* camera) {
 	ImGui::Separator();
 
 	bool vp_override = false;
-	vp_override |= DragMat4("proj", &camera->proj, 0.01f, "%.2f");
+	vp_override |= ImGui::DragMat4("proj", &camera->proj, 0.01f, "%.2f");
 	ImGui::Separator();
-	vp_override |= DragMat4("view", &camera->view, 0.01f, "%.2f");
+	vp_override |= ImGui::DragMat4("view", &camera->view, 0.01f, "%.2f");
 
 	if (vp_override)
 		camera->vp = camera->proj * camera->view;

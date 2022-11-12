@@ -381,6 +381,7 @@
     <Content Include="src\shaders\imgui.frag.spv" />
     <Content Include="src\shaders\imgui.vert" />
     <Content Include="src\shaders\imgui.vert.spv" />
+    <Content Include="src\shaders\include.glsli" />
     <Content Include="src\shaders\infinite_plane.vert" />
     <Content Include="src\shaders\rt.rchit" />
     <Content Include="src\shaders\rt.rgen" />

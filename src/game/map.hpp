@@ -32,7 +32,7 @@ JSON_IMPL(MapPrefab, towers, tiles, spawners, consumers);
 void inspect(MapPrefab*);
 void save_map(const MapPrefab&);
 MapPrefab load_map(const string& input_path);
-Scene* instance_map(const MapPrefab&, Scene* scene);
+Scene* instance_map(const MapPrefab&, const string& name);
 
 
 }

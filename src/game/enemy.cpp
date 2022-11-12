@@ -31,9 +31,9 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& enemy_prefab, v3i 
 }
 
 void inspect(EnemyPrefab* enemy_prefab) {
-    PathSelect("File", &enemy_prefab->file_path, "resources", FileType_Enemy);
-    EnumCombo("Type", &enemy_prefab->type);
-    PathSelect("Model", &enemy_prefab->model_path, "resources", FileType_Model);
+    ImGui::PathSelect("File", &enemy_prefab->file_path, "resources", FileType_Enemy);
+    ImGui::EnumCombo("Type", &enemy_prefab->type);
+    ImGui::PathSelect("Model", &enemy_prefab->model_path, "resources", FileType_Model);
     ImGui::DragFloat("Max Health", &enemy_prefab->max_health, 0.01f, 0.0f);
     ImGui::DragFloat("Max Speed", &enemy_prefab->max_speed, 0.01f, 0.0f);
 }

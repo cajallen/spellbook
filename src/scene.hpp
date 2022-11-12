@@ -23,7 +23,7 @@ struct Scene {
     entt::registry   registry;
     entt::entity     selected_entity;
 
-    void setup();
+    void setup(const string& name);
     void update();
     void cleanup();
 
@@ -41,6 +41,7 @@ struct Scene {
     entt::entity get_spawner(v3i);
     entt::entity get_consumer(v3i);
     vector<entt::entity> get_enemies(v3i);
+    vector<entt::entity> get_any(v3i);
 
     entt::entity get(v3i, TowerPrefab* t);
     entt::entity get(v3i, TilePrefab* t);

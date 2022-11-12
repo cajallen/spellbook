@@ -30,20 +30,21 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
 };
 
 void inspect(MaterialCPU* material) {
-    PathSelect("File", &material->file_path, "resources", FileType_Material);
+    ImGui::PathSelect("File", &material->file_path, "resources", FileType_Material);
 
     ImGui::ColorEdit4("color_tint", material->color_tint.data, ImGuiColorEditFlags_DisplayHSV);
     ImGui::ColorEdit4("emissive_tint", material->emissive_tint.data, ImGuiColorEditFlags_DisplayHSV);
     ImGui::DragFloat("roughness_factor", &material->roughness_factor, 0.01f);
     ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
     ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
+    ImGui::DragFloat2("emissive_dot_smoothstep", material->emissive_dot_smoothstep.data, 0.01f);
 
-    PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
-    PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
-    PathSelect("normal_asset_path", &material->normal_asset_path, "resources", FileType_Texture);
-    PathSelect("emissive_asset_path", &material->emissive_asset_path, "resources", FileType_Texture);
+    ImGui::PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+    ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
+    ImGui::PathSelect("normal_asset_path", &material->normal_asset_path, "resources", FileType_Texture);
+    ImGui::PathSelect("emissive_asset_path", &material->emissive_asset_path, "resources", FileType_Texture);
 
-    EnumCombo("cull_mode", &material->cull_mode);
+    ImGui::EnumCombo("cull_mode", &material->cull_mode);
 }
 
 void inspect(MaterialGPU* material) {
@@ -73,6 +74,8 @@ void inspect(MaterialGPU* material) {
     ImGui::DragFloat("Metallic Factor", &material->tints.roughness_metallic_normal_scale.y, 0.01f);
     ImGui::DragFloat("Normal Factor", &material->tints.roughness_metallic_normal_scale.z, 0.01f);
     ImGui::DragFloat("UV Scale", &material->tints.roughness_metallic_normal_scale.w, 0.01f);
+    
+    ImGui::DragFloat2("Emissive Direction", material->tints.emissive_dot_smoothstep.data, 0.01f);
 }
 
 void save_material(const MaterialCPU& material_cpu) {

@@ -254,4 +254,11 @@ void CameraController::setup(Viewport* init_viewport, Camera* init_camera) {
     Input::key_callback_stack.insert(0, {cc_on_key, name, this});
 }
 
+void CameraController::cleanup() {
+    Input::remove_mouse_button_callback(name);
+    Input::remove_mouse_pos_callback(name);
+    Input::remove_scroll_callback(name);
+    Input::remove_key_callback(name);
+}
+
 }

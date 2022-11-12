@@ -100,8 +100,11 @@ struct Rollee {
 
 struct Dragging {
     f32 when = 0.0f;
-    v3  start_position = v3(0.0f);
+    v3  start_logic_position = v3(0.0f);
     v3  start_intersect = v3(0.0f);
+    
+    f32 vertical_offset = 0.0f;
+    v3 logic_position = v3(0.0f);
 };
 
 struct Collision {

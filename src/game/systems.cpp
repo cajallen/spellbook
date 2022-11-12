@@ -126,20 +126,31 @@ void health_draw_system(Scene* scene) {
 
 // Uses the transform for models
 void transform_system(Scene* scene) {
+    auto& registry = scene->registry;
     ZoneScoped;
-    for (auto [entity, attach, transform] : scene->registry.view<LogicTransformAttach, LogicTransform>().each()) {
-        if (scene->registry.valid(attach.to)) {
-            transform = scene->registry.get<LogicTransform>(attach.to);
+    // Logic Transform Attach
+    for (auto [entity, attach, transform] : registry.view<LogicTransformAttach, LogicTransform>().each()) {
+        // We disable attachments for dragging
+        if (registry.any_of<Dragging>(entity))
+            continue;
+        
+        if (registry.valid(attach.to)) {
+            transform = registry.get<LogicTransform>(attach.to);
         } else {
             console_error("Invalid attachment", "components.transform", ErrorType_Warning);
-            scene->registry.erase<LogicTransformAttach>(entity);
+            registry.erase<LogicTransformAttach>(entity);
         }
     }
-    for (auto [entity, model, transform] : scene->registry.view<Model, ModelTransform>().each()) {
-        auto link = scene->registry.try_get<TransformLink>(entity);
-        if (link != nullptr) {
-            transform.translation = scene->registry.get<LogicTransform>(entity).position + link->offset;
-        }
+    // Transform Link
+    for (auto [entity, link, l_transform, m_transform] : registry.view<TransformLink, LogicTransform, ModelTransform>().each()) {
+        // We disable links for dragging
+        if (registry.any_of<Dragging>(entity))
+            continue;
+        
+        m_transform.translation = l_transform.position + link.offset;
+    }
+    // Apply transforms to renderables
+    for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
         m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
         int i = 0;
         for (auto renderable : model.model_gpu.renderables) {
@@ -155,8 +166,7 @@ void tower_system(Scene* scene) {
         transform.rotation.yaw = tower.current_rotation;
 
         auto& clouds_transform = scene->registry.get<ModelTransform>(tower.clouds);
-        clouds_transform.rotation.yaw = 0.75 * tower.current_rotation;
-        clouds_transform.scale = math::abs(math::sin(Input::time));
+        clouds_transform.rotation.yaw = 0.6f * tower.current_rotation;
     }
 
     pyro_system(scene);
@@ -229,12 +239,17 @@ void selection_id_system(Scene* scene) {
     ZoneScoped;
     auto model_view = scene->registry.view<Model>();
     for (auto [entity, model] : model_view.each()) {
+        u32 id = (u32) entity;
+        auto attach = scene->registry.try_get<LogicTransformAttach>(entity);
+        if (attach != nullptr)
+            id = (u32) attach->to;
         for (auto p_renderable : model.model_gpu.renderables) {
-            p_renderable->selection_id = (u32) entity;
+            p_renderable->selection_id = id;
         }
     }
 }
 
+// Adds dragging to entities
 void dragging_update_system(Scene* scene) {
     ZoneScoped;
     if (scene->render_scene.fut_query_result.get_control()) {
@@ -246,10 +261,17 @@ void dragging_update_system(Scene* scene) {
         if (scene->registry.valid((entt::entity) result_int)) {
             scene->selected_entity = (entt::entity) result_int;
             v3  intersect = math::intersect_axis_plane(scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-            auto transform = scene->registry.try_get<ModelTransform>(scene->selected_entity);
+            auto transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
             assert_else(transform);
 
-            scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, transform->translation, intersect);
+            scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, transform->position, intersect);
+
+            for (auto [entity, attach] : scene->registry.view<LogicTransformAttach>().each()) {
+                if (attach.to == scene->selected_entity) {
+                    auto attachee_transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
+                    scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, attachee_transform->position, intersect);
+                }
+            }
         }
     }
 }
@@ -259,15 +281,24 @@ void dragging_system(Scene* scene) {
     Viewport& viewport = scene->render_scene.viewport;
     v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
 
-    constexpr f32 raise_speed = 4.0f;
-
-    auto _view = scene->registry.view<Dragging, LogicTransform>();
+    constexpr f32 raise_speed = 0.25f;
+    auto drags = scene->registry.view<Dragging>();
+    for (auto [entity, drag] : drags.each()) {
+        v3 logic_offset = intersect - drag.start_intersect;
+        drag.logic_position = drag.start_logic_position + logic_offset;
+        
+        drag.vertical_offset = 0.5f * math::smoothstep(drag.when, drag.when + raise_speed, Input::time);
+    }
+    
+    auto _view = scene->registry.view<Dragging, ModelTransform>();
     for (auto [entity, dragging, transform] : _view.each()) {
-        v3 offset = intersect - dragging.start_intersect;
-        v3 position = dragging.start_position + offset;
+        v3 model_offset = v3(0.0f, 0.0f, dragging.vertical_offset);
 
-        transform.position.z = math::min(transform.position.z + raise_speed * Input::delta_time, 0.5f);
-        transform.position.xy = position.xy;
+        if (scene->registry.any_of<TransformLink>(entity)) {
+            model_offset += scene->registry.get<TransformLink>(entity).offset;
+        }
+        
+        transform.translation = dragging.logic_position + model_offset;
     }
 }
 
@@ -308,9 +339,13 @@ void roller_system(Scene* scene) {
 
     static bool generated = false;
     if (!generated) {
-        MaterialCPU material_cpu = { .file_path = "rollee_material", .color_tint = palette::slate_gray};
-        game.renderer.upload_material(material_cpu);
+        // dependencies
         game.renderer.upload_mesh(generate_icosphere(3));
+        MaterialCPU material_cpu = {
+            .file_path     = "roller_material",
+            .color_tint    = palette::slate_gray
+        };
+        game.renderer.upload_material(material_cpu);
         generated = true;
     }
 
@@ -324,13 +359,17 @@ void roller_system(Scene* scene) {
         for (int i = 0; i < 4; i++) {
             static int rollee_index = 0;
             auto       new_entity = scene->registry.create();
-
-            // vector<slot<Renderable>> model;
-            // model.insert_back(scene->render_scene.add_renderable(Renderable{fmt_("rollee_{}_renderable", rollee_index), "icosphere_3", "rollee_material", math::scale(roller.rollee_radius)}));
-
+            
             scene->registry.emplace<Name>(new_entity, fmt_("rollee_{}", rollee_index));
-            scene->registry.emplace<ModelTransform>(new_entity, transform.translation + v3(0.2f * dirs[i], 0.0f), euler(), roller.rollee_radius);
-            // TODO: scene->registry.emplace<Model>(new_entity, model, v3(0.5f));
+
+            auto& model_comp = scene->registry.emplace<Model>(entity);
+            model_comp.model_cpu = quick_model("Rollee", "icosphere_3", "roller_material");
+            model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
+
+            scene->registry.emplace<LogicTransform>(new_entity, transform.translation + v3(0.2f * dirs[i], 0.0f));
+            scene->registry.emplace<TransformLink>(new_entity, v3(0.5f));
+            scene->registry.emplace<ModelTransform>(new_entity, v3(), euler(), roller.rollee_radius);
+            
             scene->registry.emplace<Rollee>(new_entity, entity, roller.rollee_speed * v3(dirs[i], 0.0f), roller.rollee_lifetime);
             scene->registry.emplace<Collision>(new_entity, roller.rollee_radius);
             rollee_index++;
@@ -373,6 +412,14 @@ void rollee_system(Scene* scene) {
         if (p_transform && p_collision) {
             p_transform->scale = math::mix(p_collision->radius,0.0f,math::smoothstep(0.2f, 0.0f, rollee.lifetime));
         }
+    }
+}
+
+void spawner_draw_system(Scene* scene) {
+    for (auto [entity, spawner, m_transform, transform_link] : scene->registry.view<Spawner, ModelTransform, TransformLink>().each()) {
+        transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * Input::time);
+        m_transform.scale = 0.6f;
+        m_transform.rotation.yaw = 2.0f * Input::time;
     }
 }
 

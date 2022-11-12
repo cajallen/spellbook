@@ -206,4 +206,18 @@ void Input::set_cursor_disabled(bool state) {
     }
 }
 
+void Input::remove_key_callback(const string& name) {
+    key_callback_stack.remove_if([&name](const tuple<key_callback, string, void*>& item) { return name == std::get<1>(item); });
+}
+void Input::remove_mouse_pos_callback(const string& name) {
+    mouse_pos_callback_stack.remove_if([&name](const tuple<mouse_pos_callback, string, void*>& item) { return name == std::get<1>(item); });
+
+}
+void Input::remove_mouse_button_callback(const string& name) {
+    mouse_button_callback_stack.remove_if([&name](const tuple<mouse_button_callback, string, void*>& item) { return name == std::get<1>(item); });
+}
+void Input::remove_scroll_callback(const string& name) {
+    scroll_callback_stack.remove_if([&name](const tuple<scroll_callback, string, void*>& item) { return name == std::get<1>(item); });
+}
+
 }

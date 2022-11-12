@@ -132,7 +132,7 @@ void Renderer::add_scene(RenderScene* scene) {
 void Renderer::setup() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    StyleColorsSpellbook();
+    ImGui::StyleColorsSpellbook();
     ImGui_ImplGlfw_InitForVulkan(window, false);
     imgui_data = ImGui_ImplVuk_Init(*global_allocator);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -195,7 +195,7 @@ void Renderer::render() {
 
     ImGui::Render();
     // NOTE: When we render in 3D, we're using reverse depth. We have no need for that here because we don't have depth precision issues
-    rg->clear_image("SWAPCHAIN", "SWAPCHAIN+", vuk::ClearColor{0.4f, 0.2f, 0.4f, 1.0f});
+    rg->clear_image("SWAPCHAIN", "SWAPCHAIN+", vuk::ClearColor{0.1f, 0.05f, 0.1f, 1.0f});
     rg->attach_swapchain("SWAPCHAIN", swapchain);
     
     rg->add_pass({.name = "force_transition", .resources = std::move(resources)});
@@ -297,7 +297,8 @@ string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_all
     material_gpu.tints         = {
         (v4) material_cpu.color_tint,
         (v4) material_cpu.emissive_tint,
-        {material_cpu.roughness_factor, material_cpu.metallic_factor, material_cpu.normal_factor, 1.0f}
+        {material_cpu.roughness_factor, material_cpu.metallic_factor, material_cpu.normal_factor, 1.0f},
+        {material_cpu.emissive_dot_smoothstep.x, material_cpu.emissive_dot_smoothstep.y, 0.0f, 0.0f}
     };
     material_gpu.cull_mode = material_cpu.cull_mode;
 

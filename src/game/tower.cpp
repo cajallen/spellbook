@@ -54,10 +54,10 @@ entt::entity instance_prefab(Scene* scene, const TowerPrefab& tower_prefab, v3i 
 }
 
 void inspect(TowerPrefab* tower_prefab) {
-    PathSelect("File", &tower_prefab->file_path, "resources", FileType_Tower);
-    EnumCombo("Type", &tower_prefab->type);
-    PathSelect("Globe Model", &tower_prefab->globe_path, "resources", FileType_Model);
-    PathSelect("Clouds Model", &tower_prefab->clouds_path, "resources", FileType_Model);
+    ImGui::PathSelect("File", &tower_prefab->file_path, "resources", FileType_Tower);
+    ImGui::EnumCombo("Type", &tower_prefab->type);
+    ImGui::PathSelect("Globe Model", &tower_prefab->globe_path, "resources", FileType_Model);
+    ImGui::PathSelect("Clouds Model", &tower_prefab->clouds_path, "resources", FileType_Model);
 }
 
 void save_tower(const TowerPrefab& tower_prefab) {

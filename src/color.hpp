@@ -17,6 +17,7 @@ struct Color {
             f32 r, g, b, a;
         };
         v3  rgb;
+        v4  rgba;
         f32 data[4];
     };
 

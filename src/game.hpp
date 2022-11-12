@@ -19,7 +19,7 @@ struct Game {
     GUI            gui;
 
     MapEditor map_editor;
-    AssetEditor asset_editor;
+    // AssetEditor asset_editor;
     // TestScene test_scene;
     
     string external_resource_folder;

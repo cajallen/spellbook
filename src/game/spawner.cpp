@@ -53,14 +53,14 @@ void spawner_system(Scene* scene) {
 }
 
 void inspect(SpawnerPrefab* spawner_prefab) {
-    PathSelect("file_path", &spawner_prefab->file_path, "resources", FileType_Spawner, true);
+    ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources", FileType_Spawner, true);
 
-    EnumCombo("enemy_selection", &spawner_prefab->enemy_selection);
-    PathSelect("enemy_path", &spawner_prefab->enemy_prefab_path, "resources", FileType_Enemy);
+    ImGui::EnumCombo("enemy_selection", &spawner_prefab->enemy_selection);
+    ImGui::PathSelect("enemy_path", &spawner_prefab->enemy_prefab_path, "resources", FileType_Enemy);
     ImGui::DragFloat("enemy_cost", &spawner_prefab->enemy_cost, 0.01f);
     ImGui::DragFloat("enemy_cooldown", &spawner_prefab->enemy_cooldown, 0.01f);
 
-    EnumCombo("wave_selection", &spawner_prefab->wave_selection);
+    ImGui::EnumCombo("wave_selection", &spawner_prefab->wave_selection);
     ImGui::DragFloat("wave_cost", &spawner_prefab->wave_cost, 0.01f);
     
     ImGui::DragFloat("delta_cost", &spawner_prefab->delta_cost, 0.01f);
@@ -111,7 +111,16 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     }
     spawner.cost_total = spawner_prefab.wave_cost - 1.f;
     scene->registry.emplace<Spawner>(entity, spawner);
+
+
+    // Model
+    auto& model_comp = scene->registry.emplace<Model>(entity);
+    model_comp.model_cpu = load_model(load_enemy(spawner_prefab.enemy_prefab_path).model_path);
+    model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
     
+    scene->registry.emplace<ModelTransform>(entity);
+    scene->registry.emplace<TransformLink>(entity, v3(0.5f));
+
     return entity;
 }
 

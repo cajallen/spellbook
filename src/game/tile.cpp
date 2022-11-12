@@ -31,9 +31,9 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
 }
 
 void inspect(TilePrefab* tile_prefab) {
-    PathSelect("File", &tile_prefab->file_path, "resources", FileType_Tile, true);
-    EnumCombo("Type", &tile_prefab->type);
-    PathSelect("Model", &tile_prefab->model_path, "resources", FileType_Model, true);
+    ImGui::PathSelect("File", &tile_prefab->file_path, "resources", FileType_Tile, true);
+    ImGui::EnumCombo("Type", &tile_prefab->type);
+    ImGui::PathSelect("Model", &tile_prefab->model_path, "resources", FileType_Model, true);
 }
 
 void save_tile(const TilePrefab& tile_prefab) {

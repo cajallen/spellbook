@@ -31,7 +31,7 @@ layout(location = 0) out VS_OUT {
 
 void main() {
     vec4 h_position = model[gl_BaseInstance] * vec4(vin_position, 1.0);
-    vout.position = h_position.xyz;
+    vout.position = h_position.xyz / h_position.w;
     
     mat3 N = inverse(transpose(mat3(model[gl_BaseInstance])));
 	vec3 n = normalize(N * vin_normal);

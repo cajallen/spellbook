@@ -77,9 +77,9 @@ MapPrefab load_map(const string& input_path) {
     return map_prefab;
 }
 
-Scene* instance_map(const MapPrefab& map_prefab) {
+Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     auto scene = new Scene();
-    scene->setup();
+    scene->setup(name);
     for (auto& [pos, prefab] : map_prefab.towers) {
         instance_prefab(scene, prefab, pos);
     }

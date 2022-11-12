@@ -20,10 +20,10 @@ void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
 }
 
 void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
-    auto transform = registry.try_get<ModelTransform>(entity);
-    if (transform) {
-        transform->translation = math::round(transform->translation);
-        transform->translation.z = 0.0f;
+    auto dragging = registry.try_get<Dragging>(entity);
+    auto l_transform = registry.try_get<LogicTransform>(entity);
+    if (l_transform) {
+        l_transform->position = math::round(dragging->logic_position);
     }
 }
 
@@ -32,7 +32,8 @@ void Scene::tower_cleanup(entt::registry& registry, entt::entity entity) {
 }
 
 
-void Scene::setup() {
+void Scene::setup(const string& input_name) {
+    name = input_name;
 	render_scene.name = name + "::render_scene";
 	// setup camera
 	cameras.emplace_back(v3(-8, 0, 4), math::d2r(euler{0, -30}));
@@ -42,11 +43,12 @@ void Scene::setup() {
 	controller.name = name + "::controller";
 	controller.setup(&render_scene.viewport, &cameras.last());
 
-	game.renderer.add_scene(&render_scene);
-
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
     registry.on_destroy<Tower>().connect<&Scene::tower_cleanup>(*this);
+
+    game.scenes.insert_back(this);
+	game.renderer.add_scene(&render_scene);
 }
 
 void Scene::update() {
@@ -59,6 +61,7 @@ void Scene::update() {
     spawner_system(this);
     travel_system(this);
     tower_system(this);
+    spawner_draw_system(this);
     transform_system(this);
     selection_id_system(this);
     consumer_system(this);
@@ -73,8 +76,9 @@ void Scene::update() {
 }
 
 void Scene::cleanup() {
+    controller.cleanup();
 	render_scene.cleanup(*game.renderer.global_allocator);
-    // TODO: should remove render scene from render scenes list
+    game.scenes.remove_value(this);
 }
 
 
@@ -85,7 +89,7 @@ void Scene::inspect_entity(entt::entity entity) {
 
 	auto& name = registry.get<Name>(entity).name;
 
-	if (name == "")
+	if (name.empty())
 		name = "empty";
 	if (ImGui::TreeNode(name.c_str())) {
 		ImGui::PushID((u32) entity);
@@ -195,6 +199,17 @@ entt::entity Scene::get_consumer(v3i pos) {
         }
     }
     return entt::null;
+}
+
+vector<entt::entity> Scene::get_any(v3i pos) {
+    vector<entt::entity> entities;
+    auto view = registry.view<LogicTransform>();
+    for (auto [entity, logic_pos] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+            entities.insert_back(entity);
+        }
+    }
+    return entities;
 }
 
 entt::entity Scene::get(v3i pos, TowerPrefab* t) {

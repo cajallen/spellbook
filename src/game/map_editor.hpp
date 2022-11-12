@@ -34,7 +34,8 @@ struct MapEditor {
     vector<Button<TowerPrefab>> tower_buttons;
     vector<Button<TilePrefab>>  tile_buttons;
     vector<Button<SpawnerPrefab>> spawner_buttons;
-    
+
+    bool eraser_selected = false;
     u32 selected_consumer = -1;
     u32 selected_tower = -1;
     u32 selected_tile  = -1;
@@ -46,6 +47,9 @@ struct MapEditor {
     void window(bool* p_open);
     void shutdown();
 
+    void unselect_buttons();
+
+    void draw_preview(v3i cell);
     
     template <typename T>
     void instance_and_write_prefab(const T& t, v3i pos) {
@@ -62,7 +66,7 @@ struct MapEditor {
 JSON_IMPL_TEMPLATE(template <typename T>, Button<T>, text, color, item_path);
 
 template <typename T>
-bool show_buttons(const string& name, vector<Button<T>>& buttons, u32* selected) {
+bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& buttons, u32* selected) {
     static umap<string, Button<T>> add_map;
     static umap<string, u32> edit_map;
 
@@ -91,8 +95,10 @@ bool show_buttons(const string& name, vector<Button<T>>& buttons, u32* selected)
         if (ImGui::Button(buttons[i].text.c_str(), button_size)) {
             if (*selected == i)
                 *selected = -1;
-            else
+            else {
+                map_editor.unselect_buttons();
                 *selected = i;
+            }
             ret = true;
         }
         bool open_popup = false;
@@ -126,7 +132,7 @@ bool show_buttons(const string& name, vector<Button<T>>& buttons, u32* selected)
     if (ImGui::BeginPopupModal("Add Button", &add_open)) {
         ImGui::InputText("Text", &add_map[name].text);
         ImGui::ColorEdit3("Color", add_map[name].color.data);
-        PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), true);
+        ImGui::PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), true);
         
         if (ImGui::Button("Add")) {
             buttons.emplace_back(std::move(add_map[name]));
@@ -140,7 +146,7 @@ bool show_buttons(const string& name, vector<Button<T>>& buttons, u32* selected)
     if (ImGui::BeginPopupModal("Edit Button", &edit_open)) {
         ImGui::InputText("Text", &buttons[edit_map[name]].text);
         ImGui::ColorEdit3("Color", buttons[edit_map[name]].color.data);
-        PathSelect("Path", &buttons[edit_map[name]].item_path, "resources", from_typeinfo(typeid(T)), true);
+        ImGui::PathSelect("Path", &buttons[edit_map[name]].item_path, "resources", from_typeinfo(typeid(T)), true);
 
         if (ImGui::Button("Close")) {
             ImGui::CloseCurrentPopup();

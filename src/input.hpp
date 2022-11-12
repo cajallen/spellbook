@@ -59,6 +59,11 @@ struct Input {
     static void debug_window(bool* p_open);
 
     static void set_cursor_disabled(bool state = true);
+
+    static void remove_key_callback(const string& name);
+    static void remove_mouse_pos_callback(const string& name);
+    static void remove_mouse_button_callback(const string& name);
+    static void remove_scroll_callback(const string& name);
 };
 
 void default_key_callback(GLFWwindow*, int, int, int, int);

@@ -41,7 +41,7 @@ vector<ModelCPU> ModelCPU::split() {
 }
 
 void inspect(ModelCPU* model) {
-    PathSelect("File", &model->file_path, "resources", FileType_Model);
+    ImGui::PathSelect("File", &model->file_path, "resources", FileType_Model);
 
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
     traverse = [&traverse, &model](id_ptr<ModelCPU::Node> node) {
@@ -49,9 +49,9 @@ void inspect(ModelCPU* model) {
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
-            PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
-            PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
-            DragMat4("Transform", &node->transform, 0.02f, "%.2f");
+            ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
+            ImGui::PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
+            ImGui::DragMat4("Transform", &node->transform, 0.02f, "%.2f");
             for (auto child : node->children) {
                 traverse(child);
             }
@@ -117,12 +117,12 @@ ModelCPU load_model(const fs::path& input_path) {
     return model;
 }
 
-ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model) {
+ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool frame) {
     ModelGPU model_gpu;
 
     for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
         const ModelCPU::Node& node           = *node_ptr;
-        Renderable             renderable     = Renderable(node.mesh_asset_path, node.material_asset_path, node.transform);
+        Renderable             renderable     = Renderable(node.mesh_asset_path, node.material_asset_path, node.transform, frame);
         auto                   new_renderable = render_scene.add_renderable(renderable);
         model_gpu.renderables.insert_back(new_renderable);
     }
@@ -138,6 +138,14 @@ void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
 
 m44 ModelCPU::Node::calculate_transform() const {
     return !parent.valid() ? transform : parent->calculate_transform() * transform;
+}
+
+
+ModelCPU quick_model(const string& name, const string& mesh, const string& material) {
+    ModelCPU model;
+    model.root_node = id_ptr<ModelCPU::Node>::emplace(name, mesh, material, m44::identity());
+    model.nodes.insert_back(model.root_node);
+    return model;
 }
 
 constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);

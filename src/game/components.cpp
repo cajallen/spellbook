@@ -12,7 +12,7 @@
 
 namespace spellbook {
 
-void inspect_components(Scene* scene, entt::entity entity) {
+void          inspect_components(Scene* scene, entt::entity entity) {
     if (auto* component = scene->registry.try_get<ModelTransform>(entity)) {
         ImGui::Text("ModelTransform");
         ImGui::DragFloat3("Translation", component->translation.data, 0.01f);
@@ -63,7 +63,7 @@ void inspect_components(Scene* scene, entt::entity entity) {
     }
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
         ImGui::Text("Dragging");
-        ImGui::DragFloat3("Start Position", component->start_position.data, 0.01f);
+        ImGui::DragFloat3("Start Logic Position", component->start_logic_position.data, 0.01f);
         ImGui::DragFloat3("Start Intersect", component->start_intersect.data, 0.01f);
         ImGui::Separator();
     }
@@ -92,12 +92,12 @@ void inspect_components(Scene* scene, entt::entity entity) {
 void preview_3d_components(Scene* scene, entt::entity entity) {
     RenderScene& render_scene = scene->render_scene;
 
-    if (auto* component = scene->registry.try_get<Pyro>(entity)) {
-        bool show;
-        show = scene->registry.try_get<Dragging>(entity);
-        if (!show)
-            return;
+    bool show;
+    show = scene->registry.try_get<Dragging>(entity);
+    if (!show)
+        return;
 
+    if (auto* component = scene->registry.try_get<Pyro>(entity)) {
         auto p_transform = scene->registry.try_get<ModelTransform>(entity);
         if (p_transform) {
             vector<FormattedVertex> vertices;
@@ -115,11 +115,6 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
         }
     }
     if (auto* component = scene->registry.try_get<Roller>(entity)) {
-        bool show;
-        show = scene->registry.try_get<Dragging>(entity);
-        if (!show)
-            return;
-
         auto p_transform = scene->registry.try_get<ModelTransform>(entity);
         if (p_transform) {
             constexpr f32 preview_length = 2.0f;
@@ -153,24 +148,17 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
         }
     }
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
-        bool show;
-        show = scene->registry.try_get<Dragging>(entity);
-        if (!show)
-            return;
+        vector<FormattedVertex> vertices;
 
-        auto p_transform = scene->registry.try_get<ModelTransform>(entity);
-        if (p_transform) {
-            vector<FormattedVertex> vertices;
-            v3                      circ_pos = math::round(p_transform->translation);
-            circ_pos.z                       = 0.03f;
-            for (int i = 0; i <= 24; i++) {
-                f32 angle  = i * math::TAU / 24.0f;
-                v3  center = circ_pos + v3(0.5f, 0.5f, 0.0f);
-                vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
-            }
-
-            render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)));
+        v3 circ_pos = math::round(component->logic_position);
+        circ_pos.z  = 0.03f;
+        for (int i = 0; i <= 24; i++) {
+            f32 angle  = i * math::TAU / 24.0f;
+            v3  center = circ_pos + v3(0.5f, 0.5f, 0.0f);
+            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
         }
+
+        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)));
     }
 }
 

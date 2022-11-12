@@ -43,6 +43,7 @@ struct CameraController {
     void change_state(NavigationMode new_mode);
     void setup(Viewport* viewport, Camera* camera);
     void update();
+    void cleanup();
 };
 
 void inspect(CameraController* controller);

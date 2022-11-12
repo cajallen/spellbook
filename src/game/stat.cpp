@@ -30,7 +30,7 @@ void inspect(Stat* stat) {
             name_to = name_copy;
         }
         ImGui::TableSetColumnIndex(1);
-        EnumCombo("##Effect", &effect.type);
+        ImGui::EnumCombo("##Effect", &effect.type);
         ImGui::TableSetColumnIndex(2);
         ImGui::DragFloat("##Value", &effect.value, 0.01f);
         ImGui::PopID();

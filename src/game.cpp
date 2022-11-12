@@ -32,22 +32,10 @@ void Game::startup() {
     Console::setup();
     renderer.setup();
     Input::setup();
-
+    
     map_editor.setup();
-    scenes.insert_back(map_editor.p_scene);
-    scenes.last()->name = "Map Edit Scene";
-    scenes.last()->setup();
-    
-    asset_editor.setup();
-    scenes.insert_back(asset_editor.p_scene);
-    scenes.last()->name = "Asset Scene";
-    scenes.last()->setup();
+    // asset_editor.setup();
 
-    // test_scene.setup();
-    // scenes.insert_back(test_scene.p_scene);
-    // scenes.last()->name = "Test Scene";
-    // scenes.last()->setup();
-    
     gui.setup();
 }
 
@@ -63,7 +51,7 @@ void Game::step(bool skip_input) {
     renderer.update();
     gui.update();
     map_editor.update();
-    asset_editor.update();
+    // asset_editor.update();
     // test_scene.update();
     for (Scene* scene : scenes)
         scene->update();
@@ -74,7 +62,8 @@ void Game::step(bool skip_input) {
 void Game::shutdown() {
     gui.shutdown();
     map_editor.shutdown();
-    for (Scene* scene : scenes) {
+    while (!scenes.empty()) {
+        Scene* scene = scenes.first();
         scene->cleanup();
         delete scene;
     }

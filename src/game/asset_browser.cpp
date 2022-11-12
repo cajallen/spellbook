@@ -60,11 +60,11 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         ImGui::InputText("##Current", &out_as_string, ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(160.f);
-        EnumCombo("Type", &asset_type_map[window_name]);
+        ImGui::EnumCombo("Type", &asset_type_map[window_name]);
     }
 
     // Body
-    PathSelectBody(out, path_filter(FileType_Directory)(*out) ? *out : out->parent_path(), filter, nullptr, false, context_callback);
+    ImGui::PathSelectBody(out, path_filter(FileType_Directory)(*out) ? *out : out->parent_path(), filter, nullptr, false, context_callback);
     
 
     // Popup
@@ -94,8 +94,8 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         if (!popup_set_name.empty())
             model_convert_map[window_name].name = popup_set_name;
 
-        PathSelect("Input", &model_convert_map[window_name].input, game.external_resource_folder, FileType_ModelAsset);
-        PathSelect("Output folder", &model_convert_map[window_name].folder_path, game.resource_folder, FileType_Directory);
+        ImGui::PathSelect("Input", &model_convert_map[window_name].input, game.external_resource_folder, FileType_ModelAsset);
+        ImGui::PathSelect("Output folder", &model_convert_map[window_name].folder_path, game.resource_folder, FileType_Directory);
         ImGui::InputText("Output name", &model_convert_map[window_name].name);
         if (ImGui::Button("Convert")) {
             save_model(convert_to_model(model_convert_map[window_name].input, model_convert_map[window_name].folder_path, model_convert_map[window_name].name));
@@ -122,8 +122,8 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         if (!popup_set_name.empty())
             texture_convert_map[window_name].name = popup_set_name;
 
-        PathSelect("Input", &texture_convert_map[window_name].input, game.external_resource_folder, FileType_ModelAsset);
-        PathSelect("Output folder", &texture_convert_map[window_name].folder_path, game.resource_folder, FileType_Directory);
+        ImGui::PathSelect("Input", &texture_convert_map[window_name].input, game.external_resource_folder, FileType_ModelAsset);
+        ImGui::PathSelect("Output folder", &texture_convert_map[window_name].folder_path, game.resource_folder, FileType_Directory);
         ImGui::InputText("Output name", &texture_convert_map[window_name].name);
         if (ImGui::Button("Convert")) {
             save_texture(convert_to_texture(texture_convert_map[window_name].input.string(), texture_convert_map[window_name].folder_path.string(), texture_convert_map[window_name].name));
