@@ -47,6 +47,23 @@ float map(float value, float min_in, float max_in, float min_out, float max_out)
     return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in);
 }
 
+float linear_to_srgb(float linear_rgb) {
+    bool cutoff = linear_rgb < 0.0031308;
+    float higher = 1.055 * pow(linear_rgb, 1.0/ 2.4) - 0.055;
+    float lower	 = linear_rgb * 12.92;
+
+    return mix(higher, lower, cutoff);
+}
+
+// Converts a color from sRGB gamma to linear light gamma
+float srgb_to_linear(float sRGB) {
+    bool cutoff = sRGB < 0.04045;
+    float higher = pow((sRGB + 0.055) / 1.055, 2.4);
+    float lower	 = sRGB / 12.92;
+
+    return mix(higher, lower, cutoff);
+}
+
 vec3 linear_to_srgb(vec3 linear_rgb) {
     bvec3 cutoff = lessThan(linear_rgb, vec3(0.0031308));
     vec3  higher = vec3(1.055) * pow(linear_rgb, vec3(1.0 / 2.4)) - vec3(0.055);
@@ -137,6 +154,7 @@ vec3 calculate_lighting() {
     float smoothness = clamp(1.0 - roughness, 0.001, 1.0);
 
     float toon_diffuse = calculate_toon_diffuse(NdotL);
+    toon_diffuse = srgb_to_linear(toon_diffuse);
     float specular_dot = pow(clamp(VdotR, 0.0, 1.0), smoothness * 100.0);
     float toon_specular = smoothstep(0.4, 0.5, specular_dot);
 

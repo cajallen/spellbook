@@ -7,6 +7,7 @@
 #include "slotmap.hpp"
 #include "viewport.hpp"
 #include "renderer.hpp"
+#include "assets/particles.hpp"
 #include "renderer/renderable.hpp"
 
 
@@ -15,7 +16,7 @@ namespace spellbook {
 struct Renderable;
 
 struct SceneData {
-    Color ambient             = Color(palette::white, 0.1);
+    Color ambient             = Color(palette::white, 0.05);
     Color fog_color           = palette::black;
     f32 fog_depth             = -1.0f;
     v3  rim_alpha_width_start = v3(0.25f, 0.2f, 0.6f);
@@ -46,6 +47,8 @@ struct RenderScene {
     bool pause = false;
     vuk::Texture render_target;
 
+    vector<ParticleEmitter> emitters;
+    
     void update_size(v2i new_size);
     
     void        setup(vuk::Allocator& allocator);
@@ -55,7 +58,8 @@ struct RenderScene {
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
     void        cleanup(vuk::Allocator& allocator);
 
-    Renderable* add_renderable(Renderable renderable);
+    Renderable* add_renderable(Renderable&& renderable);
+    Renderable* add_renderable(const Renderable& renderable);
     Renderable* copy_renderable(Renderable* renderable);
     void        delete_renderable(Renderable* renderable);
 

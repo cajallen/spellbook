@@ -47,7 +47,7 @@ string get_contents(const string& file_name, bool binary) {
     contents.resize(size);
     rewind(f);
 
-    size_t read_bytes = fread(&contents[0], sizeof(char), size, f);
+    size_t read_bytes = fread(contents.data(), sizeof(char), size, f);
 
     fclose(f);
 

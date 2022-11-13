@@ -58,6 +58,8 @@ struct Traveler {
 struct Health {
     float value = 0.0f;
     Stat max_health = {};
+
+    Stat burn = 0.f;
 };
 
 struct Consumer {
@@ -67,35 +69,6 @@ struct Consumer {
 
 struct Killed {
     f32 when = -FLT_MAX;
-};
-
-struct Tower {
-    f32 rotation_speed = 1.0f;
-    f32 current_rotation = 0.0f;
-
-    entt::entity clouds;
-};
-
-struct Pyro {
-    f32 radius = 0.0f;
-    f32 last_tick = -FLT_MAX;
-    f32 rate = FLT_MAX;
-    f32 damage = 0.0f;
-};
-
-struct Roller {
-    f32 last_tick = -FLT_MAX;
-    f32 rate = FLT_MAX;
-    f32 damage = 0.0f;
-    f32 rollee_speed = 0.0f;
-    f32 rollee_radius = 0.0f;
-    f32 rollee_lifetime = 0.0f;
-};
-
-struct Rollee {
-    entt::entity roller = {};
-    v3           velocity = v3(0.0f);
-    f32          lifetime = 0.0f;
 };
 
 struct Dragging {

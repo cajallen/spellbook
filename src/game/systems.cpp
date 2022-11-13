@@ -72,55 +72,54 @@ void health_draw_system(Scene* scene) {
     ZoneScoped;
 
     // dependencies
-    string mesh_name = fmt_("cube_c{:.2f}_e{:.2f}", v3(0), v3(1));
-    u64 cube_hash = hash_data(mesh_name.data(), mesh_name.size());
-    if (!game.renderer.mesh_cache.contains(cube_hash)) {
-        game.renderer.upload_mesh(generate_cube(v3(0), v3(1)));
-    }
-
-    string health_name = "health_material";
-    u64 health_hash = hash_data(health_name.data(), health_name.size());
-    if (!game.renderer.mesh_cache.contains(health_hash)) {
-        MaterialCPU material_cpu = {
-            .file_path     = health_name,
+    static bool deps = false;
+    static string mesh_name;
+    static string health_name;
+    static string health_bar_name;
+    if (!deps) {
+        mesh_name = game.renderer.upload_mesh(generate_cube(v3(0), v3(1)));
+        
+        MaterialCPU material1_cpu = {
+            .file_path     = "health_material",
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
-        game.renderer.upload_material(material_cpu);
-    }
-
-    string health_bar_name = "health_bar_material";
-    u64 health_bar_hash = hash_data(health_bar_name.data(), health_bar_name.size());
-    if (!game.renderer.mesh_cache.contains(health_bar_hash)) {
-        MaterialCPU material_cpu = {
-            .file_path     = health_bar_name,
+        health_name = game.renderer.upload_material(material1_cpu);
+        MaterialCPU material2_cpu = {
+            .file_path     = "health_bar_material",
             .color_tint    = palette::black,
-            .emissive_tint = palette::white,
             .cull_mode     = vuk::CullModeFlagBits::eFront
         };
-        game.renderer.upload_material(material_cpu);
+        health_bar_name = game.renderer.upload_material(material2_cpu);
+        deps = true;
     }
 
-    auto       health_draw_system = scene->registry.view<ModelTransform, Health, Model>();
-    for (auto [entity, transform, health, model] : health_draw_system.each()) {
+    auto       health_draw_system = scene->registry.view<LogicTransform, Health>();
+    for (auto [entity, transform, health] : health_draw_system.each()) {
         if (health.value <= 0.0f)
             continue;
 
-        float dir_to_camera = math::angle_to(scene->cameras.first().position.xy, transform.translation.xy);
-        float thickness = 0.03f;
+        float percentage = health.value / health.max_health.value();
+        auto link = scene->registry.try_get<TransformLink>(entity);
+        v3 position = link ? transform.position + link->offset : transform.position;
 
-        m44 inner_matrix = math::translate(transform.translation) * 
+        float dir_to_camera = math::angle_to(scene->cameras.first().position.xy, position.xy);
+        
+        constexpr float gap = 0.02f;
+        constexpr float thickness = 0.03f;
+        constexpr float width = 0.6f;
+        m44 inner_matrix = math::translate(position) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
-                           math::translate(v3(-(1.0f - health.value) / 2.0f, 0.0f, 1.0f)) *
-                           math::scale(v3(health.value * 0.5f, 0.1f, 0.1f));
-        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 1.0) + transform.translation) *
-                           math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) * 
-                           math::scale(v3(0.5f + thickness, 0.1f + thickness, 0.1f + thickness));
+                           math::translate(v3(-(1.0f - percentage) * 0.5f * width, 0.0f, 0.5f)) *
+                           math::scale(v3(percentage * 0.5f * width, thickness, thickness));
+        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 0.5) + position) *
+                           math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
+                           math::scale(v3(0.5f * width + gap, thickness + gap, thickness + gap));
 
         auto renderable1 = Renderable{mesh_name, health_name, inner_matrix, true};
         auto renderable2 = Renderable{mesh_name, health_bar_name, outer_matrix, true};
-        scene->render_scene.renderables.emplace(renderable1);
-        scene->render_scene.renderables.emplace(renderable2);
+        scene->render_scene.add_renderable(renderable1);
+        scene->render_scene.add_renderable(renderable2);
     }
 }
 
@@ -158,22 +157,6 @@ void transform_system(Scene* scene) {
         }
     }
 }
-
-void tower_system(Scene* scene) {
-    ZoneScoped;
-    for (auto [entity, tower, transform] : scene->registry.view<Tower, ModelTransform>().each()) {
-        tower.current_rotation += tower.rotation_speed * Input::delta_time;
-        transform.rotation.yaw = tower.current_rotation;
-
-        auto& clouds_transform = scene->registry.get<ModelTransform>(tower.clouds);
-        clouds_transform.rotation.yaw = 0.6f * tower.current_rotation;
-    }
-
-    pyro_system(scene);
-    roller_system(scene);
-    rollee_system(scene);
-}
-
 
 void consumer_system(Scene* scene) {
     ZoneScoped;
@@ -216,25 +199,6 @@ void health_system(Scene* scene) {
     }
 }
 
-void pyro_system(Scene* scene) {
-    ZoneScoped;
-    auto pyros = scene->registry.view<Pyro, ModelTransform>();
-    auto enemies = scene->registry.view<Health, ModelTransform, Traveler>();
-
-    for (auto [e_pyro, pyro, pyro_transform] : pyros.each()) {
-        if (Input::time <= pyro.last_tick + pyro.rate)
-            continue;
-        
-        pyro.last_tick += pyro.rate; // Don't skip the deltatime
-        for (auto [e_enemy, enemy_health, enemy_transform, _] : enemies.each()) {
-            if (e_pyro == e_enemy) continue;
-            if (math::length(pyro_transform.translation - enemy_transform.translation) > pyro.radius) continue;
-            
-            enemy_health.value -= pyro.damage;
-        }
-    }
-}
-
 void selection_id_system(Scene* scene) {
     ZoneScoped;
     auto model_view = scene->registry.view<Model>();
@@ -268,8 +232,8 @@ void dragging_update_system(Scene* scene) {
 
             for (auto [entity, attach] : scene->registry.view<LogicTransformAttach>().each()) {
                 if (attach.to == scene->selected_entity) {
-                    auto attachee_transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
-                    scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, attachee_transform->position, intersect);
+                    auto attachee_transform = scene->registry.try_get<LogicTransform>(entity);
+                    scene->registry.emplace<Dragging>(entity, Input::time, attachee_transform->position, intersect);
                 }
             }
         }
@@ -329,88 +293,6 @@ void collision_update_system(Scene* scene) {
                 if (collision2.with.contains(entity1))
                     collision2.with.erase(entity1);
             }
-        }
-    }
-}
-
-void roller_system(Scene* scene) {
-    ZoneScoped;
-    auto rollers = scene->registry.view<Roller, ModelTransform>();
-
-    static bool generated = false;
-    if (!generated) {
-        // dependencies
-        game.renderer.upload_mesh(generate_icosphere(3));
-        MaterialCPU material_cpu = {
-            .file_path     = "roller_material",
-            .color_tint    = palette::slate_gray
-        };
-        game.renderer.upload_material(material_cpu);
-        generated = true;
-    }
-
-    for (auto [entity, roller, transform] : rollers.each()) {
-        if (Input::time <= roller.last_tick + roller.rate)
-            continue;
-        roller.last_tick += roller.rate; // Don't skip the deltatime
-        
-        constexpr std::array<v2, 4> dirs { v2(-1, 0), v2( 0, 1), v2( 1, 0), v2( 0,-1) };
-
-        for (int i = 0; i < 4; i++) {
-            static int rollee_index = 0;
-            auto       new_entity = scene->registry.create();
-            
-            scene->registry.emplace<Name>(new_entity, fmt_("rollee_{}", rollee_index));
-
-            auto& model_comp = scene->registry.emplace<Model>(entity);
-            model_comp.model_cpu = quick_model("Rollee", "icosphere_3", "roller_material");
-            model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
-
-            scene->registry.emplace<LogicTransform>(new_entity, transform.translation + v3(0.2f * dirs[i], 0.0f));
-            scene->registry.emplace<TransformLink>(new_entity, v3(0.5f));
-            scene->registry.emplace<ModelTransform>(new_entity, v3(), euler(), roller.rollee_radius);
-            
-            scene->registry.emplace<Rollee>(new_entity, entity, roller.rollee_speed * v3(dirs[i], 0.0f), roller.rollee_lifetime);
-            scene->registry.emplace<Collision>(new_entity, roller.rollee_radius);
-            rollee_index++;
-        }
-    }
-}
-
-void rollee_system(Scene* scene) {
-    ZoneScoped;
-    
-    for (auto [entity, rollee] : scene->registry.view<Rollee>().each()) {
-        rollee.lifetime -= Input::delta_time;
-
-        if (rollee.lifetime <= 0.0f) {
-            scene->registry.emplace<Killed>(entity, Input::time);
-            continue;
-        }
-
-        if (!scene->registry.valid(rollee.roller)) {
-            scene->registry.emplace<Killed>(entity, Input::time);
-            continue;
-        }
-
-        auto p_transform = scene->registry.try_get<ModelTransform>(entity);
-        if (p_transform) {
-            p_transform->translation += rollee.velocity * Input::delta_time;
-        }
-
-        auto p_collision = scene->registry.try_get<Collision>(entity);
-        if (p_collision) {
-            for (auto with : p_collision->with) {
-                if (!scene->registry.valid(with))
-                    continue;
-                auto p_health = scene->registry.try_get<Health>(with);
-                if (scene->registry.all_of<Traveler>(with)) {
-                    p_health->value -= scene->registry.get<Roller>(rollee.roller).damage * Input::delta_time;
-                }
-            }
-        }
-        if (p_transform && p_collision) {
-            p_transform->scale = math::mix(p_collision->radius,0.0f,math::smoothstep(0.2f, 0.0f, rollee.lifetime));
         }
     }
 }

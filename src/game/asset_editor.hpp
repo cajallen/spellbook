@@ -33,6 +33,8 @@ struct AssetEditor {
     EnemyPrefab enemy_prefab;
     SpawnerPrefab spawner_prefab;
     ConsumerPrefab consumer_prefab;
+
+    ParticleEmitter emitter;
     
     // Used as readonly
     Tab tab;

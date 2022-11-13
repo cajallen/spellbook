@@ -34,7 +34,7 @@ void Game::startup() {
     Input::setup();
     
     map_editor.setup();
-    // asset_editor.setup();
+    asset_editor.setup();
 
     gui.setup();
 }
@@ -51,7 +51,7 @@ void Game::step(bool skip_input) {
     renderer.update();
     gui.update();
     map_editor.update();
-    // asset_editor.update();
+    asset_editor.update();
     // test_scene.update();
     for (Scene* scene : scenes)
         scene->update();

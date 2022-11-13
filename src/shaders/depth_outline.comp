@@ -115,5 +115,4 @@ void main() {
     color.rgb = mix(color.rgb, vec3(0.0), outline);
 	color = vec4(linear_to_srgb(color.rgb), color.a);
     imageStore(u_target, uv, color);
-
 }

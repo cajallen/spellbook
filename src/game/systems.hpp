@@ -24,11 +24,6 @@ void dragging_update_system(Scene* scene);
 void dragging_system(Scene* scene);
 void collision_update_system(Scene* scene);
 
-void tower_system(Scene* scene);
-void pyro_system(Scene* scene);
-void roller_system(Scene* scene);
-void rollee_system(Scene* scene);
-
 void spawner_draw_system(Scene* scene);
 
 }

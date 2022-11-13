@@ -78,9 +78,13 @@ void RenderScene::update_size(v2i new_size) {
     viewport.update_size(new_size);
 }
 
-Renderable* RenderScene::add_renderable(Renderable renderable) {
+Renderable* RenderScene::add_renderable(Renderable&& renderable) {
     // console({.str = fmt_("Adding renderable: {}", renderable), .group = "renderables"});
     return &*renderables.emplace(std::move(renderable));
+}
+Renderable* RenderScene::add_renderable(const Renderable& renderable) {
+    // console({.str = fmt_("Adding renderable: {}", renderable), .group = "renderables"});
+    return &*renderables.emplace(renderable);
 }
 Renderable* RenderScene::copy_renderable(Renderable* renderable) {
     // console({.str = fmt_("Copying renderable: {}", copy), .group = "renderables"});
@@ -182,6 +186,29 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     // Set up the pass to draw the textured cube, with a color and a depth attachment
     // clang-format off
     rg->add_pass({
+        .name = "emitter_update",
+        .resources = {},
+        .execute = [this](vuk::CommandBuffer& command_buffer) {
+            for (auto& emitter : emitters) {
+                // Update emitter
+                struct PC {
+                    u32 spawn_count = 0;
+                    float dt;
+                } pc;
+                pc.spawn_count = math::max((Input::time - emitter.next_spawn) / emitter.rate, 0.0f);
+                emitter.next_spawn += emitter.rate * pc.spawn_count;
+                
+                pc.dt = Input::delta_time;
+                command_buffer
+                    .bind_compute_pipeline("emitter")
+                    .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, pc)
+                    .bind_buffer(0, 0, *emitter.particles_buffer);
+                *command_buffer.map_scratch_buffer<ParticleEmitterSettings>(0, 1) = emitter.settings;
+                command_buffer.dispatch(emitter.settings.max_particles);
+            }
+        }
+    });
+    rg->add_pass({
         .name = "forward",
         .resources = {
             "forward_input"_image >> vuk::eColorWrite     >> "forward_output",
@@ -247,6 +274,30 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
             // Render items
             for (Renderable& renderable : renderables) {
                 render_item(renderable);
+            }
+
+            for (auto& emitter : emitters) {
+                // Draw particles
+                MeshGPU* mesh = game.renderer.get_mesh(emitter.mesh);
+                MaterialGPU* material = game.renderer.get_material(emitter.material);
+                command_buffer // Mesh
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, vuk::Packed {
+                        vuk::Format::eR32G32B32Sfloat, // position
+                        vuk::Format::eR32G32B32Sfloat, // normal
+                        vuk::Format::eR32G32B32Sfloat, // tangent
+                        vuk::Format::eR32G32B32Sfloat, // color
+                        vuk::Format::eR32G32Sfloat     // uv
+                    })
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                command_buffer // Material
+                    .set_rasterization({.cullMode = material->cull_mode})
+                    .bind_buffer(0, 0, buffer_camera_data)
+                    .bind_buffer(0, 1, buffer_scene_data)
+                    .bind_buffer(0, 2, *emitter.particles_buffer)
+                    .bind_graphics_pipeline(material->pipeline);
+                material->bind_parameters(command_buffer);
+                material->bind_textures(command_buffer);
+                command_buffer.draw_indexed(mesh->index_count, emitter.settings.max_particles, 0, 0, 0);
             }
             // Render grid
             auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->view.get();

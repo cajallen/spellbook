@@ -6,6 +6,7 @@
 
 #include "scene.hpp"
 #include "spawner.hpp"
+#include "tower.hpp"
 
 #include "renderer/draw_functions.hpp"
 
@@ -38,27 +39,6 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     if (auto* component = scene->registry.try_get<Killed>(entity)) {
         ImGui::Text("Killed");
         ImGui::DragFloat("When", &component->when, 0.01f);
-        ImGui::Separator();
-    }
-    if (auto* component = scene->registry.try_get<Pyro>(entity)) {
-        ImGui::Text("Pyro");
-        ImGui::DragFloat("Radius", &component->radius, 0.01f);
-        ImGui::DragFloat("Rate", &component->rate, 0.01f);
-        ImGui::DragFloat("Damage", &component->damage, 0.05f);
-        ImGui::Separator();
-    }
-    if (auto* component = scene->registry.try_get<Roller>(entity)) {
-        ImGui::Text("Roller");
-        ImGui::DragFloat("Rate", &component->rate, 0.01f);
-        ImGui::DragFloat("Damage", &component->damage, 0.05f);
-        ImGui::DragFloat("Rollee Radius", &component->rollee_radius, 0.01f);
-        ImGui::DragFloat("Rollee Speed", &component->rollee_speed, 0.05f);
-        ImGui::DragFloat("Rollee Lifetime", &component->rollee_lifetime, 0.05f);
-        ImGui::Separator();
-    }
-    if (auto* component = scene->registry.try_get<Rollee>(entity)) {
-        ImGui::Text("Rollee");
-        ImGui::DragFloat3("Velocity", component->velocity.data, 0.01f);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
@@ -96,57 +76,7 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
     show = scene->registry.try_get<Dragging>(entity);
     if (!show)
         return;
-
-    if (auto* component = scene->registry.try_get<Pyro>(entity)) {
-        auto p_transform = scene->registry.try_get<ModelTransform>(entity);
-        if (p_transform) {
-            vector<FormattedVertex> vertices;
-            v3                      circ_pos = math::round(p_transform->translation);
-            circ_pos.z                       = 0.03f;
-            for (int i = 0; i <= 24; i++) {
-                f32 angle  = i * math::TAU / 24.0f;
-                v3  center = circ_pos + v3(0.5f, 0.5f, 0.0f);
-                vertices.emplace_back(center + v3(component->radius * math::cos(angle), component->radius * math::sin(angle), 0.05f),
-                    palette::gold,
-                    0.03f);
-            }
-
-            render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)));
-        }
-    }
-    if (auto* component = scene->registry.try_get<Roller>(entity)) {
-        auto p_transform = scene->registry.try_get<ModelTransform>(entity);
-        if (p_transform) {
-            constexpr f32 preview_length = 2.0f;
-
-            v3 center = v3(math::round(p_transform->translation).xy, 0.0f) + v3(0.5f, 0.5f, 0.03f);
-
-            vector<FormattedVertex> vertices;
-            vertices.emplace_back(center + v3(preview_length, component->rollee_radius, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(component->rollee_radius, component->rollee_radius, 0.0f), palette::slate_gray, 0.03f);
-            vertices.emplace_back(center + v3(component->rollee_radius, preview_length, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(component->rollee_radius, preview_length + 0.01f, 0.0f), palette::slate_gray, 0.00f);
-
-            vertices.emplace_back(center + v3(-component->rollee_radius, preview_length + 0.01f, 0.0f), palette::slate_gray, 0.00f);
-            vertices.emplace_back(center + v3(-component->rollee_radius, preview_length, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(-component->rollee_radius, component->rollee_radius, 0.0f), palette::slate_gray, 0.03f);
-            vertices.emplace_back(center + v3(-preview_length, component->rollee_radius, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(-preview_length - 0.01f, component->rollee_radius, 0.0f), palette::slate_gray, 0.00f);
-
-            vertices.emplace_back(center + v3(-preview_length - 0.01f, -component->rollee_radius, 0.0f), palette::slate_gray, 0.00f);
-            vertices.emplace_back(center + v3(-preview_length, -component->rollee_radius, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(-component->rollee_radius, -component->rollee_radius, 0.0f), palette::slate_gray, 0.03f);
-            vertices.emplace_back(center + v3(-component->rollee_radius, -preview_length, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(-component->rollee_radius, -preview_length - 0.01f, 0.0f), palette::slate_gray, 0.00f);
-
-            vertices.emplace_back(center + v3(component->rollee_radius, -preview_length - 0.01f, 0.0f), palette::slate_gray, 0.00f);
-            vertices.emplace_back(center + v3(component->rollee_radius, -preview_length, 0.0f), palette::slate_gray, 0.02f);
-            vertices.emplace_back(center + v3(component->rollee_radius, -component->rollee_radius, 0.0f), palette::slate_gray, 0.03f);
-            vertices.emplace_back(center + v3(preview_length, -component->rollee_radius, 0.0f), palette::slate_gray, 0.02f);
-
-            render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)));
-        }
-    }
+    
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
         vector<FormattedVertex> vertices;
 

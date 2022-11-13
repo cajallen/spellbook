@@ -34,6 +34,8 @@ struct MaterialCPU {
     Sampler sampler = Sampler().anisotropy(true);
 
     vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
+
+    string shader_name = "textured_model";
 };
 
 JSON_IMPL(MaterialCPU, color_tint, roughness_factor, metallic_factor, normal_factor, emissive_dot_smoothstep, emissive_tint, color_asset_path,

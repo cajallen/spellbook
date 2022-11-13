@@ -1,0 +1,87 @@
+#version 450
+#pragma shader_stage(compute)
+
+struct Particle {
+    vec4 position_scale;
+    vec4 velocity_damping;
+    vec4 color;
+    float life;
+};
+
+layout(binding = 0) buffer Particles {
+    uint head;
+    Particle particles[];
+};
+
+layout(binding = 1) uniform EmitterSettings {
+    vec4 position_scale;
+    vec4 velocity_damping;
+    vec4 color;
+
+    vec4 position_scale_random;
+    vec4 velocity_damping_random;
+    
+    float life;
+    float life_random;
+    
+    uint max_particles;
+};
+
+layout(push_constant) uniform uPushConstant {
+    uint spawn_count;
+    float dt;
+} pc;
+
+
+uint uint_noise(uint i, uint seed) {
+    uint mangled = i;
+    mangled *= 0xB5297A4Du;
+    mangled += seed;
+    mangled ^= (mangled >> 8);
+    mangled += 0x68E31DA4u;
+    mangled ^= (mangled << 8);
+    mangled *= 0x1B56C4E9u;
+    mangled ^= (mangled >> 8);
+    return mangled;
+}
+
+float float_noise(uint i, uint seed) {
+    return float(uint_noise(i, seed) & 0xffffffu) / 16777215.0;
+}
+
+layout (local_size_x = 64) in;
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+
+    bool spawn1 = head <= index && index < head + pc.spawn_count;
+    bool spawn2 = (head + pc.spawn_count > max_particles) && index < ((head + pc.spawn_count) % max_particles);
+
+    float pr0 = float_noise(uint(pc.dt * 16012.f), index * 9 + 0);
+    float pr1 = float_noise(uint(pc.dt * 17012.f), index * 9 + 1);
+    float pr2 = float_noise(uint(pc.dt * 18012.f), index * 9 + 2);
+    float pr3 = float_noise(uint(pc.dt * 19012.f), index * 9 + 3);
+
+    float vr4 = float_noise(uint(pc.dt * 20012.f), index * 9 + 4);
+    float vr5 = float_noise(uint(pc.dt * 21012.f), index * 9 + 5);
+    float vr6 = float_noise(uint(pc.dt * 22012.f), index * 9 + 6);
+    float vr7 = float_noise(uint(pc.dt * 23012.f), index * 9 + 7);
+
+    float lr8 = float_noise(uint(pc.dt * 24012.f), index * 9 + 8);
+
+    if (spawn1 || spawn2) {
+        particles[index] = Particle(
+            position_scale + vec4(pr0, pr1, pr2, pr3) * position_scale_random,
+            velocity_damping + vec4(vr4, vr5, vr6, vr7) * velocity_damping_random,
+            color,
+            life + lr8 * life_random
+        );
+    } else {
+        particles[index].velocity_damping.xyz *= particles[index].velocity_damping.w;
+        particles[index].position_scale.xyz += particles[index].velocity_damping.xyz * pc.dt;
+        particles[index].life -= pc.dt;
+    }
+    
+    if (index == head) {
+        head = (head + pc.spawn_count) % max_particles;
+    }
+}

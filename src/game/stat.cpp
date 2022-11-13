@@ -7,6 +7,40 @@
 
 namespace spellbook {
 
+    
+f32 Stat::value() {
+    f32 base = 0.0f;
+    f32 mult = 1.0f;
+    f32 add  = 0.0f;
+
+    for (auto it = effects.begin(); it != effects.end();) {
+        auto& [_, effect] = *it;
+            
+        if (effect.until < Input::time)
+            it = effects.erase(it);
+        else
+            it++;
+    }
+    
+    for (auto& [_, effect] : effects) {
+        switch (effect.type) {
+            case (StatEffect::Type_Base): {
+                base += effect.value * effect.stacks;
+            } break;
+            case (StatEffect::Type_Multiply): {
+                mult *= math::pow(1.0f + effect.value, (f32) effect.stacks);
+            } break;
+            case (StatEffect::Type_Add): {
+                add += effect.value * effect.stacks;
+            } break;
+            case (StatEffect::Type_Override): {
+                return effect.value;
+            } break;
+        }
+    }
+    return base * mult + add;
+}
+
 void inspect(Stat* stat) {
     ImGui::Text("Value: %.2f", stat->value());
 

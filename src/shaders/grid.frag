@@ -16,9 +16,9 @@ void main() {
     float alpha_factor = 0.75;
 
     float mipmapLevel = textureQueryLod(s_grid, uv).x;
-    float res = 512.0 / pow(2.0, mipmapLevel);
+    float res = 2048.0 / pow(2.0, mipmapLevel);
 
-    float color_width = 2.0 / res;
+    float color_width = 1.5 / res;
     if (-color_width < uv.y && uv.y < color_width) { // y = 0, we're the x axis
         line_value = vec3(1,0,0);
         alpha_factor = 1.0;

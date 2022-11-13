@@ -288,7 +288,7 @@ string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_all
     if (frame_allocation); // TODO: frame allocation
 
     MaterialGPU material_gpu;
-    material_gpu.pipeline      = context->get_named_pipeline("textured_model");
+    material_gpu.pipeline      = context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
     material_gpu.color = vuk::make_sampled_image(get_texture_or_upload(material_cpu.color_asset_path).view.get(), material_cpu.sampler.get());
     material_gpu.normal = vuk::make_sampled_image(get_texture_or_upload(material_cpu.normal_asset_path).view.get(), material_cpu.sampler.get());
     material_gpu.orm = vuk::make_sampled_image(get_texture_or_upload(material_cpu.orm_asset_path).view.get(), material_cpu.sampler.get());
@@ -405,7 +405,7 @@ void Renderer::upload_defaults() {
     };
     upload_texture(tex_white_upload);
 
-    constexpr u32 grid_size = 256;
+    constexpr u32 grid_size = 2048;
     TextureCPU tex_grid_upload {
         .file_path = "textures/grid.sbtex",
         .size = v2i(grid_size, grid_size),

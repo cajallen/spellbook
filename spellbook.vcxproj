@@ -346,6 +346,7 @@
     <ClInclude Include="src\renderer\assets\mesh.hpp" />
     <ClInclude Include="src\renderer\assets\mesh_asset.hpp" />
     <ClInclude Include="src\renderer\assets\model.hpp" />
+    <ClInclude Include="src\renderer\assets\particles.hpp" />
     <ClInclude Include="src\renderer\assets\texture.hpp" />
     <ClInclude Include="src\renderer\assets\texture_asset.hpp" />
     <ClInclude Include="src\renderer\camera.hpp" />
@@ -383,6 +384,8 @@
     <Content Include="src\shaders\imgui.vert.spv" />
     <Content Include="src\shaders\include.glsli" />
     <Content Include="src\shaders\infinite_plane.vert" />
+    <Content Include="src\shaders\particle.vert" />
+    <Content Include="src\shaders\particle_emitter.comp" />
     <Content Include="src\shaders\rt.rchit" />
     <Content Include="src\shaders\rt.rgen" />
     <Content Include="src\shaders\rt.rmiss" />
