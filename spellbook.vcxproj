@@ -148,6 +148,7 @@
     <ClCompile Include="src\renderer\assets\mesh.cpp" />
     <ClCompile Include="src\renderer\assets\mesh_asset.cpp" />
     <ClCompile Include="src\renderer\assets\model.cpp" />
+    <ClCompile Include="src\renderer\assets\particles.cpp" />
     <ClCompile Include="src\renderer\assets\texture.cpp" />
     <ClCompile Include="src\renderer\assets\texture_asset.cpp" />
     <ClCompile Include="src\renderer\camera.cpp" />

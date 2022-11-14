@@ -295,6 +295,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                     .bind_buffer(0, 1, buffer_scene_data)
                     .bind_buffer(0, 2, *emitter.particles_buffer)
                     .bind_graphics_pipeline(material->pipeline);
+                command_buffer.bind_image(0, 9, emitter.color.global.iv).bind_sampler(0, 9, emitter.color.global.sci);
                 material->bind_parameters(command_buffer);
                 material->bind_textures(command_buffer);
                 command_buffer.draw_indexed(mesh->index_count, emitter.settings.max_particles, 0, 0, 0);

@@ -10,8 +10,9 @@ layout (location = 4) in vec2 vin_uv;
 struct Particle {
     vec4 position_scale;
     vec4 velocity_damping;
-    vec4 color;
+    float color_x;
     float life;
+    float life_total;
 };
 
 layout (binding = 2) buffer Particles {
@@ -24,6 +25,8 @@ layout (binding = 0) uniform CameraData {
     mat4 projection;
     vec4 camera_position;
 };
+
+layout(binding = 9) uniform sampler2D color_table;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -61,6 +64,6 @@ void main() {
     vout.TBN      = mat3(t, b, n);
 
     vout.uv = vin_uv;
-    vout.color = vin_color + (particle.color.rgb * particle.color.a);
+    vout.color = texture(color_table, vec2(particle.color_x, 1.0 - particle.life / particle.life_total)).rgb;
     gl_Position = projection * view * h_position;
 }

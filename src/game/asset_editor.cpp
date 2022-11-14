@@ -33,48 +33,28 @@ void AssetEditor::setup() {
         game.renderer.context->create_named_pipeline("particle", pci2);
     }
     
-    emitter.settings = {
-        v4(-0.04f,-0.04f, -0.04f,0.05f),
-        v4(-1.0f,-1.0f,-0.25f,0.997f),
-        v4(0.75f,0.5f, 0.75f,0.0f),
-        v4(0.08f,0.08f,0.08f,0.1f),
-        v4(0.2f,0.2f,0.2f,0.001f),
-        0.5,
-        1.5
-    };
-    emitter.rate = 0.01f;
-    emitter.calculate_max();
-    emitter.next_spawn = Input::time;
+    EmitterCPU emitter;
     emitter.mesh = game.renderer.upload_mesh(generate_icosphere(2));
-    MaterialCPU material_cpu = {
-        .file_path = "particle_mat",
-        .color_tint = palette::gray_5,
-        .shader_name = "particle"
-    };
-    emitter.material = game.renderer.upload_material(material_cpu);
+    emitter.position_random = v3(1.0f, 1.0f, 0.0f);
+    emitter.velocity = v3(0.0f, 0.0f, -0.1f);
+    emitter.velocity_random = v3(0.0f, 0.0f, 0.01f);
+    emitter.scale = 0.25f;
+    emitter.scale_random = 0.05f;
+    emitter.particles_per_second = 1000.0f;
+    emitter.damping = 5.0f;
+    emitter.duration = 2.0f;
 
-    struct Particle {
-        v4 position_scale;
-        v4 velocity_damping;
-        v4 color;
-        v4 life;
-    };
-    vector<u8> bytes;
-    bytes.resize(emitter.settings.max_particles * sizeof(Particle) + 1);
-    auto [buf, fut] = create_buffer_gpu(*game.renderer.global_allocator, vuk::DomainFlagBits::eTransferOnTransfer, std::span(bytes));
-    emitter.particles_buffer = std::move(buf);
-    game.renderer.enqueue_setup(std::move(fut));
-    
-    p_scene->render_scene.emitters.emplace_back(std::move(emitter));
+    emitter.color1_start = palette::medium_orchid;
+    emitter.color1_end = palette::white;
+    emitter.color2_start = palette::cornflower_blue;
+    emitter.color2_end = palette::white;
+
+    // emitter.color1_start = 
+    instance_emitter(p_scene, emitter);
 }
 
 void AssetEditor::update() {
     ZoneScoped;
-
-    static bool ticker = false;
-    auto& emitter_settings = p_scene->render_scene.emitters.last().settings;
-    emitter_settings.velocity_damping = v4(4.0f * math::euler2vector(euler{Input::time * 3.0f + (ticker ? math::PI : 0.0f), 0.0f}), 0.998f) - emitter_settings.velocity_damping_random * 0.5f;
-    ticker = !ticker;
     
     if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT]) {
         p_scene->render_scene.query = v2i(Input::mouse_pos) - p_scene->render_scene.viewport.start;

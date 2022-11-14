@@ -4,8 +4,9 @@
 struct Particle {
     vec4 position_scale;
     vec4 velocity_damping;
-    vec4 color;
+    float color_x;
     float life;
+    float life_total;
 };
 
 layout(binding = 0) buffer Particles {
@@ -16,7 +17,6 @@ layout(binding = 0) buffer Particles {
 layout(binding = 1) uniform EmitterSettings {
     vec4 position_scale;
     vec4 velocity_damping;
-    vec4 color;
 
     vec4 position_scale_random;
     vec4 velocity_damping_random;
@@ -56,27 +56,30 @@ void main() {
     bool spawn1 = head <= index && index < head + pc.spawn_count;
     bool spawn2 = (head + pc.spawn_count > max_particles) && index < ((head + pc.spawn_count) % max_particles);
 
-    float pr0 = float_noise(uint(pc.dt * 16012.f), index * 9 + 0);
-    float pr1 = float_noise(uint(pc.dt * 17012.f), index * 9 + 1);
-    float pr2 = float_noise(uint(pc.dt * 18012.f), index * 9 + 2);
-    float pr3 = float_noise(uint(pc.dt * 19012.f), index * 9 + 3);
+    float pr0 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 0);
+    float pr1 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 1);
+    float pr2 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 2);
+    float pr3 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 3);
 
-    float vr4 = float_noise(uint(pc.dt * 20012.f), index * 9 + 4);
-    float vr5 = float_noise(uint(pc.dt * 21012.f), index * 9 + 5);
-    float vr6 = float_noise(uint(pc.dt * 22012.f), index * 9 + 6);
-    float vr7 = float_noise(uint(pc.dt * 23012.f), index * 9 + 7);
+    float vr4 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 4);
+    float vr5 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 5);
+    float vr6 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 6);
+    float vr7 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 7);
 
-    float lr8 = float_noise(uint(pc.dt * 24012.f), index * 9 + 8);
+    float lr8 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 8);
+    
+    float cr9 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 9);
 
     if (spawn1 || spawn2) {
         particles[index] = Particle(
             position_scale + vec4(pr0, pr1, pr2, pr3) * position_scale_random,
             velocity_damping + vec4(vr4, vr5, vr6, vr7) * velocity_damping_random,
-            color,
+            cr9,
+            life + lr8 * life_random,
             life + lr8 * life_random
         );
     } else {
-        particles[index].velocity_damping.xyz *= particles[index].velocity_damping.w;
+        particles[index].velocity_damping.xyz *= pow(particles[index].velocity_damping.w, pc.dt);
         particles[index].position_scale.xyz += particles[index].velocity_damping.xyz * pc.dt;
         particles[index].life -= pc.dt;
     }
