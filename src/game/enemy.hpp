@@ -2,9 +2,9 @@
 
 #include <entt/fwd.hpp>
 
-#include "string.hpp"
-#include "json.hpp"
-#include "geometry.hpp"
+#include "lib/string.hpp"
+#include "lib/json.hpp"
+#include "lib/geometry.hpp"
 
 namespace spellbook {
 

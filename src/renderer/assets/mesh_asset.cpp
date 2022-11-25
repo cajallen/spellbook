@@ -2,7 +2,7 @@
 
 #include <lz4.h>
 
-#include "console.hpp"
+#include "editor/console.hpp"
 
 namespace spellbook {
 

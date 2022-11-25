@@ -6,22 +6,20 @@
 #include <tracy/Tracy.hpp>
 #include <stb_image.h>
 
-#include "lib_ext/fmt_geometry.hpp"
-
-#include "file.hpp"
-#include "hash.hpp"
-#include "math.hpp"
-#include "input.hpp"
-#include "console.hpp"
-#include "draw_functions.hpp"
-#include "game.hpp"
-#include "render_scene.hpp"
-#include "samplers.hpp"
-#include "utils.hpp"
-
-#include "assets/texture_asset.hpp"
-#include "assets/mesh_asset.hpp"
-#include "lib_ext/imgui_extra.hpp"
+#include "extension/fmt_geometry.hpp"
+#include "extension/imgui_extra.hpp"
+#include "lib/file.hpp"
+#include "lib/hash.hpp"
+#include "lib/math.hpp"
+#include "game/game.hpp"
+#include "game/input.hpp"
+#include "editor/console.hpp"
+#include "renderer/draw_functions.hpp"
+#include "renderer/render_scene.hpp"
+#include "renderer/samplers.hpp"
+#include "renderer/utils.hpp"
+#include "renderer/assets/texture_asset.hpp"
+#include "renderer/assets/mesh_asset.hpp"
 
 namespace spellbook {
 

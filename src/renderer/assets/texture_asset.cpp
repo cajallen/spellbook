@@ -1,15 +1,13 @@
 #include "texture_asset.hpp"
 
 #include <filesystem>
-#include <iostream>
 #include <lz4.h>
 #include <stb_image.h>
 
-#include "game.hpp"
-#include "console.hpp"
-#include "file.hpp"
-
-#include "lib_ext/fmt_geometry.hpp"
+#include "extension/fmt_geometry.hpp"
+#include "lib/file.hpp"
+#include "game/game.hpp"
+#include "editor/console.hpp"
 
 namespace fs = std::filesystem;
 

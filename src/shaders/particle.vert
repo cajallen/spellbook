@@ -13,6 +13,7 @@ struct Particle {
     float color_x;
     float life;
     float life_total;
+    float falloff;
 };
 
 layout (binding = 2) buffer Particles {
@@ -43,7 +44,7 @@ void main() {
     uint index = gl_InstanceIndex;
     Particle particle = particles[index];
 
-    float scale = particle.position_scale.w * max(smoothstep(0.0, 1.0, particle.life), 0.001);
+    float scale = particle.position_scale.w * max(smoothstep(0.0, particle.falloff, particle.life / particle.life_total), 0.001);
     mat4 M;
     M[0] = vec4(scale, 0.0, 0.0, 0.0);
     M[1] = vec4(0.0, scale, 0.0, 0.0);

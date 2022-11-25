@@ -1,17 +1,14 @@
 #pragma once
 
-#include <entt/entt.hpp>
+#include <entt/fwd.hpp>
 #include <imgui.h>
 
-#include "enemy.hpp"
-#include "string.hpp"
-#include "umap.hpp"
-#include "scene.hpp"
-
-#include "geometry.hpp"
-#include "math.hpp"
-#include "stat.hpp"
-
+#include "lib/string.hpp"
+#include "lib/umap.hpp"
+#include "lib/geometry.hpp"
+#include "game/enemy.hpp"
+#include "game/scene.hpp"
+#include "game/stat.hpp"
 #include "renderer/assets/model.hpp"
 
 namespace spellbook {

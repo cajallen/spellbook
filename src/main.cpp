@@ -1,4 +1,4 @@
-#include "game.hpp"
+#include "game/game.hpp"
 
 int main() {
 	spellbook::game.startup();

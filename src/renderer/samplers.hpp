@@ -2,7 +2,7 @@
 
 #include <vuk/Image.hpp>
 
-#include "json.hpp"
+#include "lib/json.hpp"
 
 namespace spellbook {
 

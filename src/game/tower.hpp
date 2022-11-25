@@ -2,11 +2,10 @@
 
 #include <entt/fwd.hpp>
 
-#include "string.hpp"
-#include "json.hpp"
-#include "geometry.hpp"
-
-#include "stat.hpp"
+#include "lib/string.hpp"
+#include "lib/json.hpp"
+#include "lib/geometry.hpp"
+#include "game/stat.hpp"
 
 namespace spellbook {
 

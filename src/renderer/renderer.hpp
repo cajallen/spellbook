@@ -9,16 +9,13 @@
 #include <vuk/resources/DeviceFrameResource.hpp>
 #include <VkBootstrap.h>
 
-#include "lib_ext/glfw.hpp"
-#include "lib_ext/vuk_imgui.hpp"
-
-#include "vector.hpp"
-#include "string.hpp"
-
-#include "matrix.hpp"
-#include "umap.hpp"
-#include "assets/model.hpp"
-
+#include "extension/glfw.hpp"
+#include "extension/vuk_imgui.hpp"
+#include "lib/string.hpp"
+#include "lib/vector.hpp"
+#include "lib/matrix.hpp"
+#include "lib/umap.hpp"
+#include "renderer/assets/model.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/texture.hpp"

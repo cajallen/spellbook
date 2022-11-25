@@ -2,13 +2,11 @@
 
 #include <filesystem>
 
-#include "vector.hpp"
-#include "string.hpp"
-#include "umap.hpp"
-#include "slotmap.hpp"
-#include "id_ptr.hpp"
-
-#include "matrix.hpp"
+#include "lib/string.hpp"
+#include "lib/vector.hpp"
+#include "lib/umap.hpp"
+#include "lib/id_ptr.hpp"
+#include "lib/matrix.hpp"
 
 namespace fs = std::filesystem;
 

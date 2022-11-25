@@ -2,11 +2,10 @@
 
 #include <imgui.h>
 
-#include "math.hpp"
-#include "matrix.hpp"
-#include "matrix_math.hpp"
-
-#include "lib_ext/imgui_extra.hpp"
+#include "extension/imgui_extra.hpp"
+#include "lib/math.hpp"
+#include "lib/matrix.hpp"
+#include "lib/matrix_math.hpp"
 
 namespace spellbook {
 

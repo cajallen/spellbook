@@ -2,12 +2,10 @@
 
 #include <entt/entt.hpp>
 #include <imgui.h>
-#include <imgui/misc/cpp/imgui_stdlib.h>
 
-#include "lib_ext/imgui_extra.hpp"
-
-#include "components.hpp"
-#include "scene.hpp"
+#include "extension/imgui_extra.hpp"
+#include "game/components.hpp"
+#include "game/scene.hpp"
 
 namespace spellbook {
 

@@ -3,21 +3,16 @@
 #include <tracy/Tracy.hpp>
 #include <entt/entt.hpp>
 
-#include "lib_ext/fmt_geometry.hpp"
-
-#include "astar.hpp"
-#include "game.hpp"
-#include "console.hpp"
-#include "matrix_math.hpp"
-#include "scene.hpp"
-#include "components.hpp"
-#include "hash.hpp"
-#include "input.hpp"
-
+#include "extension/fmt_geometry.hpp"
+#include "lib/astar.hpp"
+#include "lib/matrix_math.hpp"
+#include "game/game.hpp"
+#include "game/scene.hpp"
+#include "game/components.hpp"
+#include "game/input.hpp"
+#include "editor/console.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
-
-#include "scene.hpp"
 
 namespace spellbook {
 

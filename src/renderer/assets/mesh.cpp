@@ -2,9 +2,8 @@
 
 #include <imgui.h>
 
-#include "console.hpp"
-
-#include "math.hpp"
+#include "lib/math.hpp"
+#include "editor/console.hpp"
 
 namespace spellbook {
 

@@ -1,21 +1,18 @@
 #include "render_scene.hpp"
 
-#include <tracy/Tracy.hpp>
 #include <functional>
-
+#include <tracy/Tracy.hpp>
 #include <vuk/Partials.hpp>
 
-#include "lib_ext/fmt_renderer.hpp"
-
-#include "umap.hpp"
-#include "file.hpp"
-#include "samplers.hpp"
-#include "matrix_math.hpp"
-#include "game.hpp"
-#include "viewport.hpp"
-
-#include "renderable.hpp"
-#include "assets/mesh_asset.hpp"
+#include "extension/fmt_renderer.hpp"
+#include "lib/umap.hpp"
+#include "lib/file.hpp"
+#include "lib/matrix_math.hpp"
+#include "game/game.hpp"
+#include "renderer/samplers.hpp"
+#include "renderer/viewport.hpp"
+#include "renderer/renderable.hpp"
+#include "renderer/assets/mesh_asset.hpp"
 
 namespace vuk {
 static Texture allocate_texture(Allocator& allocator, Format format, Extent3D extent) {

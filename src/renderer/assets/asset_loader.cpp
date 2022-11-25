@@ -3,9 +3,9 @@
 #include <fstream>
 #include <filesystem>
 
-#include "console.hpp"
-#include "game.hpp"
-#include "file.hpp"
+#include "lib/file.hpp"
+#include "game/game.hpp"
+#include "editor/console.hpp"
 
 namespace spellbook {
 

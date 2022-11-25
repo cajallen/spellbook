@@ -1,11 +1,11 @@
 ﻿#include "map.hpp"
 
 #include <entt/entt.hpp>
+#include <imgui.h>
 
-#include "components.hpp"
-#include "console.hpp"
-#include "file.hpp"
-#include "imgui.h"
+#include "lib/file.hpp"
+#include "game/components.hpp"
+#include "editor/console.hpp"
 
 namespace fs = std::filesystem;
 

@@ -4,12 +4,10 @@
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
-#include "lib_ext/imgui_extra.hpp"
-
-#include "scene.hpp"
-#include "components.hpp"
-#include "input.hpp"
-
+#include "extension/imgui_extra.hpp"
+#include "game/scene.hpp"
+#include "game/components.hpp"
+#include "game/input.hpp"
 
 namespace spellbook {
 

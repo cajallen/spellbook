@@ -2,18 +2,13 @@
 
 #include <filesystem>
 #include <imgui.h>
-#include <vuk/Pipeline.hpp>
 
-#include "lib_ext/imgui_extra.hpp"
-
-#include "asset_loader.hpp"
-#include "console.hpp"
-#include "game.hpp"
-#include "file.hpp"
-#include "game/asset_browser.hpp"
-
+#include "extension/imgui_extra.hpp"
+#include "lib/file.hpp"
+#include "editor/console.hpp"
+#include "game/game.hpp"
 #include "renderer/renderer.hpp"
-#include "renderer/samplers.hpp"
+#include "renderer/assets/asset_loader.hpp"
 
 
 namespace spellbook {

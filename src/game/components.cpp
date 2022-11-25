@@ -2,12 +2,10 @@
 
 #include <imgui.h>
 
-#include "string.hpp"
-
-#include "scene.hpp"
-#include "spawner.hpp"
-#include "tower.hpp"
-
+#include "lib/string.hpp"
+#include "game/scene.hpp"
+#include "game/spawner.hpp"
+#include "game/tower.hpp"
 #include "renderer/draw_functions.hpp"
 
 

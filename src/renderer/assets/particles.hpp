@@ -2,14 +2,11 @@
 
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
+#include <vuk/SampledImage.hpp>
 
-#include "color.hpp"
-#include "vector.hpp"
-#include "string.hpp"
-#include "json.hpp"
-
+#include "lib/color.hpp"
+#include "lib/string.hpp"
 #include "renderer/vertex.hpp"
-#include "vuk/SampledImage.hpp"
 
 
 namespace spellbook {
@@ -20,9 +17,10 @@ struct EmitterCPU {
     
     v3 position = v3(0.0f);
     v3 velocity = v3(0.0f);
-    float damping = 1.0;
-    float scale = 1.0;
-    float duration = 1.0;
+    float damping = 1.0f;
+    float scale = 1.0f;
+    float duration = 1.0f;
+    float falloff = 0.5f;
 
     float particles_per_second = 1.0f;
     
@@ -48,11 +46,15 @@ struct ParticleEmitterSettings {
     
     float life;
     float life_random;
+    float falloff;
     
     u32 max_particles;
 };
 
 struct ParticleEmitter {
+    // For editing purposes
+    EmitterCPU emitter_cpu;
+    
     ParticleEmitterSettings settings;
     float rate;
     float next_spawn;
@@ -65,9 +67,17 @@ struct ParticleEmitter {
     void calculate_max() {
         settings.max_particles = (settings.life + settings.life_random) / rate + 1;
     }
+
+    void update_color();
+    void update_size();
+};
+
+struct EmitterComponent {
+    ParticleEmitter* emitter;
 };
 
 ParticleEmitter& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu);
 
+void inspect(ParticleEmitter* emitter);
 
 }

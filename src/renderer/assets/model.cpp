@@ -2,22 +2,18 @@
 
 #include <tiny_gltf.h>
 
-#include "lib_ext/imgui_extra.hpp"
-
-#include "game.hpp"
-#include "matrix_math.hpp"
-#include "mesh_asset.hpp"
-#include "texture_asset.hpp"
-#include "file.hpp"
-
+#include "extension/imgui_extra.hpp"
+#include "extension/icons/font_awesome4.h"
+#include "lib/file.hpp"
+#include "lib/matrix_math.hpp"
+#include "game/game.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/renderable.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
-
-#include "game/asset_browser.hpp"
-#include "lib_ext/icons/font_awesome4.h"
+#include "renderer/assets/mesh_asset.hpp"
+#include "renderer/assets/texture_asset.hpp"
 
 namespace spellbook {
 

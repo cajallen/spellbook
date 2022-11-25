@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matrix.hpp"
+#include "lib/matrix.hpp"
 
 namespace spellbook {
 

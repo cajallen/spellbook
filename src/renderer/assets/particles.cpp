@@ -1,8 +1,9 @@
 ﻿#include "particles.hpp"
 
-#include "file.hpp"
-#include "game.hpp"
-#include "vuk/Partials.hpp"
+#include <vuk/Partials.hpp>
+
+#include "lib/file.hpp"
+#include "game/game.hpp"
 
 namespace spellbook {
 
@@ -25,11 +26,13 @@ ParticleEmitter& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu) {
     }
 
     ParticleEmitter emitter;
+    emitter.emitter_cpu = emitter_cpu;
     emitter.settings.position_scale.xyz = emitter_cpu.position - 0.5f * emitter_cpu.position_random;
     emitter.settings.position_scale.w = emitter_cpu.scale - 0.5f * emitter_cpu.scale_random;
     emitter.settings.velocity_damping.xyz = emitter_cpu.velocity - 0.5f * emitter_cpu.velocity_random;
     emitter.settings.velocity_damping.w = emitter_cpu.damping;
     emitter.settings.life = emitter_cpu.duration - 0.5f * emitter_cpu.duration_random;
+    emitter.settings.falloff = emitter_cpu.falloff;
 
     emitter.settings.position_scale_random.xyz = emitter_cpu.position_random;
     emitter.settings.position_scale_random.w = emitter_cpu.scale_random;
@@ -47,8 +50,14 @@ ParticleEmitter& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu) {
     emitter.material = game.renderer.upload_material(material_cpu);
     emitter.mesh = emitter_cpu.mesh;
     
-    emitter.calculate_max();
+    emitter.update_color();
+    emitter.update_size();
+    
+    scene->render_scene.emitters.emplace_back(std::move(emitter));
+    return scene->render_scene.emitters.last();
+}
 
+void ParticleEmitter::update_color() {
     TextureCPU color_texture;
     color_texture.file_path = fmt_("{}_tex", emitter_cpu.file_path);
     color_texture.size = v2i(8, 8);
@@ -67,16 +76,54 @@ ParticleEmitter& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu) {
         }
     }
     string tex_id = game.renderer.upload_texture(color_texture);
-    emitter.color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(tex_id).view.get(), Sampler().address(Address_Clamp).get());
-    
-    vector<u8> bytes;
-    bytes.resize(emitter.settings.max_particles * sizeof(v4)*4 + 1);
-    auto [buf, fut] = create_buffer_gpu(*game.renderer.global_allocator, vuk::DomainFlagBits::eTransferOnTransfer, std::span(bytes));
-    emitter.particles_buffer = std::move(buf);
-    game.renderer.enqueue_setup(std::move(fut));
-    
-    scene->render_scene.emitters.emplace_back(std::move(emitter));
-    return scene->render_scene.emitters.last();
+    color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(tex_id).view.get(), Sampler().address(Address_Clamp).get());
 }
+
+void ParticleEmitter::update_size() {
+    calculate_max();
+
+    vector<u8> bytes;
+    bytes.resize(settings.max_particles * sizeof(v4)*4 + 1);
+    auto [buf, fut] = create_buffer_gpu(*game.renderer.global_allocator, vuk::DomainFlagBits::eTransferOnTransfer, std::span(bytes));
+    particles_buffer = std::move(buf);
+    game.renderer.enqueue_setup(std::move(fut));
+}
+
+void inspect(ParticleEmitter* emitter) {
+    bool size_changed = false;
+    bool color_changed = false;
+    ImGui::DragFloat3("Position Start", emitter->settings.position_scale.data, 0.02f);
+    ImGui::DragFloat3("Position Range", emitter->settings.position_scale_random.data, 0.01f);
+    
+    ImGui::DragFloat("Scale", &emitter->settings.position_scale.a, 0.01f);
+    ImGui::DragFloat("Scale Range", &emitter->settings.position_scale_random.a, 0.01f);
+
+    ImGui::DragFloat3("Velocity Start", emitter->settings.velocity_damping.data, 0.02f);
+    ImGui::DragFloat3("Velocity Range", emitter->settings.velocity_damping_random.data, 0.01f);
+
+    ImGui::DragFloat("Damping", &emitter->settings.velocity_damping.a, 0.01f);
+    ImGui::DragFloat("Damping Range", &emitter->settings.velocity_damping_random.a, 0.01f);
+    
+    ImGui::DragFloat("Falloff", &emitter->settings.falloff, 0.01f);
+    size_changed |= ImGui::DragFloat("Life Start", &emitter->settings.life, 0.02f);
+    size_changed |= ImGui::DragFloat("Life Range", &emitter->settings.life_random, 0.01f);
+    size_changed |= ImGui::DragFloat("Rate", &emitter->rate, 0.01f, 0.001f, 0.0f, "%.6f");
+    emitter->rate = math::max(emitter->rate, 0.00001f); 
+    ImGui::InputText("Mesh", &emitter->mesh);
+
+    color_changed |= ImGui::ColorEdit3("Color1 start", emitter->emitter_cpu.color1_start.data);
+    color_changed |= ImGui::ColorEdit3("Color1 end", emitter->emitter_cpu.color1_end.data);
+    color_changed |= ImGui::ColorEdit3("Color2 start", emitter->emitter_cpu.color2_start.data);
+    color_changed |= ImGui::ColorEdit3("Color2 end", emitter->emitter_cpu.color2_end.data);
+
+    if (size_changed)
+        emitter->update_size();
+
+    if (color_changed)
+        emitter->update_color();
+    
+}
+
+
 
 }

@@ -1,16 +1,14 @@
 ﻿#pragma once
 
-#include "umap.hpp"
-#include "geometry.hpp"
-#include "spawner.hpp"
+#include <entt/fwd.hpp>
 
+#include "lib/umap.hpp"
+#include "lib/geometry.hpp"
+#include "game/spawner.hpp"
 #include "game/tower.hpp"
 #include "game/tile.hpp"
 #include "game/enemy.hpp"
-
-#include <entt/fwd.hpp>
-
-#include "consumer.hpp"
+#include "game/consumer.hpp"
 
 namespace spellbook {
 

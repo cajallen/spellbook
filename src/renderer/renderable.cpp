@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-#include "lib_ext/imgui_extra.hpp"
+#include "extension/imgui_extra.hpp"
 
 namespace spellbook {
 

@@ -2,9 +2,9 @@
 
 #include <functional>
 
-#include "enemy.hpp"
-#include "stat.hpp"
-#include "vector.hpp"
+#include "game/enemy.hpp"
+#include "game/stat.hpp"
+#include "lib/vector.hpp"
 
 namespace spellbook {
 

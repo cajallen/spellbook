@@ -7,6 +7,7 @@ struct Particle {
     float color_x;
     float life;
     float life_total;
+    float falloff;
 };
 
 layout(binding = 0) buffer Particles {
@@ -23,6 +24,7 @@ layout(binding = 1) uniform EmitterSettings {
     
     float life;
     float life_random;
+    float falloff;
     
     uint max_particles;
 };
@@ -76,7 +78,8 @@ void main() {
             velocity_damping + vec4(vr4, vr5, vr6, vr7) * velocity_damping_random,
             cr9,
             life + lr8 * life_random,
-            life + lr8 * life_random
+            life + lr8 * life_random,
+            falloff
         );
     } else {
         particles[index].velocity_damping.xyz *= pow(particles[index].velocity_damping.w, pc.dt);

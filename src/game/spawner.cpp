@@ -1,11 +1,10 @@
 ﻿#include "spawner.hpp"
 
-#include "components.hpp"
-#include "scene.hpp"
-#include "input.hpp"
-#include "lib_ext/imgui_extra.hpp"
-
-#include "game.hpp"
+#include "extension/imgui_extra.hpp"
+#include "game/components.hpp"
+#include "game/scene.hpp"
+#include "game/input.hpp"
+#include "game/game.hpp"
 
 namespace spellbook {
 

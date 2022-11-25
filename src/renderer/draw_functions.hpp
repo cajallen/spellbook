@@ -1,9 +1,8 @@
 #pragma once
 
-#include "renderer.hpp"
-#include "camera.hpp"
-
-#include "vector.hpp"
+#include "lib/vector.hpp"
+#include "renderer/renderer.hpp"
+#include "renderer/camera.hpp"
 
 namespace spellbook {
 

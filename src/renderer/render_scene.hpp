@@ -2,12 +2,11 @@
 
 #include <vuk/Buffer.hpp>
 
-#include "string.hpp"
+#include "lib/string.hpp"
 
-#include "slotmap.hpp"
-#include "viewport.hpp"
-#include "renderer.hpp"
-#include "assets/particles.hpp"
+#include "renderer/viewport.hpp"
+#include "renderer/renderer.hpp"
+#include "renderer/assets/particles.hpp"
 #include "renderer/renderable.hpp"
 
 
