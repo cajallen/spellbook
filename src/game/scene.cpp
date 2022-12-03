@@ -37,16 +37,16 @@ void Scene::setup(const string& input_name) {
 	// setup camera
 	cameras.emplace_back(v3(-8, 0, 4), math::d2r(euler{0, -30}));
 	render_scene.viewport.name	 = render_scene.name + "::viewport";
-	render_scene.viewport.camera = &cameras.last();
+	render_scene.viewport.camera = &cameras.back();
 	render_scene.viewport.setup();
 	controller.name = name + "::controller";
-	controller.setup(&render_scene.viewport, &cameras.last());
+	controller.setup(&render_scene.viewport, &cameras.back());
 
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
     registry.on_destroy<Tower>().connect<&Scene::tower_cleanup>(*this);
 
-    game.scenes.insert_back(this);
+    game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
 }
 
@@ -141,9 +141,10 @@ void Scene::output_window(bool* p_open) {
     if (ImGui::Begin((name + " Output").c_str(), p_open)) {
         render_scene.viewport.window_hovered = ImGui::IsWindowHovered();
         render_scene.image((v2i) ImGui::GetContentRegionAvail());
+        render_scene.cull_pause = false;
     } else {
         render_scene.viewport.window_hovered = false;
-        render_scene.pause = true;
+        render_scene.cull_pause = true;
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -174,7 +175,7 @@ vector<entt::entity> Scene::get_enemies(v3i pos) {
     auto view = registry.view<LogicTransform, Traveler>();
     for (auto [entity, logic_pos, traveler] : view.each()) {
         if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
-            entities.insert_back(entity);
+            entities.push_back(entity);
         }
     }
     return entities;
@@ -205,7 +206,7 @@ vector<entt::entity> Scene::get_any(v3i pos) {
     auto view = registry.view<LogicTransform>();
     for (auto [entity, logic_pos] : view.each()) {
         if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
-            entities.insert_back(entity);
+            entities.push_back(entity);
         }
     }
     return entities;

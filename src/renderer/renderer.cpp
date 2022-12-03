@@ -121,7 +121,7 @@ Renderer::Renderer()
 }
 
 void Renderer::add_scene(RenderScene* scene) {
-    scenes.insert_back(scene);
+    scenes.push_back(scene);
     if (stage != RenderStage_Setup) {
         scene->setup(*global_allocator);
     }
@@ -138,9 +138,20 @@ void Renderer::setup() {
 
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "standard_3d.vert");
-        pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "textured_3d.frag");
+        pci.add_glsl(get_contents("src/shaders/depth_outline.comp"), "src/shaders/depth_outline.comp");
+        game.renderer.context->create_named_pipeline("postprocess", pci);
+    }
+    {
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
+        pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "src/shaders/textured_3d.frag");
         context->create_named_pipeline("textured_model", pci);
+    }
+    {
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("src/shaders/infinite_plane.vert"), "src/shaders/infinite_plane.vert");
+        pci.add_glsl(get_contents("src/shaders/grid.frag"), "src/shaders/grid.frag");
+        game.renderer.context->create_named_pipeline("grid_3d", pci);
     }
 
     upload_defaults();
@@ -159,6 +170,9 @@ void Renderer::setup() {
 
 void Renderer::update() {
     ZoneScoped;
+    while (suspend) {
+        glfwWaitEvents();
+    }
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     frame_timer.update();
@@ -201,9 +215,7 @@ void Renderer::render() {
     auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN++"}, imgui_data, ImGui::GetDrawData(), imgui_images);
     stage    = RenderStage_Presenting;
     vuk::Compiler compiler;
-    try {
     present(*frame_allocator, compiler, swapchain, std::move(fut));
-    } catch (vuk::PresentException& e) {}
     imgui_images.clear();
 
     for (auto scene : scenes) {
@@ -251,11 +263,19 @@ void Renderer::wait_for_futures() {
 
 
 void Renderer::resize(v2i new_size) {
+    if (new_size == v2i(0,0)) {
+        suspend = true;
+        return;
+    }
+    suspend = false;
     context->wait_idle();
-    auto new_swapchain = context->add_swapchain(make_swapchain(vkbdevice, swapchain));
     global_allocator->deallocate(swapchain->image_views);
     global_allocator->deallocate({&swapchain->swapchain, 1});
     context->remove_swapchain(swapchain);
+    auto new_swapchain = context->add_swapchain(make_swapchain(vkbdevice, swapchain));
+    for (auto& iv : swapchain->image_views) {
+        context->set_name(iv.payload, "Swapchain ImageView");
+    }
     swapchain = new_swapchain;
 }
 
@@ -263,21 +283,34 @@ void Renderer::resize(v2i new_size) {
 string Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     assert_else(!mesh_cpu.file_path.empty());
     u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_path.data(), mesh_cpu.file_path.size());
+    if (mesh_cache.contains(mesh_cpu_hash))
+        return mesh_cpu.file_path;
     MeshGPU         mesh_gpu;
     vuk::Allocator& alloc                = frame_allocation ? *frame_allocator : *global_allocator;
-    auto            [vert_buf, vert_fut] = create_buffer_gpu(alloc, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
+    auto            [vert_buf, vert_fut] = create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
     mesh_gpu.vertex_buffer               = std::move(vert_buf);
-    auto [idx_buf, idx_fut]              = create_buffer_gpu(alloc, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.indices));
+    auto [idx_buf, idx_fut]              = create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.indices));
     mesh_gpu.index_buffer                = std::move(idx_buf);
-    mesh_gpu.index_count                 = (u32) mesh_cpu.indices.size();
-    mesh_gpu.vertex_count                = (u32) mesh_cpu.vertices.size();
+    mesh_gpu.index_count                 = mesh_cpu.indices.size();
+    mesh_gpu.vertex_count                = mesh_cpu.vertices.size();
+
     enqueue_setup(std::move(vert_fut));
     enqueue_setup(std::move(idx_fut));
 
-    if (frame_allocation); // TODO: frame allocation
-
     mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
     return mesh_cpu.file_path;
+}
+
+SkeletonGPU Renderer::upload_skeleton(const SkeletonCPU& skeleton_cpu) {
+    SkeletonGPU skeleton_gpu;
+    skeleton_gpu.bones = std::move(skeleton_cpu.bones);
+    
+    vuk::Allocator& alloc = *global_allocator;
+    u32 alloc_size = sizeof(u32) * 4 + sizeof(m44GPU) * skeleton_gpu.bones.size();
+
+    skeleton_gpu.buffer = *vuk::allocate_buffer(alloc, {vuk::MemoryUsage::eCPUtoGPU, alloc_size, 1});
+    skeleton_gpu.update();
+    return skeleton_gpu;
 }
 
 string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {

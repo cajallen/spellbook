@@ -1,6 +1,7 @@
 #version 450
 #pragma shader_stage(fragment)
 
+#include "include.glsli"
 
 layout (location = 0) in VS_OUT {
     vec3 position;
@@ -13,73 +14,31 @@ layout (location = 0) out vec4 fout_color;
 layout (location = 1) out vec4 fout_normal;
 layout (location = 2) out uvec4 fout_id;
 
-layout (binding = 0) uniform CameraData {
+layout (binding = CAMERA_BINDING) uniform CameraData {
 	mat4 view;
 	mat4 projection;
 	vec4 camera_position;
 };
-layout(binding = 1) uniform SceneData {
+layout(binding = SCENE_BINDING) uniform SceneData {
 	vec4 ambient;
     vec4 fog;
     vec4 sun_direction_intensity; 
     vec4 rim_alpha_width_start;
 };
-layout(binding = 3) uniform MaterialData {
+layout(binding = MATERIAL_BINDING) uniform MaterialData {
 	vec4 base_color_tint; 
 	vec4 emissive_tint;
     vec4 roughness_metallic_normals_scale;
     vec4 emissive_dot_smoothstep;
 };
-layout(binding = 4) uniform sampler2D s_base_color; 
-layout(binding = 5) uniform sampler2D s_metallic_roughness; 
-layout(binding = 6) uniform sampler2D s_normal; 
-layout(binding = 7) uniform sampler2D s_emissive; 
+layout(binding = BASE_COLOR_BINDING) uniform sampler2D s_base_color; 
+layout(binding = ORM_BINDING) uniform sampler2D s_metallic_roughness; 
+layout(binding = NORMAL_BINDING) uniform sampler2D s_normal; 
+layout(binding = EMISSIVE_BINDING) uniform sampler2D s_emissive; 
 
 layout(push_constant) uniform uPushConstant {
     int selection_id;
 } pc;
-
-vec2 random2(vec2 p) {
-    return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
-}
-
-float map(float value, float min_in, float max_in, float min_out, float max_out) {
-    return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in);
-}
-
-float linear_to_srgb(float linear_rgb) {
-    bool cutoff = linear_rgb < 0.0031308;
-    float higher = 1.055 * pow(linear_rgb, 1.0/ 2.4) - 0.055;
-    float lower	 = linear_rgb * 12.92;
-
-    return mix(higher, lower, cutoff);
-}
-
-// Converts a color from sRGB gamma to linear light gamma
-float srgb_to_linear(float sRGB) {
-    bool cutoff = sRGB < 0.04045;
-    float higher = pow((sRGB + 0.055) / 1.055, 2.4);
-    float lower	 = sRGB / 12.92;
-
-    return mix(higher, lower, cutoff);
-}
-
-vec3 linear_to_srgb(vec3 linear_rgb) {
-    bvec3 cutoff = lessThan(linear_rgb, vec3(0.0031308));
-    vec3  higher = vec3(1.055) * pow(linear_rgb, vec3(1.0 / 2.4)) - vec3(0.055);
-    vec3  lower	 = linear_rgb * vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
-
-// Converts a color from sRGB gamma to linear light gamma
-vec3 srgb_to_linear(vec3 sRGB) {
-    bvec3 cutoff = lessThan(sRGB, vec3(0.04045));
-    vec3  higher = pow((sRGB + vec3(0.055)) / vec3(1.055), vec3(2.4));
-    vec3  lower	 = sRGB / vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
 
 vec2 calculate_uv() {
     return fin.uv * roughness_metallic_normals_scale.w;

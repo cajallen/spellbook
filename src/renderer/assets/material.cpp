@@ -14,14 +14,14 @@
 namespace spellbook {
 
 void MaterialGPU::bind_parameters(vuk::CommandBuffer& cbuf) {
-    *cbuf.map_scratch_buffer<MaterialDataGPU>(0, 3) = tints;
+    *cbuf.map_scratch_buffer<MaterialDataGPU>(0, MATERIAL_BINDING) = tints;
 };
 void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     assert_else(color.is_global && orm.is_global && normal.is_global && emissive.is_global);
-    cbuf.bind_image(0, 4, color.global.iv).bind_sampler(0, 4, color.global.sci);
-    cbuf.bind_image(0, 5, orm.global.iv).bind_sampler(0, 5, orm.global.sci);
-    cbuf.bind_image(0, 6, normal.global.iv).bind_sampler(0, 6, normal.global.sci);
-    cbuf.bind_image(0, 7, emissive.global.iv).bind_sampler(0, 7, emissive.global.sci);
+    cbuf.bind_image(0, BASE_COLOR_BINDING, color.global.iv).bind_sampler(0, BASE_COLOR_BINDING, color.global.sci);
+    cbuf.bind_image(0, ORM_BINDING, orm.global.iv).bind_sampler(0, ORM_BINDING, orm.global.sci);
+    cbuf.bind_image(0, NORMAL_BINDING, normal.global.iv).bind_sampler(0, NORMAL_BINDING, normal.global.sci);
+    cbuf.bind_image(0, EMISSIVE_BINDING, emissive.global.iv).bind_sampler(0, EMISSIVE_BINDING, emissive.global.sci);
 };
 
 void inspect(MaterialCPU* material) {

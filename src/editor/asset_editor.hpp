@@ -35,7 +35,7 @@ struct AssetEditor {
     SpawnerPrefab spawner_prefab;
     ConsumerPrefab consumer_prefab;
 
-    ParticleEmitter* emitter_instance;
+    EmitterGPU* emitter_instance;
     
     // Used as readonly
     Tab tab;

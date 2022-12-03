@@ -43,8 +43,8 @@ bool viewport_mp_callback(GLFWwindow* window, double xpos, double ypos, void* da
 }
 
 void Viewport::setup() {
-	Input::mouse_button_callback_stack.insert_back({viewport_mb_callback, name, this});
-	Input::mouse_pos_callback_stack.insert_back({viewport_mp_callback, name, this});
+	Input::mouse_button_callback_stack.push_back({viewport_mb_callback, name, this});
+	Input::mouse_pos_callback_stack.push_back({viewport_mp_callback, name, this});
 }
 
 void inspect(Viewport* viewport) {

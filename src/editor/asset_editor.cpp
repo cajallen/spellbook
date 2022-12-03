@@ -16,39 +16,6 @@ void AssetEditor::setup() {
     ZoneScoped;
     p_scene = new Scene();
     p_scene->setup("Asset Editor");
-
-    {
-        vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/particle_emitter.comp"), "particle_emitter.comp");
-        game.renderer.context->create_named_pipeline("emitter", pci);
-    }
-    {
-        vuk::PipelineBaseCreateInfo pci2;
-        pci2.add_glsl(get_contents("src/shaders/particle.vert"), "particle.vert");
-        pci2.add_glsl(get_contents("src/shaders/textured_3d.frag"), "textured_3d.frag");
-        game.renderer.context->create_named_pipeline("particle", pci2);
-    }
-    
-    EmitterCPU emitter;
-    emitter.file_path = "emitter 1";
-    emitter.mesh = game.renderer.upload_mesh(generate_icosphere(2));
-    emitter.position = v3(0.0f, 0.0f, -50.0f);
-    emitter.position_random = v3(200.0f, 200.0f, 100.0f);
-    emitter.velocity_random = v3(0.05f, 0.05f, 0.05f);
-    emitter.scale = 0.3f;
-    emitter.scale_random = 0.3f;
-    emitter.particles_per_second = 10.0f;
-    emitter.damping = 1.0f;
-    emitter.duration = 20.0f;
-    emitter.duration_random = 10.0f;
-    emitter.falloff = 0.5f;
-
-    emitter.color1_start = Color::hsv(42.0f, 0.1f, 1.0f);
-    emitter.color1_end   = Color::hsv(42.0f, 0.1f, 0.9f);
-    emitter.color2_start = Color::hsv(54.0f, 0.1f, 1.0f);
-    emitter.color2_end   = Color::hsv(54.0f, 0.9f, 0.9f);
-
-    emitter_instance = &instance_emitter(p_scene, emitter);
 }
 
 void AssetEditor::update() {

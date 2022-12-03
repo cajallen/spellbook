@@ -34,17 +34,6 @@ static Texture allocate_texture(Allocator& allocator, Format format, Extent3D ex
 namespace spellbook {
 
 void RenderScene::setup(vuk::Allocator& allocator) {
-    {
-        vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/depth_outline.comp"), "depth_outline.comp");
-        game.renderer.context->create_named_pipeline("postprocess", pci);
-    }
-    {
-        vuk::PipelineBaseCreateInfo pci2;
-        pci2.add_glsl(get_contents("src/shaders/infinite_plane.vert"), "infinite_plane.vert");
-        pci2.add_glsl(get_contents("src/shaders/grid.frag"), "grid.frag");
-        game.renderer.context->create_named_pipeline("grid_3d", pci2);
-    }
 }
 
 void RenderScene::image(v2i size) {
@@ -56,7 +45,7 @@ void RenderScene::image(v2i size) {
 }
 
 void RenderScene::settings_gui() {
-    ImGui::Checkbox("Pause", &pause);
+    ImGui::Checkbox("Pause", &user_pause);
     if (ImGui::TreeNode("Lighting")) {
         ImGui::ColorEdit4("Ambient", scene_data.ambient.data);
         ImGui::DragFloat3("rim_alpha_width_start", scene_data.rim_alpha_width_start.data, 0.01f);
@@ -104,7 +93,7 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     cam_data.proj     = (m44GPU) viewport.camera->proj;
     cam_data.position = v4(viewport.camera->position, 1.0f);
 
-    auto [pubo_camera, fubo_camera] = vuk::create_buffer_cross_device(allocator, vuk::MemoryUsage::eCPUtoGPU, std::span(&cam_data, 1));
+    auto [pubo_camera, fubo_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&cam_data, 1));
     buffer_camera_data              = *pubo_camera;
 
     struct SceneData {
@@ -118,10 +107,10 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     scene_data_gpu.rim_alpha_width_start = v4(scene_data.rim_alpha_width_start, 0.0f);
     scene_data_gpu.sun_data            = v4(scene_data.sun_direction, scene_data.sun_intensity);
 
-    auto [pubo_scene, fubo_scene] = vuk::create_buffer_cross_device(allocator, vuk::MemoryUsage::eCPUtoGPU, std::span(&scene_data_gpu, 1));
+    auto [pubo_scene, fubo_scene] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&scene_data_gpu, 1));
     buffer_scene_data             = *pubo_scene;
 
-    buffer_model_mats = **vuk::allocate_buffer_cross_device(allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * renderables.size(), 1});
+    buffer_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * renderables.size(), 1});
     int i = 0;
     for (const auto& renderable : renderables) {
         auto transform_gpu = m44GPU(renderable.transform);
@@ -141,35 +130,14 @@ void RenderScene::pre_render() {
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
     ZoneScoped;
     
-    if (pause) {
+    if (cull_pause || user_pause) {
         auto rg = make_shared<vuk::RenderGraph>("graph");
         rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
         return vuk::Future {rg, "target_output"};
     }
     
-    auto upload_item = [](const Renderable& renderable) {
-        MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
-        MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
-
-        if (renderable.mesh_asset_path.empty() || renderable.material_asset_path.empty())
-            return;
-        if (mesh == nullptr) {
-            if (exists(to_resource_path(renderable.mesh_asset_path))) {
-                game.renderer.upload_mesh(load_mesh(renderable.mesh_asset_path));
-            } else {
-                console({.str = "Renderable mesh asset not found: " + renderable.mesh_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
-            }
-        }
-        if (material == nullptr) {
-            if (exists(to_resource_path(renderable.material_asset_path))) {
-                game.renderer.upload_material(load_material(renderable.material_asset_path));
-            } else {
-                console({.str = "Renderable material asset not found: " + renderable.material_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
-            }
-        }
-    };
     for (Renderable& renderable : renderables) {
-        upload_item(renderable);
+        upload_dependencies(renderable);
     }
 
     game.renderer.wait_for_futures();
@@ -187,21 +155,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
         .resources = {},
         .execute = [this](vuk::CommandBuffer& command_buffer) {
             for (auto& emitter : emitters) {
-                // Update emitter
-                struct PC {
-                    u32 spawn_count = 0;
-                    float dt;
-                } pc;
-                pc.spawn_count = math::max((Input::time - emitter.next_spawn) / emitter.rate, 0.0f);
-                emitter.next_spawn += emitter.rate * pc.spawn_count;
-                
-                pc.dt = Input::delta_time;
-                command_buffer
-                    .bind_compute_pipeline("emitter")
-                    .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, pc)
-                    .bind_buffer(0, 0, *emitter.particles_buffer);
-                *command_buffer.map_scratch_buffer<ParticleEmitterSettings>(0, 1) = emitter.settings;
-                command_buffer.dispatch(emitter.settings.max_particles);
+                update_emitter(emitter, command_buffer);
             }
         }
     });
@@ -228,74 +182,21 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 .set_color_blend("forward_input", vuk::BlendPreset::eAlphaBlend)
                 .set_color_blend("normal_input", vuk::BlendPreset::eOff)
                 .set_color_blend("info_input", vuk::BlendPreset::eOff);
-
-            // Bind buffers
+            
             command_buffer
-                .bind_buffer(0, 0, buffer_camera_data)
-                .bind_buffer(0, 1, buffer_scene_data)
-                .bind_buffer(0, 2, buffer_model_mats);
-            int  i           = 0;
-            auto render_item = [&](Renderable& renderable) {
-                ZoneScoped;
-                MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
-                MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
-                if (mesh == nullptr || material == nullptr) {
-                    i++;
-                    return;
-                }
-                // Bind mesh
-                command_buffer
-                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, vuk::Packed {
-                        vuk::Format::eR32G32B32Sfloat, // position
-                        vuk::Format::eR32G32B32Sfloat, // normal
-                        vuk::Format::eR32G32B32Sfloat, // tangent
-                        vuk::Format::eR32G32B32Sfloat, // color
-                        vuk::Format::eR32G32Sfloat     // uv
-                    })
-                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-
-                // Bind Material
-                command_buffer
-                    .set_rasterization({.cullMode = material->cull_mode})
-                    .bind_graphics_pipeline(material->pipeline);
-                material->bind_parameters(command_buffer);
-                material->bind_textures(command_buffer);
-
-                // Set ID for selection
-                command_buffer.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, renderable.selection_id);
-
-                // Draw call
-                command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, i++);
-            };
+                .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
+                .bind_buffer(0, SCENE_BINDING, buffer_scene_data)
+                .bind_buffer(0, MODEL_BINDING, buffer_model_mats);
+            
 
             // Render items
+            int  i = 0;
             for (Renderable& renderable : renderables) {
-                render_item(renderable);
+                render_item(renderable, command_buffer, i);
             }
 
             for (auto& emitter : emitters) {
-                // Draw particles
-                MeshGPU* mesh = game.renderer.get_mesh(emitter.mesh);
-                MaterialGPU* material = game.renderer.get_material(emitter.material);
-                command_buffer // Mesh
-                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, vuk::Packed {
-                        vuk::Format::eR32G32B32Sfloat, // position
-                        vuk::Format::eR32G32B32Sfloat, // normal
-                        vuk::Format::eR32G32B32Sfloat, // tangent
-                        vuk::Format::eR32G32B32Sfloat, // color
-                        vuk::Format::eR32G32Sfloat     // uv
-                    })
-                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                command_buffer // Material
-                    .set_rasterization({.cullMode = material->cull_mode})
-                    .bind_buffer(0, 0, buffer_camera_data)
-                    .bind_buffer(0, 1, buffer_scene_data)
-                    .bind_buffer(0, 2, *emitter.particles_buffer)
-                    .bind_graphics_pipeline(material->pipeline);
-                command_buffer.bind_image(0, 9, emitter.color.global.iv).bind_sampler(0, 9, emitter.color.global.sci);
-                material->bind_parameters(command_buffer);
-                material->bind_textures(command_buffer);
-                command_buffer.draw_indexed(mesh->index_count, emitter.settings.max_particles, 0, 0, 0);
+                render_particles(emitter, command_buffer);
             }
             // Render grid
             auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->view.get();
@@ -307,7 +208,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 })
                 .bind_graphics_pipeline("grid_3d")
                 .set_rasterization({})
-                .bind_buffer(0, 0, buffer_camera_data)
+                .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
                 .bind_image(0, 1, grid_view)
                 .bind_sampler(0, 1, Sampler().anisotropy(true).get())
                 .draw(6, 1, 0, 0);
@@ -344,7 +245,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     });
 
     if (math::contains(range2i(v2i(0), v2i(viewport.size)), query)) {
-        auto info_storage_buffer = **vuk::allocate_buffer_cross_device(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, sizeof(u32), 1});
+        auto info_storage_buffer = **vuk::allocate_buffer(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, sizeof(u32), 1});
         rg->attach_buffer("info_storage", info_storage_buffer);
 	    rg->add_pass({
             .name  = "read",

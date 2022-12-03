@@ -11,7 +11,7 @@ MeshCPU load_mesh(const string& file_name) {
     AssetFile asset_file = load_asset_file(file_name);
 
     constexpr array expected_type = {'M','S','H'};
-    assert_else(asset_file.version == 2 && asset_file.type == expected_type)
+    warn_else(asset_file.version == 3 && asset_file.type == expected_type)
         return {};
     
     MeshInfo mesh_info = from_jv<MeshInfo>(*asset_file.asset_json["mesh_info"]);
@@ -35,7 +35,7 @@ void save_mesh(const MeshCPU& mesh_cpu) {
     AssetFile file;
     file.file_name = mesh_cpu.file_path;
     file.type = {'M','S','H'};
-    file.version = 2;
+    file.version = 3;
 
     MeshInfo mesh_info;
     mesh_info.vertices_bsize = mesh_cpu.vertices.bsize();

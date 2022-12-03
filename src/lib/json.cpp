@@ -162,7 +162,7 @@ vector<json_value> parse_list(istream& iss) {
             iss.get(c);
         }
         iss.unget();
-        values.insert_back(parse_item(iss));
+        values.push_back(parse_item(iss));
     }
     __debugbreak(); // no closing brace
     return values;

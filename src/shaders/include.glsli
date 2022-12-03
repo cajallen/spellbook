@@ -1,4 +1,23 @@
-﻿
+#define CAMERA_BINDING 0
+#define SCENE_BINDING 1
+#define MODEL_BINDING 2
+#define PARTICLES_BINDING 2
+#define BONES_BINDING 3
+#define MATERIAL_BINDING 4
+#define BASE_COLOR_BINDING 5
+#define ORM_BINDING 6
+#define NORMAL_BINDING 7
+#define EMISSIVE_BINDING 8
+
+struct Particle {
+    vec4 position_scale;
+    vec4 velocity_damping;
+    float color_x;
+    float life;
+    float life_total;
+    float falloff;
+};
+
 vec3 linear_to_srgb(vec3 linear_rgb) {
 	bvec3 cutoff = lessThan(linear_rgb, vec3(0.0031308));
 	vec3  higher = vec3(1.055) * pow(linear_rgb, vec3(1.0 / 2.4)) - vec3(0.055);
@@ -7,11 +26,47 @@ vec3 linear_to_srgb(vec3 linear_rgb) {
 	return mix(higher, lower, cutoff);
 }
 
-// Converts a color from sRGB gamma to linear light gamma
 vec3 srgb_to_linear(vec3 sRGB) {
 	bvec3 cutoff = lessThan(sRGB, vec3(0.04045));
 	vec3  higher = pow((sRGB + vec3(0.055)) / vec3(1.055), vec3(2.4));
 	vec3  lower	 = sRGB / vec3(12.92);
 
 	return mix(higher, lower, cutoff);
+}
+
+float linear_to_srgb(float linear_rgb) {
+    bool cutoff = linear_rgb < 0.0031308;
+    float higher = 1.055 * pow(linear_rgb, 1.0/ 2.4) - 0.055;
+    float lower	 = linear_rgb * 12.92;
+
+    return mix(higher, lower, cutoff);
+}
+
+// Converts a color from sRGB gamma to linear light gamma
+float srgb_to_linear(float sRGB) {
+    bool cutoff = sRGB < 0.04045;
+    float higher = pow((sRGB + 0.055) / 1.055, 2.4);
+    float lower	 = sRGB / 12.92;
+
+    return mix(higher, lower, cutoff);
+}
+
+uint uint_noise(uint i, uint seed) {
+    uint mangled = i;
+    mangled *= 0xB5297A4Du;
+    mangled += seed;
+    mangled ^= (mangled >> 8);
+    mangled += 0x68E31DA4u;
+    mangled ^= (mangled << 8);
+    mangled *= 0x1B56C4E9u;
+    mangled ^= (mangled >> 8);
+    return mangled;
+}
+
+float float_noise(uint i, uint seed) {
+    return float(uint_noise(i, seed) & 0xffffffu) / 16777215.0;
+}
+
+float map(float value, float min_in, float max_in, float min_out, float max_out) {
+    return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in);
 }

@@ -52,7 +52,7 @@ void Game::shutdown() {
     gui.shutdown();
     map_editor.shutdown();
     while (!scenes.empty()) {
-        Scene* scene = scenes.first();
+        Scene* scene = scenes.front();
         scene->cleanup();
         delete scene;
     }

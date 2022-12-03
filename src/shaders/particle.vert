@@ -1,27 +1,20 @@
 #version 450
 #pragma shader_stage(vertex)
 
+#include "include.glsli"
+
 layout (location = 0) in vec3 vin_position;
 layout (location = 1) in vec3 vin_normal;
 layout (location = 2) in vec3 vin_tangent;
 layout (location = 3) in vec3 vin_color;
 layout (location = 4) in vec2 vin_uv;
 
-struct Particle {
-    vec4 position_scale;
-    vec4 velocity_damping;
-    float color_x;
-    float life;
-    float life_total;
-    float falloff;
-};
-
-layout (binding = 2) buffer Particles {
+layout (binding = PARTICLES_BINDING) buffer Particles {
     uint head;
     Particle particles[];
 };
 
-layout (binding = 0) uniform CameraData {
+layout (binding = CAMERA_BINDING) uniform CameraData {
     mat4 view;
     mat4 projection;
     vec4 camera_position;

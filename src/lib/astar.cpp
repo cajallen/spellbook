@@ -28,7 +28,7 @@ vector<v2i> astar::Navigation::find_path(v2i source, v2i target) {
     vector<shared_ptr<Node>> open_set, closed_set;
     open_set.reserve(100);
     closed_set.reserve(100);
-    open_set.insert_back(make_shared<Node>(source));
+    open_set.push_back(make_shared<Node>(source));
 
     while (!open_set.empty()) {
         auto current_it = open_set.begin();
@@ -45,7 +45,7 @@ vector<v2i> astar::Navigation::find_path(v2i source, v2i target) {
         if (current->position == target)
             break;
 
-        closed_set.insert_back(current);
+        closed_set.push_back(current);
         open_set.remove_value(*current_it);
 
         for (u32 i = 0; i < (diagonal ? 8 : 4); ++i) {
@@ -60,7 +60,7 @@ vector<v2i> astar::Navigation::find_path(v2i source, v2i target) {
                 successor    = make_shared<Node>(new_coordinate, current);
                 successor->G = total_cost;
                 successor->H = heuristic(successor->position, target);
-                open_set.insert_back(successor);
+                open_set.push_back(successor);
             } else if (total_cost < successor->G) {
                 successor->parent = current;
                 successor->G      = total_cost;
@@ -70,7 +70,7 @@ vector<v2i> astar::Navigation::find_path(v2i source, v2i target) {
 
     vector<v2i> path;
     while (current != nullptr) {
-        path.insert_back(current->position);
+        path.push_back(current->position);
         current = current->parent;
     }
     

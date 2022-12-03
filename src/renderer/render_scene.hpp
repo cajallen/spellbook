@@ -36,17 +36,18 @@ struct RenderScene {
     SceneData       scene_data;
     PostProcessData post_process_data;
 
-    vuk::BufferCrossDevice buffer_camera_data;
-    vuk::BufferCrossDevice buffer_scene_data;
-    vuk::BufferCrossDevice buffer_model_mats;
+    vuk::Buffer buffer_camera_data;
+    vuk::Buffer buffer_scene_data;
+    vuk::Buffer buffer_model_mats;
 
     v2i         query = v2i(-1, -1);
     vuk::Future fut_query_result;
 
-    bool pause = false;
+    bool user_pause = false;
+    bool cull_pause = false;
     vuk::Texture render_target;
 
-    vector<ParticleEmitter> emitters;
+    vector<EmitterGPU> emitters;
     
     void update_size(v2i new_size);
     

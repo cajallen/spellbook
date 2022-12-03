@@ -24,6 +24,17 @@ using std::optional;
 
 namespace spellbook {
 
+#define CAMERA_BINDING 0
+#define SCENE_BINDING 1
+#define MODEL_BINDING 2
+#define PARTICLES_BINDING 2
+#define BONES_BINDING 3
+#define MATERIAL_BINDING 4
+#define BASE_COLOR_BINDING 5
+#define ORM_BINDING 6
+#define NORMAL_BINDING 7
+#define EMISSIVE_BINDING 8
+
 struct FrameTimer {
     int               ptr         = 0;
     int               filled      = 0;
@@ -69,6 +80,8 @@ struct Renderer {
     umap<u64, MeshGPU>     mesh_cache;
     umap<u64, MaterialGPU> material_cache;
     umap<u64, TextureGPU>  texture_cache;
+
+    bool suspend = false;
     
     void enqueue_setup(vuk::Future&& fut) {
         std::scoped_lock _(setup_lock);
@@ -90,6 +103,7 @@ struct Renderer {
     string upload_mesh(const MeshCPU&, bool frame_allocation = false);
     string upload_material(const MaterialCPU&, bool frame_allocation = false);
     string upload_texture(const TextureCPU&, bool frame_allocation = false);
+    SkeletonGPU upload_skeleton(const SkeletonCPU&);
 
     // Returns an asset given the path of the .sb*** asset, nullptr if not uploaded
     MeshGPU* get_mesh(const string& asset_path);

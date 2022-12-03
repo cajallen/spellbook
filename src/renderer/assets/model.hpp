@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "skeleton.hpp"
 #include "lib/string.hpp"
 #include "lib/vector.hpp"
 #include "lib/umap.hpp"
@@ -18,14 +19,16 @@ struct Renderable;
 struct RenderScene;
 
 struct ModelCPU {
-    string file_path;    
+    string file_path;
 
     struct Node {
-        string name = "";
-        string mesh_asset_path = "";
-        string material_asset_path = "";
+        string name;
+        string mesh_asset_path;
+        string material_asset_path;
         m44 transform = {};
 
+        id_ptr<SkeletonCPU> skeleton;
+        
         id_ptr<Node> parent = {};
         vector<id_ptr<Node>> children = {};
 
@@ -34,14 +37,24 @@ struct ModelCPU {
     
     vector<id_ptr<Node>> nodes = {};
     id_ptr<Node> root_node = id_ptr<Node>::null();
+    vector<id_ptr<SkeletonCPU>> skeletons;
 
     vector<ModelCPU> split();
 };
 
-JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
+JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, skeleton, parent, children);
 
 struct ModelGPU {
     vector<Renderable*> renderables;
+    vector<std::unique_ptr<SkeletonGPU>> skeletons;
+
+    ModelGPU() {
+        renderables = {};
+        skeletons = {};
+    }
+    ModelGPU(const ModelGPU&) = delete;
+    ModelGPU(ModelGPU&& other) = default;
+    ModelGPU& operator=(ModelGPU&&) = default;
 };
 
 void     save_model(const ModelCPU&);

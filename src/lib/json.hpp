@@ -97,7 +97,7 @@ template <typename JsonT> json_value to_jv(const vector<JsonT>& _vector) {
             },
             jv.value);
         if (add)
-            _list.insert_back(to_jv(e));
+            _list.push_back(to_jv(e));
     }
     json_value jv;
     jv.value = json_variant{_list};
@@ -107,7 +107,7 @@ template <typename JsonT> json_value to_jv(const vector<JsonT>& _vector) {
 template <typename JsonT> json_value to_jv(const vector<shared_ptr<JsonT>>& _vector) {
     vector<json_value> _list = {};
     for (shared_ptr<JsonT> e : _vector)
-        _list.insert_back(to_jv(*e));
+        _list.push_back(to_jv(*e));
     json_value jv;
     jv.value = json_variant{_list};
     return jv;
@@ -119,7 +119,7 @@ template <typename JsonT1, typename JsonT2> json_value to_jv(umap<JsonT1, JsonT2
         json v_j{};
         v_j["key"]   = make_shared<json_value>(to_jv(k));
         v_j["value"] = make_shared<json_value>(to_jv(v));
-        _list.insert_back(to_jv(v_j));
+        _list.push_back(to_jv(v_j));
     }
     json_value jv;
     jv.value = json_variant{_list};
@@ -132,7 +132,7 @@ template <typename JsonT1, typename JsonT2> json_value to_jv(umap<shared_ptr<Jso
         json v_j{};
         v_j["key"]   = make_shared<json_value>(to_jv(*k));
         v_j["value"] = make_shared<json_value>(to_jv(v));
-        _list.insert_back(to_jv(v_j));
+        _list.push_back(to_jv(v_j));
     }
     json_value jv;
     jv.value = json_variant{_list};
@@ -187,7 +187,7 @@ vector<JsonT> from_jv_impl(const json_value& jv, vector<JsonT>* _) {
     vector<json_value> _list = jv.get_list();
     t.reserve(t.size() + _list.size());
     for (auto& e : _list) {
-        t.insert_back(from_jv<JsonT>(e));
+        t.push_back(from_jv<JsonT>(e));
     }
     return t;
 }
@@ -198,7 +198,7 @@ vector<shared_ptr<JsonT>> from_jv_impl(const json_value& jv, vector<shared_ptr<J
     vector<json_value>        _list = jv.get_list();
     t.reserve(t.size() + _list.size());
     for (auto& e : _list) {
-        t.insert_back(make_shared<JsonT>(from_jv<JsonT>(e)));
+        t.push_back(make_shared<JsonT>(from_jv<JsonT>(e)));
     }
     return t;
 }

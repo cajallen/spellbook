@@ -26,7 +26,7 @@ void travel_system(Scene* scene) {
     astar::Navigation nav;
     for (auto [entity, slot, logic_pos] : slots.each()) {
         if (slot.path)
-            nav.positions.insert_back(v2i(logic_pos.position.xy));
+            nav.positions.push_back(v2i(logic_pos.position.xy));
     }
 
     // handle actual traveling
@@ -48,7 +48,7 @@ void travel_system(Scene* scene) {
             transform.position = v3(0, 0, 0);
         }
 
-        v3i  target_position = has_path ? traveler.targets.last() : math::round_cast(transform.position);
+        v3i  target_position = has_path ? traveler.targets.back() : math::round_cast(transform.position);
         v3   velocity        = v3(target_position) - transform.position;
         bool at_target       = math::length(velocity) < 0.01f;
         if (at_target && has_path) {
@@ -98,7 +98,7 @@ void health_draw_system(Scene* scene) {
         auto link = scene->registry.try_get<TransformLink>(entity);
         v3 position = link ? transform.position + link->offset : transform.position;
 
-        float dir_to_camera = math::angle_to(scene->cameras.first().position.xy, position.xy);
+        float dir_to_camera = math::angle_to(scene->cameras.front().position.xy, position.xy);
         
         constexpr float gap = 0.02f;
         constexpr float thickness = 0.03f;
@@ -111,8 +111,8 @@ void health_draw_system(Scene* scene) {
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
                            math::scale(v3(0.5f * width + gap, thickness + gap, thickness + gap));
 
-        auto renderable1 = Renderable{mesh_name, health_name, inner_matrix, true};
-        auto renderable2 = Renderable{mesh_name, health_bar_name, outer_matrix, true};
+        auto renderable1 = Renderable{mesh_name, health_name, inner_matrix, {}, true};
+        auto renderable2 = Renderable{mesh_name, health_bar_name, outer_matrix, {}, true};
         scene->render_scene.add_renderable(renderable1);
         scene->render_scene.add_renderable(renderable2);
     }

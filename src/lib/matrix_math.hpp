@@ -12,14 +12,18 @@ m44 translate(v3 position);
 m44 scale(v3 scale);
 m44 rotation(euler e);
 
-euler rotation2euler(m33 rot);
-m33   quat2rotation(quat q);
-m44   quat2rotation44(quat q);
+m44   rotation(quat q);
+euler to_euler(m44 rot);
+quat  to_quat(m33 rot);
+quat  to_quat(m44 rot);
+
 
 m33           inverse(const m33& A);
 m44           inverse(const m44& A);
 constexpr m44 transpose(const m44& A);
 r3            transformed_ray(const m44& transform, v2 viewport_UV);
+
+void extract_tsr(m44 m, v3* translation, v3* scale = nullptr, quat* rotation = nullptr);
 
 }
 

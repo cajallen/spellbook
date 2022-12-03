@@ -99,7 +99,7 @@ euler rotation2euler(const m33& rot) {
     return euler;
 }
 
-m33 quat2rotation(quat q) {
+m44 rotation(quat q) {
     auto xx = q.x * q.x;
     auto cr = q.x * q.y;
     auto xz = q.x * q.z;
@@ -110,45 +110,86 @@ m33 quat2rotation(quat q) {
     auto zz = q.z * q.z;
     auto zw = q.z * q.w;
 
-    return m33(1 - 2 * (yy + zz),
-        2 * (cr - zw),
-        2 * (xz + yw),
-        2 * (cr + zw),
-        1 - 2 * (xx + zz),
-        2 * (yz - xw),
-        2 * (xz - yw),
-        2 * (yz + xw),
-        1 - 2 * (xx + yy));
+    return m44(1.0f - 2.0f * (yy + zz),
+        2.0f * (cr - zw),
+        2.0f * (xz + yw),
+        0.0f,
+        2.0f * (cr + zw),
+        1.0f - 2.0f * (xx + zz),
+        2.0f * (yz - xw),
+        0.0f,
+        2.0f * (xz - yw),
+        2.0f * (yz + xw),
+        1.0f - 2.0f * (xx + yy),
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f);
 }
 
-m44 quat2rotation44(quat q) {
-    auto xx = q.x * q.x;
-    auto cr = q.x * q.y;
-    auto xz = q.x * q.z;
-    auto xw = q.x * q.w;
-    auto yy = q.y * q.y;
-    auto yz = q.y * q.z;
-    auto yw = q.y * q.w;
-    auto zz = q.z * q.z;
-    auto zw = q.z * q.w;
-
-    return m44(1 - 2 * (yy + zz),
-        2 * (cr - zw),
-        2 * (xz + yw),
-        0,
-        2 * (cr + zw),
-        1 - 2 * (xx + zz),
-        2 * (yz - xw),
-        0,
-        2 * (xz - yw),
-        2 * (yz + xw),
-        1 - 2 * (xx + yy),
-        0,
-        0,
-        0,
-        0,
-        1);
+euler to_euler(m44 rot) {
+    return to_euler(to_quat(rot));
 }
+
+quat to_quat(m33 mat) {
+    quat q;
+    if (mat.rc(2, 2) > 0.0f) {
+        if (mat.rc(0,0) < -mat.rc(1,1)) {
+            float t = 1.0f - mat.rc(0,0) - mat.rc(1,1) + mat.rc(2,2);
+            float s = 2.0f * math::sqrt(t) * mat.rc(0,1) < mat.rc(1,0) ? -1.0f : 1.0f;
+            q.w = 0.25f * s;
+            s = 1.0f / s;
+            q.x = (mat.rc(0,1) - mat.rc(1,0)) * s;
+            q.y = (mat.rc(2,0) + mat.rc(0,2)) * s;
+            q.z = (mat.rc(1,2) + mat.rc(2,1)) * s;
+            if (t == 1.0f && (q.x == 0.0f && q.y == 0.0f && q.z == 0.0f))
+                q.w = 1.0f;
+        }
+        else {
+            float t = 1.0f + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2);
+            float s = 2.0f * math::sqrt(t);
+            q.x = 0.25f * s;
+            s = 1.0f / s;
+            q.y = (mat.rc(1,2) - mat.rc(2,1)) * s;
+            q.z = (mat.rc(2,0) - mat.rc(0,2)) * s;
+            q.w = (mat.rc(0,1) - mat.rc(1,0)) * s;
+            if (t == 1.0f && (q.y == 0.0f && q.z == 0.0f && q.w == 0.0f))
+                q.x = 1.0f;
+        }
+    }
+    else {
+        if (mat.rc(0,0) > mat.rc(1,1)) {
+            float t = 1.0f + mat.rc(0,0) - mat.rc(1,1) - mat.rc(2,2);
+            float s = 2.0f * math::sqrt(t)  * mat.rc(1,2) < mat.rc(2,1) ? -1.0f : 1.0f;
+            q.y = 0.25f * s;
+            s = 1.0f / s;
+            q.x = (mat.rc(1,2) - mat.rc(2,1)) * s;
+            q.z = (mat.rc(0,1) + mat.rc(1,0)) * s;
+            q.w = (mat.rc(2,0) + mat.rc(0,2)) * s;
+            if (t == 1.0f && (q.x == 0.0f && q.z == 0.0f && q.w == 0.0f))
+                q.y = 1.0f;
+        }
+        else {
+            float t = 1.0f - mat.rc(0,0) + mat.rc(1,1) - mat.rc(2,2);
+            float s = 2.0f * math::sqrt(t) * mat.rc(2,0) < mat.rc(0,2) ? -1.0f : 1.0f;
+            q.z = 0.25f * s;
+            s = 1.0f / s;
+            q.x = (mat.rc(2,0) - mat.rc(0,2)) * s;
+            q.y = (mat.rc(0,1) + mat.rc(1,0)) * s;
+            q.w = (mat.rc(1,2) + mat.rc(2,1)) * s;
+            if (t == 1.0f && (q.x == 0.0f && q.y == 0.0f && q.w == 0.0f))
+                q.z = 1.0f;
+        }
+    }
+    return q;
+}
+
+quat  to_quat(m44 rot) {
+    return to_quat(m33(rot));
+}
+
+
 
 m44 inverse(const m44& A) {
     auto d0 = -A.cr(3, 2) * A.cr(2, 3) * A.cr(1, 1) + A.cr(2, 2) * A.cr(3, 3) * A.cr(1, 1) + A.cr(3, 2) * A.cr(1, 3) * A.cr(2, 1) -
@@ -250,6 +291,33 @@ r3 transformed_ray(const m44& transform, v2 viewport_UV) {
     v3 origin      = origin_hpos.xyz / origin_hpos.w;
     v3 end         = end_hpos.xyz / end_hpos.w;
     return r3 {origin, math::normalize(end - origin)};
+}
+
+void extract_tsr(m44 m, v3* translation, v3* scale, quat* rotation) {
+    if (translation != nullptr) {
+        *translation = v3(m.cr(3,0), m.cr(3,1), m.cr(3,2));
+    }
+    v3 used_scale = v3(
+        math::length(v3(m.cr(0,0), m.cr(0,1), m.cr(0,2))),
+        math::length(v3(m.cr(1,0), m.cr(1,1), m.cr(1,2))),
+        math::length(v3(m.cr(2,0), m.cr(2,1), m.cr(2,2))));
+    if (scale != nullptr) {
+        *scale = used_scale;
+    }
+    if (rotation != nullptr) {
+        m.cr(0,0) /= used_scale.x;
+        m.cr(0,1) /= used_scale.x;
+        m.cr(0,2) /= used_scale.x;
+    
+        m.cr(1,0) /= used_scale.y;
+        m.cr(1,1) /= used_scale.y;
+        m.cr(1,2) /= used_scale.y;
+    
+        m.cr(2,0) /= used_scale.z;
+        m.cr(2,1) /= used_scale.z;
+        m.cr(2,2) /= used_scale.z;
+        *rotation = -to_quat(m);
+    }
 }
 
 }

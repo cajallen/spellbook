@@ -7,6 +7,7 @@
 #include "lib/string.hpp"
 #include "lib/json.hpp"
 #include "renderer/vertex.hpp"
+#include "renderer/assets/skeleton.hpp"
 
 
 namespace spellbook {
@@ -32,8 +33,8 @@ JSON_IMPL(MeshBounds, valid, extents, origin, radius);
 JSON_IMPL(MeshCPU, bounds);
 
 struct MeshGPU {
-    vuk::Unique<vuk::BufferGPU> vertex_buffer;
-    vuk::Unique<vuk::BufferGPU> index_buffer;
+    vuk::Unique<vuk::Buffer> vertex_buffer;
+    vuk::Unique<vuk::Buffer> index_buffer;
 
     u32 vertex_count;
     u32 index_count;

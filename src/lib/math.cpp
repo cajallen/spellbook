@@ -100,6 +100,10 @@ f32 dot(v3 a, v3 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+f32 dot(v4 a, v4 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+}
+
 f32 cross(v2 a, v2 b) {
     return a.x * b.y - a.y * b.x;
 }

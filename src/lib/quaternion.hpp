@@ -158,15 +158,20 @@ template <typename T> quat_<T> operator/(T s, quat_<T> q) {
 
 typedef quat_<f32> quat;
 
+JSON_IMPL(quat, x, y, z, w);
+
 namespace math {
 
-quat  euler2quat(euler e);
-euler quat2euler(quat q);
+quat  to_quat(euler e);
+euler to_euler(quat q);
 
 quat invert(quat q);
 v3   rotate(quat q, v3 v);
 quat rotate(quat q, quat p);
 quat rotate_inv(quat q, quat p);
+f32 dot(quat q1, quat q2);
+
+quat slerp(quat q1, quat q2, float t);
 
 }
 

@@ -18,13 +18,17 @@ struct vector {
 
     template <typename... Args>
     void emplace_back(Args&&...args);
-    void insert_back(T&& t);
-    void insert_back(const T& t);
+    void push_back(T&& t);
+    void push_back(const T& t);
 
     template <typename... Args>
     void emplace(u32 i, Args&&...args);
     void insert(u32 i, T&& t);
     void insert(u32 i, const T& t);
+
+    void append(const vector<T>& other);
+    template <typename S>
+    void append_data(const S& s); 
 
     template <typename Predicate>
     void remove_if(Predicate pr, bool unordered = true);
@@ -42,15 +46,15 @@ struct vector {
     [[nodiscard]] u32 index(const T& t);
 
     [[nodiscard]] u32  size() const;
-    [[nodiscard]] u32 bsize() const;
+    [[nodiscard]] u32  bsize() const;
     [[nodiscard]] bool empty() const;
     [[nodiscard]] bool contains(const T& t) const;
 
     [[nodiscard]] T*       data();
     [[nodiscard]] T*       begin();
     [[nodiscard]] T*       end();
-    [[nodiscard]] T&       first();
-    [[nodiscard]] T&       last();
+    [[nodiscard]] T&       front();
+    [[nodiscard]] T&       back();
     [[nodiscard]] const T* data() const;
     [[nodiscard]] const T* begin() const;
     [[nodiscard]] const T* end() const;
@@ -97,12 +101,12 @@ void vector<T>::emplace_back(Args&&... args) {
 }
 
 template <typename T>
-void vector<T>::insert_back(T&& t) {
+void vector<T>::push_back(T&& t) {
     internal.push_back(t);
 }
 
 template <typename T>
-void vector<T>::insert_back(const T& t) {
+void vector<T>::push_back(const T& t) {
     internal.push_back(t);
 }
 
@@ -121,6 +125,18 @@ template <typename T>
 void vector<T>::insert(u32 i, const T& t) {
     internal.insert(internal.begin() + i, t);
 }
+
+template <typename T>
+void vector<T>::append(const vector<T>& other) {
+    internal.insert(internal.end(), other.begin(), other.end());
+}
+
+template <>
+template <typename S>
+void vector<u8>::append_data(const S& s) {
+    internal.insert(internal.end(), (u8*) &s, (u8*) &s + sizeof(S));
+}
+
 
 template <typename T>
 template <typename Predicate>
@@ -146,7 +162,7 @@ template <typename T>
 void vector<T>::remove_index(u32 i, bool unordered) {
     if (unordered) {
         if (i != (this->size() - 1))
-            std::swap(this->at(i), this->last());
+            std::swap(this->at(i), this->back());
         this->remove_back();
     } else {
         internal.erase(internal.begin() + i);
@@ -251,12 +267,12 @@ T* vector<T>::end() {
 }
 
 template <typename T>
-T& vector<T>::first() {
+T& vector<T>::front() {
     return internal.front();
 }
 
 template <typename T>
-T& vector<T>::last() {
+T& vector<T>::back() {
     return internal.back();
 }
 

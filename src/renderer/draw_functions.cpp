@@ -99,21 +99,21 @@ MeshCPU generate_icosphere(int subdivisions) {
             vertex_list.emplace_back(math::normalize(p2 + p3));
             vertex_list.emplace_back(math::normalize(p3 + p1));
 
-            new_index_list.insert_back(index_list[i+0]);
-            new_index_list.insert_back(new_index1);
-            new_index_list.insert_back(new_index3);
+            new_index_list.push_back(index_list[i+0]);
+            new_index_list.push_back(new_index1);
+            new_index_list.push_back(new_index3);
 
-            new_index_list.insert_back(new_index1);
-            new_index_list.insert_back(index_list[i+1]);
-            new_index_list.insert_back(new_index2);
+            new_index_list.push_back(new_index1);
+            new_index_list.push_back(index_list[i+1]);
+            new_index_list.push_back(new_index2);
 
-            new_index_list.insert_back(new_index3);
-            new_index_list.insert_back(index_list[i+2]);
-            new_index_list.insert_back(new_index2);
+            new_index_list.push_back(new_index3);
+            new_index_list.push_back(index_list[i+2]);
+            new_index_list.push_back(new_index2);
 
-            new_index_list.insert_back(new_index1);
-            new_index_list.insert_back(new_index2);
-            new_index_list.insert_back(new_index3);
+            new_index_list.push_back(new_index1);
+            new_index_list.push_back(new_index2);
+            new_index_list.push_back(new_index3);
         }
         index_list = new_index_list;
     }
@@ -213,12 +213,12 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
         mesh_cpu.vertices.emplace_back(seg1.left, v3(0,0,1), v3(1,0,0), seg1.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg2.right, v3(0,0,1), v3(1,0,0), seg2.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg2.left, v3(0,0,1), v3(1,0,0), seg2.color.rgb, v2(0));
-        mesh_cpu.indices.insert_back(i*6+0);
-        mesh_cpu.indices.insert_back(i*6+1);
-        mesh_cpu.indices.insert_back(i*6+2);
-        mesh_cpu.indices.insert_back(i*6+3);
-        mesh_cpu.indices.insert_back(i*6+4);
-        mesh_cpu.indices.insert_back(i*6+5);
+        mesh_cpu.indices.push_back(i*6+0);
+        mesh_cpu.indices.push_back(i*6+1);
+        mesh_cpu.indices.push_back(i*6+2);
+        mesh_cpu.indices.push_back(i*6+3);
+        mesh_cpu.indices.push_back(i*6+4);
+        mesh_cpu.indices.push_back(i*6+5);
     }
     return mesh_cpu;
 }

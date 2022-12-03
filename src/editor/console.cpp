@@ -47,15 +47,15 @@ void console(MsgArg msg) {
         return;
     if (Console::group_visible.count(msg.group) == 0)
         Console::group_visible.insert({msg.group, true});
-    if (Console::message_list.size() > 0 && Console::message_list.last() == Message(msg)) {
-        Console::message_list.last().count++;
+    if (Console::message_list.size() > 0 && Console::message_list.back() == Message(msg)) {
+        Console::message_list.back().count++;
         return;
     }
     const int lazy_size = 10;
     if (Console::message_list.size() > Console::max_messages + lazy_size)
         Console::message_list.remove_indices(0, lazy_size);
 
-    Console::message_list.insert_back(Message(msg));
+    Console::message_list.push_back(Message(msg));
     Console::added_message = true;
 
     // std::cout << msg.str << std::endl;
@@ -151,7 +151,7 @@ const string vert_exts[]   = {"vert", "glslv", "vsh"};
 const string frag_exts[]   = {"frag", "glslf", "fsh"};
 
 void handle_console_input(string& input) {
-    Console::input_history.insert_back(input);
+    Console::input_history.push_back(input);
     Console::input_history_cursor = Console::input_history.size();
     Console::input_reset          = true;
 

@@ -1632,6 +1632,7 @@
     <ClCompile Include="src\renderer\assets\mesh_asset.cpp" />
     <ClCompile Include="src\renderer\assets\model.cpp" />
     <ClCompile Include="src\renderer\assets\particles.cpp" />
+    <ClCompile Include="src\renderer\assets\skeleton.cpp" />
     <ClCompile Include="src\renderer\assets\texture.cpp" />
     <ClCompile Include="src\renderer\assets\texture_asset.cpp" />
     <ClCompile Include="src\renderer\camera.cpp" />
@@ -1640,6 +1641,7 @@
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\render_scene.cpp" />
     <ClCompile Include="src\renderer\samplers.cpp" />
+    <ClCompile Include="src\renderer\vertex.cpp" />
     <ClCompile Include="src\renderer\viewport.cpp" />
     <ClCompile Include="src\extension\vuk_imgui.cpp" />
   </ItemGroup>
@@ -1784,6 +1786,7 @@
     <ClInclude Include="libs\vuk\src\RenderGraphUtil.hpp" />
     <ClInclude Include="libs\vuk\src\RenderPass.hpp" />
     <ClInclude Include="libs\vuk\src\RGImage.hpp" />
+    <ClInclude Include="libs\vuk\src\ShadercIncluder.hpp" />
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp" />
     <ClInclude Include="src\editor\asset_browser.hpp" />
     <ClInclude Include="src\editor\asset_editor.hpp" />
@@ -1835,6 +1838,7 @@
     <ClInclude Include="src\renderer\assets\mesh_asset.hpp" />
     <ClInclude Include="src\renderer\assets\model.hpp" />
     <ClInclude Include="src\renderer\assets\particles.hpp" />
+    <ClInclude Include="src\renderer\assets\skeleton.hpp" />
     <ClInclude Include="src\renderer\assets\texture.hpp" />
     <ClInclude Include="src\renderer\assets\texture_asset.hpp" />
     <ClInclude Include="src\renderer\camera.hpp" />

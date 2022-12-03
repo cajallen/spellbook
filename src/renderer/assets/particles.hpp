@@ -37,7 +37,7 @@ struct EmitterCPU {
     string mesh;
 };
 
-struct ParticleEmitterSettings {
+struct EmitterSettings {
     v4 position_scale;
     v4 velocity_damping;
 
@@ -51,16 +51,16 @@ struct ParticleEmitterSettings {
     u32 max_particles;
 };
 
-struct ParticleEmitter {
+struct EmitterGPU {
     // For editing purposes
     EmitterCPU emitter_cpu;
     
-    ParticleEmitterSettings settings;
+    EmitterSettings settings;
     float rate;
     float next_spawn;
     
     vuk::SampledImage color = vuk::SampledImage(vuk::SampledImage::Global{});
-    vuk::Unique<vuk::BufferGPU> particles_buffer;
+    vuk::Unique<vuk::Buffer> particles_buffer;
     string mesh;
     string material;
 
@@ -68,16 +68,20 @@ struct ParticleEmitter {
         settings.max_particles = (settings.life + settings.life_random) / rate + 1;
     }
 
+    void update_from_cpu(const EmitterCPU& emitter);
     void update_color();
     void update_size();
 };
 
 struct EmitterComponent {
-    ParticleEmitter* emitter;
+    EmitterGPU* emitter;
 };
 
-ParticleEmitter& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu);
+EmitterGPU& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu);
 
-void inspect(ParticleEmitter* emitter);
+void inspect(EmitterGPU* emitter);
+
+void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
+void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 
 }

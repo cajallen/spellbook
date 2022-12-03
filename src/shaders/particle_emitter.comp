@@ -1,14 +1,7 @@
 #version 450
 #pragma shader_stage(compute)
 
-struct Particle {
-    vec4 position_scale;
-    vec4 velocity_damping;
-    float color_x;
-    float life;
-    float life_total;
-    float falloff;
-};
+#include "include.glsli"
 
 layout(binding = 0) buffer Particles {
     uint head;
@@ -35,21 +28,6 @@ layout(push_constant) uniform uPushConstant {
 } pc;
 
 
-uint uint_noise(uint i, uint seed) {
-    uint mangled = i;
-    mangled *= 0xB5297A4Du;
-    mangled += seed;
-    mangled ^= (mangled >> 8);
-    mangled += 0x68E31DA4u;
-    mangled ^= (mangled << 8);
-    mangled *= 0x1B56C4E9u;
-    mangled ^= (mangled >> 8);
-    return mangled;
-}
-
-float float_noise(uint i, uint seed) {
-    return float(uint_noise(i, seed) & 0xffffffu) / 16777215.0;
-}
 
 layout (local_size_x = 64) in;
 void main() {

@@ -1,6 +1,7 @@
 #version 450
 #pragma shader_stage(compute)
 
+#include "include.glsli"
 
 // compositing
 layout(binding = 0) uniform sampler2D s_color;
@@ -33,23 +34,6 @@ const ivec3 samples[NUM_TAPS] = ivec3[](
     ivec3( 0,-2, 1),
     ivec3( 0, 2, 1)
 );
-
-vec3 linear_to_srgb(vec3 linear_rgb) {
-    bvec3 cutoff = lessThan(linear_rgb, vec3(0.0031308));
-    vec3  higher = vec3(1.055) * pow(linear_rgb, vec3(1.0 / 2.4)) - vec3(0.055);
-    vec3  lower	 = linear_rgb * vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
-
-// Converts a color from sRGB gamma to linear light gamma
-vec3 srgb_to_linear(vec3 sRGB) {
-    bvec3 cutoff = lessThan(sRGB, vec3(0.04045));
-    vec3  higher = pow((sRGB + vec3(0.055)) / vec3(1.055), vec3(2.4));
-    vec3  lower	 = sRGB / vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
 
 float compare_depth(ivec2 coordinate, float depth) {
     vec4 depth_read = texelFetch(s_depth, coordinate, 0);

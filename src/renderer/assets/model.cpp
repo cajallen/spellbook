@@ -20,7 +20,7 @@ namespace spellbook {
 vector<ModelCPU> ModelCPU::split() {
     auto traverse = [](ModelCPU& model, id_ptr<Node> node, auto&& traverse) -> void {
         for (id_ptr<Node> child : node->children) {
-            model.nodes.insert_back(child);
+            model.nodes.push_back(child);
             traverse(model, child, traverse);
         }
     };
@@ -41,7 +41,7 @@ void inspect(ModelCPU* model) {
 
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
     traverse = [&traverse, &model](id_ptr<ModelCPU::Node> node) {
-        string id_str = fmt_("{}###{}", node->name, node.value);
+        string id_str = fmt_("{}###{}", node->name, node.id);
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
@@ -52,10 +52,10 @@ void inspect(ModelCPU* model) {
                 traverse(child);
             }
             if (ImGui::Button(ICON_FA_PLUS_CIRCLE, {-ImGui::GetStyle().FramePadding.x, 0})) {
-                model->nodes.insert_back(id_ptr<ModelCPU::Node>::emplace());
+                model->nodes.push_back(id_ptr<ModelCPU::Node>::emplace());
                             
-                model->nodes.last()->parent = node;
-                node->children.emplace_back(model->nodes.last());
+                model->nodes.back()->parent = node;
+                node->children.emplace_back(model->nodes.back());
             }
             ImGui::Separator();
             ImGui::TreePop();
@@ -74,11 +74,19 @@ void save_model(const ModelCPU& model) {
     json j;
     j["root_node"] = make_shared<json_value>(to_jv(model.root_node));
 
+    // TODO: Make this a one liner and integrate this, skeletons, and bones
     vector<json_value> json_nodes;
     for (id_ptr<ModelCPU::Node> node : model.nodes) {
-        json_nodes.insert_back(to_jv_full(node));
+        json_nodes.push_back(to_jv_full(node));
     }
     j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
+
+    vector<json_value> json_skeletons;
+    for (id_ptr<SkeletonCPU> skeleton : model.skeletons) {
+        json_skeletons.push_back(to_jv_full(skeleton));
+    }
+    j["skeletons"] = make_shared<json_value>(to_jv(json_skeletons));
+    
     
     string ext = std::filesystem::path(model.file_path).extension().string();
     assert_else(ext == extension(FileType_Model));
@@ -106,21 +114,40 @@ ModelCPU load_model(const fs::path& input_path) {
 
     if (j.contains("nodes")) {
         for (const json_value& jv : j["nodes"]->get_list()) {
-            id_ptr<ModelCPU::Node> node = from_jv_full(jv, (id_ptr<ModelCPU::Node>*) 0);
-            model.nodes.insert_back(node);
+            id_ptr<ModelCPU::Node> node = from_jv_impl(jv, (id_ptr<ModelCPU::Node>*) 0);
+            model.nodes.push_back(node);
         }
     }
+
+    if (j.contains("skeletons")) {
+        for (const json_value& jv : j["skeletons"]->get_list()) {
+            id_ptr<SkeletonCPU> skeleton = from_jv_impl(jv, (id_ptr<SkeletonCPU>*) 0);
+            model.skeletons.push_back(skeleton);
+        }
+    }
+    
     return model;
 }
 
 ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool frame) {
     ModelGPU model_gpu;
 
+    umap<u64, u32> indices;
+    for (id_ptr<SkeletonCPU> skeleton_cpu : model.skeletons) {
+        model_gpu.skeletons.emplace_back(std::make_unique<SkeletonGPU>(game.renderer.upload_skeleton(*skeleton_cpu)));
+        indices[skeleton_cpu.id] = indices.size();
+    }
+    
     for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
         const ModelCPU::Node& node           = *node_ptr;
-        Renderable             renderable     = Renderable(node.mesh_asset_path, node.material_asset_path, node.transform, frame);
-        auto                   new_renderable = render_scene.add_renderable(renderable);
-        model_gpu.renderables.insert_back(new_renderable);
+        auto new_renderable = render_scene.add_renderable(Renderable(
+            node.mesh_asset_path,
+            node.material_asset_path,
+            node.transform,
+            indices.contains(node.skeleton.id) ? &*model_gpu.skeletons[indices[node.skeleton.id]] : nullptr,
+            frame
+        ));
+        model_gpu.renderables.push_back(new_renderable);
     }
 
     return model_gpu;
@@ -140,7 +167,7 @@ m44 ModelCPU::Node::calculate_transform() const {
 ModelCPU quick_model(const string& name, const string& mesh, const string& material) {
     ModelCPU model;
     model.root_node = id_ptr<ModelCPU::Node>::emplace(name, mesh, material, m44::identity());
-    model.nodes.insert_back(model.root_node);
+    model.nodes.push_back(model.root_node);
     return model;
 }
 
@@ -151,6 +178,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
 void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices);
 string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index);
 string _calculate_gltf_material_name(tinygltf::Model& model, int material_index);
+bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu);
 bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder);
 bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_folder);
 m44 _calculate_matrix(tinygltf::Node& node);
@@ -169,8 +197,8 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     string             err, warn;
 
     bool ret = ext == ".gltf"
-                   ? loader.LoadASCIIFromFile(&gltf_model, &err, &warn, input_path.string())
-                   : loader.LoadBinaryFromFile(&gltf_model, &err, &warn, input_path.string());
+       ? loader.LoadASCIIFromFile(&gltf_model, &err, &warn, input_path.string())
+       : loader.LoadBinaryFromFile(&gltf_model, &err, &warn, input_path.string());
 
     if (!warn.empty())
         console_error(fmt_("Conversion warning while loading \"{}\": {}", input_path.string(), warn), "asset.import", ErrorType_Warning);
@@ -179,19 +207,20 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     assert_else(ret)
         return {};
 
+    ModelCPU model_cpu;
+    _convert_gltf_skeletons(gltf_model, &model_cpu);
     _convert_gltf_meshes(gltf_model, output_folder);
     _convert_gltf_materials(gltf_model, output_folder);
     
-    ModelCPU model_cpu;
 
     // calculate parent hierarchies
     for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
-        model_cpu.nodes.insert_back(id_ptr<ModelCPU::Node>::emplace());
+        model_cpu.nodes.push_back(id_ptr<ModelCPU::Node>::emplace());
     }
     for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
         auto& children = model_cpu.nodes[i]->children;
         for (u32 c : gltf_model.nodes[i].children) {
-            children.insert_back(model_cpu.nodes[c]);
+            children.push_back(model_cpu.nodes[c]);
             model_cpu.nodes[c]->parent = model_cpu.nodes[i];
         }
     }
@@ -210,11 +239,11 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         for (auto& node : model_cpu.nodes) {
             if (!node->parent.valid()) {
                 node->parent = root_node;
-                root_node->children.insert_back(node);
+                root_node->children.push_back(node);
             }
         }
         model_cpu.root_node = root_node;
-        model_cpu.nodes.insert_back(root_node);
+        model_cpu.nodes.push_back(root_node);
         root_node->name = "root_node";
         root_node->transform = m44::identity();
     }
@@ -240,6 +269,8 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             model_node.mesh_asset_path     = mesh_path.string();
             model_node.material_asset_path = material_path.string();
             model_node.transform           = _calculate_matrix(gltf_node);
+            if (gltf_node.skin != -1)
+                model_node.skeleton = model_cpu.skeletons[gltf_node.skin];
         }
         // Serving hierarchy
         else {
@@ -247,15 +278,14 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             model_node.transform = _calculate_matrix(gltf_node);
 
             if (gltf_node.mesh >= 0)
-                multimat_nodes.insert_back(i);
+                multimat_nodes.push_back(i);
         }
     }
     
     model_cpu.root_node->transform = gltf_fixup * model_cpu.root_node->transform;
 
     // iterate nodes with multiple materials, convert each submesh into a node
-    for (u32 i = 0; i < multimat_nodes.size(); i++) {
-        auto  multimat_node_index = multimat_nodes[i];
+    for (u32 multimat_node_index : multimat_nodes) {
         auto& multimat_node       = gltf_model.nodes[multimat_node_index];
 
         if (multimat_node.mesh < 0)
@@ -266,7 +296,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         for (u32 i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
             auto                    primitive = mesh.primitives[i_primitive];
             id_ptr<ModelCPU::Node> model_node_ptr      = id_ptr<ModelCPU::Node>::emplace();
-            model_cpu.nodes.insert_back(model_node_ptr);
+            model_cpu.nodes.push_back(model_node_ptr);
 
             char buffer[50];
 
@@ -284,7 +314,9 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             model_node_ptr->material_asset_path  = material_path.string();
             model_node_ptr->transform = m44::identity();
             model_node_ptr->parent    = model_cpu.nodes[multimat_node_index];
-            model_cpu.nodes[multimat_node_index]->children.insert_back(model_node_ptr);
+            model_cpu.nodes[multimat_node_index]->children.push_back(model_node_ptr);
+            if (gltf_model.nodes[multimat_node_index].skin != -1)
+                model_node_ptr->skeleton = model_cpu.skeletons[gltf_model.nodes[multimat_node_index].skin];
         }
     }
 
@@ -296,16 +328,51 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     return model_cpu;
 }
 
+bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
+    umap<u32, id_ptr<Bone>> node_index_to_bone; 
+    for (u32 i_skin = 0; i_skin < model.skins.size(); i_skin++) {
+        model_cpu->skeletons.push_back(id_ptr<SkeletonCPU>::emplace());
+        auto& skeleton = model_cpu->skeletons.back();
+        for (u32 i_bone = 0; i_bone < model.skins[i_skin].joints.size(); i_bone++) {
+            skeleton->bones.push_back(id_ptr<Bone>::emplace());
+            u32 bone_node_index = model.skins[i_skin].joints[i_bone];
+            node_index_to_bone[bone_node_index] = skeleton->bones.back();
+        }
+    }
+    for (auto& [node_index, bone_ptr] : node_index_to_bone) {
+        for (u32 child_index : model.nodes[node_index].children) {
+            if (node_index_to_bone.contains(child_index))
+                node_index_to_bone[child_index]->parent = bone_ptr;
+        }
+        // m44 bone_matrix = _calculate_matrix(model.nodes[node_index]);
 
+        
+        bone_ptr->positions.emplace_back();
+        bone_ptr->scales.emplace_back(v3(1,1,1));
+        bone_ptr->rotations.emplace_back(quat(0,0,0,1));
+        
+        if (model.nodes[node_index].translation.size() > 0) {
+            auto translation = model.nodes[node_index].translation;
+            bone_ptr->positions.back().position = v3{(f32) translation[0], (f32) translation[1], (f32) translation[2]};
+        }
 
+        if (model.nodes[node_index].rotation.size() > 0) {
+            bone_ptr->rotations.back().orientation = quat((f32) model.nodes[node_index].rotation[0], (f32) model.nodes[node_index].rotation[1], (f32) model.nodes[node_index].rotation[2], (f32) model.nodes[node_index].rotation[3]);
+        }
 
-
-
-
-
-
-
-
+        if (model.nodes[node_index].scale.size() > 0) {
+            bone_ptr->scales.back().scale = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
+        }
+        
+        // // matrix = (translation * rotation * scale); // * gltf_fixup;
+        // math::extract_tsr(bone_matrix,
+        //     &bone_ptr->positions.back().position,
+        //     &bone_ptr->scales.back().scale,
+        //     &bone_ptr->rotations.back().orientation
+        // );
+    }
+    return true;
+}
 
 
 void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer) {
@@ -454,6 +521,88 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
             }
         }
     }
+
+    if (primitive.attributes["JOINTS_0"] != 0) {
+        tinygltf::Accessor& joint_accessor = model.accessors[primitive.attributes["JOINTS_0"]];
+        vector<u8>          joint_data;
+        _unpack_gltf_buffer(model, joint_accessor, joint_data);
+        for (int i = 0; i < vertices.size(); i++) {
+            u8 components = 0;
+            switch (joint_accessor.type) {
+                case (TINYGLTF_TYPE_VEC3): {
+                    components = 3;
+                } break;
+                case (TINYGLTF_TYPE_VEC4): {
+                    components = 4;
+                } break;
+                default:
+                    assert_else("NYI" && false);
+            }
+            for (u8 c = 0; c < components; c++) {
+                switch (joint_accessor.componentType) {
+                    case (TINYGLTF_COMPONENT_TYPE_INT): {
+                        auto dtf = (s32*) joint_data.data();
+                        vertices[i].bone_ids[c] = *(dtf + i * components + c);
+                    } break;
+                    case (TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT): {
+                        auto dtf = (u32*) joint_data.data();
+                        vertices[i].bone_ids[c] = *(dtf + i * components + c);
+                    } break;
+                    case (TINYGLTF_COMPONENT_TYPE_SHORT): {
+                        auto dtf = (s16*) joint_data.data();
+                        vertices[i].bone_ids[c] = *(dtf + i * components + c);
+                    } break;
+                    case (TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT): {
+                        auto dtf = (u16*) joint_data.data();
+                        vertices[i].bone_ids[c] = *(dtf + i * components + c);
+                    } break;
+                    case (TINYGLTF_COMPONENT_TYPE_BYTE): {
+                        auto dtf = (s8*) joint_data.data();
+                        vertices[i].bone_ids[c] = *(dtf + i * components + c);
+                    } break;
+                    case (TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE): {
+                        auto dtf = (u8*) joint_data.data();
+                        vertices[i].bone_ids[c] = *(dtf + i * components + c);
+                    } break;
+                    default:
+                        assert_else("NYI" && false);
+                }
+            }
+        }
+    }
+
+    if (primitive.attributes["WEIGHTS_0"] != 0) {
+        tinygltf::Accessor& weight_accessor = model.accessors[primitive.attributes["WEIGHTS_0"]];
+        vector<u8>          weight_data;
+        _unpack_gltf_buffer(model, weight_accessor, weight_data);
+        for (int i = 0; i < vertices.size(); i++) {
+            u8 components = 0;
+            switch (weight_accessor.type) {
+                case (TINYGLTF_TYPE_VEC3): {
+                    components = 3;
+                } break;
+                case (TINYGLTF_TYPE_VEC4): {
+                    components = 4;
+                } break;
+                default:
+                    assert_else("NYI" && false);
+            }
+            for (u8 c = 0; c < components; c++) {
+                switch (weight_accessor.componentType) {
+                    case (TINYGLTF_COMPONENT_TYPE_FLOAT): {
+                        auto dtf = (f32*) weight_data.data();
+                        vertices[i].bone_weights[c] = *(dtf + i * components + c);
+                    } break;
+                    case (TINYGLTF_COMPONENT_TYPE_DOUBLE): {
+                        auto dtf = (f64*) weight_data.data();
+                        vertices[i].bone_weights[c] = *(dtf + i * components + c);
+                    } break;
+                    default:
+                        assert_else("NYI" && false);
+                }
+            }
+        }
+    }
 }
 
 void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices) {
@@ -497,7 +646,7 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
                 assert_else(false && "Only SHORT/USHORT supported for index in GLTF convert");
         }
 
-        indices.insert_back(index);
+        indices.push_back(index);
     }
 
     for (u32 i = 0; i < indices.size() / 3; i++) {
@@ -526,7 +675,7 @@ string _calculate_gltf_material_name(tinygltf::Model& model, int material_index)
 }
 
 bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder) {
-    for (auto i_mesh = 0; i_mesh < model.meshes.size(); i_mesh++) {
+    for (u32 i_mesh = 0; i_mesh < model.meshes.size(); i_mesh++) {
         auto& gltf_mesh = model.meshes[i_mesh];
 
         for (auto i_primitive = 0; i_primitive < gltf_mesh.primitives.size(); i_primitive++) {
@@ -539,7 +688,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
             _extract_gltf_indices(primitive, model, mesh_cpu.indices);
             _extract_gltf_vertices(primitive, model, mesh_cpu.vertices);
 
-            if (math::length(mesh_cpu.vertices.last().tangent) < 0.1f) {
+            if (math::length(mesh_cpu.vertices.back().tangent) < 0.1f) {
                 mesh_cpu.fix_tangents();
             }
             
@@ -611,12 +760,12 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
 }
 
 m44 _calculate_matrix(tinygltf::Node& node) {
-    m44 matrix;
+    m44 matrix = {};
 
     // node has a matrix
     if (node.matrix.size() > 0) {
         for (int n = 0; n < 16; n++) {
-            matrix[n] = node.matrix[n];
+            matrix[n] = f32(node.matrix[n]);
         }
     }
     // separate transform
@@ -629,7 +778,7 @@ m44 _calculate_matrix(tinygltf::Node& node) {
         m44 rotation = m44::identity();
         if (node.rotation.size() > 0) {
             quat rot((f32) node.rotation[0], (f32) node.rotation[1], (f32) node.rotation[2], (f32) node.rotation[3]);
-            rotation = math::quat2rotation44(rot);
+            rotation = math::rotation(rot);
         }
 
         m44 scale = m44::identity();
