@@ -14,6 +14,12 @@ m44 Bone::transform() const {
     return local_transform;
 }
 
+m44 Bone::final_transform() const {
+    if (parent.valid())
+        return parent->transform() * local_transform * inverse_bind_matrix;
+    return local_transform * inverse_bind_matrix;
+}
+
 void Bone::update(float new_time) {
     if (new_time == -1.0f)
         time = Input::time;
@@ -85,7 +91,7 @@ void SkeletonGPU::update() {
     struct { u32 a,b,c; } padding;
     bones_data.append_data(padding);
     for (id_ptr<Bone> bone : bones) {
-        bones_data.append_data((m44GPU) bone->transform());
+        bones_data.append_data((m44GPU) bone->final_transform());
     }
     memcpy(buffer->mapped_ptr, bones_data.data(), bones_data.size());
 }

@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "lib/string.hpp"
+#include "lib/matrix_math.hpp"
 #include "game/scene.hpp"
 #include "game/spawner.hpp"
 #include "game/tower.hpp"
@@ -71,9 +72,9 @@ void          inspect_components(Scene* scene, entt::entity entity) {
             ImGui::Text("Skeleton");
             ImGui::Indent();
             bool any_changed = false;
-
+            
             if (ImGui::BeginTable("bones", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-                ImGui::TableSetupColumn("Id");
+                ImGui::TableSetupColumn("Name/Id");
                 ImGui::TableSetupColumn("Parent");
                 ImGui::TableSetupColumn("Position");
                 ImGui::TableSetupColumn("Rotation");
@@ -83,9 +84,9 @@ void          inspect_components(Scene* scene, entt::entity entity) {
                     ImGui::PushID(bone.id);
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%d", bone.id);
+                    ImGui::Text("%s", bone->name.empty() ? fmt_("{}", bone.id).c_str() : bone->name.c_str());
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%d", bone->parent.id);
+                    ImGui::Text("%s", bone->parent.valid() ? (bone->parent->name.empty() ? fmt_("{}", bone->parent.id).c_str() : bone->parent->name.c_str()) : "");
                     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
@@ -117,10 +118,12 @@ void          inspect_components(Scene* scene, entt::entity entity) {
                     if (!is_parent.contains(bone.id)) {
                         vector<FormattedVertex> vertices;
                         id_ptr<Bone> current_node = bone;
-                        vertices.push_back({current_node->positions.front().position, palette::white, 0.03f});
+                        v4 current_hpos = current_node->final_transform() * v4(0,0,0,1);
+                        vertices.push_back({current_hpos.xyz / current_hpos.w, palette::white, 0.03f});
                         while (current_node->parent.valid()) {
                             current_node = current_node->parent;
-                            vertices.push_back({current_node->positions.front().position, palette::white, 0.03f});
+                            current_hpos = current_node->final_transform() * v4(0,0,0,1);
+                            vertices.push_back({current_hpos.xyz / current_hpos.w, palette::white, 0.03f});
                         }
                         auto line_mesh = generate_formatted_line(scene->render_scene.viewport.camera, std::move(vertices));
                         if (line_mesh.file_path.empty())

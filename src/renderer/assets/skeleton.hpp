@@ -26,16 +26,20 @@ struct KeyScale {
 };
 
 struct Bone {
+    string name;
     id_ptr<Bone> parent;
     
     vector<KeyPosition> positions;
     vector<KeyRotation> rotations;
     vector<KeyScale>    scales;
 
+    m44 inverse_bind_matrix;
+
     float time;
     m44 local_transform;
 
     m44 transform() const;
+    m44 final_transform() const;
     void update(float new_time = -1.0f);
     m44 update_position();
     m44 update_rotation();
@@ -61,7 +65,7 @@ struct SkeletonGPU {
 JSON_IMPL(KeyPosition, position, time_stamp);
 JSON_IMPL(KeyRotation, orientation, time_stamp);
 JSON_IMPL(KeyScale, scale, time_stamp);
-JSON_IMPL(Bone, parent, positions, rotations, scales);
+JSON_IMPL(Bone, name, parent, positions, rotations, scales, inverse_bind_matrix);
 
 inline SkeletonCPU from_jv_impl(const json_value& jv, SkeletonCPU* _) {
     json j = from_jv<json>(jv);

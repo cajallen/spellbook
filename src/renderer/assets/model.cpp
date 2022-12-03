@@ -337,6 +337,29 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
             skeleton->bones.push_back(id_ptr<Bone>::emplace());
             u32 bone_node_index = model.skins[i_skin].joints[i_bone];
             node_index_to_bone[bone_node_index] = skeleton->bones.back();
+            // node_index_to_bone[bone_node_index]->inverse_bind_matrix;
+
+        }
+        u32 ibm_index = model.skins[i_skin].inverseBindMatrices;
+        tinygltf::Accessor& ibm_accessor = model.accessors[ibm_index];
+        vector<u8> pos_data;
+        _unpack_gltf_buffer(model, ibm_accessor, pos_data);
+        
+        for (int i = 0; i < ibm_accessor.count; i++) {
+            warn_else (ibm_accessor.type == TINYGLTF_TYPE_MAT4)
+                continue;
+            
+            warn_else (ibm_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+                continue;
+            
+            float* dtf = (float*) pos_data.data();
+
+            model_cpu->skeletons[i_skin]->bones[i]->inverse_bind_matrix = {
+                *(dtf + (i * 16) + 0), *(dtf + (i * 16) + 4), *(dtf + (i * 16) +  8), *(dtf + (i * 16) + 12),
+                *(dtf + (i * 16) + 1), *(dtf + (i * 16) + 5), *(dtf + (i * 16) +  9), *(dtf + (i * 16) + 13),
+                *(dtf + (i * 16) + 2), *(dtf + (i * 16) + 6), *(dtf + (i * 16) + 10), *(dtf + (i * 16) + 14),
+                *(dtf + (i * 16) + 3), *(dtf + (i * 16) + 7), *(dtf + (i * 16) + 11), *(dtf + (i * 16) + 15)
+            };
         }
     }
     for (auto& [node_index, bone_ptr] : node_index_to_bone) {
@@ -346,7 +369,7 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
         }
         // m44 bone_matrix = _calculate_matrix(model.nodes[node_index]);
 
-        
+        bone_ptr->name = model.nodes[node_index].name;
         bone_ptr->positions.emplace_back();
         bone_ptr->scales.emplace_back(v3(1,1,1));
         bone_ptr->rotations.emplace_back(quat(0,0,0,1));
