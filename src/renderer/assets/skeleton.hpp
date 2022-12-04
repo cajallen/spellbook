@@ -8,30 +8,29 @@
 #include "lib/quaternion.hpp"
 #include "lib/id_ptr.hpp"
 
+
 namespace spellbook {
 
-struct KeyPosition {
-    v3    position;
-    float time_stamp;
+struct RenderScene;
+
+template<typename T>
+struct KeyFrame {
+    T value;
+    float time;
 };
 
-struct KeyRotation {
-    quat  orientation;
-    float time_stamp;
-};
-
-struct KeyScale {
-    v3    scale;
-    float time_stamp;
+struct KeySet {
+    KeyFrame<v3> position;
+    KeyFrame<quat> rotation;
+    KeyFrame<v3> scale;
 };
 
 struct Bone {
     string name;
     id_ptr<Bone> parent;
-    
-    vector<KeyPosition> positions;
-    vector<KeyRotation> rotations;
-    vector<KeyScale>    scales;
+
+    KeySet start;
+    KeySet target;
 
     m44 inverse_bind_matrix;
 
@@ -51,21 +50,28 @@ struct SkeletonCPU {
 };
 
 struct SkeletonGPU {
+    enum Mode {
+        Mode_Pose,
+        Mode_Play
+    };
+    
+    Mode mode = Mode_Pose;
     vector<id_ptr<Bone>> bones;
-
     vuk::Unique<vuk::Buffer> buffer = vuk::Unique<vuk::Buffer>();
-
     bool render_lines = false;
+
+    umap<string, vector<KeySet>> poses;
     
     void update();
 
     static vuk::Unique<vuk::Buffer>* empty_buffer();
 };
 
-JSON_IMPL(KeyPosition, position, time_stamp);
-JSON_IMPL(KeyRotation, orientation, time_stamp);
-JSON_IMPL(KeyScale, scale, time_stamp);
-JSON_IMPL(Bone, name, parent, positions, rotations, scales, inverse_bind_matrix);
+void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene);
+
+JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
+JSON_IMPL(KeySet, position, rotation, scale);
+JSON_IMPL(Bone, name, parent, start, inverse_bind_matrix);
 
 inline SkeletonCPU from_jv_impl(const json_value& jv, SkeletonCPU* _) {
     json j = from_jv<json>(jv);
@@ -74,7 +80,6 @@ inline SkeletonCPU from_jv_impl(const json_value& jv, SkeletonCPU* _) {
         value.bones = from_jv<decltype(value.bones)>(*j.at("bones"));
     return value;
 }
-
 inline json_value to_jv(const SkeletonCPU& value) {
     auto j = json();
     

@@ -121,6 +121,8 @@ f32 to_range(f32 value, range r) {
 }
 
 f32 from_range(f32 value, range r) {
+    if (r.end - r.start == 0.0f)
+        return 0.0f;
     return (value - r.start) / (r.end - r.start);
 }
 

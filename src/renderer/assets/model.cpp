@@ -370,21 +370,19 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
         // m44 bone_matrix = _calculate_matrix(model.nodes[node_index]);
 
         bone_ptr->name = model.nodes[node_index].name;
-        bone_ptr->positions.emplace_back();
-        bone_ptr->scales.emplace_back(v3(1,1,1));
-        bone_ptr->rotations.emplace_back(quat(0,0,0,1));
+        bone_ptr->start.scale.value = v3(1,1,1);
         
         if (model.nodes[node_index].translation.size() > 0) {
             auto translation = model.nodes[node_index].translation;
-            bone_ptr->positions.back().position = v3{(f32) translation[0], (f32) translation[1], (f32) translation[2]};
+            bone_ptr->start.position.value = v3{(f32) translation[0], (f32) translation[1], (f32) translation[2]};
         }
 
         if (model.nodes[node_index].rotation.size() > 0) {
-            bone_ptr->rotations.back().orientation = quat((f32) model.nodes[node_index].rotation[0], (f32) model.nodes[node_index].rotation[1], (f32) model.nodes[node_index].rotation[2], (f32) model.nodes[node_index].rotation[3]);
+            bone_ptr->start.rotation.value = quat((f32) model.nodes[node_index].rotation[0], (f32) model.nodes[node_index].rotation[1], (f32) model.nodes[node_index].rotation[2], (f32) model.nodes[node_index].rotation[3]);
         }
 
         if (model.nodes[node_index].scale.size() > 0) {
-            bone_ptr->scales.back().scale = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
+            bone_ptr->start.scale.value = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
         }
         
         // // matrix = (translation * rotation * scale); // * gltf_fixup;
@@ -813,6 +811,5 @@ m44 _calculate_matrix(tinygltf::Node& node) {
 
     return matrix;
 };
-
 
 }

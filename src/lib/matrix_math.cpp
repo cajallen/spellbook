@@ -133,55 +133,12 @@ euler to_euler(m44 rot) {
 }
 
 quat to_quat(m33 mat) {
+    // Does this work?
     quat q;
-    if (mat.rc(2, 2) > 0.0f) {
-        if (mat.rc(0,0) < -mat.rc(1,1)) {
-            float t = 1.0f - mat.rc(0,0) - mat.rc(1,1) + mat.rc(2,2);
-            float s = 2.0f * math::sqrt(t) * mat.rc(0,1) < mat.rc(1,0) ? -1.0f : 1.0f;
-            q.w = 0.25f * s;
-            s = 1.0f / s;
-            q.x = (mat.rc(0,1) - mat.rc(1,0)) * s;
-            q.y = (mat.rc(2,0) + mat.rc(0,2)) * s;
-            q.z = (mat.rc(1,2) + mat.rc(2,1)) * s;
-            if (t == 1.0f && (q.x == 0.0f && q.y == 0.0f && q.z == 0.0f))
-                q.w = 1.0f;
-        }
-        else {
-            float t = 1.0f + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2);
-            float s = 2.0f * math::sqrt(t);
-            q.x = 0.25f * s;
-            s = 1.0f / s;
-            q.y = (mat.rc(1,2) - mat.rc(2,1)) * s;
-            q.z = (mat.rc(2,0) - mat.rc(0,2)) * s;
-            q.w = (mat.rc(0,1) - mat.rc(1,0)) * s;
-            if (t == 1.0f && (q.y == 0.0f && q.z == 0.0f && q.w == 0.0f))
-                q.x = 1.0f;
-        }
-    }
-    else {
-        if (mat.rc(0,0) > mat.rc(1,1)) {
-            float t = 1.0f + mat.rc(0,0) - mat.rc(1,1) - mat.rc(2,2);
-            float s = 2.0f * math::sqrt(t)  * mat.rc(1,2) < mat.rc(2,1) ? -1.0f : 1.0f;
-            q.y = 0.25f * s;
-            s = 1.0f / s;
-            q.x = (mat.rc(1,2) - mat.rc(2,1)) * s;
-            q.z = (mat.rc(0,1) + mat.rc(1,0)) * s;
-            q.w = (mat.rc(2,0) + mat.rc(0,2)) * s;
-            if (t == 1.0f && (q.x == 0.0f && q.z == 0.0f && q.w == 0.0f))
-                q.y = 1.0f;
-        }
-        else {
-            float t = 1.0f - mat.rc(0,0) + mat.rc(1,1) - mat.rc(2,2);
-            float s = 2.0f * math::sqrt(t) * mat.rc(2,0) < mat.rc(0,2) ? -1.0f : 1.0f;
-            q.z = 0.25f * s;
-            s = 1.0f / s;
-            q.x = (mat.rc(2,0) - mat.rc(0,2)) * s;
-            q.y = (mat.rc(0,1) + mat.rc(1,0)) * s;
-            q.w = (mat.rc(1,2) + mat.rc(2,1)) * s;
-            if (t == 1.0f && (q.x == 0.0f && q.y == 0.0f && q.w == 0.0f))
-                q.z = 1.0f;
-        }
-    }
+    q.w = sqrt(1 + mat.rc(1,1) + mat.rc(2,2) + mat.rc(3,3)) / 2;
+    q.x = (mat.rc(3,2) - mat.rc(2,3)) / (4 * q.w);
+    q.y = (mat.rc(1,3) - mat.rc(3,1)) / (4 * q.w);
+    q.z = (mat.rc(2,1) - mat.rc(1,2)) / (4 * q.w);
     return q;
 }
 
