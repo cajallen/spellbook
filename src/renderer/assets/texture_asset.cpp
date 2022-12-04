@@ -5,9 +5,9 @@
 #include <stb_image.h>
 
 #include "extension/fmt_geometry.hpp"
-#include "lib/file.hpp"
+#include "general/file.hpp"
+#include "general/logger.hpp"
 #include "game/game.hpp"
-#include "editor/console.hpp"
 
 namespace fs = std::filesystem;
 
@@ -73,7 +73,7 @@ TextureCPU convert_to_texture(const string& file_name, const string& output_fold
     texture.file_path   = out_path.string();
     int channels;
     if (ext == ".hdr") {
-        assert_else(false && "NYI");
+        log_error(".hdr NYI");
         f32* pixel_data = stbi_loadf(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);

@@ -6,8 +6,8 @@
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
 
-#include "lib/umap.hpp"
-#include "lib/file.hpp"
+#include "general/umap.hpp"
+#include "general/file.hpp"
 #include "game/game.hpp"
 #include "renderer/assets/texture_asset.hpp"
 

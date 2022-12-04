@@ -4,7 +4,7 @@
 #include <tracy/Tracy.hpp>
 
 #include "extension/fmt_geometry.hpp"
-#include "editor/console.hpp"
+#include "general/logger.hpp"
 #include "game/game.hpp"
 
 namespace spellbook {

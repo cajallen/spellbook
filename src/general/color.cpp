@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 #include <vuk/Types.hpp>
-#include "lib/math.hpp"
+#include "math.hpp"
 
 namespace spellbook {
 

@@ -3,14 +3,13 @@
 #include <entt/entt.hpp>
 #include <imgui.h>
 
-#include "lib/file.hpp"
+#include "general/logger.hpp"
 #include "game/components.hpp"
-#include "editor/console.hpp"
+#include "game/game_file.hpp"
 
 namespace fs = std::filesystem;
 
 namespace spellbook {
-
 
 void inspect(MapPrefab* map_prefab) {
     ImGui::Text("Towers");
@@ -65,7 +64,7 @@ void save_map(const MapPrefab& map_prefab) {
 
 MapPrefab load_map(const string& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
-    warn_else(fs::exists(absolute_path))
+    check_else(fs::exists(absolute_path))
         return {};
     string ext = absolute_path.extension().string();
     assert_else(ext == extension(FileType_Map))

@@ -3,9 +3,9 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
-#include "lib/vector.hpp"
-#include "lib/string.hpp"
-#include "lib/json.hpp"
+#include "general/vector.hpp"
+#include "general/string.hpp"
+#include "general/json.hpp"
 #include "renderer/vertex.hpp"
 #include "renderer/assets/skeleton.hpp"
 

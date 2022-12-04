@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 
-#include "lib/string.hpp"
-#include "lib/matrix_math.hpp"
+#include "general/string.hpp"
+#include "general/matrix_math.hpp"
 #include "game/scene.hpp"
 #include "game/spawner.hpp"
 #include "game/tower.hpp"

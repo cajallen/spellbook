@@ -2,8 +2,8 @@
 
 #include <entt/fwd.hpp>
 
-#include "lib/umap.hpp"
-#include "lib/geometry.hpp"
+#include "general/umap.hpp"
+#include "general/geometry.hpp"
 #include "game/spawner.hpp"
 #include "game/tower.hpp"
 #include "game/tile.hpp"

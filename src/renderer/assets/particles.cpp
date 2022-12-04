@@ -2,7 +2,7 @@
 
 #include <vuk/Partials.hpp>
 
-#include "lib/file.hpp"
+#include "general/file.hpp"
 #include "game/game.hpp"
 
 namespace spellbook {

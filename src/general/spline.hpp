@@ -1,8 +1,9 @@
 ﻿#pragma once
 
-#include "lib/vector.hpp"
-#include "lib/math.hpp"
-#include "lib/geometry.hpp"
+#include "vector.hpp"
+#include "math.hpp"
+#include "geometry.hpp"
+#include "logger.hpp"
 
 namespace spellbook {
 inline v3 bspline(float t, const vector<v3>& points, u32 degrees = 4) {

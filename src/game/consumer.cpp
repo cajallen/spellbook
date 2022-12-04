@@ -3,9 +3,11 @@
 #include <entt/entt.hpp>
 #include <imgui.h>
 #include "extension/imgui_extra.hpp"
-#include "editor/asset_browser.hpp"
+#include "general/logger.hpp"
 #include "game/scene.hpp"
 #include "game/components.hpp"
+#include "game/game_file.hpp"
+#include "editor/asset_browser.hpp"
 
 namespace spellbook {
 
@@ -43,7 +45,7 @@ void save_consumer(const ConsumerPrefab& consumer_prefab) {
 
 ConsumerPrefab load_consumer(const string& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
-    warn_else(fs::exists(absolute_path))
+    check_else(fs::exists(absolute_path))
         return {};
     string ext = absolute_path.extension().string();
     assert_else(ext == extension(FileType_Consumer))

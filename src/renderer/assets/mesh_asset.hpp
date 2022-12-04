@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lib/string.hpp"
-#include "lib/json.hpp"
+#include "general/string.hpp"
+#include "general/json.hpp"
 #include "renderer/assets/asset_loader.hpp"
 #include "renderer/assets/mesh.hpp"
 

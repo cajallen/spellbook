@@ -4,8 +4,8 @@
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 
-#include "lib/var_system.hpp"
-#include "lib/file.hpp"
+#include "general/var_system.hpp"
+#include "general/file.hpp"
 #include "game/input.hpp"
 #include "game/game.hpp"
 #include "editor/console.hpp"

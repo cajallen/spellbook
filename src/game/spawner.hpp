@@ -4,7 +4,7 @@
 
 #include "game/enemy.hpp"
 #include "game/stat.hpp"
-#include "lib/vector.hpp"
+#include "general/vector.hpp"
 
 namespace spellbook {
 

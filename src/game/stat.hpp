@@ -1,8 +1,8 @@
 #pragma once
 
 #include "game/input.hpp"
-#include "lib/math.hpp"
-#include "lib/umap.hpp"
+#include "general/math.hpp"
+#include "general/umap.hpp"
 
 namespace spellbook {
 

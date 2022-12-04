@@ -4,8 +4,8 @@
 #include <vuk/Buffer.hpp>
 #include <vuk/SampledImage.hpp>
 
-#include "lib/color.hpp"
-#include "lib/string.hpp"
+#include "general/color.hpp"
+#include "general/string.hpp"
 #include "renderer/vertex.hpp"
 
 

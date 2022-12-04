@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lib/string.hpp"
-#include "lib/vector.hpp"
+#include "general/string.hpp"
+#include "general/vector.hpp"
 #include "game/gui.hpp"
 #include "game/scene.hpp"
 #include "editor/asset_editor.hpp"

@@ -3,7 +3,7 @@
 #include <vuk/vuk_fwd.hpp>
 
 #include "assets/skeleton.hpp"
-#include "lib/matrix.hpp"
+#include "general/matrix.hpp"
 
 namespace spellbook {
 

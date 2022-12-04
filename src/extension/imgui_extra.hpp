@@ -7,9 +7,11 @@
 #include <imgui.h>
 #include <magic_enum.hpp>
 
-#include "lib/file.hpp"
-#include "lib/matrix.hpp"
-#include "lib/string.hpp"
+#include "general/file.hpp"
+#include "general/matrix.hpp"
+#include "general/string.hpp"
+#include "game/game_file.hpp"
+
 
 
 namespace fs = std::filesystem;

@@ -2,11 +2,11 @@
 
 #include <fmt/core.h>
 
-#include "lib/string.hpp"
-#include "lib/vector.hpp"
-#include "lib/umap.hpp"
-#include "lib/color.hpp"
-#include "lib/json.hpp"
+#include "general/string.hpp"
+#include "general/vector.hpp"
+#include "general/umap.hpp"
+#include "general/color.hpp"
+#include "general/json.hpp"
 
 #define fmt_ fmt::format
 
@@ -48,24 +48,6 @@ inline json_value to_jv(const Message& value) {
 }
 
 void console(MsgArg content);
-#define assert_else(cond)                                                                            \
-    if (!(cond)) {                                                                                   \
-        console({.str = "ASSERT_FAIL: !(" #cond ")", .group = "assert", .color = palette::crimson}); \
-        __debugbreak();                                                                              \
-    }                                                                                                \
-    if (!(cond))
-#define warn_else(cond)                                                                          \
-    if (!(cond)) {                                                                               \
-        console({.str = "WARNING: !(" #cond ")", .group = "warning", .color = palette::orange}); \
-    }                                                                                            \
-    if (!(cond))
-#define fmt_assert_else(cond, fstr, ...)                                                                \
-    if (!(cond)) {                                                                                      \
-        console({.str = "ASSERT_FAIL: !(" #cond ")", .group = "assert", .color = palette::crimson});    \
-        console({.str = fmt::format(fstr, __VA_ARGS__), .group = "assert", .color = palette::crimson}); \
-        __debugbreak();                                                                                 \
-    }                                                                                                   \
-    if (!(cond))
 #define vk_check(cond)                                                                               \
     if (cond != 0) {                                                                                 \
         console({.str = "VKCHECK: (" #cond ") != 0", .group = "assert", .color = palette::crimson}); \
@@ -93,6 +75,7 @@ struct Console {
     static void show_message(Message& msg);
     static void show_messages(v2i size);
     static void _handle_call_request(std::istringstream& iss);
+    static void _handle_message_queue();
 };
 
 JSON_IMPL(Console, Console::input_history, Console::message_list, Console::group_visible);

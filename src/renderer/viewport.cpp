@@ -4,7 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include "extension/fmt_geometry.hpp"
-#include "lib/matrix_math.hpp"
+#include "general/matrix_math.hpp"
 #include "game/input.hpp"
 
 namespace spellbook {

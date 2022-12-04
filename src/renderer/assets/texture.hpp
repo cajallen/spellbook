@@ -3,8 +3,8 @@
 #include <vuk/Types.hpp>
 #include <vuk/Image.hpp>
 
-#include "lib/string.hpp"
-#include "lib/geometry.hpp"
+#include "general/string.hpp"
+#include "general/geometry.hpp"
 
 namespace spellbook {
 

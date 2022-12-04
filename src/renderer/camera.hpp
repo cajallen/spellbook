@@ -1,8 +1,8 @@
 #pragma once
 
-#include "lib/geometry.hpp"
-#include "lib/matrix.hpp"
-#include "lib/json.hpp"
+#include "general/geometry.hpp"
+#include "general/matrix.hpp"
+#include "general/json.hpp"
 
 namespace spellbook {
 

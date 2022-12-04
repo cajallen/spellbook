@@ -1,6 +1,6 @@
 #include "matrix_math.hpp"
 
-#include "lib/math.hpp"
+#include "math.hpp"
 
 namespace spellbook::math {
 

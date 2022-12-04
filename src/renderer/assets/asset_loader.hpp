@@ -3,9 +3,9 @@
 #include <array>
 #include <filesystem>
 
-#include "lib/json.hpp"
-#include "lib/vector.hpp"
-#include "lib/string.hpp"
+#include "general/json.hpp"
+#include "general/vector.hpp"
+#include "general/string.hpp"
 
 using std::array;
 namespace fs = std::filesystem;

@@ -4,9 +4,9 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include "extension/imgui_extra.hpp"
-#include "lib/color.hpp"
-#include "lib/vector.hpp"
-#include "lib/file.hpp"
+#include "general/color.hpp"
+#include "general/vector.hpp"
+#include "general/file.hpp"
 #include "game/scene.hpp"
 #include "game/consumer.hpp"
 #include "game/map.hpp"

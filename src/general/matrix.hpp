@@ -3,9 +3,9 @@
 #include <utility>
 #include <array>
 
-#include "lib/geometry.hpp"
-#include "lib/vector.hpp"
-#include "lib/json.hpp"
+#include "geometry.hpp"
+#include "vector.hpp"
+#include "json.hpp"
 
 using std::array;
 using std::exchange;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lib/matrix.hpp"
-#include "lib/quaternion.hpp"
+#include "matrix.hpp"
+#include "quaternion.hpp"
 
 namespace spellbook::math {
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "lib/string.hpp"
-#include "lib/json.hpp"
-#include "lib/hash.hpp"
+#include "string.hpp"
+#include "json.hpp"
+#include "hash.hpp"
 
 namespace vuk {
 struct Extent2D;

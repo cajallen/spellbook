@@ -4,6 +4,7 @@
 #include <imgui.h>
 
 #include "extension/imgui_extra.hpp"
+#include "general/logger.hpp"
 #include "game/components.hpp"
 #include "game/scene.hpp"
 
@@ -47,7 +48,7 @@ void save_enemy(const EnemyPrefab& enemy_prefab) {
 
 EnemyPrefab load_enemy(const string& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
-    warn_else(fs::exists(absolute_path))
+    check_else(fs::exists(absolute_path))
         return {};
     string ext = absolute_path.extension().string();
     assert_else(ext == extension(FileType_Enemy))

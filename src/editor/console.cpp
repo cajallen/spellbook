@@ -10,7 +10,8 @@
 #include <tracy/Tracy.hpp>
 
 #include "extension/fmt_geometry.hpp"
-#include "lib/math.hpp"
+#include "general/math.hpp"
+#include "general/logger.hpp"
 #include "game/game.hpp"
 
 namespace fs = std::filesystem;
@@ -45,6 +46,7 @@ void console(MsgArg msg) {
     }
     if (!frame_ok)
         return;
+    Console::_handle_message_queue();
     if (Console::group_visible.count(msg.group) == 0)
         Console::group_visible.insert({msg.group, true});
     if (Console::message_list.size() > 0 && Console::message_list.back() == Message(msg)) {
@@ -192,6 +194,8 @@ void handle_console_input(string& input) {
 
 void Console::window(bool* open) {
     ZoneScoped;
+    _handle_message_queue();
+    
     for (auto& [k, v] : frame_bool) {
         v = false;
     }
@@ -249,6 +253,13 @@ void Console::window(bool* open) {
         }
     }
     ImGui::End();
+}
+
+void Console::_handle_message_queue() {
+    while (!message_queue.empty()) {
+        BasicMessage& message = message_queue.front();
+        console({.str = message.str, .group = message.group, .color = message.color});
+    }
 }
 
 string string2string(string_view word) {

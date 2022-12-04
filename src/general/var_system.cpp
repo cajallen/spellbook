@@ -4,7 +4,7 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <tracy/Tracy.hpp>
 
-#include "editor/console.hpp"
+#include "logger.hpp"
 
 namespace spellbook {
 
@@ -20,7 +20,7 @@ VarBool& VarSystem::add_bool(string name, VarBool b) {
         if (b == bools[name]) 
             return bools[name];
         else
-            console({.str = fmt_("{} initialized with contrasting values, overwriting", name), .group = "var_system", .color = palette::orange, .save = false});
+            log_warning("VarSystem variable initialized with contrasting values, overwriting");
     }
     bools[name] = b;
     return bools[name];
@@ -31,7 +31,7 @@ VarString& VarSystem::add_string(string name, VarString s) {
         if (s == strings[name]) 
             return strings[name];
         else
-            console({.str = fmt_("{} initialized with contrasting values, overwriting", name), .group = "var_system", .color = palette::orange, .save = false});
+            log_warning("VarSystem variable initialized with contrasting values, overwriting");
     }
     strings[name] = s;
     return strings[name];
@@ -42,7 +42,7 @@ VarInt& VarSystem::add_int(string name, VarInt i) {
         if (i == ints[name]) 
             return ints[name];
         else
-            console({.str = fmt_("{} initialized with contrasting values, overwriting", name), .group = "var_system", .color = palette::orange, .save = false});
+            log_warning("VarSystem variable initialized with contrasting values, overwriting");
     }
     ints[name] = i;
     return ints[name];
@@ -53,7 +53,7 @@ VarFloat& VarSystem::add_float(string name, VarFloat f) {
         if (f == floats[name]) 
             return floats[name];
         else
-            console({.str = fmt_("{} initialized with contrasting values, overwriting", name), .group = "var_system", .color = palette::orange, .save = false});
+            log_warning("VarSystem variable initialized with contrasting values, overwriting");
     }
     floats[name] = f;
     return floats[name];
@@ -64,7 +64,7 @@ VarV2& VarSystem::add_v2(string name, VarV2 v) {
         if (v == v2s[name]) 
             return v2s[name];
         else
-            console({.str = fmt_("{} initialized with contrasting values, overwriting", name), .group = "var_system", .color = palette::orange, .save = false});
+            log_warning("VarSystem variable initialized with contrasting values, overwriting");
     }
     v2s[name] = v;
     return v2s[name];
@@ -75,7 +75,7 @@ VarV3& VarSystem::add_v3(string name, VarV3 v) {
         if (v == v3s[name]) 
             return v3s[name];
         else
-            console({.str = fmt_("{} initialized with contrasting values, overwriting", name), .group = "var_system", .color = palette::orange, .save = false});
+            log_warning("VarSystem variable initialized with contrasting values, overwriting");
     }
     v3s[name] = v;
     return v3s[name];

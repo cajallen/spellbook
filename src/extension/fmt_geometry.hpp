@@ -3,10 +3,10 @@
 #include <fmt/format.h>
 #include <fmt/compile.h>
 
-#include "lib/color.hpp"
-#include "lib/geometry.hpp"
-#include "lib/quaternion.hpp"
-#include "lib/matrix.hpp"
+#include "general/color.hpp"
+#include "general/geometry.hpp"
+#include "general/quaternion.hpp"
+#include "general/matrix.hpp"
 
 template <> struct fmt::formatter<spellbook::v2> : formatter<f32> {
     template <typename FormatContext> auto format(const spellbook::v2& vec, FormatContext& ctx) {

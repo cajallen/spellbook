@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/vector.hpp"
+#include "general/vector.hpp"
 
 #include <VkBootstrap.h>
 #include <vuk/Swapchain.hpp>

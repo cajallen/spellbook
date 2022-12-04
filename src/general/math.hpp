@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "lib/geometry.hpp"
+#include "geometry.hpp"
 
 namespace spellbook::math {
 

@@ -1,6 +1,7 @@
 ﻿#include "spawner.hpp"
 
 #include "extension/imgui_extra.hpp"
+#include "general/logger.hpp"
 #include "game/components.hpp"
 #include "game/scene.hpp"
 #include "game/input.hpp"
@@ -76,7 +77,7 @@ void save_spawner(const SpawnerPrefab& spawner_prefab) {
 
 SpawnerPrefab load_spawner(const string& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
-    warn_else(fs::exists(absolute_path))
+    check_else(fs::exists(absolute_path))
         return {};
     string ext = absolute_path.extension().string();
     assert_else(ext == extension(FileType_Spawner))

@@ -8,9 +8,10 @@
 
 #include "extension/fmt_geometry.hpp"
 #include "extension/imgui_extra.hpp"
-#include "lib/file.hpp"
-#include "lib/hash.hpp"
-#include "lib/math.hpp"
+#include "general/file.hpp"
+#include "general/hash.hpp"
+#include "general/math.hpp"
+#include "general/logger.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
 #include "editor/console.hpp"

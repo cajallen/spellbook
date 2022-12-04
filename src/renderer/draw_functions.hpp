@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/vector.hpp"
+#include "general/vector.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/camera.hpp"
 

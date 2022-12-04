@@ -5,9 +5,9 @@
 #include <vuk/Partials.hpp>
 
 #include "extension/fmt_renderer.hpp"
-#include "lib/umap.hpp"
-#include "lib/file.hpp"
-#include "lib/matrix_math.hpp"
+#include "general/umap.hpp"
+#include "general/file.hpp"
+#include "general/matrix_math.hpp"
 #include "game/game.hpp"
 #include "renderer/samplers.hpp"
 #include "renderer/viewport.hpp"

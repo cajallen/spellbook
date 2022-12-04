@@ -3,10 +3,10 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
-#include "lib/geometry.hpp"
-#include "lib/matrix.hpp"
-#include "lib/quaternion.hpp"
-#include "lib/id_ptr.hpp"
+#include "general/geometry.hpp"
+#include "general/matrix.hpp"
+#include "general/quaternion.hpp"
+#include "general/id_ptr.hpp"
 
 
 namespace spellbook {

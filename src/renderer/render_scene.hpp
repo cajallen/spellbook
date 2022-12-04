@@ -2,7 +2,7 @@
 
 #include <vuk/Buffer.hpp>
 
-#include "lib/string.hpp"
+#include "general/string.hpp"
 
 #include "renderer/viewport.hpp"
 #include "renderer/renderer.hpp"

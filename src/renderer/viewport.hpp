@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/geometry.hpp"
+#include "general/geometry.hpp"
 #include "editor/console.hpp"
 #include "renderer/camera.hpp"
 

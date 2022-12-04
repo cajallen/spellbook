@@ -5,6 +5,7 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include "extension/imgui_extra.hpp"
+#include "general/logger.hpp"
 #include "game/scene.hpp"
 #include "game/components.hpp"
 #include "game/input.hpp"
@@ -141,7 +142,7 @@ void save_tower(const TowerPrefab& tower_prefab) {
 
 TowerPrefab load_tower(const string& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
-    warn_else(fs::exists(absolute_path))
+    check_else(fs::exists(absolute_path))
         return {};
     string ext = absolute_path.extension().string();
     assert_else(ext == extension(FileType_Tower))

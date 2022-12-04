@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-#include "lib/string.hpp"
+#include "general/string.hpp"
 
 namespace fs = std::filesystem;
 

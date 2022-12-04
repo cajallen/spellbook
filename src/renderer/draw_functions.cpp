@@ -1,7 +1,8 @@
 #include "draw_functions.hpp"
 
 #include "extension/fmt_geometry.hpp"
-#include "lib/hash.hpp"
+#include "general/hash.hpp"
+#include "editor/console.hpp"
 
 namespace spellbook {
 

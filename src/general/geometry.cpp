@@ -2,8 +2,7 @@
 
 #include <vuk/Types.hpp>
 
-#include "editor/console.hpp"
-#include "lib/math.hpp"
+#include "math.hpp"
 
 namespace spellbook {
 
@@ -80,7 +79,7 @@ constexpr v3_<s32>::operator vuk::Extent3D() const {
 v2 string2v2(string word) {
     int first = word.find_first_of(',');
     int last = word.find_last_of(',');
-    assert_else(first == last)
+    if (first != last)
         return v2(0);
     return v2(
         std::stof(word.substr(0, first)),
@@ -91,7 +90,7 @@ v2 string2v2(string word) {
 v2i string2v2i(string word) {
     int first = word.find_first_of(',');
     int last = word.find_last_of(',');
-    assert_else(first == last)
+    if (first != last)
         return v2i(0);
     return v2i(
         std::stoi(word.substr(0, first)),
@@ -103,7 +102,7 @@ v3 string2v3(string word) {
     int first = word.find_first_of(',');
     int second = word.find_first_of(',', first + 1);
     int last = word.find_last_of(',');
-    assert_else(second == last)
+    if (second != last)
         return v3(0);
     return v3(
         std::stof(word.substr(0, first)),
@@ -117,7 +116,7 @@ v4 string2v4(string word) {
     int second = word.find_first_of(',', first + 1);
     int third = word.find_first_of(',', second + 1);
     int last = word.find_last_of(',');
-    assert_else(third == last)
+    if (third != last)
         return v4(0);
     return v4(
         std::stof(word.substr(0, first)),
@@ -138,7 +137,7 @@ euler string2euler(string word) {
 
     int first = word.find_first_of(',');
     int last = word.find_last_of(',');
-    assert_else(first == last)
+    if (first != last)
         return euler{};
     return euler{
         std::stof(word.substr(offset, first - offset)) * (units == RAD ? 1.0f : math::D2R),

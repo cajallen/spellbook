@@ -1,8 +1,8 @@
 #pragma once
 
-#include "lib/string.hpp"
-#include "lib/umap.hpp"
-#include "lib/geometry.hpp"
+#include "string.hpp"
+#include "umap.hpp"
+#include "geometry.hpp"
 
 namespace spellbook {
 

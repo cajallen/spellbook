@@ -2,9 +2,9 @@
 
 #include <functional>
 
-#include "lib/vector.hpp"
-#include "lib/geometry.hpp"
-#include "lib/math.hpp"
+#include "vector.hpp"
+#include "geometry.hpp"
+#include "math.hpp"
 
 namespace spellbook::astar {
 using HeuristicFunction = std::function<u32(v2i, v2i)>;

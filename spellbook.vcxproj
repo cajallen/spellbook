@@ -641,6 +641,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
+    <ClCompile Include="src\game\game_file.cpp" />
     <ClCompile Include="src\game\gui.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -872,8 +873,9 @@
     <ClCompile Include="src\game\systems.cpp" />
     <ClCompile Include="src\game\tile.cpp" />
     <ClCompile Include="src\game\tower.cpp" />
+    <ClCompile Include="src\general\logger.cpp" />
     <ClCompile Include="src\h_impl.cpp" />
-    <ClCompile Include="src\lib\astar.cpp">
+    <ClCompile Include="src\general\astar.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -948,7 +950,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\color.cpp">
+    <ClCompile Include="src\general\color.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1023,7 +1025,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\file.cpp">
+    <ClCompile Include="src\general\file.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1098,7 +1100,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\geometry.cpp">
+    <ClCompile Include="src\general\geometry.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1173,7 +1175,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\json.cpp">
+    <ClCompile Include="src\general\json.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1248,7 +1250,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\math.cpp">
+    <ClCompile Include="src\general\math.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1323,7 +1325,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\matrix.cpp">
+    <ClCompile Include="src\general\matrix.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1398,7 +1400,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\matrix_math.cpp">
+    <ClCompile Include="src\general\matrix_math.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1473,7 +1475,7 @@
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\lib\quaternion.cpp">
+    <ClCompile Include="src\general\quaternion.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1550,7 +1552,7 @@
     </ClCompile>
     <ClCompile Include="src\extension\glfw.cpp" />
     <ClCompile Include="src\extension\imgui_extra.cpp" />
-    <ClCompile Include="src\lib\var_system.cpp">
+    <ClCompile Include="src\general\var_system.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -1797,6 +1799,7 @@
     <ClInclude Include="src\game\consumer.hpp" />
     <ClInclude Include="src\game\enemy.hpp" />
     <ClInclude Include="src\game\game.hpp" />
+    <ClInclude Include="src\game\game_file.hpp" />
     <ClInclude Include="src\game\general.hpp" />
     <ClInclude Include="src\game\gui.hpp" />
     <ClInclude Include="src\game\input.hpp" />
@@ -1808,24 +1811,25 @@
     <ClInclude Include="src\game\components.hpp" />
     <ClInclude Include="src\game\stat.hpp" />
     <ClInclude Include="src\game\systems.hpp" />
+    <ClInclude Include="src\general\logger.hpp" />
     <ClInclude Include="src\global.hpp" />
-    <ClInclude Include="src\lib\astar.hpp" />
-    <ClInclude Include="src\lib\color.hpp" />
-    <ClInclude Include="src\lib\file.hpp" />
-    <ClInclude Include="src\lib\geometry.hpp" />
-    <ClInclude Include="src\lib\hash.hpp" />
-    <ClInclude Include="src\lib\id_ptr.hpp" />
-    <ClInclude Include="src\lib\json.hpp" />
-    <ClInclude Include="src\lib\math.hpp" />
-    <ClInclude Include="src\lib\matrix.hpp" />
-    <ClInclude Include="src\lib\matrix_math.hpp" />
-    <ClInclude Include="src\lib\quaternion.hpp" />
-    <ClInclude Include="src\lib\slotmap.hpp" />
-    <ClInclude Include="src\lib\spline.hpp" />
-    <ClInclude Include="src\lib\string.hpp" />
-    <ClInclude Include="src\lib\umap.hpp" />
-    <ClInclude Include="src\lib\var_system.hpp" />
-    <ClInclude Include="src\lib\vector.hpp" />
+    <ClInclude Include="src\general\astar.hpp" />
+    <ClInclude Include="src\general\color.hpp" />
+    <ClInclude Include="src\general\file.hpp" />
+    <ClInclude Include="src\general\geometry.hpp" />
+    <ClInclude Include="src\general\hash.hpp" />
+    <ClInclude Include="src\general\id_ptr.hpp" />
+    <ClInclude Include="src\general\json.hpp" />
+    <ClInclude Include="src\general\math.hpp" />
+    <ClInclude Include="src\general\matrix.hpp" />
+    <ClInclude Include="src\general\matrix_math.hpp" />
+    <ClInclude Include="src\general\quaternion.hpp" />
+    <ClInclude Include="src\general\slotmap.hpp" />
+    <ClInclude Include="src\general\spline.hpp" />
+    <ClInclude Include="src\general\string.hpp" />
+    <ClInclude Include="src\general\umap.hpp" />
+    <ClInclude Include="src\general\var_system.hpp" />
+    <ClInclude Include="src\general\vector.hpp" />
     <ClInclude Include="src\extension\fmt_geometry.hpp" />
     <ClInclude Include="src\extension\fmt_renderer.hpp" />
     <ClInclude Include="src\extension\glfw.hpp" />

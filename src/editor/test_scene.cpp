@@ -1,7 +1,7 @@
 ﻿#include "test_scene.hpp"
 
 #include "game/game.hpp"
-#include "lib/spline.hpp"
+#include "general/spline.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {

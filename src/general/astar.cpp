@@ -1,7 +1,7 @@
 #include "astar.hpp"
 
 #include <algorithm>
-#include "lib/math.hpp"
+#include "math.hpp"
 
 namespace spellbook {
 

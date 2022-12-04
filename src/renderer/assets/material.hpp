@@ -3,9 +3,9 @@
 #include <vuk/CommandBuffer.hpp>
 #include <vuk/SampledImage.hpp>
 
-#include "lib/string.hpp"
-#include "lib/geometry.hpp"
-#include "lib/color.hpp"
+#include "general/string.hpp"
+#include "general/geometry.hpp"
+#include "general/color.hpp"
 #include "renderer/samplers.hpp"
 
 

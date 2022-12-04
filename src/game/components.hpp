@@ -3,9 +3,9 @@
 #include <entt/fwd.hpp>
 #include <imgui.h>
 
-#include "lib/string.hpp"
-#include "lib/umap.hpp"
-#include "lib/geometry.hpp"
+#include "general/string.hpp"
+#include "general/umap.hpp"
+#include "general/geometry.hpp"
 #include "game/enemy.hpp"
 #include "game/scene.hpp"
 #include "game/stat.hpp"

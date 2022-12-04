@@ -1,8 +1,8 @@
 #pragma once
 
-#include "lib/json.hpp"
-#include "lib/geometry.hpp"
-#include "lib/math.hpp"
+#include "json.hpp"
+#include "geometry.hpp"
+#include "math.hpp"
 
 struct ImVec4;
 namespace vuk {

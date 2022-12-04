@@ -4,8 +4,8 @@
 
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
-#include "lib/file.hpp"
-#include "lib/matrix_math.hpp"
+#include "general/logger.hpp"
+#include "general/matrix_math.hpp"
 #include "game/game.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/renderable.hpp"
@@ -100,10 +100,10 @@ fs::path _convert_to_relative(const fs::path& path) {
 
 ModelCPU load_model(const fs::path& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
-    warn_else(fs::exists(absolute_path))
+    check_else(fs::exists(absolute_path))
         return {};
     string ext = input_path.extension().string();
-    warn_else(ext == extension(FileType_Model))
+    check_else(ext == extension(FileType_Model))
         return {};
     
     ModelCPU model;
@@ -346,10 +346,10 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
         _unpack_gltf_buffer(model, ibm_accessor, pos_data);
         
         for (int i = 0; i < ibm_accessor.count; i++) {
-            warn_else (ibm_accessor.type == TINYGLTF_TYPE_MAT4)
+            check_else (ibm_accessor.type == TINYGLTF_TYPE_MAT4)
                 continue;
             
-            warn_else (ibm_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+            check_else (ibm_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
                 continue;
             
             float* dtf = (float*) pos_data.data();
@@ -505,7 +505,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
                 vertices[i].uv[0] = *(dtf + (i * 2) + 0);
                 vertices[i].uv[1] = *(dtf + (i * 2) + 1);
             } else {
-                assert_else(false && "Only FLOAT supported for UV coordinate in GLTF convert");
+                log_error("Only FLOAT supported for UV coordinate in GLTF convert");
             }
         } else if (uv_accessor.type == TINYGLTF_TYPE_VEC3) {
             if (uv_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
@@ -515,10 +515,10 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
                 vertices[i].uv[0] = *(dtf + (i * 3) + 0);
                 vertices[i].uv[1] = *(dtf + (i * 3) + 1);
             } else {
-                assert_else(false && "Only FLOAT supported for UV coordinate in GLTF convert");
+                log_error("Only FLOAT supported for UV coordinate in GLTF convert");
             }
         } else {
-            assert_else(false && "Unsupported type for UV coordinate in GLTF convert");
+            log_error("Unsupported type for UV coordinate in GLTF convert");
         }
     }
 
@@ -664,7 +664,7 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
             }
             break;
             default:
-                assert_else(false && "Only SHORT/USHORT supported for index in GLTF convert");
+                log_error("Only SHORT/USHORT supported for index in GLTF convert");
         }
 
         indices.push_back(index);

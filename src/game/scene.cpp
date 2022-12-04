@@ -4,7 +4,7 @@
 #include <entt/entt.hpp>
 
 #include "extension/fmt_geometry.hpp"
-#include "lib/math.hpp"
+#include "general/math.hpp"
 #include "game/game.hpp"
 #include "game/components.hpp"
 #include "game/spawner.hpp"

@@ -2,8 +2,8 @@
 
 #include <entt/entt.hpp>
 
-#include "lib/vector.hpp"
-#include "lib/string.hpp"
+#include "general/vector.hpp"
+#include "general/string.hpp"
 
 #include "camera_controller.hpp"
 #include "game/consumer.hpp"

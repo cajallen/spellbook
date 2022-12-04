@@ -4,11 +4,9 @@
 #include <imgui.h>
 
 #include "extension/imgui_extra.hpp"
-#include "lib/file.hpp"
-#include "editor/console.hpp"
+#include "general/logger.hpp"
 #include "game/game.hpp"
 #include "renderer/renderer.hpp"
-#include "renderer/assets/asset_loader.hpp"
 
 
 namespace spellbook {

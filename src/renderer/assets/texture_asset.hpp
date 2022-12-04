@@ -2,8 +2,8 @@
 
 #include <vuk/Types.hpp>
 
-#include "lib/string.hpp"
-#include "lib/json.hpp"
+#include "general/string.hpp"
+#include "general/json.hpp"
 
 #include "renderer/assets/texture.hpp"
 #include "renderer/assets/asset_loader.hpp"

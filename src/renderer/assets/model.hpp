@@ -3,11 +3,11 @@
 #include <filesystem>
 
 #include "skeleton.hpp"
-#include "lib/string.hpp"
-#include "lib/vector.hpp"
-#include "lib/umap.hpp"
-#include "lib/id_ptr.hpp"
-#include "lib/matrix.hpp"
+#include "general/string.hpp"
+#include "general/vector.hpp"
+#include "general/umap.hpp"
+#include "general/id_ptr.hpp"
+#include "general/matrix.hpp"
 
 namespace fs = std::filesystem;
 

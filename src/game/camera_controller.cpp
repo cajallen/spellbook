@@ -3,8 +3,8 @@
 #include <imgui.h>
 #include "extension/glfw.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "lib/math.hpp"
-#include "lib/matrix_math.hpp"
+#include "general/math.hpp"
+#include "general/matrix_math.hpp"
 #include "game/input.hpp"
 
 namespace spellbook {

@@ -4,8 +4,9 @@
 #include <entt/entt.hpp>
 
 #include "extension/fmt_geometry.hpp"
-#include "lib/astar.hpp"
-#include "lib/matrix_math.hpp"
+#include "general/astar.hpp"
+#include "general/matrix_math.hpp"
+#include "general/logger.hpp"
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/components.hpp"

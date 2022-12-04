@@ -1,9 +1,9 @@
 #pragma once
 
-#include "lib/umap.hpp"
-#include "lib/json.hpp"
-#include "lib/math.hpp"
-#include "editor/console.hpp"
+#include "umap.hpp"
+#include "json.hpp"
+#include "math.hpp"
+#include "logger.hpp"
 
 namespace spellbook {
 

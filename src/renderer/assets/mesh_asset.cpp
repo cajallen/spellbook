@@ -2,7 +2,7 @@
 
 #include <lz4.h>
 
-#include "editor/console.hpp"
+#include "general/logger.hpp"
 
 namespace spellbook {
 
@@ -11,7 +11,7 @@ MeshCPU load_mesh(const string& file_name) {
     AssetFile asset_file = load_asset_file(file_name);
 
     constexpr array expected_type = {'M','S','H'};
-    warn_else(asset_file.version == 3 && asset_file.type == expected_type)
+    check_else(asset_file.version == 3 && asset_file.type == expected_type)
         return {};
     
     MeshInfo mesh_info = from_jv<MeshInfo>(*asset_file.asset_json["mesh_info"]);

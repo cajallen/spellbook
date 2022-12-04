@@ -2,7 +2,8 @@
 
 #include <vuk/Buffer.hpp>
 
-#include "lib/matrix_math.hpp"
+#include "general/matrix_math.hpp"
+#include "general/logger.hpp"
 #include "game/input.hpp"
 #include "game/game.hpp"
 #include "renderer/draw_functions.hpp"
@@ -69,7 +70,7 @@ void SkeletonGPU::update() {
                 bone_ptr->update(Input::time);
             } break;
             default: {
-                warn_else(false && "Skeleton update mode NYI");
+                log_error("Skeleton update mode NYI");
             }
         }
     }
