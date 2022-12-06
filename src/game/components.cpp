@@ -95,7 +95,7 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
             vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
         }
 
-        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)));
+        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true);
     }
 }
 

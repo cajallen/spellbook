@@ -5,10 +5,10 @@
 #include <vuk/Partials.hpp>
 
 #include "extension/fmt_renderer.hpp"
-#include "general/umap.hpp"
 #include "general/file.hpp"
 #include "general/matrix_math.hpp"
 #include "game/game.hpp"
+#include "editor/console.hpp"
 #include "renderer/samplers.hpp"
 #include "renderer/viewport.hpp"
 #include "renderer/renderable.hpp"
@@ -199,7 +199,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 render_particles(emitter, command_buffer);
             }
             // Render grid
-            auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->view.get();
+            auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->value.view.get();
             command_buffer
                 .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
                     .depthTestEnable  = true,
@@ -282,9 +282,9 @@ void RenderScene::cleanup(vuk::Allocator& allocator) {
     game.renderer.scenes.remove_value(this);
 }
 
-void RenderScene::quick_mesh(const MeshCPU& mesh_cpu) {
+void RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated) {
     Renderable r;
-    r.mesh_asset_path = game.renderer.upload_mesh(mesh_cpu);
+    r.mesh_asset_path = game.renderer.upload_mesh(mesh_cpu, frame_allocated);
     r.material_asset_path = "default";
     r.frame_allocated = true;
 

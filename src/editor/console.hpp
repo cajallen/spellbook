@@ -1,14 +1,10 @@
 #pragma once
 
-#include <fmt/core.h>
-
 #include "general/string.hpp"
 #include "general/vector.hpp"
 #include "general/umap.hpp"
 #include "general/color.hpp"
 #include "general/json.hpp"
-
-#define fmt_ fmt::format
 
 namespace spellbook {
 

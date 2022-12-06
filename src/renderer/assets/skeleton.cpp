@@ -1,7 +1,10 @@
 #include "skeleton.hpp"
 
 #include <vuk/Buffer.hpp>
+#include <imgui/imgui.h>
+#include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "extension/fmt.hpp"
 #include "general/matrix_math.hpp"
 #include "general/logger.hpp"
 #include "game/input.hpp"
@@ -11,6 +14,45 @@
 
 
 namespace spellbook {
+
+void SkeletonGPU::save_pose(string name) {
+    if (!poses.contains(name)) {
+        poses[name] = vector<KeySet>();
+        poses[name].resize(bones.size());
+    }
+    
+    for (u32 i = 0; i < bones.size(); i++) {
+        poses[name][i] = bones[i]->start;
+    }
+}
+
+void SkeletonGPU::load_pose(string name, bool as_target, float offset) {
+    if (as_target)
+        mode = Mode_Play;
+
+    for (u32 i = 0; i < bones.size(); i++) {
+        if (!as_target)
+            bones[i]->start = poses[name][i];
+        else {
+            bones[i]->target = poses[name][i];
+            bones[i]->target.position.time = Input::time + offset;
+            bones[i]->target.rotation.time = Input::time + offset;
+            bones[i]->target.scale.time = Input::time + offset;
+            bones[i]->start.position.time = Input::time;
+            bones[i]->start.rotation.time = Input::time;
+            bones[i]->start.scale.time = Input::time;
+        }
+    }
+}
+
+void SkeletonGPU::stop_playing() {
+    for (u32 i = 0; i < bones.size(); i++) {
+        if (mode == Mode_Play)
+            bones[i]->start = bones[i]->target;
+    }
+    mode = Mode_Pose;
+}
+
 
 m44 Bone::transform() const {
     if (parent.valid())
@@ -26,7 +68,7 @@ m44 Bone::final_transform() const {
 
 void Bone::update(float new_time) {
     if (new_time == -1.0f)
-        time = 0.0f;
+        time = -1.0f;
     else
         time = new_time;
     
@@ -40,23 +82,29 @@ m44 Bone::update_position() {
     if (time == -1.0f)
         return math::translate(start.position.value);
     
-    v3 interpolated = math::mix(start.position.value, target.position.value, math::from_range(time, range(start.position.time, target.position.time)));
+    float t = math::from_range(time, range(start.position.time, target.position.time));
+    t = math::abs(1.0f - math::mod(t, 2.0f));
+    v3 interpolated = math::mix(start.position.value, target.position.value, t);
     return math::translate(interpolated);
 }
 
 m44 Bone::update_rotation() {
     if (time == -1.0f)
         return math::rotation(start.rotation.value);
-    
-    quat interpolated = math::slerp(start.rotation.value, target.rotation.value, math::from_range(time, range(start.rotation.time, target.rotation.time)));
+
+    float t = math::from_range(time, range(start.rotation.time, target.rotation.time));
+    t = math::abs(1.0f - math::mod(t, 2.0f));
+    quat interpolated = math::slerp(start.rotation.value, target.rotation.value, t);
     return math::rotation(interpolated);
 }
 
 m44 Bone::update_scaling() {
     if (time == -1.0f)
         return math::scale(start.scale.value);
-    
-    v3 interpolated = math::mix(start.scale.value, target.scale.value, math::from_range(time, range(start.scale.time, target.scale.time)));
+
+    float t = math::from_range(time, range(start.scale.time, target.scale.time));
+    t = math::abs(1.0f - math::mod(t, 2.0f));
+    v3 interpolated = math::mix(start.scale.value, target.scale.value, t);
     return math::scale(interpolated);
 }
 
@@ -128,6 +176,37 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene) 
         ImGui::EndTable();
     }
 
+    ImGui::InputText("Pose Name", &skeleton->pose_select);
+    if (ImGui::BeginCombo("Pose", skeleton->pose_select.c_str(), ImGuiComboFlags_None)) {
+        for (auto& [pose_name, pose_data] : skeleton->poses) {
+            const bool is_selected = pose_name == skeleton->pose_select;
+            if (ImGui::Selectable(pose_name.c_str(), is_selected))
+                skeleton->pose_select = pose_name;
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    
+    if (ImGui::Button("Save")) {
+        skeleton->save_pose(skeleton->pose_select);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load")) {
+        skeleton->load_pose(skeleton->pose_select);
+        any_changed = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load As Target")) {
+        skeleton->load_pose(skeleton->pose_select, true, 1.0f);
+        any_changed = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Pose##Button")) {
+        skeleton->stop_playing();
+        any_changed = true;
+    }
+    
     ImGui::Checkbox("Render Lines", &skeleton->render_lines);
     
     if (skeleton->render_lines && render_scene != nullptr) {
@@ -150,13 +229,13 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene) 
                 auto line_mesh = generate_formatted_line(render_scene->viewport.camera, std::move(vertices));
                 if (line_mesh.file_path.empty())
                     continue;
-                render_scene->quick_mesh(line_mesh);
+                render_scene->quick_mesh(line_mesh, true);
             }
         }
         
     }
-
-    if (any_changed)
+    
+    if (any_changed || skeleton->mode == SkeletonGPU::Mode_Play)
         skeleton->update();
 }
 

@@ -1,8 +1,8 @@
 #include "draw_functions.hpp"
 
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/hash.hpp"
-#include "editor/console.hpp"
 
 namespace spellbook {
 
@@ -223,12 +223,5 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
     }
     return mesh_cpu;
 }
-
-
-
-
-
-
-
 
 }

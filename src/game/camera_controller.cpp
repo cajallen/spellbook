@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include "extension/glfw.hpp"
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/math.hpp"
 #include "general/matrix_math.hpp"
@@ -96,7 +97,7 @@ bool cc_on_cursor_move(GLFWwindow* window, double xpos, double ypos, void* data)
 bool cc_on_scroll(GLFWwindow* window, double x, double y, void* data) {
     CameraController& cc = *((CameraController*) data);
 
-    if (!cc.viewport->hovered && !cc.viewport->focused)
+    if (!cc.viewport->hovered)
         return false;
 
     if (cc.nav_mode == CameraController::NavigationMode_Fly) {

@@ -6,7 +6,6 @@
 #include "general/string.hpp"
 #include "general/vector.hpp"
 #include "general/umap.hpp"
-#include "editor/console.hpp"
 
 using std::tuple;
 

@@ -9,6 +9,7 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <tracy/Tracy.hpp>
 
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/math.hpp"
 #include "general/logger.hpp"

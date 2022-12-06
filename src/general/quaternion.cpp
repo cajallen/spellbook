@@ -63,10 +63,10 @@ quat slerp(quat x, quat y, float t) {
     if(cosTheta > 1.0f - std::numeric_limits<float>::epsilon())
     {
         return quat(
-            mix(x.w, z.w, t),
             mix(x.x, z.x, t),
             mix(x.y, z.y, t),
-            mix(x.z, z.z, t));
+            mix(x.z, z.z, t),
+            mix(x.w, z.w, t));
     }
 
     // Essential Mathematics, page 467

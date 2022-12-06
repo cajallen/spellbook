@@ -2,8 +2,9 @@
 
 #include <imgui.h>
 
+#include "extension/fmt.hpp"
 #include "general/math.hpp"
-#include "editor/console.hpp"
+
 
 namespace spellbook {
 

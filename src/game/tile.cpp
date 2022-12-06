@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
 #include "game/scene.hpp"

@@ -38,6 +38,8 @@ struct MeshGPU {
 
     u32 vertex_count;
     u32 index_count;
+
+    bool frame_allocated;
 };
 
 void inspect(MeshGPU* mesh);

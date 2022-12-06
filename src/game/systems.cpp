@@ -3,6 +3,7 @@
 #include <tracy/Tracy.hpp>
 #include <entt/entt.hpp>
 
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/astar.hpp"
 #include "general/matrix_math.hpp"

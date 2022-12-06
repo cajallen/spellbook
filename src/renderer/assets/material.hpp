@@ -58,6 +58,8 @@ struct MaterialGPU {
 
     vuk::CullModeFlags cull_mode;
 
+    bool frame_allocated = false;
+    
     void bind_parameters(vuk::CommandBuffer& cbuf);
     void bind_textures(vuk::CommandBuffer& cbuf);
 };

@@ -63,7 +63,7 @@ struct RenderScene {
     Renderable* copy_renderable(Renderable* renderable);
     void        delete_renderable(Renderable* renderable);
 
-    void quick_mesh(const MeshCPU& mesh_cpu);
+    void quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated);
     
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 };

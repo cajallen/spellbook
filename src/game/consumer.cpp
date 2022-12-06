@@ -2,6 +2,8 @@
 
 #include <entt/entt.hpp>
 #include <imgui.h>
+
+#include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
 #include "game/scene.hpp"

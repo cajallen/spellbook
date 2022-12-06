@@ -164,50 +164,52 @@ void MapEditor::shutdown() {
 }
 
 void MapEditor::draw_preview(v3i cell) {
+    constexpr float line_width = 0.03f;
+    auto camera = p_scene->render_scene.viewport.camera;
     if (eraser_selected) {
-        auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera,
+        auto line_mesh = generate_formatted_line(camera,
         {
-            {(v3) cell + v3(0.f, 0.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 1.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 1.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 0.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 0.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 1.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 1.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 0.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 0.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 1.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 1.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(0.f, 0.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 0.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 1.f, 1.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 1.f, 0.f), palette::gray_4, 0.03f},
-            {(v3) cell + v3(1.f, 0.f, 0.f), palette::gray_4, 0.03f}
+            {(v3) cell + v3(0.f, 0.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 1.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 1.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 0.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 0.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 1.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 1.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 0.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 0.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 1.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 1.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(0.f, 0.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 0.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 1.f, 1.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 1.f, 0.f), palette::gray_4, line_width},
+            {(v3) cell + v3(1.f, 0.f, 0.f), palette::gray_4, line_width}
         });
 
-        p_scene->render_scene.quick_mesh(line_mesh);
+        p_scene->render_scene.quick_mesh(line_mesh, true);
     } else if (selected_tile != -1) {
-        auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera,
+        auto line_mesh = generate_formatted_line(camera,
         {
-            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, 0.03f},
-            {(v3) cell + v3(1.f, 0.f, 1.05f), palette::white, 0.03f},
-            {(v3) cell + v3(1.f, 1.f, 1.05f), palette::white, 0.03f},
-            {(v3) cell + v3(0.f, 1.f, 1.05f), palette::white, 0.03f},
-            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, 0.03f},
-            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, 0.03f}
+            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
+            {(v3) cell + v3(1.f, 0.f, 1.05f), palette::white, line_width},
+            {(v3) cell + v3(1.f, 1.f, 1.05f), palette::white, line_width},
+            {(v3) cell + v3(0.f, 1.f, 1.05f), palette::white, line_width},
+            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
+            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width}
         });
 
-        p_scene->render_scene.quick_mesh(line_mesh);
+        p_scene->render_scene.quick_mesh(line_mesh, true);
     } else if (selected_tower != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 24; i++) {
             f32 angle  = i * math::TAU / 24.0f;
             v3  center = (v3) cell + v3(0.5f, 0.5f, 1.5f);
-            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
+            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, line_width);
         }
 
-        auto line_mesh = generate_formatted_line(p_scene->render_scene.viewport.camera, std::move(vertices));
-        p_scene->render_scene.quick_mesh(line_mesh);
+        auto line_mesh = generate_formatted_line(camera, std::move(vertices));
+        p_scene->render_scene.quick_mesh(line_mesh, true);
     }
 }
 

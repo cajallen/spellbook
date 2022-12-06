@@ -7,7 +7,6 @@
 #include "game/tile.hpp"
 #include "game/enemy.hpp"
 #include "game/spawner.hpp"
-#include "editor/console.hpp"
 #include "renderer/assets/model.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"

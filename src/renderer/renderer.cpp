@@ -6,6 +6,7 @@
 #include <tracy/Tracy.hpp>
 #include <stb_image.h>
 
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/file.hpp"
@@ -177,6 +178,10 @@ void Renderer::update() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     frame_timer.update();
+
+    auto& frame_resource = super_frame_resource->get_next_frame();
+    context->next_frame();
+    frame_allocator.emplace(frame_resource);
 }
 
 void Renderer::render() {
@@ -187,12 +192,8 @@ void Renderer::render() {
     wait_for_futures();
 
     stage = RenderStage_BuildingRG;
-
-    auto& xdev_frame_resource = super_frame_resource->get_next_frame();
-    context->next_frame();
-    frame_allocator.emplace(xdev_frame_resource);
+    
     std::shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
-
     std::vector resources{"SWAPCHAIN+"_image >> vuk::eColorWrite >> "SWAPCHAIN++"};
     for (auto scene : scenes) {
         scene->pre_render();
@@ -227,7 +228,28 @@ void Renderer::render() {
                 ++it;
         }
     }
-    
+
+    auto mesh_it = mesh_cache.begin();
+    while (mesh_it != mesh_cache.end()) {
+        if (mesh_it->second.frame_allocated)
+            mesh_it = mesh_cache.erase(mesh_it);
+        else
+            mesh_it++;
+    }
+    auto tex_it = texture_cache.begin();
+    while (tex_it != texture_cache.end()) {
+        if (tex_it->second.frame_allocated)
+            tex_it = texture_cache.erase(tex_it);
+        else
+            tex_it++;
+    }
+    auto mat_it = material_cache.begin();
+    while (mat_it != material_cache.end()) {
+        if (mat_it->second.frame_allocated)
+            mat_it = material_cache.erase(mat_it);
+        else
+            mat_it++;
+    }
     frame_allocator.reset();
 
     stage = RenderStage_Inactive;
@@ -317,14 +339,13 @@ SkeletonGPU Renderer::upload_skeleton(const SkeletonCPU& skeleton_cpu) {
 string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     assert_else(!material_cpu.file_path.empty());
     u64 material_cpu_hash               = hash_data(material_cpu.file_path.data(), material_cpu.file_path.size());
-    if (frame_allocation); // TODO: frame allocation
 
     MaterialGPU material_gpu;
     material_gpu.pipeline      = context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
-    material_gpu.color = vuk::make_sampled_image(get_texture_or_upload(material_cpu.color_asset_path).view.get(), material_cpu.sampler.get());
-    material_gpu.normal = vuk::make_sampled_image(get_texture_or_upload(material_cpu.normal_asset_path).view.get(), material_cpu.sampler.get());
-    material_gpu.orm = vuk::make_sampled_image(get_texture_or_upload(material_cpu.orm_asset_path).view.get(), material_cpu.sampler.get());
-    material_gpu.emissive = vuk::make_sampled_image(get_texture_or_upload(material_cpu.emissive_asset_path).view.get(), material_cpu.sampler.get());
+    material_gpu.color = vuk::make_sampled_image(get_texture_or_upload(material_cpu.color_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.normal = vuk::make_sampled_image(get_texture_or_upload(material_cpu.normal_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.orm = vuk::make_sampled_image(get_texture_or_upload(material_cpu.orm_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.emissive = vuk::make_sampled_image(get_texture_or_upload(material_cpu.emissive_asset_path).value.view.get(), material_cpu.sampler.get());
 
     material_gpu.tints         = {
         (v4) material_cpu.color_tint,
@@ -333,6 +354,7 @@ string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_all
         {material_cpu.emissive_dot_smoothstep.x, material_cpu.emissive_dot_smoothstep.y, 0.0f, 0.0f}
     };
     material_gpu.cull_mode = material_cpu.cull_mode;
+    material_gpu.frame_allocated = frame_allocation;
 
     material_cache[material_cpu_hash] = std::move(material_gpu);
     return material_cpu.file_path;
@@ -345,10 +367,8 @@ string Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation
     auto [tex, tex_fut] = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
     context->set_name(tex, vuk::Name(tex_cpu.file_path));
     enqueue_setup(std::move(tex_fut));
-
-    if (frame_allocation); // TODO: frame allocation
-
-    texture_cache[tex_cpu_hash] = std::move(tex);
+    
+    texture_cache[tex_cpu_hash] = {std::move(tex), frame_allocation};
     return tex_cpu.file_path;
 }
 

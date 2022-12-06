@@ -1,7 +1,6 @@
 #pragma once
 
 #include "general/geometry.hpp"
-#include "editor/console.hpp"
 #include "renderer/camera.hpp"
 
 namespace spellbook {

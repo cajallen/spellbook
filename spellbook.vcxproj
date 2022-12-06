@@ -1795,6 +1795,7 @@
     <ClInclude Include="src\editor\console.hpp" />
     <ClInclude Include="src\editor\map_editor.hpp" />
     <ClInclude Include="src\editor\test_scene.hpp" />
+    <ClInclude Include="src\extension\fmt.hpp" />
     <ClInclude Include="src\game\camera_controller.hpp" />
     <ClInclude Include="src\game\consumer.hpp" />
     <ClInclude Include="src\game\enemy.hpp" />
@@ -1874,9 +1875,6 @@
     <Content Include="src\shaders\infinite_plane.vert" />
     <Content Include="src\shaders\particle.vert" />
     <Content Include="src\shaders\particle_emitter.comp" />
-    <Content Include="src\shaders\rt.rchit" />
-    <Content Include="src\shaders\rt.rgen" />
-    <Content Include="src\shaders\rt.rmiss" />
     <Content Include="src\shaders\standard_3d.vert" />
     <Content Include="src\shaders\textured_3d.frag" />
   </ItemGroup>

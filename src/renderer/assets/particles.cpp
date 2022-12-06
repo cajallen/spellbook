@@ -2,6 +2,7 @@
 
 #include <vuk/Partials.hpp>
 
+#include "extension/fmt.hpp"
 #include "general/file.hpp"
 #include "game/game.hpp"
 
@@ -78,7 +79,7 @@ void EmitterGPU::update_color() {
         }
     }
     string tex_id = game.renderer.upload_texture(color_texture);
-    color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(tex_id).view.get(), Sampler().address(Address_Clamp).get());
+    color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(tex_id).value.view.get(), Sampler().address(Address_Clamp).get());
 }
 
 void EmitterGPU::update_size() {

@@ -18,6 +18,9 @@ struct TextureCPU {
 
 JSON_IMPL(TextureCPU, size, format);
 
-using TextureGPU = vuk::Texture;
+struct TextureGPU {
+    vuk::Texture value;
+    bool frame_allocated;
+};
 
 }

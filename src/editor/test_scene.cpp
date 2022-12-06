@@ -23,7 +23,7 @@ void TestScene::update() {
     }
     if (control_points.size() >= 2) {
         auto line_mesh = generate_formatted_line(viewport.camera, formatted_vertices);
-        p_scene->render_scene.quick_mesh(line_mesh);
+        p_scene->render_scene.quick_mesh(line_mesh, true);
     }
 
     vector<FormattedVertex> formatted_vertices2;
@@ -34,7 +34,7 @@ void TestScene::update() {
     }
     if (formatted_vertices2.size() > 2) {
         auto line_mesh = generate_formatted_line(viewport.camera, formatted_vertices2);
-        p_scene->render_scene.quick_mesh(line_mesh);
+        p_scene->render_scene.quick_mesh(line_mesh, true);
     }
     // auto line_mesh = generate_formatted_line(viewport.camera, {
     //         {p + v3(0.f,0.f,0.03f), palette::spellbook_1, 0.04f},

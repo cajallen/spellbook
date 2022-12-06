@@ -4,6 +4,7 @@
 
 #include "extension/imgui_extra.hpp"
 #include "game/game.hpp"
+#include "editor/console.hpp"
 #include "renderer/assets/mesh_asset.hpp"
 
 namespace spellbook {

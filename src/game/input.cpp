@@ -3,6 +3,7 @@
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <tracy/Tracy.hpp>
 
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"

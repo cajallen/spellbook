@@ -61,10 +61,15 @@ struct SkeletonGPU {
     bool render_lines = false;
 
     umap<string, vector<KeySet>> poses;
+    string pose_select;
     
     void update();
 
     static vuk::Unique<vuk::Buffer>* empty_buffer();
+
+    void save_pose(string name);
+    void load_pose(string name, bool as_target = false, float offset = 1.0f);
+    void stop_playing();
 };
 
 void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene);

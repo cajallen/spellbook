@@ -2,11 +2,13 @@
 
 #include <tiny_gltf.h>
 
+#include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
 #include "general/matrix_math.hpp"
 #include "game/game.hpp"
+#include "editor/console.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/renderable.hpp"
 #include "renderer/render_scene.hpp"

@@ -4,11 +4,13 @@
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
 #include "game/scene.hpp"
 #include "game/components.hpp"
 #include "game/input.hpp"
+#include "editor/console.hpp"
 
 namespace spellbook {
 
@@ -67,9 +69,6 @@ void tower_system(Scene* scene) {
             }
         }
     }
-
-
-    
 }
 
 void projectile_system(Scene* scene) {

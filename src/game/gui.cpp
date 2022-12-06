@@ -60,11 +60,9 @@ void GUI::_main_menu_bar() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Windows")) {
             for (auto& [k, v] : windows) {
-                // if (v.queried) {
                 if (ImGui::MenuItem(k.c_str(), NULL, v.opened))
                     v.opened = !v.opened;
                 v.queried = false;
-                //}
             }
             ImGui::EndMenu();
         }
