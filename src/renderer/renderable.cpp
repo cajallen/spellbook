@@ -41,11 +41,12 @@ void upload_dependencies(Renderable& renderable) {
     }
 }
 
-void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int& item_index) {
+void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index) {
     MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
     MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
     if (mesh == nullptr || material == nullptr) {
-        item_index++;
+        if (item_index)
+            (*item_index)++;
         return;
     }
     // Bind mesh
@@ -65,7 +66,27 @@ void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int
     command_buffer.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, renderable.selection_id);
 
     // Draw call
-    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
+    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index ? (*item_index)++ : 0);
+}
+
+void render_widget(Renderable& renderable, vuk::CommandBuffer& command_buffer) {
+    MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
+    MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
+    assert_else(mesh != nullptr && material != nullptr)
+        return;
+
+    // Bind mesh
+    command_buffer
+        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_widget_format())
+        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+
+    // Bind Material
+    command_buffer
+        .set_rasterization({.cullMode = material->cull_mode})
+        .bind_graphics_pipeline(material->pipeline);
+
+    // Draw call
+    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, 0);
 }
 
 

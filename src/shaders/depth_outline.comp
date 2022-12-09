@@ -7,7 +7,9 @@
 layout(binding = 0) uniform sampler2D s_color;
 layout(binding = 1) uniform sampler2D s_normal;
 layout(binding = 2) uniform sampler2D s_depth;
-layout(binding = 3, rgba16f) uniform writeonly image2D u_target;
+layout(binding = 3) uniform sampler2D s_widget;
+layout(binding = 4) uniform sampler2D s_widget_depth;
+layout(binding = 5, rgba16f) uniform writeonly image2D u_target;
 
 layout(constant_id = 0) const int target_width	= 0;
 layout(constant_id = 1) const int target_height = 0;
@@ -39,7 +41,6 @@ float compare_depth(ivec2 coordinate, float depth) {
     vec4 depth_read = texelFetch(s_depth, coordinate, 0);
     if (depth_read.a < 0.1 || depth_read.r < 0.0001)
         depth_read = vec4(vec3(0.0001), 1.0);
-        // return 0.0;
     
     float other_depth = depth_read.r;
     other_depth = 1.0 / other_depth;
@@ -94,9 +95,22 @@ void main() {
         }
     }
     float outline = max(depth_outline, normal_outline);
-    // imageStore(u_target, uv, vec4(vec3(depth_outline, normal_outline, 0.0), 1.0));
-    
+
     color.rgb = mix(color.rgb, vec3(0.0), outline);
-	color = vec4(linear_to_srgb(color.rgb), color.a);
+
+    vec4 widget_color = texelFetch(s_widget, uv, 0);
+    vec4 widget_depth_read = texelFetch(s_widget_depth, uv, 0);
+    float widget_depth = 1.0 / widget_depth_read.r;
+    
+    if (widget_color.a > 0.0) {
+        if (widget_depth < depth)
+            color.rgb = mix(color.rgb, widget_color.rgb, widget_color.a);
+        else {
+            if ((uv.x % 2 == 0) && (uv.y % 2 == 0))
+                color.rgb = mix(color.rgb, widget_color.rgb, widget_color.a);
+        }
+    }
+    
+	color = vec4(linear_to_srgb(color.rgb), 1.0);
     imageStore(u_target, uv, color);
 }

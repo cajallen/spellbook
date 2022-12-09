@@ -29,7 +29,7 @@ void CameraController::change_state(NavigationMode new_mode) {
         } break;
         case (NavigationMode_Pivot): {
             pivot_state.arm_heading = camera->heading;
-            pivot_state.arm_pivot   = math::intersect_axis_plane(r3(camera->position, math::euler2vector(pivot_state.arm_heading)), Z, 0.0f);
+            pivot_state.arm_pivot   = math::intersect_axis_plane(ray3(camera->position, math::euler2vector(pivot_state.arm_heading)), Z, 0.0f);
             pivot_state.arm_length  = -math::length(camera->position - pivot_state.arm_pivot);
         } break;
     }
@@ -165,8 +165,8 @@ void CameraController::update() {
 
     if (nav_mode == NavigationMode_Pivot) {
         if (pivot_state.panning) {
-            r3 original_camera_ray = viewport->ray((v2i) pivot_state.pan_start_mouse);
-            r3 current_camera_ray  = viewport->ray((v2i) Input::mouse_pos);
+            ray3 original_camera_ray = viewport->ray((v2i) pivot_state.pan_start_mouse);
+            ray3 current_camera_ray  = viewport->ray((v2i) Input::mouse_pos);
 
             v3 original_position = math::intersect_axis_plane(original_camera_ray, (u32) Z, 0.f);
             v3 current_position  = math::intersect_axis_plane(current_camera_ray, (u32) Z, 0.f);

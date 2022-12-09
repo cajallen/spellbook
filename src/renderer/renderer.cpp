@@ -227,6 +227,12 @@ void Renderer::render() {
             else
                 ++it;
         }
+        for (auto it = scene->widget_renderables.begin(); it != scene->widget_renderables.end();) {
+            if (it->frame_allocated)
+                it = scene->widget_renderables.erase(it);
+            else
+                ++it;
+        }
     }
 
     auto mesh_it = mesh_cache.begin();

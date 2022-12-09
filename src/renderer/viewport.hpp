@@ -22,7 +22,9 @@ struct Viewport {
     f32  aspect_xy();
 
     void setup();
-    r3   ray(v2i screen_pos);
+    ray3   ray(v2i screen_pos);
+
+    v2 mouse_uv();
 };
 
 void inspect(Viewport* viewport);

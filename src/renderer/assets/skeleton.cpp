@@ -4,6 +4,7 @@
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "editor/pose_widget.hpp"
 #include "extension/fmt.hpp"
 #include "general/matrix_math.hpp"
 #include "general/logger.hpp"
@@ -138,19 +139,24 @@ vuk::Unique<vuk::Buffer>* SkeletonGPU::empty_buffer() {
     return &skeleton_gpu.buffer;
 }
 
-void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene) {
+void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderScene* render_scene) {
     ImGui::Text("Skeleton");
     ImGui::Indent();
     bool any_changed = false;
-    
-    if (ImGui::BeginTable("bones", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+
+    if (skeleton->widget_enabled.size() != skeleton->bones.size())
+        skeleton->widget_enabled.resize(skeleton->bones.size());
+
+    WidgetSettings settings{*render_scene};
+    if (ImGui::BeginTable("bones", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Name/Id");
         ImGui::TableSetupColumn("Parent");
         ImGui::TableSetupColumn("Position");
         ImGui::TableSetupColumn("Rotation");
         ImGui::TableSetupColumn("Scale");
+        ImGui::TableSetupColumn("Widget");
         ImGui::TableHeadersRow();
-        for (id_ptr<Bone> bone : skeleton->bones) {
+        for (id_ptr<Bone>& bone : skeleton->bones) {
             ImGui::PushID(bone.id);
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -171,6 +177,18 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene) 
             ImGui::TableSetColumnIndex(4);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
             any_changed |= ImGui::DragFloat3("##Scale", bone->start.scale.value.data, 0.01f);
+
+            ImGui::TableSetColumnIndex(5);
+            u32 bone_index = skeleton->bones.index(bone);
+            u8& bone_widget_enabled = skeleton->widget_enabled[bone_index];
+            ImGui::Checkbox("##Widget", (bool*) &bone_widget_enabled);
+
+            if (bone_widget_enabled) {
+                skeleton->update();
+                m44 mat = bone->final_transform();
+                any_changed |= pose_widget(bone.id, &bone->start.position.value, &bone->start.rotation.value, settings, &mat);
+            }
+            
             ImGui::PopID();
         }
         ImGui::EndTable();
@@ -219,17 +237,17 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene) 
             if (!is_parent.contains(bone.id)) {
                 vector<FormattedVertex> vertices;
                 id_ptr<Bone> current_node = bone;
-                v4 current_hpos = current_node->final_transform() * v4(0,0,0,1);
+                v4 current_hpos = model * current_node->final_transform() * v4(0,0,0,1);
                 vertices.push_back({current_hpos.xyz / current_hpos.w, palette::white, 0.03f});
                 while (current_node->parent.valid()) {
                     current_node = current_node->parent;
-                    current_hpos = current_node->final_transform() * v4(0,0,0,1);
+                    current_hpos = model * current_node->final_transform() * v4(0,0,0,1);
                     vertices.push_back({current_hpos.xyz / current_hpos.w, palette::white, 0.03f});
                 }
                 auto line_mesh = generate_formatted_line(render_scene->viewport.camera, std::move(vertices));
                 if (line_mesh.file_path.empty())
                     continue;
-                render_scene->quick_mesh(line_mesh, true);
+                render_scene->quick_mesh(line_mesh, true, true);
             }
         }
         

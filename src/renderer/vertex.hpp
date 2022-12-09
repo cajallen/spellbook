@@ -16,6 +16,7 @@ struct Vertex {
     v4 bone_weights;
 
     static vuk::Packed get_format();
+    static vuk::Packed get_widget_format();
 };
 
 }

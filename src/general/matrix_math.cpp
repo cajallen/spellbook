@@ -237,17 +237,17 @@ constexpr m44 transpose(const m44& A) {
         A.rc(3, 3));
 }
 
-r3 transformed_ray(const m44& transform, v2 viewport_UV) {
+ray3 transformed_ray(const m44& transform, v2 viewport_UV) {
     m44 transform_inv = math::inverse(transform);
 
     float mox = math::to_signed_range(viewport_UV.x, false);
     float moy = math::to_signed_range(viewport_UV.y, false);
 
-    v4 origin_hpos = transform_inv * v4(mox, moy, 0.01f, 1.0f);
-    v4 end_hpos    = transform_inv * v4(mox, moy, 1.0f, 1.0f);
+    v4 origin_hpos = transform_inv * v4(mox, moy, 0.99f, 1.0f);
+    v4 end_hpos    = transform_inv * v4(mox, moy, 0.01f, 1.0f);
     v3 origin      = origin_hpos.xyz / origin_hpos.w;
     v3 end         = end_hpos.xyz / end_hpos.w;
-    return r3 {origin, math::normalize(end - origin)};
+    return ray3 {origin, math::normalize(end - origin)};
 }
 
 void extract_tsr(m44 m, v3* translation, v3* scale, quat* rotation) {
@@ -275,6 +275,11 @@ void extract_tsr(m44 m, v3* translation, v3* scale, quat* rotation) {
         m.cr(2,2) /= used_scale.z;
         *rotation = -to_quat(m);
     }
+}
+
+v3 apply_transform(const m44& m, const v3& v) {
+    v4 h = m * v4(v, 1.0f);
+    return h.xyz / h.w;
 }
 
 }

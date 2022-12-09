@@ -23,8 +23,9 @@ void Game::startup() {
     Input::setup();
     
     map_editor.setup();
-    asset_editor.setup();
-
+    // asset_editor.setup();
+    test_scene.setup();
+    
     gui.setup();
 }
 
@@ -40,8 +41,8 @@ void Game::step(bool skip_input) {
     renderer.update();
     gui.update();
     map_editor.update();
-    asset_editor.update();
-    // test_scene.update();
+    // asset_editor.update();
+    test_scene.update();
     for (Scene* scene : scenes)
         scene->update();
     renderer.render();
@@ -51,6 +52,9 @@ void Game::step(bool skip_input) {
 void Game::shutdown() {
     gui.shutdown();
     map_editor.shutdown();
+    // asset_editor.shutdown();
+    test_scene.shutdown();
+    
     while (!scenes.empty()) {
         Scene* scene = scenes.front();
         scene->cleanup();

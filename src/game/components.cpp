@@ -68,8 +68,10 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     }
     if (auto* component = scene->registry.try_get<Model>(entity)) {
         ImGui::Text("Model");
+        auto& transform = scene->registry.get<ModelTransform>(entity);
+        m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
         for (auto&& skeleton : component->model_gpu.skeletons) {
-            inspect(skeleton, &scene->render_scene);
+            inspect(skeleton, transform_matrix, &scene->render_scene);
         }
 
         ImGui::Separator();

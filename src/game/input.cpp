@@ -3,6 +3,7 @@
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <tracy/Tracy.hpp>
 
+#include "editor/console.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/logger.hpp"
@@ -56,6 +57,7 @@ void Input::update() {
     mouse_wheel = 0;
     for (int i = 0; i < 5; i++) {
         mouse_click[i]   = false;
+        mouse_down[i] = mouse_press_at[i] > 0.0f ? Input::time - mouse_press_at[i] : 0.0f;
         mouse_release[i] = false;
     }
     glfwPollEvents();
@@ -189,6 +191,15 @@ void Input::debug_window(bool* p_open) {
                     ImGui::Text("%s", glfwGetKeyName(key, 0));
                 }
             }
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Mouse State")) {
+            ImGui::Text("mouse_pos: %.2f, %.2f", mouse_pos.x, mouse_pos.y);
+            ImGui::Text("mouse_click: %c %c %c %c %c", mouse_click[0] ? 't' : 'f', mouse_click[1] ? 't' : 'f', mouse_click[2] ? 't' : 'f', mouse_click[3] ? 't' : 'f', mouse_click[4] ? 't' : 'f');
+            ImGui::Text("mouse_down: %.1f, %.1f, %.1f, %.1f, %.1f", mouse_down[0], mouse_down[1], mouse_down[2], mouse_down[3], mouse_down[4]);
+            ImGui::Text("mouse_press_at: %.1f, %.1f, %.1f, %.1f, %.1f", mouse_press_at[0], mouse_press_at[1], mouse_press_at[2], mouse_press_at[3], mouse_press_at[4]);
+            ImGui::Text("mouse_release:  %c %c %c %c %c", mouse_release[0] ? 't' : 'f', mouse_release[1] ? 't' : 'f', mouse_release[2] ? 't' : 'f', mouse_release[3] ? 't' : 'f', mouse_release[4] ? 't' : 'f');
+            ImGui::Text("mouse_wheel: %.1f", mouse_wheel);
             ImGui::TreePop();
         }
     }

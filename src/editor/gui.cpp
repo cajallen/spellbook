@@ -103,10 +103,10 @@ void GUI::update() {
         ImGui::ShowDemoWindow(p_open);
     if (*(p_open = window_open("map_editor")))
         game.map_editor.window(p_open);
-    if (*(p_open = window_open("asset_editor")))
-        game.asset_editor.window(p_open);
-    // if (*(p_open = window_open("test_scene")))
-    //     game.test_scene.window(p_open);
+    // if (*(p_open = window_open("asset_editor")))
+    //     game.asset_editor.window(p_open);
+    if (*(p_open = window_open("test_scene")))
+        game.test_scene.window(p_open);
     if (*(p_open = window_open("var_system")))
         VarSystem::window(p_open);
     if (*(p_open = window_open("console")))

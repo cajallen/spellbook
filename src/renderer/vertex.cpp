@@ -14,4 +14,13 @@ vuk::Packed Vertex::get_format() {
     };
 }
 
+vuk::Packed Vertex::get_widget_format() {
+    return vuk::Packed {
+        vuk::Format::eR32G32B32Sfloat, // position
+        vuk::Ignore{ sizeof(Vertex::normal)  + sizeof(Vertex::tangent) }, // normal
+        vuk::Format::eR32G32B32Sfloat, // color
+        vuk::Ignore{ sizeof(Vertex::uv)  + sizeof(Vertex::bone_ids) + sizeof(bone_weights) }
+    };
+}
+
 }

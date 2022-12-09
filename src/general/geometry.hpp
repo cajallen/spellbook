@@ -557,16 +557,16 @@ template <typename T> struct line_ {
 
 JSON_IMPL_TEMPLATE(template <typename T>, line_<T>, start, end);
 
-typedef ray_<v2> r2;
-typedef ray_<v3> r3;
+typedef ray_<v2> ray2;
+typedef ray_<v3> ray3;
 
 typedef line_<f32> range;
 typedef line_<v2>  range2;
 typedef line_<v2i> range2i;
 typedef line_<v3>  range3;
-typedef line_<v2>  l2;
-typedef line_<v3>  l3;
-typedef line_<v4>  l4;
+typedef line_<v2>  line2;
+typedef line_<v3>  line3;
+typedef line_<v4>  line4;
 
 struct euler {
     // TODO: add 0 direction static const
@@ -587,7 +587,15 @@ struct euler {
 
     euler r2d();
     euler d2r();
+    
+    constexpr bool operator==(const euler& e) const {
+        return (yaw == e.yaw) && (pitch == e.pitch) && (roll == e.roll);
+    }
+    constexpr bool operator!=(const euler& e) const {
+        return (yaw != e.yaw) || (pitch != e.pitch) || (roll != e.roll);
+    }
 };
+
 
 JSON_IMPL(euler, yaw, pitch, roll);
 

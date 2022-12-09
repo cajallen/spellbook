@@ -105,8 +105,8 @@ template <> struct fmt::formatter<spellbook::v4> : formatter<f32> {
     }
 };
 
-template <> struct fmt::formatter<spellbook::l2> : formatter<f32> {
-    template <typename FormatContext> auto format(const spellbook::l2& line, FormatContext& ctx) {
+template <> struct fmt::formatter<spellbook::line2> : formatter<f32> {
+    template <typename FormatContext> auto format(const spellbook::line2& line, FormatContext& ctx) {
         auto out = ctx.out();
         *out     = '(';
         out      = fmt::format_to(out, "start:");
@@ -120,8 +120,8 @@ template <> struct fmt::formatter<spellbook::l2> : formatter<f32> {
     }
 };
 
-template <> struct fmt::formatter<spellbook::r3> : formatter<f32> {
-    template <typename FormatContext> auto format(const spellbook::r3& ray, FormatContext& ctx) {
+template <> struct fmt::formatter<spellbook::ray3> : formatter<f32> {
+    template <typename FormatContext> auto format(const spellbook::ray3& ray, FormatContext& ctx) {
         auto out = ctx.out();
         *out     = '(';
         out      = fmt::format_to(out, "origin:");

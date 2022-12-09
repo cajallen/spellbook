@@ -162,6 +162,7 @@ JSON_IMPL(quat, x, y, z, w);
 
 namespace math {
 
+quat to_quat(v3 v);
 quat  to_quat(euler e);
 euler to_euler(quat q);
 

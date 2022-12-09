@@ -57,6 +57,7 @@ struct SkeletonGPU {
     
     Mode mode = Mode_Pose;
     vector<id_ptr<Bone>> bones;
+    vector<u8> widget_enabled;
     vuk::Unique<vuk::Buffer> buffer = vuk::Unique<vuk::Buffer>();
     bool render_lines = false;
 
@@ -72,7 +73,7 @@ struct SkeletonGPU {
     void stop_playing();
 };
 
-void inspect(std::unique_ptr<SkeletonGPU>& skeleton, RenderScene* render_scene);
+void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderScene* render_scene);
 
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);

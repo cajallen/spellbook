@@ -31,6 +31,7 @@ struct RenderScene {
     string              name;
 
     plf::colony<Renderable> renderables;
+    plf::colony<Renderable> widget_renderables;
     Viewport                viewport;
 
     SceneData       scene_data;
@@ -63,7 +64,7 @@ struct RenderScene {
     Renderable* copy_renderable(Renderable* renderable);
     void        delete_renderable(Renderable* renderable);
 
-    void quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated);
+    void quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget = false);
     
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 };

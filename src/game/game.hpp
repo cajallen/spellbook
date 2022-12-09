@@ -2,8 +2,8 @@
 
 #include "general/string.hpp"
 #include "general/vector.hpp"
-#include "game/gui.hpp"
 #include "game/scene.hpp"
+#include "editor/gui.hpp"
 #include "editor/asset_editor.hpp"
 #include "editor/map_editor.hpp"
 #include "editor/test_scene.hpp"
@@ -17,8 +17,8 @@ struct Game {
     GUI            gui;
 
     MapEditor map_editor;
-    AssetEditor asset_editor;
-    // TestScene test_scene;
+    // AssetEditor asset_editor;
+    TestScene test_scene;
     
     string external_resource_folder;
     string resource_folder;

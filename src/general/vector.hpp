@@ -253,17 +253,17 @@ bool vector<T>::contains(const T& t) const {
 
 template <typename T>
 T* vector<T>::data() {
-    return internal.data();
+    return internal.size() > 0 ? internal.data() : nullptr;
 }
 
 template <typename T>
 T* vector<T>::begin() {
-    return internal.data();
+    return this->data();
 }
 
 template <typename T>
 T* vector<T>::end() {
-    return internal.data() + this->size();
+    return this->data() + this->size();
 }
 
 template <typename T>
@@ -278,17 +278,17 @@ T& vector<T>::back() {
 
 template <typename T>
 const T* vector<T>::data() const {
-    return internal.data();
+    return internal.size() > 0 ? internal.data() : nullptr;
 }
 
 template <typename T>
 const T* vector<T>::begin() const {
-    return internal.data();
+    return this->data();
 }
 
 template <typename T>
 const T* vector<T>::end() const {
-    return internal.data() + this->size();
+    return this->data() + this->size();
 }
 
 template <typename T>

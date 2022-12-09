@@ -30,14 +30,14 @@ v4 convert_h(v3 v);
 f32 length_squared(v2 v);
 f32 length_squared(v3 v);
 f32 length_squared_h(v4 v);
-f32 length_squared(l2 v);
-f32 length_squared(l3 v);
+f32 length_squared(line2 v);
+f32 length_squared(line3 v);
 
 f32 length(v2 v);
 f32 length(v3 v);
 f32 length_h(v4 v);
-f32 length(l2 v);
-f32 length(l3 v);
+f32 length(line2 v);
+f32 length(line3 v);
 
 f32 distance(v2 a, v2 b);
 f32 distance(v3 a, v3 b);
@@ -84,9 +84,9 @@ euler vector2euler(v3 v);
 s32 ffsb(s32 input);
 s32 csb(s32 input);
 
-v2 project_point_onto_line(v2 point, l2 line);
+v2 project_point_onto_line(v2 point, line2 line);
 v3 project_point_onto_plane(v3 point, v3 plane_point, v3 plane_normal);
-v3 intersect_axis_plane(r3 ray, u32 axis, f32 axis_value);
+v3 intersect_axis_plane(ray3 ray, u32 axis, f32 axis_value);
 
 bool ray_intersects_aabb(v3 rstart, v3 rdir, v3 bstart, v3 bend, float* out_dist = nullptr);
 bool ray_intersects_aabb(v2 rstart, v2 rdir, v2 bstart, v2 bend, float* out_dist = nullptr);
@@ -265,36 +265,6 @@ template <typename T> T to_unsigned_range(T value, bool invert = false) {
     return ((invert ? -1.0f : 1.0f) * value + 1.0f) / 2.0f;
 }
 
-// o=origin, e=end
-// Takes in two lines, and outputs the point on each closest to the other line.
-// Returns the length between out_p1 and out_p2
-// out_t1/out_t2 is the o+t*(e-o) number used
-#define d_(a, b, c, d) (a.x - b.x) * (c.x - d.x) + (a.y - b.y) * (c.y - d.y) + (a.z - b.z) * (c.z - d.z);
-template <typename T>
-T line_intersection_3d(v3_<T> o1, v3_<T> e1, v3_<T> o2, v3_<T> e2, v3_<T>* out_p1 = nullptr, v3_<T>* out_p2 = nullptr,
-    float* out_t1 = nullptr, float* out_t2 = nullptr) {
-    // d_{abcd} = (a.x-b.x)(c.x-d.x)+(a.y-b.y)(c.y-d.y)+(a.z-b.z)(c.z-d.z);
-    f32 d1321 = d_(o1, o2, e1, o1);
-    f32 d2121 = d_(e1, o1, e1, o1);
-    f32 d4321 = d_(e2, o2, e1, o1);
-    f32 d1343 = d_(o1, o2, e2, o2);
-    f32 d4343 = d_(e2, o2, e2, o2);
-    f32 x1    = (d1343 * d4321 - d1321 * d4343) / (d2121 * d4343 - d4321 * d4321);
-    f32 x2    = (d1343 + x1 * d4321) / d4343;
-
-    if (out_p1)
-        *out_p1 = o1 + x1 * (e1 - o1);
-    if (out_p2)
-        *out_p2 = o2 + x2 * (e2 - o2);
-
-    if (out_t1)
-        *out_t1 = x1;
-    if (out_t2)
-        *out_t2 = x2;
-
-    return math::length(o2 + x2 * (e2 - o2) - (o1 + x1 * (e1 - o1)));
-}
-
 template <typename T> bool intersect_of_line_segments(const v2_<T> p0, const v2_<T> p1, const v2_<T> q0, const v2_<T> q1, v2_<T>* result) {
     v2_<T> v = p1 - p0;
     v2_<T> u = q1 - q0;
@@ -325,6 +295,78 @@ inline f32 mod(f32 input, f32 divisor) {
 
 inline f32 fract(f32 input) {
     return math::mod(input, 1);
+}
+
+inline f32 lerp_angle(f32 t, range r) {
+    f32 diff = r.end - r.start;
+
+    diff = math::mod(diff + math::PI, math::TAU);
+    if (diff < 0.0f)
+        diff += math::TAU;
+    diff -= math::PI;
+
+    return r.start + (diff * t);
+}
+
+inline float wrap_angle (float angle) {
+    return angle - math::TAU * floor( angle / math::TAU);
+};
+
+inline bool contains_angle(range r, float angle) {
+    r.start = wrap_angle(r.start);
+    r.end = wrap_angle(r.end);
+    angle = wrap_angle(angle);
+
+    if (r.start < r.end)
+        return (angle > r.start && angle < r.end);
+    if (r.start > r.end)
+        return (angle > r.start || angle < r.end);
+    return (angle == r.start);
+}
+
+inline float clamp_angle(float angle, range r) {
+    r.start = wrap_angle(r.start);
+    r.end = wrap_angle(r.end);
+    angle = wrap_angle(angle);
+
+    // Clamp the angle to the range of the two given angles
+    if (r.start < r.end)
+        return math::max(r.start, math::min(r.end, angle));
+    if (r.start > r.end) {
+        if (angle > r.start || angle < r.end)
+            return angle;
+        if (math::abs(r.end - angle) < math::abs(r.start - angle))
+            return r.end;
+        return r.start;
+    }
+    return r.start;
+}
+
+inline f32 clamp(f32 input, range range) {
+    return math::clamp(input, range.start, range.end);
+}
+
+inline f32 map_range(f32 input, range input_range, range output_range) {
+    f32 value = to_range(from_range(input, input_range), output_range);
+    return value = math::clamp(value, output_range);
+}
+
+constexpr f32 lerp(f32 x, range r) {
+    return r.start*(1.0f-x)+r.end*x;
+}
+
+#define d_(a,b,c,d) (a.x-b.x)*(c.x-d.x)+(a.y-b.y)*(c.y-d.y)+(a.z-b.z)*(c.z-d.z);
+inline f32 line_intersection_3d(const ray3& a, const ray3& b) {
+    auto o1 = a.origin;
+    auto e1 = a.origin + a.dir;
+    auto o2 = b.origin;
+    auto e2 = b.origin + b.dir;
+    f32 d1321 = d_(o1, o2, e1, o1);
+    f32 d2121 = d_(e1, o1, e1, o1);
+    f32 d4321 = d_(e2, o2, e1, o1);
+    f32 d1343 = d_(o1, o2, e2, o2);
+    f32 d4343 = d_(e2, o2, e2, o2);
+    return (d1343*d4321-d1321*d4343)/(d2121*d4343-d4321*d4321);
 }
 
 }

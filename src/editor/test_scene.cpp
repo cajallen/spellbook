@@ -1,73 +1,41 @@
 ﻿#include "test_scene.hpp"
 
+#include "pose_widget.hpp"
 #include "game/game.hpp"
+#include "general/matrix_math.hpp"
 #include "general/spline.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
 
 void TestScene::setup() {
-    setup(new Scene());
-}
-
-void TestScene::setup(Scene* init_scene) {
-    p_scene = init_scene;
+    p_scene = new Scene();
+    p_scene->setup("Test Scene");
 }
 
 void TestScene::update() {
-    Viewport& viewport = p_scene->render_scene.viewport;
-
-    vector<FormattedVertex> formatted_vertices;
-    for (v3& p : control_points) {
-        formatted_vertices.emplace_back(p, palette::spellbook_2, 0.03f);
-    }
-    if (control_points.size() >= 2) {
-        auto line_mesh = generate_formatted_line(viewport.camera, formatted_vertices);
-        p_scene->render_scene.quick_mesh(line_mesh, true);
-    }
-
-    vector<FormattedVertex> formatted_vertices2;
-
-    for (u32 i = 0; i <= 100; i++) {
-        v3 p = bspline_v2(f32(i) / 100.f, control_points);
-        formatted_vertices2.emplace_back(p, palette::spellbook_0, 0.03f);
-    }
-    if (formatted_vertices2.size() > 2) {
-        auto line_mesh = generate_formatted_line(viewport.camera, formatted_vertices2);
-        p_scene->render_scene.quick_mesh(line_mesh, true);
-    }
-    // auto line_mesh = generate_formatted_line(viewport.camera, {
-    //         {p + v3(0.f,0.f,0.03f), palette::spellbook_1, 0.04f},
-    //         {p - v3(0.f,0.f,0.03f), palette::spellbook_1, 0.04f}
-    // });
-    // p_scene->render_scene.quick_mesh(line_mesh);
-
 }
 
 void TestScene::window(bool* p_open) {
     if (ImGui::Begin("Test Scene", p_open)) {
-        ImGui::Text("Control Points");
-        for (v3& p : control_points) {
-            ImGui::PushID(&p);
-            ImGui::DragFloat3("Position", p.data, 0.01f);
-            ImGui::SameLine();
-            ImGui::Dummy(ImVec2{ImGui::GetContentRegionAvail().x - 20.f, 0});
-            ImGui::SameLine();
-            if (ImGui::SmallButton("x")) {
-                control_points.remove_index(control_points.index(p));
-                ImGui::PopID();
-                break;
-            }
-            ImGui::PopID();
-        }
-        if (ImGui::Button("Add"))
-            control_points.emplace_back();
-        ImGui::Separator();
-        ImGui::SliderInt("degrees", &degrees, 1, 6);
+        
+        static v3 position;
+        static quat rotation;
+        
+        WidgetState state;
+        WidgetSettings widget_settings{p_scene->render_scene};
+        pose_widget(0, &position, &rotation, widget_settings, nullptr, &state);
 
-        ImGui::DragFloat("t", &t, 0.01f);
+        ImGui::DragFloat3("Position", position.data, 0.01f);
+        ImGui::DragFloat4("Rotation", rotation.data, 0.01f);
+        inspect(&state);
     }
     ImGui::End();
 }
+
+void TestScene::shutdown() {
+    
+}
+
 
 }

@@ -139,6 +139,9 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     for (Renderable& renderable : renderables) {
         upload_dependencies(renderable);
     }
+    for (Renderable& renderable : widget_renderables) {
+        upload_dependencies(renderable);
+    }
 
     game.renderer.wait_for_futures();
     
@@ -192,7 +195,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
             // Render items
             int  i = 0;
             for (Renderable& renderable : renderables) {
-                render_item(renderable, command_buffer, i);
+                render_item(renderable, command_buffer, &i);
             }
 
             for (auto& emitter : emitters) {
@@ -213,10 +216,41 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 .bind_sampler(0, 1, Sampler().anisotropy(true).get())
                 .draw(6, 1, 0, 0);
         }});
+        rg->add_pass({
+        .name = "widget",
+        .resources = {
+            "widget_input"_image >> vuk::eColorWrite     >> "widget_output",
+            "widget_depth_input"_image   >> vuk::eDepthStencilRW >> "widget_depth_output"
+        },
+        .execute = [this](vuk::CommandBuffer& command_buffer) {
+            ZoneScoped;
+            // Prepare render
+            command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+                .set_viewport(0, vuk::Rect2D::framebuffer())
+                .set_scissor(0, vuk::Rect2D::framebuffer())
+                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                          .depthTestEnable  = true,
+                          .depthWriteEnable = true,
+                          .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                })
+                .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
+                .set_color_blend("widget_input", vuk::BlendPreset::eAlphaBlend);
+            
+            command_buffer
+                .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
+                .bind_buffer(0, SCENE_BINDING, buffer_scene_data);
+
+            // Render items
+            for (Renderable& renderable : widget_renderables) {
+                render_widget(renderable, command_buffer);
+            }
+        }});
     rg->add_pass(vuk::Pass {
         .name = "postprocess_apply",
         .resources = {
             "forward_output"_image >> vuk::eComputeSampled,
+            "widget_output"_image >> vuk::eComputeSampled,
+            "widget_depth_output"_image >> vuk::eComputeSampled,
             "normal_output"_image  >> vuk::eComputeSampled,
             "depth_output"_image   >> vuk::eComputeSampled,
             "target_input"_image   >> vuk::eComputeWrite >> "target_output",
@@ -231,7 +265,11 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                     .bind_sampler(0, 1, Sampler().filter(Filter_Nearest).get())
                     .bind_image(0, 2, "depth_output")
                     .bind_sampler(0, 2, Sampler().filter(Filter_Nearest).get())
-                    .bind_image(0, 3, "target_input");
+                    .bind_image(0, 3, "widget_output")
+                    .bind_sampler(0, 3, Sampler().filter(Filter_Nearest).get())
+                    .bind_image(0, 4, "widget_depth_output")
+                    .bind_sampler(0, 4, Sampler().filter(Filter_Nearest).get())
+                    .bind_image(0, 5, "target_input");
 
                 auto target      = *cmd.get_resource_image_attachment("target_input");
                 auto target_size = target.extent.extent;
@@ -265,15 +303,19 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     }
     // clang-format on
 
-    auto clear_color      = vuk::ClearColor(scene_data.fog_color);
-    auto info_clear_color = vuk::ClearColor {-1u, -1u, -1u, -1u};
+    auto clear_color       = vuk::ClearColor(scene_data.fog_color);
+    auto clear_transparent = vuk::ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    auto info_clear_color  = vuk::ClearColor {-1u, -1u, -1u, -1u};
     auto depth_clear_value = vuk::ClearDepthStencil{0.0f, 0};
     rg->attach_and_clear_image("forward_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_color);
+    rg->attach_and_clear_image("widget_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_transparent);
     rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
     rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, info_clear_color);
     rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
-    
+    rg->attach_and_clear_image("widget_depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
+
     rg->inference_rule("forward_input", vuk::same_extent_as("target_input"));
+    rg->inference_rule("widget_input", vuk::same_extent_as("target_input"));
 
     return vuk::Future {rg, "target_output"};
 }
@@ -282,13 +324,13 @@ void RenderScene::cleanup(vuk::Allocator& allocator) {
     game.renderer.scenes.remove_value(this);
 }
 
-void RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated) {
+void RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget) {
     Renderable r;
     r.mesh_asset_path = game.renderer.upload_mesh(mesh_cpu, frame_allocated);
-    r.material_asset_path = "default";
+    r.material_asset_path = widget ? "widget" : "default";
     r.frame_allocated = true;
-
-    add_renderable(r);
+    
+    (widget ? widget_renderables : renderables).emplace(r);
 }
 
 

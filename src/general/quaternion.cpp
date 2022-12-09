@@ -3,12 +3,12 @@
 namespace spellbook::math {
 
 quat to_quat(euler e) {
-    double cy = cos(e.yaw * 0.5);
-    double sy = sin(e.yaw * 0.5);
-    double cp = cos(e.pitch * 0.5);
-    double sp = sin(e.pitch * 0.5);
-    double cr = cos(e.roll * 0.5);
-    double sr = sin(e.roll * 0.5);
+    float cy = math::cos(e.yaw * 0.5f);
+    float sy = math::sin(e.yaw * 0.5f);
+    float cp = math::cos(e.pitch * 0.5f);
+    float sp = math::sin(e.pitch * 0.5f);
+    float cr = math::cos(e.roll * 0.5f);
+    float sr = math::sin(e.roll * 0.5f);
 
 	return quat(sy * cp * cr - cy * sp * sr, 
                 cy * sp * cr + sy * cp * sr, 
@@ -17,11 +17,17 @@ quat to_quat(euler e) {
     );
 }
 
+quat to_quat(v3 v) {
+    auto angle = math::length(v);
+    if (angle < 0.0001f) return quat();
+    return quat(v * (math::sin(angle / 2.0f) / angle), math::cos(angle / 2.0f));
+}
+
 euler to_euler(quat q) {
-	f32 k = 2 * (q.w * q.y - q.z * q.x);
-	return euler{math::atan2(2 * (q.w * q.x + q.y * q.z), 1 - 2 * (q.x * q.x + q.y * q.y)),
-				 math::abs(k) >= 1 ? math::copy_sign(math::PI, k) : math::asin(k),
-				 math::atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))};
+	f32 k = 2.0f * (q.w * q.y - q.z * q.x);
+	return euler{math::atan2(2.0f * (q.w * q.x + q.y * q.z), 1.0f - 2.0f * (q.x * q.x + q.y * q.y)),
+				 math::abs(k) >= 1.0f ? math::copy_sign(math::PI, k) : math::asin(k),
+				 math::atan2(2.0f * (q.w * q.z + q.x * q.y), 1.0f - 2.0f * (q.y * q.y + q.z * q.z))};
 }
 
 quat invert(quat q) {

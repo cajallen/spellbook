@@ -25,6 +25,7 @@ void inspect(Renderable* renderable);
 
 void upload_dependencies(Renderable& renderable);
 
-void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int& item_index);
+void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index);
+void render_widget(Renderable& renderable, vuk::CommandBuffer& command_buffer);
 
 }

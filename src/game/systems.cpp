@@ -225,12 +225,12 @@ void dragging_update_system(Scene* scene) {
             auto transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
             assert_else(transform);
 
-            scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, transform->position, intersect);
+            // scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, transform->position, intersect);
 
             for (auto [entity, attach] : scene->registry.view<LogicTransformAttach>().each()) {
                 if (attach.to == scene->selected_entity) {
                     auto attachee_transform = scene->registry.try_get<LogicTransform>(entity);
-                    scene->registry.emplace<Dragging>(entity, Input::time, attachee_transform->position, intersect);
+                    // scene->registry.emplace<Dragging>(entity, Input::time, attachee_transform->position, intersect);
                 }
             }
         }

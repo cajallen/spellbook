@@ -117,7 +117,7 @@ v3 cross(v3 a, v3 b) {
 }
 
 f32 to_range(f32 value, range r) {
-    return value * (r.end - r.start);
+    return r.start + value * (r.end - r.start);
 }
 
 f32 from_range(f32 value, range r) {
@@ -126,19 +126,19 @@ f32 from_range(f32 value, range r) {
     return (value - r.start) / (r.end - r.start);
 }
 
-f32 length_squared(l2 v) {
+f32 length_squared(line2 v) {
     return math::length_squared(v.end - v.start);
 }
 
-f32 length_squared(l3 v) {
+f32 length_squared(line3 v) {
     return math::length_squared(v.end - v.start);
 }
 
-f32 length(l2 v) {
+f32 length(line2 v) {
     return math::length(v.end - v.start);
 }
 
-f32 length(l3 v) {
+f32 length(line3 v) {
     return math::length(v.end - v.start);
 }
 
@@ -181,7 +181,7 @@ u64 random_u64() {
     return uniform_dist(random_engine);
 }
 
-v2 project_point_onto_line(v2 point, l2 line) {
+v2 project_point_onto_line(v2 point, line2 line) {
     return line.end * (math::dot(line.vector(), point - line.start) / math::length_squared(line));
 }
 
@@ -231,11 +231,15 @@ s32 csb(s32 input) {
     return n;
 }
 
-v3 intersect_axis_plane(r3 ray, u32 axis, f32 axis_value) {
+v3 intersect_axis_plane(ray3 ray, u32 axis, f32 axis_value) {
     f64 t     = (axis_value - ray.origin[axis]) / ray.dir[axis];
     u32 axis1 = (axis + 1) % 3;
     u32 axis2 = (axis + 2) % 3;
-    return v3(ray.origin[axis1] + ray.dir[axis1] * t, ray.origin[axis2] + ray.dir[axis2] * t, axis_value);
+    v3 ret = {};
+    ret[axis] = axis_value;
+    ret[axis1] = ray.origin[axis1] + ray.dir[axis1] * t;
+    ret[axis2] = ray.origin[axis2] + ray.dir[axis2] * t;
+    return ret;
 }
 
 v3 euler2vector(euler e) {

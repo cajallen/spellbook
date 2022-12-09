@@ -12,10 +12,10 @@ struct TestScene {
     
     Scene* p_scene        = nullptr;
     
-    void   setup();
-    void   setup(Scene* init_scene);
-    void   update();
-    void   window(bool* p_open);
+    void setup();
+    void update();
+    void window(bool* p_open);
+    void shutdown();
 };
 
 }
