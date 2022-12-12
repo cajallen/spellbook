@@ -48,7 +48,7 @@
       <ForcedIncludeFiles>global.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h";TRACY_ENABLE</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>

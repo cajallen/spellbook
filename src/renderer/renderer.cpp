@@ -29,8 +29,8 @@ Renderer::Renderer()
     : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
+        .request_validation_layers(VALIDATION ? true : false)
 #if VALIDATION
-        .request_validation_layers()
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,
@@ -196,6 +196,7 @@ void Renderer::render() {
     std::shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
     std::vector resources{"SWAPCHAIN+"_image >> vuk::eColorWrite >> "SWAPCHAIN++"};
     for (auto scene : scenes) {
+        ZoneScoped;
         scene->pre_render();
 
         std::shared_ptr<vuk::RenderGraph> rgx = std::make_shared<vuk::RenderGraph>(vuk::Name(scene->name));
@@ -217,7 +218,10 @@ void Renderer::render() {
     auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN++"}, imgui_data, ImGui::GetDrawData(), imgui_images);
     stage    = RenderStage_Presenting;
     vuk::Compiler compiler;
-    present(*frame_allocator, compiler, swapchain, std::move(fut));
+    {
+        ZoneScopedN("Present");
+        present(*frame_allocator, compiler, swapchain, std::move(fut));
+    }
     imgui_images.clear();
 
     for (auto scene : scenes) {
@@ -285,6 +289,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::wait_for_futures() {
+    ZoneScoped;
     vuk::Compiler compiler;
     vuk::wait_for_futures_explicit(*global_allocator, compiler, futures);
     futures.clear();
@@ -315,6 +320,7 @@ string Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     if (mesh_cache.contains(mesh_cpu_hash))
         return mesh_cpu.file_path;
     MeshGPU         mesh_gpu;
+    mesh_gpu.frame_allocated = frame_allocation;
     vuk::Allocator& alloc                = frame_allocation ? *frame_allocator : *global_allocator;
     auto            [vert_buf, vert_fut] = create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
     mesh_gpu.vertex_buffer               = std::move(vert_buf);
@@ -347,6 +353,7 @@ string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_all
     u64 material_cpu_hash               = hash_data(material_cpu.file_path.data(), material_cpu.file_path.size());
 
     MaterialGPU material_gpu;
+    material_gpu.frame_allocated = frame_allocation;
     material_gpu.pipeline      = context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
     material_gpu.color = vuk::make_sampled_image(get_texture_or_upload(material_cpu.color_asset_path).value.view.get(), material_cpu.sampler.get());
     material_gpu.normal = vuk::make_sampled_image(get_texture_or_upload(material_cpu.normal_asset_path).value.view.get(), material_cpu.sampler.get());

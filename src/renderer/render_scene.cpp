@@ -84,6 +84,8 @@ void RenderScene::delete_renderable(Renderable* renderable) {
 
 
 void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
+    ZoneScoped;
+    
     struct CameraData {
         m44GPU view;
         m44GPU proj;

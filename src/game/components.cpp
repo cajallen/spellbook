@@ -8,6 +8,7 @@
 #include "game/spawner.hpp"
 #include "game/lizard.hpp"
 #include "renderer/draw_functions.hpp"
+#include "tracy/Tracy.hpp"
 
 
 namespace spellbook {
@@ -77,6 +78,7 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<Model>(entity)) {
+        ZoneScoped;
         ImGui::Text("Model");
         uset<SkeletonGPU*> done_skeletons = {nullptr};
         for (int i = 0; i < component->model_gpu.renderables.size(); i++) {

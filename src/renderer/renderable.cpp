@@ -6,6 +6,7 @@
 #include "game/game.hpp"
 #include "editor/console.hpp"
 #include "renderer/assets/mesh_asset.hpp"
+#include "tracy/Tracy.hpp"
 
 namespace spellbook {
 
@@ -20,6 +21,7 @@ void inspect(Renderable* renderable) {
 }
 
 void upload_dependencies(Renderable& renderable) {
+    ZoneScoped;
     MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
     MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
 

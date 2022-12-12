@@ -12,6 +12,7 @@
 #include "game/game.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
+#include "tracy/Tracy.hpp"
 
 
 namespace spellbook {
@@ -140,6 +141,7 @@ vuk::Unique<vuk::Buffer>* SkeletonGPU::empty_buffer() {
 }
 
 void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene) {
+    ZoneScoped;
     ImGui::Text("Skeleton");
     ImGui::Indent();
     bool any_changed = false;

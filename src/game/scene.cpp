@@ -83,6 +83,7 @@ void Scene::cleanup() {
 
 
 void Scene::inspect_entity(entt::entity entity) {
+    ZoneScoped;
 	if (!registry.any_of<Name>(entity))
 		return;
 
