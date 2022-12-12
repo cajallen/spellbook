@@ -38,7 +38,7 @@ bool map_editor_key(KeyCallbackArgs args) {
 
 bool map_editor_click_painting(ClickCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
-    if (args.action == GLFW_PRESS) {
+    if (args.action == GLFW_PRESS && args.button == GLFW_MOUSE_BUTTON_LEFT) {
         if (map_editor.selected_consumer != ~0u ||
             map_editor.selected_lizard != ~0u ||
             map_editor.selected_tile != ~0u ||
@@ -48,7 +48,7 @@ bool map_editor_click_painting(ClickCallbackArgs args) {
             return true;
         }
     }
-    else if (args.action == GLFW_RELEASE) {
+    else if (args.action == GLFW_RELEASE && args.button == GLFW_MOUSE_BUTTON_LEFT) {
         map_editor.painting = false;
     }
     return false;
@@ -63,6 +63,20 @@ bool map_editor_click_dragging(ClickCallbackArgs args) {
     if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
         map_editor.p_scene->registry.clear<Dragging>();
         map_editor.p_scene->selected_entity = entt::null;
+    }
+    return false;
+}
+
+bool map_editor_scroll(ScrollCallbackArgs args) {
+    MapEditor& map_editor = *((MapEditor*) args.data);
+    Viewport& viewport = map_editor.p_scene->render_scene.viewport;
+    
+    if (!viewport.hovered && !viewport.focused)
+        return false;
+    
+    if (Input::shift) {
+        map_editor.y_level += (s32) args.yoffset;
+        return true;
     }
     return false;
 }
@@ -86,6 +100,7 @@ void MapEditor::setup() {
     FROM_JSON_MEMBER(map_prefab.file_path);
 
     Input::add_callback(InputCallbackInfo{map_editor_key, 60, "map_editor", this});
+    Input::add_callback(InputCallbackInfo{map_editor_scroll, 10, "map_editor", this});
     Input::add_callback(InputCallbackInfo{map_editor_click_painting, 20, "map_editor", this});
     Input::add_callback(InputCallbackInfo{map_editor_click_dragging, 60, "map_editor", this});
 }
@@ -98,34 +113,33 @@ void MapEditor::update() {
     if (!viewport.hovered)
         return;
 
-    v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-    v3i cell      = (v3i) math::floor(intersect) - v3i(0,0,1);
-    draw_preview(cell);
+    
+    v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, y_level);
+    v3i top_drawn_cell      = (v3i) math::floor(intersect) - v3i(0,0,1);
+    v3i bot_drawn_cell      = (v3i) math::floor(intersect);
+    draw_preview(top_drawn_cell);
 
     // we should check if this mouse input is ours in the callback)
     if (painting) {
         if (eraser_selected) {
-            vector<entt::entity> targets = p_scene->get_any(cell);
+            vector<entt::entity> targets = p_scene->get_any(top_drawn_cell);
             p_scene->registry.destroy(targets.begin(), targets.end());
-            map_prefab.tiles.erase(cell);
-            map_prefab.lizards.erase(cell);
-            map_prefab.consumers.erase(cell);
-            map_prefab.spawners.erase(cell);
+            map_prefab.tiles.erase(top_drawn_cell);
+            map_prefab.lizards.erase(top_drawn_cell);
+            map_prefab.consumers.erase(top_drawn_cell);
+            map_prefab.spawners.erase(top_drawn_cell);
         }
         else if (selected_tile != -1) {
-            instance_and_write_prefab(load_tile(tile_buttons[selected_tile].item_path), cell);
+            instance_and_write_prefab(load_tile(tile_buttons[selected_tile].item_path), top_drawn_cell);
         }
         else if (selected_lizard != -1) {
-            v3i new_pos = cell + v3i(0,0,1);
-            instance_and_write_prefab(load_lizard(lizard_buttons[selected_lizard].item_path), new_pos);
+            instance_and_write_prefab(load_lizard(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
         }
         else if (selected_spawner != -1) {
-            v3i new_pos = cell + v3i(0,0,1);
-            instance_and_write_prefab(load_spawner(spawner_buttons[selected_spawner].item_path), new_pos);
+            instance_and_write_prefab(load_spawner(spawner_buttons[selected_spawner].item_path), bot_drawn_cell);
         }
         else if (selected_consumer != -1) {
-            v3i new_pos = cell + v3i(0,0,1);
-            instance_and_write_prefab(load_consumer(consumer_buttons[selected_consumer].item_path), new_pos);
+            instance_and_write_prefab(load_consumer(consumer_buttons[selected_consumer].item_path), bot_drawn_cell);
         }
     }
 

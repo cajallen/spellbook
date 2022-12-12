@@ -10,12 +10,15 @@
 
 namespace spellbook {
 
-bool cc_on_click(ClickCallbackArgs args) {
+bool cc_on_mouse(ClickCallbackArgs args) {
     CameraController& cc = *((CameraController*) args.data);
 
-    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
-        if (!cc.viewport->hovered && !cc.viewport->focused)
+    if (cc.nav_mode != CameraController::NavigationMode_Fly) {
+        if (!cc.viewport->hovered && !cc.viewport->focused) {
+            if (cc.nav_mode == CameraController::NavigationMode_Pivot)
+                cc.change_state(CameraController::NavigationMode_None);
             return false;
+        }
     }
 
     if ((args.button == GLFW_MOUSE_BUTTON_RIGHT || args.button == GLFW_MOUSE_BUTTON_MIDDLE) && args.action != GLFW_RELEASE) {
@@ -250,7 +253,7 @@ void inspect(CameraController* controller) {
 void CameraController::setup(Viewport* init_viewport, Camera* init_camera) {
     viewport = init_viewport;
     camera   = init_camera;
-    Input::add_callback(InputCallbackInfo{cc_on_click, 20, name, this});
+    Input::add_callback(InputCallbackInfo{cc_on_mouse, 20, name, this});
     Input::add_callback(InputCallbackInfo{cc_on_cursor, 20, name, this});
     Input::add_callback(InputCallbackInfo{cc_on_scroll, 20, name, this});
     Input::add_callback(InputCallbackInfo{cc_on_key, 20, name, this});

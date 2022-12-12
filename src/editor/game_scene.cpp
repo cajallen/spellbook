@@ -1,5 +1,7 @@
 ﻿#include "game_scene.hpp"
 
+#include "game/game.hpp"
+
 namespace spellbook {
 
 bool game_scene_on_key(KeyCallbackArgs args) {
@@ -31,6 +33,7 @@ void GameScene::window(bool* p_open) {
 
 void GameScene::shutdown() {
     Input::remove_callback<KeyCallback>("Game Scene");
+    p_scene->cleanup();
 }
 
 

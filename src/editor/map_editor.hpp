@@ -41,6 +41,8 @@ struct MapEditor : EditorScene {
     u32 selected_lizard = ~0u;
     u32 selected_tile  = ~0u;
     u32 selected_spawner = ~0u;
+
+    s32 y_level = 0;
     
     void setup() override;
     void update() override;
