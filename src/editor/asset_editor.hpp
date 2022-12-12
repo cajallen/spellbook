@@ -1,35 +1,34 @@
 #pragma once
 
+#include "editor_scene.hpp"
 #include "game/consumer.hpp"
 #include "game/scene.hpp"
 #include "game/enemy.hpp"
 #include "game/spawner.hpp"
-#include "game/tower.hpp"
+#include "game/lizard.hpp"
 #include "game/tile.hpp"
 
 namespace fs = std::filesystem;
 
 namespace spellbook {
 
-struct AssetEditor {
+struct AssetEditor : EditorScene {
     enum Tab {
         Tab_Model,
         Tab_Mesh,
         Tab_Material,
-        Tab_Tower,
+        Tab_Lizard,
         Tab_Tile,
         Tab_Enemy,
         Tab_Spawner,
         Tab_Consumer,
         Tab_Emitter
     };
-    
-    Scene*   p_scene = nullptr;
 
     ModelCPU model_cpu;
     MeshCPU mesh_cpu;
     MaterialCPU material_cpu;
-    TowerPrefab tower_prefab;
+    LizardPrefab lizard_prefab;
     TilePrefab tile_prefab;
     EnemyPrefab enemy_prefab;
     SpawnerPrefab spawner_prefab;
@@ -40,9 +39,9 @@ struct AssetEditor {
     // Used as readonly
     Tab tab;
     
-    void      setup();
-    void      update();
-    void      window(bool* p_open);
+    void setup() override;
+    void update() override;
+    void window(bool* p_open) override;
 };
 
 }

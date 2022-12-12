@@ -7,27 +7,55 @@
 #include "general/vector.hpp"
 #include "general/umap.hpp"
 
-using std::tuple;
-
 namespace spellbook {
 
-typedef bool (*key_callback)(GLFWwindow*, int /*key*/, int /*scancode*/, int /*action*/, int /*mods*/, void*);
-typedef bool (*mouse_pos_callback)(GLFWwindow*, double /*xpos*/, double /*ypos*/, void*);
-typedef bool (*mouse_button_callback)(GLFWwindow*, int /*button*/, int /*action*/, int /*mods*/, void*);
-typedef bool (*scroll_callback)(GLFWwindow*, double /*xoffset*/, double /*yoffset*/, void*);
-typedef bool (*drop_callback)(GLFWwindow*, int /*file_count*/, const char** /*file_name_list*/, void*);
-typedef bool (*framebuffer_size_callback)(GLFWwindow*, int /*xsize*/, int /*ysize*/, void*);
+struct KeyCallbackArgs {
+    GLFWwindow* window;
+    int key, scancode, action, mods;
+    void* data;
+};
+
+struct CursorCallbackArgs {
+    GLFWwindow* window;
+    double x, y;
+    void* data;
+};
+
+struct ClickCallbackArgs {
+    GLFWwindow* window;
+    int button, action, mods;
+    void* data;
+};
+
+struct ScrollCallbackArgs {
+    GLFWwindow* window;
+    double xoffset, yoffset;
+    void* data;
+};
+
+typedef bool (*KeyCallback)(KeyCallbackArgs);
+typedef bool (*CursorCallback)(CursorCallbackArgs);
+typedef bool (*ClickCallback)(ClickCallbackArgs);
+typedef bool (*ScrollCallback)(ScrollCallbackArgs);
+// typedef bool (*drop_callback)(GLFWwindow*, int /*file_count*/, const char** /*file_name_list*/, void*);
+// typedef bool (*framebuffer_size_callback)(GLFWwindow*, int /*xsize*/, int /*ysize*/, void*);
+
+template<typename T>
+struct InputCallbackInfo {
+    T callback;
+    u32 priority;
+    string name;
+    void* data;
+
+    static vector<InputCallbackInfo<T>>& stack() {
+        static vector<InputCallbackInfo<T>> s;
+        return s;
+    }
+};
 
 struct Input {
     static void setup();
     static void update();
-
-    static vector<tuple<key_callback, string, void*>>              key_callback_stack;
-    static vector<tuple<mouse_pos_callback, string, void*>>        mouse_pos_callback_stack;
-    static vector<tuple<mouse_button_callback, string, void*>>     mouse_button_callback_stack;
-    static vector<tuple<scroll_callback, string, void*>>           scroll_callback_stack;
-    static vector<tuple<drop_callback, string, void*>>             drop_callback_stack;             // not implemented
-    static vector<tuple<framebuffer_size_callback, string, void*>> framebuffer_size_callback_stack; // not implemented
 
     static GLFWwindow* window;
     static float       time;
@@ -57,10 +85,25 @@ struct Input {
 
     static void set_cursor_disabled(bool state = true);
 
-    static void remove_key_callback(const string& name);
-    static void remove_mouse_pos_callback(const string& name);
-    static void remove_mouse_button_callback(const string& name);
-    static void remove_scroll_callback(const string& name);
+    template<typename T>
+    static void remove_callback(const string& name) {
+        auto& stack = InputCallbackInfo<T>::stack();
+
+        stack.remove_if([&name](const InputCallbackInfo<T>& element) { return element.name == name; }, false);
+    }
+
+    template<typename T>
+    static void add_callback(const InputCallbackInfo<T>& callback_info) {
+        auto& stack = InputCallbackInfo<T>::stack();
+
+        for (u32 i = 0; i < stack.size(); i++) {
+            if (callback_info.priority < stack[i].priority) {
+                stack.insert(i, callback_info);
+                return;
+            }
+        }
+        stack.push_back(callback_info);
+    }
 };
 
 void default_key_callback(GLFWwindow*, int, int, int, int);
@@ -71,3 +114,15 @@ void default_drop_callback(GLFWwindow*, int, const char**);
 void default_framebuffer_size_callback(GLFWwindow*, int, int);
 
 }
+
+
+/*
+ * Priorities:
+ *
+ * Viewport info: 0
+ * Painting while brush enabled: 20
+ * Widgets: 40
+ * Dragging start: 60
+ *
+ * Map editor hotkeys: 60
+ */

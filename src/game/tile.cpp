@@ -21,9 +21,11 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     auto& model_comp = scene->registry.emplace<Model>(entity);
     model_comp.model_cpu = load_model(tile_prefab.model_path);
     model_comp.model_gpu = std::move(instance_model(scene->render_scene, model_comp.model_cpu));
-    
+
+    auto random_euler = euler{math::random_s32(0, 3) * math::PI / 2.0f, math::random_s32(0, 3) * math::PI / 2.0f};
     scene->registry.emplace<LogicTransform>(entity, v3(location));
-    scene->registry.emplace<ModelTransform>(entity, v3(location));
+    scene->registry.emplace<ModelTransform>(entity, v3(location), random_euler);
+    scene->registry.emplace<TransformLink>(entity, v3(0.5f));
     scene->registry.emplace<GridSlot>(entity, tile_prefab.type == TileType_Path);
 
     return entity;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input.hpp"
 #include "general/string.hpp"
 #include "general/geometry.hpp"
 #include "renderer/camera.hpp"
@@ -47,10 +48,10 @@ struct CameraController {
 
 void inspect(CameraController* controller);
 
-bool cc_on_mouse_press(GLFWwindow* window, int button, int action, int mods, void* data);
-bool cc_on_cursor_move(GLFWwindow* window, double xpos, double ypos, void* data);
-bool cc_on_scroll(GLFWwindow* window, double xpos, double ypos, void* data);
-bool cc_on_key(GLFWwindow* window, int key, int scancode, int action, int mods, void* data);
+bool cc_on_click(ClickCallbackArgs args);
+bool cc_on_cursor(CursorCallbackArgs args);
+bool cc_on_scroll(ScrollCallbackArgs args);
+bool cc_on_key(KeyCallbackArgs args);
 
 }
 

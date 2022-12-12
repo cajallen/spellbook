@@ -85,7 +85,7 @@ m44 Bone::update_position() {
     
     float t = math::from_range(time, range(start.position.time, target.position.time));
     t = math::abs(1.0f - math::mod(t, 2.0f));
-    v3 interpolated = math::mix(start.position.value, target.position.value, t);
+    v3 interpolated = math::mix(start.position.value, target.position.value, math::ease(t, ease_mode));
     return math::translate(interpolated);
 }
 
@@ -95,7 +95,7 @@ m44 Bone::update_rotation() {
 
     float t = math::from_range(time, range(start.rotation.time, target.rotation.time));
     t = math::abs(1.0f - math::mod(t, 2.0f));
-    quat interpolated = math::slerp(start.rotation.value, target.rotation.value, t);
+    quat interpolated = math::slerp(start.rotation.value, target.rotation.value, math::ease(t, ease_mode));
     return math::rotation(interpolated);
 }
 
@@ -105,7 +105,7 @@ m44 Bone::update_scaling() {
 
     float t = math::from_range(time, range(start.scale.time, target.scale.time));
     t = math::abs(1.0f - math::mod(t, 2.0f));
-    v3 interpolated = math::mix(start.scale.value, target.scale.value, t);
+    v3 interpolated = math::mix(start.scale.value, target.scale.value, math::ease(t, ease_mode));
     return math::scale(interpolated);
 }
 
@@ -139,7 +139,7 @@ vuk::Unique<vuk::Buffer>* SkeletonGPU::empty_buffer() {
     return &skeleton_gpu.buffer;
 }
 
-void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderScene* render_scene) {
+void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene) {
     ImGui::Text("Skeleton");
     ImGui::Indent();
     bool any_changed = false;
@@ -147,7 +147,7 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderSce
     if (skeleton->widget_enabled.size() != skeleton->bones.size())
         skeleton->widget_enabled.resize(skeleton->bones.size());
 
-    WidgetSettings settings{*render_scene};
+    PoseWidgetSettings settings{*render_scene};
     if (ImGui::BeginTable("bones", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Name/Id");
         ImGui::TableSetupColumn("Parent");
@@ -168,10 +168,10 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderSce
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
             any_changed |= ImGui::DragFloat3("##Position", bone->start.position.value.data, 0.01f);               
             ImGui::TableSetColumnIndex(3);
-            euler e = math::to_euler(bone->start.rotation.value.data);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-            if (ImGui::DragFloat3("##Rotation", e.data, 0.01f)) {
-                bone->start.rotation.value = math::to_quat(e);
+            // euler e = math::to_euler(bone->start.rotation.value.data);
+            if (ImGui::DragFloat4("##Rotation", bone->start.rotation.value.data, 0.01f)) {
+                // bone->start.rotation.value = math::to_quat(e);
                 any_changed = true;
             }
             ImGui::TableSetColumnIndex(4);
@@ -184,8 +184,7 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderSce
             ImGui::Checkbox("##Widget", (bool*) &bone_widget_enabled);
 
             if (bone_widget_enabled) {
-                skeleton->update();
-                m44 mat = bone->final_transform();
+                m44 mat = bone->parent.valid() ? model * bone->parent->transform() : model;
                 any_changed |= pose_widget(bone.id, &bone->start.position.value, &bone->start.rotation.value, settings, &mat);
             }
             
@@ -226,6 +225,9 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderSce
     }
     
     ImGui::Checkbox("Render Lines", &skeleton->render_lines);
+
+    if (any_changed || skeleton->mode == SkeletonGPU::Mode_Play)
+        skeleton->update();
     
     if (skeleton->render_lines && render_scene != nullptr) {
         uset<u64> is_parent;
@@ -237,24 +239,27 @@ void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderSce
             if (!is_parent.contains(bone.id)) {
                 vector<FormattedVertex> vertices;
                 id_ptr<Bone> current_node = bone;
-                v4 current_hpos = model * current_node->final_transform() * v4(0,0,0,1);
-                vertices.push_back({current_hpos.xyz / current_hpos.w, palette::white, 0.03f});
+                vertices.push_back({math::apply_transform(model * current_node->transform(), v3(0.0f)), palette::gray_5, 0.003f});
                 while (current_node->parent.valid()) {
                     current_node = current_node->parent;
-                    current_hpos = model * current_node->final_transform() * v4(0,0,0,1);
-                    vertices.push_back({current_hpos.xyz / current_hpos.w, palette::white, 0.03f});
+                    vertices.push_back({math::apply_transform(model * current_node->transform(), v3(0.0f)), palette::gray_5, 0.003f});
                 }
                 auto line_mesh = generate_formatted_line(render_scene->viewport.camera, std::move(vertices));
                 if (line_mesh.file_path.empty())
                     continue;
                 render_scene->quick_mesh(line_mesh, true, true);
             }
+
+            m44 mat = model * bone->transform();
+            v3 loc = math::apply_transform(mat, v3(0.0f));
+            auto joint_mesh = generate_cube(loc, v3(0.01f), palette::gray_5);
+            if (joint_mesh.file_path.empty())
+                continue;
+            render_scene->quick_mesh(joint_mesh, true, true);
         }
         
     }
     
-    if (any_changed || skeleton->mode == SkeletonGPU::Mode_Play)
-        skeleton->update();
 }
 
 }

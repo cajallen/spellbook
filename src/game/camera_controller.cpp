@@ -10,6 +10,105 @@
 
 namespace spellbook {
 
+bool cc_on_click(ClickCallbackArgs args) {
+    CameraController& cc = *((CameraController*) args.data);
+
+    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
+        if (!cc.viewport->hovered && !cc.viewport->focused)
+            return false;
+    }
+
+    if ((args.button == GLFW_MOUSE_BUTTON_RIGHT || args.button == GLFW_MOUSE_BUTTON_MIDDLE) && args.action != GLFW_RELEASE) {
+        cc.change_state(CameraController::NavigationMode_Pivot);
+    }
+
+    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
+        if (args.button == GLFW_MOUSE_BUTTON_RIGHT && args.action == GLFW_PRESS) {
+            cc.pivot_state.panning         = true;
+            cc.pivot_state.pan_start_mouse = Input::mouse_pos;
+            cc.pivot_state.pan_start_world = cc.pivot_state.arm_pivot;
+            return true;
+        } else if (args.button == GLFW_MOUSE_BUTTON_RIGHT && args.action == GLFW_RELEASE) {
+            cc.pivot_state.panning = false;
+        }
+
+        if (args.button == GLFW_MOUSE_BUTTON_MIDDLE && args.action == GLFW_PRESS) {
+            cc.pivot_state.rotating             = true;
+            cc.pivot_state.rotate_start_mouse   = Input::mouse_pos;
+            cc.pivot_state.rotate_start_heading = cc.pivot_state.arm_heading;
+            return true;
+        } else if (args.button == GLFW_MOUSE_BUTTON_MIDDLE && args.action == GLFW_RELEASE) {
+            cc.pivot_state.rotating = false;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool cc_on_cursor(CursorCallbackArgs args) {
+    CameraController& cc = *((CameraController*) args.data);
+
+    if (cc.nav_mode == CameraController::NavigationMode_Fly) {
+        // negative yaw is "right", think of circle degrees from origin's perspective
+        cc.camera->heading.yaw -= Input::mouse_delta.x * Input::delta_time * cc.fly_state.sensitivity;
+        cc.camera->heading.pitch -= Input::mouse_delta.y * Input::delta_time * cc.fly_state.sensitivity;
+        cc.camera->heading.pitch = math::clamp(cc.camera->heading.pitch, -math::PI / 2 + 0.01f, math::PI / 2 - 0.01f);
+
+        cc.camera->view_dirty = true;
+        return true;
+    }
+
+    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
+        if (cc.pivot_state.rotating) {
+            v2 delta                         = Input::mouse_pos - cc.pivot_state.rotate_start_mouse;
+            cc.pivot_state.arm_heading.yaw   = cc.pivot_state.rotate_start_heading.yaw - delta.x * math::d2r(cc.pivot_state.sensitivity);
+            cc.pivot_state.arm_heading.pitch = cc.pivot_state.rotate_start_heading.pitch - delta.y * math::d2r(cc.pivot_state.sensitivity);
+        }
+    }
+
+    return false;
+}
+
+bool cc_on_scroll(ScrollCallbackArgs args) {
+    CameraController& cc = *((CameraController*) args.data);
+
+    if (!cc.viewport->hovered)
+        return false;
+
+    if (cc.nav_mode == CameraController::NavigationMode_Fly) {
+        if (Input::shift) {
+            cc.fly_state.speed *= math::pow(1.1, args.yoffset);
+            return true;
+        }
+
+        if (Input::alt) {
+            cc.camera->fov -= 2.5 * args.yoffset;
+            cc.camera->proj_dirty = true;
+            return true;
+        }
+    }
+
+    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
+        cc.pivot_state.arm_length *= math::pow(1.1, -args.yoffset);
+    }
+    return false;
+}
+
+bool cc_on_key(KeyCallbackArgs args) {
+    CameraController& cc = *((CameraController*) args.data);
+    if (!cc.viewport->hovered && !cc.viewport->focused && cc.nav_mode != CameraController::NavigationMode_Fly)
+        return false;
+
+    if (args.key == GLFW_KEY_F && args.action == GLFW_PRESS) {
+        auto new_mode = cc.nav_mode == CameraController::NavigationMode_Fly ? CameraController::NavigationMode_None
+                                                                            : CameraController::NavigationMode_Fly;
+        cc.change_state(new_mode);
+        return true;
+    }
+    return false;
+}
+
 void CameraController::change_state(NavigationMode new_mode) {
     switch (nav_mode) {
         case (NavigationMode_None): {
@@ -33,104 +132,6 @@ void CameraController::change_state(NavigationMode new_mode) {
             pivot_state.arm_length  = -math::length(camera->position - pivot_state.arm_pivot);
         } break;
     }
-}
-
-bool cc_on_mouse_press(GLFWwindow* window, int button, int action, int mods, void* data) {
-    CameraController& cc = *((CameraController*) data);
-
-    if (!(cc.viewport->hovered || cc.viewport->focused) && cc.nav_mode != CameraController::NavigationMode_Fly)
-        return false;
-
-    if ((button == GLFW_MOUSE_BUTTON_RIGHT || button == GLFW_MOUSE_BUTTON_MIDDLE) && action != GLFW_RELEASE) {
-        cc.change_state(CameraController::NavigationMode_Pivot);
-    }
-
-    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
-        if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-            cc.pivot_state.panning         = true;
-            cc.pivot_state.pan_start_mouse = Input::mouse_pos;
-            cc.pivot_state.pan_start_world = cc.pivot_state.arm_pivot;
-            return true;
-        } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
-            cc.pivot_state.panning = false;
-            return true;
-        }
-
-        if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
-            cc.pivot_state.rotating             = true;
-            cc.pivot_state.rotate_start_mouse   = Input::mouse_pos;
-            cc.pivot_state.rotate_start_heading = cc.pivot_state.arm_heading;
-            return true;
-        } else if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_RELEASE) {
-            cc.pivot_state.rotating = false;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool cc_on_cursor_move(GLFWwindow* window, double xpos, double ypos, void* data) {
-    CameraController& cc = *((CameraController*) data);
-
-    if (cc.nav_mode == CameraController::NavigationMode_Fly) {
-        // negative yaw is "right", think of circle degrees from origin's perspective
-        cc.camera->heading.yaw -= Input::mouse_delta.x * Input::delta_time * cc.fly_state.sensitivity;
-        cc.camera->heading.pitch -= Input::mouse_delta.y * Input::delta_time * cc.fly_state.sensitivity;
-        cc.camera->heading.pitch = math::clamp(cc.camera->heading.pitch, -math::PI / 2 + 0.01f, math::PI / 2 - 0.01f);
-
-        cc.camera->view_dirty = true;
-        return true;
-    }
-
-    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
-        if (cc.pivot_state.rotating) {
-            v2 delta                         = Input::mouse_pos - cc.pivot_state.rotate_start_mouse;
-            cc.pivot_state.arm_heading.yaw   = cc.pivot_state.rotate_start_heading.yaw - delta.x * math::d2r(cc.pivot_state.sensitivity);
-            cc.pivot_state.arm_heading.pitch = cc.pivot_state.rotate_start_heading.pitch - delta.y * math::d2r(cc.pivot_state.sensitivity);
-        }
-    }
-
-    return false;
-}
-
-bool cc_on_scroll(GLFWwindow* window, double x, double y, void* data) {
-    CameraController& cc = *((CameraController*) data);
-
-    if (!cc.viewport->hovered)
-        return false;
-
-    if (cc.nav_mode == CameraController::NavigationMode_Fly) {
-        if (Input::shift) {
-            cc.fly_state.speed *= math::pow(1.1, y);
-            return true;
-        }
-
-        if (Input::alt) {
-            cc.camera->fov -= 2.5 * y;
-            cc.camera->proj_dirty = true;
-            return true;
-        }
-    }
-
-    if (cc.nav_mode == CameraController::NavigationMode_Pivot) {
-        cc.pivot_state.arm_length *= math::pow(1.1, -y);
-    }
-    return false;
-}
-
-bool cc_on_key(GLFWwindow* window, int key, int scancode, int action, int mods, void* data) {
-    CameraController& cc = *((CameraController*) data);
-    if (!cc.viewport->hovered && !cc.viewport->focused && cc.nav_mode != CameraController::NavigationMode_Fly)
-        return false;
-
-    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
-        auto new_mode = cc.nav_mode == CameraController::NavigationMode_Fly ? CameraController::NavigationMode_None
-                                                                            : CameraController::NavigationMode_Fly;
-        cc.change_state(new_mode);
-        return true;
-    }
-    return false;
 }
 
 void CameraController::update() {
@@ -249,17 +250,17 @@ void inspect(CameraController* controller) {
 void CameraController::setup(Viewport* init_viewport, Camera* init_camera) {
     viewport = init_viewport;
     camera   = init_camera;
-    Input::mouse_button_callback_stack.insert(0, {cc_on_mouse_press, name, this});
-    Input::mouse_pos_callback_stack.insert(0, {cc_on_cursor_move, name, this});
-    Input::scroll_callback_stack.insert(0, {cc_on_scroll, name, this});
-    Input::key_callback_stack.insert(0, {cc_on_key, name, this});
+    Input::add_callback(InputCallbackInfo{cc_on_click, 20, name, this});
+    Input::add_callback(InputCallbackInfo{cc_on_cursor, 20, name, this});
+    Input::add_callback(InputCallbackInfo{cc_on_scroll, 20, name, this});
+    Input::add_callback(InputCallbackInfo{cc_on_key, 20, name, this});
 }
 
 void CameraController::cleanup() {
-    Input::remove_mouse_button_callback(name);
-    Input::remove_mouse_pos_callback(name);
-    Input::remove_scroll_callback(name);
-    Input::remove_key_callback(name);
+    Input::remove_callback<ClickCallback>(name);
+    Input::remove_callback<CursorCallback>(name);
+    Input::remove_callback<ScrollCallback>(name);
+    Input::remove_callback<KeyCallback>(name);
 }
 
 }

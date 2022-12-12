@@ -1,5 +1,6 @@
 ﻿#include "pose_widget.hpp"
 
+#include "widget_system.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
 #include "general/file.hpp"
@@ -38,20 +39,6 @@ struct Mouse3DInfo {
 
     v2 viewport_size;
 };
-
-void pose_widget_setup() {
-    static bool initialized = false;
-    if (initialized)
-        return;
-    initialized = true;
-    vuk::PipelineBaseCreateInfo pci;
-    pci.add_glsl(get_contents("src/shaders/widget.vert"), "src/shaders/widget.vert");
-    pci.add_glsl(get_contents("src/shaders/widget.frag"), "src/shaders/widget.frag");
-    game.renderer.context->create_named_pipeline("widget", pci);
-    
-    MaterialCPU widget_mat = { .file_path = "widget", .shader_name = "widget" };
-    game.renderer.upload_material(widget_mat);
-}
 
 CircleProjectInfo mouse_to_3d_circle(const Mouse3DInfo& mouse, float radius, int axis, range angle_range) {
     CircleProjectInfo return_info;
@@ -110,7 +97,7 @@ PlaneProjectInfo mouse_to_3d_plane(const Mouse3DInfo& mouse, int axis) {
 }
 
 // generates lines and handles button state
-void _translation_widget(const Mouse3DInfo& mouse, WidgetState* state, const WidgetSettings& settings) {
+void _translation_widget(const Mouse3DInfo& mouse, PoseWidgetState* state, const PoseWidgetSettings& settings) {
     auto& viewport = settings.render_scene.viewport;
 
     array<bool, 3> flip_axis;
@@ -221,7 +208,7 @@ void _translation_widget(const Mouse3DInfo& mouse, WidgetState* state, const Wid
         settings.render_scene.quick_mesh(line_mesh, true, true);
     }
 }
-void _rotation_widget(const Mouse3DInfo& mouse, WidgetState* state, const WidgetSettings& settings) {
+void _rotation_widget(const Mouse3DInfo& mouse, PoseWidgetState* state, const PoseWidgetSettings& settings) {
     auto& viewport = settings.render_scene.viewport;
 
     float dot_aligned_warning = 1.0f;
@@ -291,7 +278,7 @@ void _rotation_widget(const Mouse3DInfo& mouse, WidgetState* state, const Widget
     }
 }
 
-void _pose_widget(WidgetState* state, const WidgetSettings& settings) {
+void _pose_widget(PoseWidgetState* state, const PoseWidgetSettings& settings) {
     auto& viewport = settings.render_scene.viewport;
     
     Mouse3DInfo mouse;
@@ -310,7 +297,7 @@ void _pose_widget(WidgetState* state, const WidgetSettings& settings) {
     _rotation_widget(mouse, state, settings);
 }
 
-void disable_invalid_operations(v3* position, quat* rotation, WidgetState& state) {
+void disable_invalid_operations(v3* position, quat* rotation, PoseWidgetState& state) {
     if (!position) {
         state.enabled &= ~(0b1 << Operation_TranslateX | 0b1 << Operation_TranslateY | 0b1 << Operation_TranslateZ);
     }
@@ -321,84 +308,93 @@ void disable_invalid_operations(v3* position, quat* rotation, WidgetState& state
     state.enabled &= ~(0b1 << Operation_RotateCamera | 0b1 << Operation_TranslateCamera);
 }
 
-bool pose_widget(ImGuiID id, v3* position, quat* rotation, const WidgetSettings& settings, m44* model, WidgetState* out_state) {
-    pose_widget_setup();
-    
-    static umap<u32, WidgetState> widget_states;
+bool pose_widget(ImGuiID id, v3* position, quat* rotation, const PoseWidgetSettings& settings, m44* model, PoseWidgetState* out_state) {
+    static umap<u32, PoseWidgetState> widget_states;
     if (widget_states.count(id) == 0)
-        widget_states.insert({id, WidgetState{}});
+        widget_states.insert({id, PoseWidgetState{}});
     auto& state = widget_states[id];
 
     disable_invalid_operations(position, rotation, state);
     
     v3 loc = (position ? *position : v3());
     quat rot = (rotation ? *rotation : quat());
+
     if (model != nullptr)
-        state.model = *model;
+        state.model = *model * math::translate(loc) * math::rotation(rot);
     else
         state.model = math::translate(loc) * math::rotation(rot);
-    if (position) {
-        state.enabled |= 0b1 << Operation_TranslateX | 0b1 << Operation_TranslateY | 0b1 << Operation_TranslateZ;
-    }
-    if (rotation) {
-        state.enabled |= 0b1 << Operation_RotateX | 0b1 << Operation_RotateY | 0b1 << Operation_RotateZ;
-    }
 
     _pose_widget(&state, settings);
-    if (Input::mouse_click[0]) {
-        u32 pressed_index = 0;
-        f32 pressed_depth = FLT_MAX;
-        for (u32 i = 0; i < Operation_Count; i++) {
-            if (state.hovered & 0b1 << i) {
-                if (state.depth[i] < pressed_depth) {
-                    pressed_index = i;
-                    pressed_depth = state.depth[i];
-                }
+
+    u32 closest_index = 0;
+    f32 closest_depth = FLT_MAX;
+    for (u32 i = 0; i < Operation_Count; i++) {
+        if (state.hovered & 0b1 << i) {
+            if (state.depth[i] < closest_depth) {
+                closest_index = i;
+                closest_depth = state.depth[i];
             }
         }
-        if (pressed_depth < FLT_MAX) {
-            state.pressed = 0b1 << pressed_index;
-            for (u32 i = 0; i < Operation_Count; i++)
-                state.clicked_value[i] = state.value[i];
-                
-            if (position)
-                state.clicked_position = *position;
-            if (rotation)
-                state.clicked_rotation = *rotation;
-        }
-    } else if (Input::mouse_down[0] > 0.0f) {
-        v4 rotation_axis_amount = {};
-        v3 translation_operation = {};
-        for (int i = 0; i < 3; i++) {
-            if (position) {
-                int operation_index = Operation_TranslateX + i;
-                if (state.pressed & (0b1 << (operation_index))) {
-                    translation_operation[i] = (state.clicked_value[operation_index] - state.value[operation_index]);
-                }
-            }
-            if (rotation) {
-                int operation_index = Operation_RotateX + i;
-                if (state.pressed & (0b1 << (operation_index))) {
-                    rotation_axis_amount[i] = 1.0f;
-                    rotation_axis_amount[3] = state.clicked_value[operation_index] - state.value[operation_index];
-                }
+    }
+
+    WidgetSystem::depths[id] = closest_depth;
+
+    if (WidgetSystem::pressed_id == id) {
+        // First clicked frame
+        if (!state.pressed) {
+            // If this is the last frame, we need to discard
+            if (closest_depth < FLT_MAX) {
+                state.pressed = 0b1 << closest_index;
+                for (u32 i = 0; i < Operation_Count; i++)
+                    state.clicked_value[i] = state.value[i];
+                    
+                if (position)
+                    state.clicked_position = *position;
+                if (rotation)
+                    state.clicked_rotation = *rotation;
+            } else {
+                WidgetSystem::pressed_id = 0;
             }
         }
-        if (position && translation_operation != v3()) {
-            if (rotation)
-                *position = *position - math::rotate(*rotation, translation_operation);
-            else
-                *position = *position - translation_operation;
+        // Apply the operation
+        else {
+            v4 rotation_axis_amount = {};
+            v3 translation_operation = {};
+            for (int i = 0; i < 3; i++) {
+                if (position) {
+                    int operation_index = Operation_TranslateX + i;
+                    if (state.pressed & (0b1 << (operation_index))) {
+                        translation_operation[i] = (state.clicked_value[operation_index] - state.value[operation_index]);
+                    }
+                }
+                if (rotation) {
+                    int operation_index = Operation_RotateX + i;
+                    if (state.pressed & (0b1 << (operation_index))) {
+                        rotation_axis_amount[i] = 1.0f;
+                        rotation_axis_amount[3] = state.clicked_value[operation_index] - state.value[operation_index];
+                    }
+                }
+            }
+            if (position && translation_operation != v3()) {
+                if (rotation)
+                    *position = *position - math::rotate(*rotation, translation_operation);
+                else
+                    *position = *position - translation_operation;
+            }
+            if (rotation && rotation_axis_amount != v4()) {
+                *rotation = math::rotate(*rotation, quat(rotation_axis_amount.xyz, -rotation_axis_amount.w));
+            } 
         }
-        if (rotation && rotation_axis_amount != v4()) {
-            *rotation = math::rotate(*rotation, quat(rotation_axis_amount.xyz, -rotation_axis_amount.w));
+    }
+    else {
+        // Just unclicked
+        if (state.pressed) {
+            state.pressed = 0;
+            for (int i = 0; i < Operation_Count; i++)
+                state.clicked_value[i] = 0.0f;
+            state.clicked_position = v3();
+            state.clicked_rotation = quat();
         }
-    } else if (Input::mouse_release[0]) {
-        state.pressed = 0;
-        for (int i = 0; i < Operation_Count; i++)
-            state.clicked_value[i] = 0.0f;
-        state.clicked_position = v3();
-        state.clicked_rotation = quat();
     }
 
     if (out_state != nullptr) {
@@ -407,7 +403,7 @@ bool pose_widget(ImGuiID id, v3* position, quat* rotation, const WidgetSettings&
     return state.pressed;
 }
 
-void inspect(WidgetState* state) {
+void inspect(PoseWidgetState* state) {
     auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter;
     if (ImGui::BeginTable("WidgetState", 7, flags)) {
         ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed, 190.0f);

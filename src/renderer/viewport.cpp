@@ -10,6 +10,23 @@
 
 namespace spellbook {
 
+bool viewport_click(ClickCallbackArgs args) {
+	Viewport& viewport = *((Viewport*) args.data);
+	if (args.action == GLFW_PRESS)
+		viewport.focused = viewport.hovered;
+	return false;
+}
+
+bool viewport_cursor(CursorCallbackArgs args) {
+	Viewport& viewport = *((Viewport*) args.data);
+
+    if (Input::cursor_disabled)
+        return false;
+
+	viewport.hovered = viewport.window_hovered && math::contains(range2((v2) viewport.start, (v2) (viewport.start + viewport.size)), Input::mouse_pos);
+	return false;
+}
+
 void Viewport::update_size(v2i new_size) {
 	if (size != new_size) {
 		size	   = new_size;
@@ -27,25 +44,9 @@ f32 Viewport::aspect_xy() {
 	return size.y == 0.0f ? 1.0f : size.x / (f32) size.y;
 }
 
-bool viewport_mb_callback(GLFWwindow* window, int button, int action, int mods, void* data) {
-	Viewport& viewport = *((Viewport*) data);
-	if (action == GLFW_PRESS)
-		viewport.focused = viewport.hovered;
-	return false;
-}
-
-bool viewport_mp_callback(GLFWwindow* window, double xpos, double ypos, void* data) {
-	Viewport& viewport = *((Viewport*) data);
-
-    if (Input::cursor_disabled) return false;
-
-	viewport.hovered = viewport.window_hovered && math::contains(range2((v2) viewport.start, (v2) (viewport.start + viewport.size)), Input::mouse_pos);
-	return false;
-}
-
 void Viewport::setup() {
-	Input::mouse_button_callback_stack.push_back({viewport_mb_callback, name, this});
-	Input::mouse_pos_callback_stack.push_back({viewport_mp_callback, name, this});
+	Input::add_callback(InputCallbackInfo{viewport_click, 0, name, this});
+	Input::add_callback(InputCallbackInfo{viewport_cursor, 0, name, this});
 }
 
 void inspect(Viewport* viewport) {

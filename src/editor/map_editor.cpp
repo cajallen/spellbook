@@ -2,6 +2,8 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "game_scene.hpp"
+#include "widget_system.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/file.hpp"
 #include "game/game.hpp"
@@ -13,14 +15,15 @@
 
 namespace spellbook {
 
+ADD_EDITOR_SCENE(MapEditor);
 
-bool map_editor_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods, void* data) {
-    MapEditor& map_editor = *((MapEditor*) data);
+bool map_editor_key(KeyCallbackArgs args) {
+    MapEditor& map_editor = *((MapEditor*) args.data);
     Viewport& viewport = map_editor.p_scene->render_scene.viewport;
     if (!viewport.hovered && !viewport.focused)
         return false;
 
-    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+    if (args.key == GLFW_KEY_E && args.action == GLFW_PRESS) {
         if (map_editor.eraser_selected) {
             map_editor.unselect_buttons();
         }
@@ -33,10 +36,42 @@ bool map_editor_key_callback(GLFWwindow* window, int key, int scancode, int acti
     return false;
 }
 
+bool map_editor_click_painting(ClickCallbackArgs args) {
+    MapEditor& map_editor = *((MapEditor*) args.data);
+    if (args.action == GLFW_PRESS) {
+        if (map_editor.selected_consumer != ~0u ||
+            map_editor.selected_lizard != ~0u ||
+            map_editor.selected_tile != ~0u ||
+            map_editor.selected_spawner != ~0u ||
+            map_editor.eraser_selected) {
+            map_editor.painting = true;
+            return true;
+        }
+    }
+    else if (args.action == GLFW_RELEASE) {
+        map_editor.painting = false;
+    }
+    return false;
+}
+
+bool map_editor_click_dragging(ClickCallbackArgs args) {
+    MapEditor& map_editor = *((MapEditor*) args.data);
+    if (args.action == GLFW_PRESS) {
+        map_editor.p_scene->render_scene.query = v2i(Input::mouse_pos) - map_editor.p_scene->render_scene.viewport.start;
+        return true;
+    }
+    if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
+        map_editor.p_scene->registry.clear<Dragging>();
+        map_editor.p_scene->selected_entity = entt::null;
+    }
+    return false;
+}
+
 void MapEditor::setup() {
     ZoneScoped;
     p_scene = new Scene();
     p_scene->setup("Map Edit Scene");
+    p_scene->edit_mode = true;
     
     fs::path map_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
 
@@ -44,13 +79,15 @@ void MapEditor::setup() {
         return;
     
     json j = parse_file(map_file.string());
-    FROM_JSON_MEMBER(tower_buttons);
+    FROM_JSON_MEMBER(lizard_buttons);
     FROM_JSON_MEMBER(tile_buttons);
     FROM_JSON_MEMBER(spawner_buttons);
     FROM_JSON_MEMBER(consumer_buttons);
     FROM_JSON_MEMBER(map_prefab.file_path);
 
-    Input::key_callback_stack.insert(0, {map_editor_key_callback, "map_editor", this});
+    Input::add_callback(InputCallbackInfo{map_editor_key, 60, "map_editor", this});
+    Input::add_callback(InputCallbackInfo{map_editor_click_painting, 20, "map_editor", this});
+    Input::add_callback(InputCallbackInfo{map_editor_click_dragging, 60, "map_editor", this});
 }
 
 
@@ -66,41 +103,30 @@ void MapEditor::update() {
     draw_preview(cell);
 
     // we should check if this mouse input is ours in the callback)
-    bool input_used = false;
-    if (Input::mouse_press_at[GLFW_MOUSE_BUTTON_LEFT] > 0.0f) {
+    if (painting) {
         if (eraser_selected) {
             vector<entt::entity> targets = p_scene->get_any(cell);
             p_scene->registry.destroy(targets.begin(), targets.end());
             map_prefab.tiles.erase(cell);
-            map_prefab.towers.erase(cell);
+            map_prefab.lizards.erase(cell);
             map_prefab.consumers.erase(cell);
             map_prefab.spawners.erase(cell);
-            input_used = true;
         }
         else if (selected_tile != -1) {
             instance_and_write_prefab(load_tile(tile_buttons[selected_tile].item_path), cell);
-            input_used = true;
         }
-        else if (selected_tower != -1) {
+        else if (selected_lizard != -1) {
             v3i new_pos = cell + v3i(0,0,1);
-            instance_and_write_prefab(load_tower(tower_buttons[selected_tower].item_path), new_pos);
-            input_used = true;
+            instance_and_write_prefab(load_lizard(lizard_buttons[selected_lizard].item_path), new_pos);
         }
         else if (selected_spawner != -1) {
             v3i new_pos = cell + v3i(0,0,1);
             instance_and_write_prefab(load_spawner(spawner_buttons[selected_spawner].item_path), new_pos);
-            input_used = true;
         }
         else if (selected_consumer != -1) {
             v3i new_pos = cell + v3i(0,0,1);
             instance_and_write_prefab(load_consumer(consumer_buttons[selected_consumer].item_path), new_pos);
-            input_used = true;
         }
-    }
-    
-    if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT] && !input_used) {
-        p_scene->render_scene.query = v2i(Input::mouse_pos) - p_scene->render_scene.viewport.start;
-        input_used = true;
     }
 
     if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
@@ -108,11 +134,18 @@ void MapEditor::update() {
         p_scene->selected_entity = entt::null;
     }
 
+    p_scene->update();
 }
 
 void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
+        if (ImGui::Button("Play")) {
+            ADD_EDITOR_SCENE(GameScene);
+            auto game_scene = (GameScene*) EditorScenes::values().back();
+            game_scene->setup(map_prefab);
+        }
+        
         ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, true);
         if (ImGui::Button("Load")) {
             p_scene->cleanup();
@@ -126,7 +159,7 @@ void MapEditor::window(bool* p_open) {
             save_map(map_prefab);
         }
 
-        show_buttons("Towers", *this, tower_buttons, &selected_tower);
+        show_buttons("Lizards", *this, lizard_buttons, &selected_lizard);
         ImGui::Separator();
         show_buttons("Tiles", *this, tile_buttons, &selected_tile);
         ImGui::Separator();
@@ -142,7 +175,7 @@ void MapEditor::window(bool* p_open) {
 void MapEditor::unselect_buttons() {
     eraser_selected = false;
     selected_tile = -1;
-    selected_tower = -1;
+    selected_lizard = -1;
     selected_spawner = -1;
     selected_consumer = -1;
 }
@@ -153,14 +186,15 @@ void MapEditor::shutdown() {
     fs::create_directories(map_editor_file.parent_path());
     
     auto j = json();
-    TO_JSON_MEMBER(tower_buttons);
+    TO_JSON_MEMBER(lizard_buttons);
     TO_JSON_MEMBER(tile_buttons);
     TO_JSON_MEMBER(spawner_buttons);
     TO_JSON_MEMBER(consumer_buttons);
 
     file_dump(j, map_editor_file.string());
 
-    Input::remove_key_callback("map_editor");
+    Input::remove_callback<KeyCallback>("map_editor");
+    Input::remove_callback<ClickCallback>("map_editor");
 }
 
 void MapEditor::draw_preview(v3i cell) {
@@ -200,7 +234,7 @@ void MapEditor::draw_preview(v3i cell) {
         });
 
         p_scene->render_scene.quick_mesh(line_mesh, true);
-    } else if (selected_tower != -1) {
+    } else if (selected_lizard != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 24; i++) {
             f32 angle  = i * math::TAU / 24.0f;

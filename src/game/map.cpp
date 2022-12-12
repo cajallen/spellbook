@@ -12,10 +12,10 @@ namespace fs = std::filesystem;
 namespace spellbook {
 
 void inspect(MapPrefab* map_prefab) {
-    ImGui::Text("Towers");
-    u32 tower_i = 0;
-    for (auto& [pos, prefab] : map_prefab->towers) {
-        ImGui::Text("%d", tower_i++);
+    ImGui::Text("Lizards");
+    u32 lizard_i = 0;
+    for (auto& [pos, prefab] : map_prefab->lizards) {
+        ImGui::Text("%d", lizard_i++);
         ImGui::Indent();
         inspect(&prefab);
         ImGui::Unindent();
@@ -79,7 +79,7 @@ MapPrefab load_map(const string& input_path) {
 Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     auto scene = new Scene();
     scene->setup(name);
-    for (auto& [pos, prefab] : map_prefab.towers) {
+    for (auto& [pos, prefab] : map_prefab.lizards) {
         instance_prefab(scene, prefab, pos);
     }
     for (auto& [pos, prefab] : map_prefab.tiles) {

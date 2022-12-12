@@ -15,6 +15,8 @@ namespace spellbook {
 
 struct Scene;
 
+// TODO: anim controller 
+
 struct Name {
     string name;
 };

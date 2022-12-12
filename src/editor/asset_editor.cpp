@@ -12,8 +12,9 @@
 
 namespace spellbook {
 
+ADD_EDITOR_SCENE(AssetEditor);
+
 void AssetEditor::setup() {
-    ZoneScoped;
     p_scene = new Scene();
     p_scene->setup("Asset Editor");
 }
@@ -61,16 +62,16 @@ void AssetEditor::window(bool* p_open) {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Tower")) {
-                tab = Tab_Tower;
-                inspect(&tower_prefab);
+            if (ImGui::BeginTabItem("Lizard")) {
+                tab = Tab_Lizard;
+                inspect(&lizard_prefab);
                 
                 if (ImGui::Button("Save")) {
-                    save_tower(tower_prefab);
+                    save_lizard(lizard_prefab);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Load")) {
-                    tower_prefab = load_tower(tower_prefab.file_path);
+                    lizard_prefab = load_lizard(lizard_prefab.file_path);
                 }
                 ImGui::EndTabItem();
             }

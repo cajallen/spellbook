@@ -80,6 +80,7 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
             fs::path input;
             fs::path folder_path;
             string name;
+            bool y_up = true;
         };
         static umap<string, ModelConvertInfo> model_convert_map;
         
@@ -96,8 +97,10 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         ImGui::PathSelect("Input", &model_convert_map[window_name].input, game.external_resource_folder, FileType_ModelAsset);
         ImGui::PathSelect("Output folder", &model_convert_map[window_name].folder_path, game.resource_folder, FileType_Directory);
         ImGui::InputText("Output name", &model_convert_map[window_name].name);
+        ImGui::Checkbox("Y-Up", &model_convert_map[window_name].y_up);
         if (ImGui::Button("Convert")) {
-            save_model(convert_to_model(model_convert_map[window_name].input, model_convert_map[window_name].folder_path, model_convert_map[window_name].name));
+            auto& convert_info = model_convert_map[window_name];
+            save_model(convert_to_model(convert_info.input, convert_info.folder_path, convert_info.name, convert_info.y_up));
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

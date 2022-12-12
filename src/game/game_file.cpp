@@ -3,7 +3,7 @@
 #include "general/logger.hpp"
 #include "game/game.hpp"
 #include "game/consumer.hpp"
-#include "game/tower.hpp"
+#include "game/lizard.hpp"
 #include "game/tile.hpp"
 #include "game/enemy.hpp"
 #include "game/spawner.hpp"
@@ -29,8 +29,8 @@ string extension(FileType type) {
             return ".sbmat";
         case (FileType_Map):
             return ".sbmap";
-        case (FileType_Tower):
-            return ".sbtow";
+        case (FileType_Lizard):
+            return ".sbliz";
         case (FileType_Tile):
             return ".sbtil";
         case (FileType_Enemy):
@@ -60,7 +60,7 @@ std::function<bool(const fs::path&)> path_filter(FileType type) {
          case (FileType_Mesh):
          case (FileType_Material):
          case (FileType_Map):
-         case (FileType_Tower):
+         case (FileType_Lizard):
          case (FileType_Tile):
          case (FileType_Enemy):
          case (FileType_Spawner):
@@ -93,8 +93,8 @@ string dnd_key(FileType type) {
             return "DND_MATERIAL";
         case (FileType_Map):
             return "DND_MAP";
-        case (FileType_Tower):
-            return "DND_TOWER";
+        case (FileType_Lizard):
+            return "DND_LIZARD";
         case (FileType_Tile):
             return "DND_TILE";
         case (FileType_Enemy):
@@ -117,8 +117,8 @@ FileType from_typeinfo(const type_info& input) {
         return FileType_Mesh;
     if (input == typeid(MaterialCPU))
         return FileType_Material;
-    if (input == typeid(TowerPrefab))
-        return FileType_Tower;
+    if (input == typeid(LizardPrefab))
+        return FileType_Lizard;
     if (input == typeid(TilePrefab))
         return FileType_Tile;
     if (input == typeid(EnemyPrefab))

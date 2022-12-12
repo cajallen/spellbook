@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "editor_scene.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/color.hpp"
 #include "general/vector.hpp"
@@ -11,7 +12,7 @@
 #include "game/consumer.hpp"
 #include "game/map.hpp"
 #include "game/spawner.hpp"
-#include "game/tower.hpp"
+#include "game/lizard.hpp"
 #include "game/tile.hpp"
 #include "game/enemy.hpp"
 #include "game/components.hpp"
@@ -25,25 +26,26 @@ struct Button {
     string item_path;
 };
 
-struct MapEditor {
+struct MapEditor : EditorScene {
     MapPrefab map_prefab;
 
     vector<Button<ConsumerPrefab>> consumer_buttons;
-    vector<Button<TowerPrefab>> tower_buttons;
+    vector<Button<LizardPrefab>> lizard_buttons;
     vector<Button<TilePrefab>>  tile_buttons;
     vector<Button<SpawnerPrefab>> spawner_buttons;
 
-    bool eraser_selected = false;
-    u32 selected_consumer = -1;
-    u32 selected_tower = -1;
-    u32 selected_tile  = -1;
-    u32 selected_spawner = -1;
-    Scene* p_scene       = nullptr;
+    bool painting = false;
     
-    void setup();
-    void update();
-    void window(bool* p_open);
-    void shutdown();
+    bool eraser_selected = false;
+    u32 selected_consumer = ~0u;
+    u32 selected_lizard = ~0u;
+    u32 selected_tile  = ~0u;
+    u32 selected_spawner = ~0u;
+    
+    void setup() override;
+    void update() override;
+    void window(bool* p_open) override;
+    void shutdown() override;
 
     void unselect_buttons();
 
@@ -103,6 +105,10 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
         if (ImGui::BeginPopupContextItem()) {
             if (ImGui::Selectable("Edit")) {
                 open_popup = true;
+            }
+            if (ImGui::Selectable("Delete")) {
+                buttons.remove_index(i);
+                i--;
             }
             ImGui::EndPopup();
         }

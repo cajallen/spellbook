@@ -185,7 +185,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
 bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_folder);
 m44 _calculate_matrix(tinygltf::Node& node);
 
-ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name) {
+ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up) {
     // TODO: gltf can't support null materials
     fs::create_directory(game.resource_folder);
     auto folder = game.resource_folder / output_folder;
@@ -283,8 +283,9 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
                 multimat_nodes.push_back(i);
         }
     }
-    
-    model_cpu.root_node->transform = gltf_fixup * model_cpu.root_node->transform;
+
+    if (y_up)
+        model_cpu.root_node->transform = gltf_fixup * model_cpu.root_node->transform;
 
     // iterate nodes with multiple materials, convert each submesh into a node
     for (u32 multimat_node_index : multimat_nodes) {

@@ -15,10 +15,6 @@ struct Game {
     vector<Scene*> scenes;
     Renderer       renderer;
     GUI            gui;
-
-    MapEditor map_editor;
-    // AssetEditor asset_editor;
-    TestScene test_scene;
     
     string external_resource_folder;
     string resource_folder;

@@ -27,6 +27,9 @@ std::function<bool(f32 cost_total)> simple_wave(f32 input_threshold) {
 }
 
 void spawner_system(Scene* scene) {
+    if (scene->edit_mode)
+        return;
+    
     for (auto [entity, spawner, logic_transform] : scene->registry.view<Spawner, LogicTransform>().each()) {
         spawner.cost_total += spawner.delta_cost.value() * Input::delta_time;
         spawner.cooldown -= Input::delta_time;

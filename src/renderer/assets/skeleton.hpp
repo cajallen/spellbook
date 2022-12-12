@@ -34,8 +34,9 @@ struct Bone {
 
     m44 inverse_bind_matrix;
 
-    float time;
     m44 local_transform;
+    float time;
+    math::EaseMode ease_mode = math::EaseMode_Quad;
 
     m44 transform() const;
     m44 final_transform() const;
@@ -73,7 +74,7 @@ struct SkeletonGPU {
     void stop_playing();
 };
 
-void inspect(std::unique_ptr<SkeletonGPU>& skeleton, const m44& model, RenderScene* render_scene);
+void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene);
 
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);

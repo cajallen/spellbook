@@ -18,13 +18,13 @@ struct SceneData {
     Color ambient             = Color(palette::white, 0.05);
     Color fog_color           = palette::black;
     f32 fog_depth             = -1.0f;
-    v3  rim_alpha_width_start = v3(0.25f, 0.2f, 0.6f);
-    v3  sun_direction         = v3(-0.3f, 0.6f, 0.1f);
+    v3  rim_alpha_width_start = v3(0.1f, 0.1f, 0.75f);
+    v3  sun_direction         = v3(-0.3f, 0.6f, 0.7f);
     f32 sun_intensity         = 1.0f;
 };
 
 struct PostProcessData {
-    v4 outline = v4(5.0f, 6.0f, 0.05f, 3.0f);
+    v4 outline = v4(3.0f, 5.0f, 0.1f, 1.0f);
 };
 
 struct RenderScene {
@@ -49,6 +49,9 @@ struct RenderScene {
     vuk::Texture render_target;
 
     vector<EmitterGPU> emitters;
+
+    bool render_grid = true;
+    bool render_widgets = true;
     
     void update_size(v2i new_size);
     

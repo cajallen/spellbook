@@ -57,7 +57,7 @@ void travel_system(Scene* scene) {
             traveler.targets.remove_back();
             velocity = v3(0);
         }
-        f32 max_velocity = traveler.max_speed.value() * Input::delta_time;
+        f32 max_velocity = traveler.max_speed.value() * scene->delta_time;
         f32 min_velocity = 0.0f;
         if (!at_target)
             transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
@@ -68,6 +68,9 @@ void travel_system(Scene* scene) {
 void health_draw_system(Scene* scene) {
     ZoneScoped;
 
+    if (scene->edit_mode)
+        return;
+    
     // dependencies
     static bool deps = false;
     static string mesh_name;
@@ -100,7 +103,7 @@ void health_draw_system(Scene* scene) {
         auto link = scene->registry.try_get<TransformLink>(entity);
         v3 position = link ? transform.position + link->offset : transform.position;
 
-        float dir_to_camera = math::angle_to(scene->cameras.front().position.xy, position.xy);
+        float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
         
         constexpr float gap = 0.02f;
         constexpr float thickness = 0.03f;
@@ -163,17 +166,16 @@ void consumer_system(Scene* scene) {
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
         auto consumer_mtransform = scene->registry.try_get<ModelTransform>(e_consumer);
         if (consumer_mtransform) {
-            consumer_mtransform->rotation.yaw += Input::delta_time * math::TAU / 6.f;
-            consumer_mtransform->rotation.pitch += Input::delta_time * math::TAU / 11.f;
-            consumer_mtransform->rotation.roll += Input::delta_time * math::TAU / 19.f;
+            consumer_mtransform->rotation.yaw += (scene->time_scale == 0.0f ? Input::delta_time : scene->delta_time) * math::TAU / 6.f;
+            consumer_mtransform->rotation.pitch += (scene->time_scale == 0.0f ? Input::delta_time : scene->delta_time) * math::TAU / 11.f;
+            consumer_mtransform->rotation.roll += (scene->time_scale == 0.0f ? Input::delta_time : scene->delta_time) * math::TAU / 19.f;
         }
         for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
             if (scene->registry.any_of<Killed>(e_consumee))
                 continue;
             f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_transform.position.xy);
-            if (dist < consumer.consume_distance) {
-                scene->registry.emplace<Killed>(e_consumee, Input::time);
-                console({.str=fmt_("Om nom nom"), .group = "system.consumer"});
+            if (dist < consumer.consume_distance && !scene->edit_mode) {
+                scene->registry.emplace<Killed>(e_consumee, scene->time);
             }
         }
     }
@@ -181,6 +183,8 @@ void consumer_system(Scene* scene) {
 
 void disposal_system(Scene* scene) {
     ZoneScoped;
+    if (scene->edit_mode)
+        return;
     
     auto killed = scene->registry.view<Killed>();
     scene->registry.destroy(killed.begin(), killed.end());
@@ -191,7 +195,7 @@ void health_system(Scene* scene) {
     auto healths = scene->registry.view<Health>();
     for (auto [entity, health] : healths.each()) {
         if (health.value <= 0.001f) {
-            scene->registry.emplace<Killed>(entity, Input::time);
+            scene->registry.emplace<Killed>(entity, scene->time);
         }
     }
 }
@@ -225,12 +229,12 @@ void dragging_update_system(Scene* scene) {
             auto transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
             assert_else(transform);
 
-            // scene->registry.emplace<Dragging>(scene->selected_entity, Input::time, transform->position, intersect);
+            scene->registry.emplace<Dragging>(scene->selected_entity, scene->time, transform->position, intersect);
 
             for (auto [entity, attach] : scene->registry.view<LogicTransformAttach>().each()) {
                 if (attach.to == scene->selected_entity) {
                     auto attachee_transform = scene->registry.try_get<LogicTransform>(entity);
-                    // scene->registry.emplace<Dragging>(entity, Input::time, attachee_transform->position, intersect);
+                    scene->registry.emplace<Dragging>(entity, scene->time, attachee_transform->position, intersect);
                 }
             }
         }
@@ -248,7 +252,7 @@ void dragging_system(Scene* scene) {
         v3 logic_offset = intersect - drag.start_intersect;
         drag.logic_position = drag.start_logic_position + logic_offset;
         
-        drag.vertical_offset = 0.5f * math::smoothstep(drag.when, drag.when + raise_speed, Input::time);
+        drag.vertical_offset = 0.5f * math::smoothstep(drag.when, drag.when + raise_speed, scene->time);
     }
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();
@@ -266,6 +270,9 @@ void dragging_system(Scene* scene) {
 void collision_update_system(Scene* scene) {
     ZoneScoped;
 
+    if (scene->edit_mode)
+        return;
+    
     auto view = scene->registry.view<ModelTransform, Collision>();
     for (auto it1 = view.begin(); it1 != view.end(); it1++) {
         auto  entity1    = *it1;
@@ -296,9 +303,9 @@ void collision_update_system(Scene* scene) {
 
 void spawner_draw_system(Scene* scene) {
     for (auto [entity, spawner, m_transform, transform_link] : scene->registry.view<Spawner, ModelTransform, TransformLink>().each()) {
-        transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * Input::time);
+        transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * scene->time);
         m_transform.scale = 0.6f;
-        m_transform.rotation.yaw = 2.0f * Input::time;
+        m_transform.rotation.yaw = 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time);
     }
 }
 

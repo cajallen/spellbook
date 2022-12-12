@@ -11,13 +11,6 @@
 
 namespace spellbook {
 
-vector<tuple<key_callback, string, void*>>              Input::key_callback_stack;
-vector<tuple<mouse_pos_callback, string, void*>>        Input::mouse_pos_callback_stack;
-vector<tuple<mouse_button_callback, string, void*>>     Input::mouse_button_callback_stack;
-vector<tuple<scroll_callback, string, void*>>           Input::scroll_callback_stack;
-vector<tuple<drop_callback, string, void*>>             Input::drop_callback_stack;
-vector<tuple<framebuffer_size_callback, string, void*>> Input::framebuffer_size_callback_stack;
-
 GLFWwindow*     Input::window;
 float           Input::time;
 float           Input::delta_time;
@@ -57,7 +50,7 @@ void Input::update() {
     mouse_wheel = 0;
     for (int i = 0; i < 5; i++) {
         mouse_click[i]   = false;
-        mouse_down[i] = mouse_press_at[i] > 0.0f ? Input::time - mouse_press_at[i] : 0.0f;
+        mouse_down[i]    = mouse_press_at[i] > 0.0f ? Input::time - mouse_press_at[i] : 0.0f;
         mouse_release[i] = false;
     }
     glfwPollEvents();
@@ -95,9 +88,10 @@ void default_key_callback(GLFWwindow* window, int key, int scancode, int action,
     if (ImGui::GetIO().WantCaptureKeyboard)
         return;
 
-    for (auto ptr = Input::key_callback_stack.end() - 1; ptr >= Input::key_callback_stack.begin(); ptr--) {
-        auto& [fp, name, data] = *ptr;
-        bool  esc              = (*fp)(window, key, scancode, action, mods, data);
+    auto& stack = InputCallbackInfo<KeyCallback>::stack();
+    for (auto& callback_info : stack) {
+        auto& [fp, prio, name, data] = callback_info;
+        bool  esc                    = (*fp)({window, key, scancode, action, mods, data});
         if (esc)
             return;
     }
@@ -110,9 +104,10 @@ void default_mouse_pos_callback(GLFWwindow* window, double x, double y) {
     Input::mouse_pos            = v2(x, y);
     Input::cursor_just_disabled = false;
 
-    for (auto ptr = Input::mouse_pos_callback_stack.end() - 1; ptr >= Input::mouse_pos_callback_stack.begin(); ptr--) {
-        auto& [fp, name, data] = *ptr;
-        bool  esc              = (*fp)(window, x, y, data);
+    auto& stack = InputCallbackInfo<CursorCallback>::stack();
+    for (auto& callback_info : stack) {
+        auto& [fp, prio, name, data] = callback_info;
+        bool  esc                    = (*fp)({window, x, y, data});
         if (esc)
             return;
     }
@@ -132,9 +127,10 @@ void default_mouse_button_callback(GLFWwindow* window, int button, int action, i
         Input::mouse_press_at[button] = -FLT_MAX;
     }
 
-    for (auto ptr = Input::mouse_button_callback_stack.end() - 1; ptr >= Input::mouse_button_callback_stack.begin(); ptr--) {
-        auto& [fp, name, data] = *ptr;
-        bool  esc              = (*fp)(window, button, action, mods, data);
+    auto& stack = InputCallbackInfo<ClickCallback>::stack();
+    for (auto& callback_info : stack) {
+        auto& [fp, prio, name, data] = callback_info;
+        bool  esc                    = (*fp)({window, button, action, mods, data});
         if (esc)
             return;
     }
@@ -143,9 +139,10 @@ void default_mouse_button_callback(GLFWwindow* window, int button, int action, i
 void default_scroll_callback(GLFWwindow* window, double x, double y) {
     Input::mouse_wheel = y;
 
-    for (auto ptr = Input::scroll_callback_stack.end() - 1; ptr >= Input::scroll_callback_stack.begin(); ptr--) {
-        auto& [fp, name, data] = *ptr;
-        bool  esc              = (*fp)(window, x, y, data);
+    auto& stack = InputCallbackInfo<ScrollCallback>::stack();
+    for (auto& callback_info : stack) {
+        auto& [fp, prio, name, data] = callback_info;
+        bool  esc                    = (*fp)({window, x, y, data});
         if (esc)
             return;
     }
@@ -169,17 +166,17 @@ void Input::debug_window(bool* p_open) {
         ImGui::Text(fmt_("Exit Requested={}", exit_requested ? "T" : "F").c_str());
         ImGui::Text(fmt_("Exit Accepted={}", exit_accepted ? "T" : "F").c_str());
         if (ImGui::TreeNode("Key Callbacks")) {
-            for (auto [callback, name, data] : key_callback_stack)
+            for (auto& [callback, prio, name, data] : InputCallbackInfo<KeyCallback>::stack())
                 ImGui::Text(name.c_str());
             ImGui::TreePop();
         }
         if (ImGui::TreeNode("Mouse Pos Callbacks")) {
-            for (auto [callback, name, data] : mouse_pos_callback_stack)
+            for (auto& [callback, prio, name, data] : InputCallbackInfo<CursorCallback>::stack())
                 ImGui::Text(name.c_str());
             ImGui::TreePop();
         }
         if (ImGui::TreeNode("Mouse Button Callbacks")) {
-            for (auto [callback, name, data] : mouse_button_callback_stack)
+            for (auto& [callback, prio, name, data] : InputCallbackInfo<ClickCallback>::stack())
                 ImGui::Text(name.c_str());
             ImGui::TreePop();
         }
@@ -195,10 +192,30 @@ void Input::debug_window(bool* p_open) {
         }
         if (ImGui::TreeNode("Mouse State")) {
             ImGui::Text("mouse_pos: %.2f, %.2f", mouse_pos.x, mouse_pos.y);
-            ImGui::Text("mouse_click: %c %c %c %c %c", mouse_click[0] ? 't' : 'f', mouse_click[1] ? 't' : 'f', mouse_click[2] ? 't' : 'f', mouse_click[3] ? 't' : 'f', mouse_click[4] ? 't' : 'f');
-            ImGui::Text("mouse_down: %.1f, %.1f, %.1f, %.1f, %.1f", mouse_down[0], mouse_down[1], mouse_down[2], mouse_down[3], mouse_down[4]);
-            ImGui::Text("mouse_press_at: %.1f, %.1f, %.1f, %.1f, %.1f", mouse_press_at[0], mouse_press_at[1], mouse_press_at[2], mouse_press_at[3], mouse_press_at[4]);
-            ImGui::Text("mouse_release:  %c %c %c %c %c", mouse_release[0] ? 't' : 'f', mouse_release[1] ? 't' : 'f', mouse_release[2] ? 't' : 'f', mouse_release[3] ? 't' : 'f', mouse_release[4] ? 't' : 'f');
+            ImGui::Text("mouse_click: %c %c %c %c %c",
+                mouse_click[0] ? 't' : 'f',
+                mouse_click[1] ? 't' : 'f',
+                mouse_click[2] ? 't' : 'f',
+                mouse_click[3] ? 't' : 'f',
+                mouse_click[4] ? 't' : 'f');
+            ImGui::Text("mouse_down: %.1f, %.1f, %.1f, %.1f, %.1f",
+                mouse_down[0],
+                mouse_down[1],
+                mouse_down[2],
+                mouse_down[3],
+                mouse_down[4]);
+            ImGui::Text("mouse_press_at: %.1f, %.1f, %.1f, %.1f, %.1f",
+                mouse_press_at[0],
+                mouse_press_at[1],
+                mouse_press_at[2],
+                mouse_press_at[3],
+                mouse_press_at[4]);
+            ImGui::Text("mouse_release:  %c %c %c %c %c",
+                mouse_release[0] ? 't' : 'f',
+                mouse_release[1] ? 't' : 'f',
+                mouse_release[2] ? 't' : 'f',
+                mouse_release[3] ? 't' : 'f',
+                mouse_release[4] ? 't' : 'f');
             ImGui::Text("mouse_wheel: %.1f", mouse_wheel);
             ImGui::TreePop();
         }
@@ -216,20 +233,6 @@ void Input::set_cursor_disabled(bool state) {
         ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
-}
-
-void Input::remove_key_callback(const string& name) {
-    key_callback_stack.remove_if([&name](const tuple<key_callback, string, void*>& item) { return name == std::get<1>(item); });
-}
-void Input::remove_mouse_pos_callback(const string& name) {
-    mouse_pos_callback_stack.remove_if([&name](const tuple<mouse_pos_callback, string, void*>& item) { return name == std::get<1>(item); });
-
-}
-void Input::remove_mouse_button_callback(const string& name) {
-    mouse_button_callback_stack.remove_if([&name](const tuple<mouse_button_callback, string, void*>& item) { return name == std::get<1>(item); });
-}
-void Input::remove_scroll_callback(const string& name) {
-    scroll_callback_stack.remove_if([&name](const tuple<scroll_callback, string, void*>& item) { return name == std::get<1>(item); });
 }
 
 }

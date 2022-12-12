@@ -107,7 +107,7 @@ void main() {
             color.rgb = mix(color.rgb, widget_color.rgb, widget_color.a);
         else {
             if ((uv.x % 2 == 0) && (uv.y % 2 == 0))
-                color.rgb = mix(color.rgb, widget_color.rgb, widget_color.a);
+                color.rgb = mix(color.rgb, widget_color.rgb, 0.5 * widget_color.a);
         }
     }
     

@@ -20,12 +20,26 @@ void main() {
 
     float color_width = 1.5 / res;
     if (-color_width < uv.y && uv.y < color_width) { // y = 0, we're the x axis
-        line_value = vec3(1,0,0);
-        alpha_factor = 1.0;
+        if (uv.x < 0) {
+            if (fract(uv.x * 8.0) < 0.5) {
+                line_value = vec3(1,0,0);
+                alpha_factor = 1.0;
+            }
+        } else {
+            line_value = vec3(1,0,0);
+            alpha_factor = 1.0;
+        }
     }
     if (-color_width < uv.x && uv.x < color_width) { // x = 0, we're the y axis
-        line_value = vec3(0,1,0);
-        alpha_factor = 1.0;
+        if (uv.y < 0) {
+            if (fract(uv.y * 8.0) < 0.5) {
+                line_value = vec3(0,1,0);
+                alpha_factor = 1.0;
+            }
+        } else {
+            line_value = vec3(0,1,0);
+            alpha_factor = 1.0;
+        }
     }
 
     fout_color = vec4(line_value, alpha_factor * value);

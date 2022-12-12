@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 
+#include "widget_system.hpp"
 #include "general/var_system.hpp"
 #include "general/file.hpp"
 #include "game/input.hpp"
@@ -29,7 +30,8 @@ void GUI::setup() {
     if (!fs::exists(fs::path(asset_browser_file))) {
         asset_browser_file = fs::current_path().string();
     }
-    
+
+    WidgetSystem::setup();
 }
 
 void GUI::shutdown() {
@@ -101,12 +103,11 @@ void GUI::update() {
 
     if (*(p_open = window_open("demo")))
         ImGui::ShowDemoWindow(p_open);
-    if (*(p_open = window_open("map_editor")))
-        game.map_editor.window(p_open);
-    // if (*(p_open = window_open("asset_editor")))
-    //     game.asset_editor.window(p_open);
-    if (*(p_open = window_open("test_scene")))
-        game.test_scene.window(p_open);
+
+    for (auto editor_scene : EditorScenes::values()) {
+        if (*(p_open = window_open(editor_scene->p_scene->name)))
+            editor_scene->window(p_open);
+    }
     if (*(p_open = window_open("var_system")))
         VarSystem::window(p_open);
     if (*(p_open = window_open("console")))
@@ -126,7 +127,7 @@ void GUI::update() {
     if (*(p_open = window_open("colors")))
         color_window(p_open);
     if (*(p_open = window_open("asset_browser"))) {
-        std::filesystem::path asset_browser_path = asset_browser_file;
+        std::filesystem::path asset_browser_path = asset_browser_file.empty() ? game.external_resource_folder : asset_browser_file;
         asset_browser("Asset Browser", p_open, &asset_browser_path);
         asset_browser_file = asset_browser_path.string();
     }

@@ -26,25 +26,19 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     }
 }
 
-void Scene::tower_cleanup(entt::registry& registry, entt::entity entity) {
-    registry.destroy(registry.get<Tower>(entity).clouds);
-}
-
 
 void Scene::setup(const string& input_name) {
     name = input_name;
 	render_scene.name = name + "::render_scene";
-	// setup camera
-	cameras.emplace_back(v3(-8, 0, 4), math::d2r(euler{0, -30}));
+	camera = Camera(v3(-8, 0, 4), math::d2r(euler{0, -30}));
 	render_scene.viewport.name	 = render_scene.name + "::viewport";
-	render_scene.viewport.camera = &cameras.back();
+	render_scene.viewport.camera = &camera;
 	render_scene.viewport.setup();
 	controller.name = name + "::controller";
-	controller.setup(&render_scene.viewport, &cameras.back());
+	controller.setup(&render_scene.viewport, &camera);
 
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
-    registry.on_destroy<Tower>().connect<&Scene::tower_cleanup>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
@@ -52,6 +46,10 @@ void Scene::setup(const string& input_name) {
 
 void Scene::update() {
 	ZoneScoped;
+    
+    delta_time = Input::delta_time * time_scale;
+    time += delta_time;
+    
 	controller.update();
 
     dragging_update_system(this);
@@ -59,7 +57,7 @@ void Scene::update() {
     dragging_system(this);
     spawner_system(this);
     travel_system(this);
-    tower_system(this);
+    lizard_system(this);
     spawner_draw_system(this);
     transform_system(this);
     selection_id_system(this);
@@ -72,6 +70,8 @@ void Scene::update() {
         preview_3d_components(this, entity);
     }
 
+    render_scene.render_grid = edit_mode;
+    render_scene.render_widgets = edit_mode;
 }
 
 void Scene::cleanup() {
@@ -113,11 +113,7 @@ void Scene::settings_window(bool* p_open) {
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Camera")) {
-				ImGui::Text("Cameras");
-				ImGui::Indent();
-				for (Camera& camera : cameras)
-					inspect(&camera);
-				ImGui::Unindent();
+				inspect(&camera);
 				ImGui::Separator();
 				ImGui::Text("Controller");
 				ImGui::Indent();
@@ -150,9 +146,9 @@ void Scene::output_window(bool* p_open) {
     ImGui::PopStyleVar();
 }
 
-entt::entity Scene::get_tower(v3i pos) {
-    auto view = registry.view<LogicTransform, Tower>();
-    for (auto [entity, logic_pos, tower] : view.each()) {
+entt::entity Scene::get_lizard(v3i pos) {
+    auto view = registry.view<LogicTransform, Lizard>();
+    for (auto [entity, logic_pos, lizard] : view.each()) {
         if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
             return entity;
         }
@@ -212,8 +208,8 @@ vector<entt::entity> Scene::get_any(v3i pos) {
     return entities;
 }
 
-entt::entity Scene::get(v3i pos, TowerPrefab* t) {
-    return get_tower(pos);
+entt::entity Scene::get(v3i pos, LizardPrefab* t) {
+    return get_lizard(pos);
 }
 
 entt::entity Scene::get(v3i pos, TilePrefab* t) {

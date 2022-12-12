@@ -202,19 +202,20 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 render_particles(emitter, command_buffer);
             }
             // Render grid
-            auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->value.view.get();
-            command_buffer
-                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                    .depthTestEnable  = true,
-                    .depthWriteEnable = false,
-                    .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
-                })
-                .bind_graphics_pipeline("grid_3d")
-                .set_rasterization({})
-                .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
-                .bind_image(0, 1, grid_view)
-                .bind_sampler(0, 1, Sampler().anisotropy(true).get())
-                .draw(6, 1, 0, 0);
+            if (render_grid) {
+                auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->value.view.get();
+                command_buffer
+                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                        .depthTestEnable  = true,
+                        .depthWriteEnable = false,
+                        .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                    })
+                    .bind_graphics_pipeline("grid_3d")
+                    .set_rasterization({})
+                    .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
+                    .bind_image(0, 1, grid_view).bind_sampler(0, 1, Sampler().anisotropy(true).get())
+                    .draw(6, 1, 0, 0);
+            }
         }});
         rg->add_pass({
         .name = "widget",
@@ -224,25 +225,27 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
         },
         .execute = [this](vuk::CommandBuffer& command_buffer) {
             ZoneScoped;
-            // Prepare render
-            command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-                .set_viewport(0, vuk::Rect2D::framebuffer())
-                .set_scissor(0, vuk::Rect2D::framebuffer())
-                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                          .depthTestEnable  = true,
-                          .depthWriteEnable = true,
-                          .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
-                })
-                .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
-                .set_color_blend("widget_input", vuk::BlendPreset::eAlphaBlend);
-            
-            command_buffer
-                .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
-                .bind_buffer(0, SCENE_BINDING, buffer_scene_data);
-
-            // Render items
-            for (Renderable& renderable : widget_renderables) {
-                render_widget(renderable, command_buffer);
+            if (render_widgets) {
+                // Prepare render
+                command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+                    .set_viewport(0, vuk::Rect2D::framebuffer())
+                    .set_scissor(0, vuk::Rect2D::framebuffer())
+                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                              .depthTestEnable  = true,
+                              .depthWriteEnable = true,
+                              .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                    })
+                    .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
+                    .set_color_blend("widget_input", vuk::BlendPreset::eAlphaBlend);
+                
+                command_buffer
+                    .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
+                    .bind_buffer(0, SCENE_BINDING, buffer_scene_data);
+    
+                // Render items
+                for (Renderable& renderable : widget_renderables) {
+                    render_widget(renderable, command_buffer);
+                }
             }
         }});
     rg->add_pass(vuk::Pass {
@@ -324,7 +327,24 @@ void RenderScene::cleanup(vuk::Allocator& allocator) {
     game.renderer.scenes.remove_value(this);
 }
 
+void widget_setup() {
+    static bool initialized = false;
+    if (initialized)
+        return;
+    initialized = true;
+    vuk::PipelineBaseCreateInfo pci;
+    pci.add_glsl(get_contents("src/shaders/widget.vert"), "src/shaders/widget.vert");
+    pci.add_glsl(get_contents("src/shaders/widget.frag"), "src/shaders/widget.frag");
+    game.renderer.context->create_named_pipeline("widget", pci);
+    
+    MaterialCPU widget_mat = { .file_path = "widget", .shader_name = "widget" };
+    game.renderer.upload_material(widget_mat);
+}
+
 void RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget) {
+    if (widget)
+        widget_setup();
+    
     Renderable r;
     r.mesh_asset_path = game.renderer.upload_mesh(mesh_cpu, frame_allocated);
     r.material_asset_path = widget ? "widget" : "default";

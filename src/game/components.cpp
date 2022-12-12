@@ -6,18 +6,28 @@
 #include "general/matrix_math.hpp"
 #include "game/scene.hpp"
 #include "game/spawner.hpp"
-#include "game/tower.hpp"
+#include "game/lizard.hpp"
 #include "renderer/draw_functions.hpp"
 
 
 namespace spellbook {
 
 void          inspect_components(Scene* scene, entt::entity entity) {
+    if (auto* component = scene->registry.try_get<LogicTransform>(entity)) {
+        ImGui::Text("LogicTransform");
+        ImGui::DragFloat3("Position", component->position.data, 0.01f);
+        ImGui::Separator();
+    }
     if (auto* component = scene->registry.try_get<ModelTransform>(entity)) {
         ImGui::Text("ModelTransform");
         ImGui::DragFloat3("Translation", component->translation.data, 0.01f);
         ImGui::DragFloat3("Rotation", component->rotation.data, 0.5f);
         ImGui::DragFloat("Scale", &component->scale, 0.01f);
+        ImGui::Separator();
+    }
+    if (auto* component = scene->registry.try_get<TransformLink>(entity)) {
+        ImGui::Text("TransformLink");
+        ImGui::DragFloat3("Offset", component->offset.data, 0.01f);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<GridSlot>(entity)) {
@@ -68,10 +78,14 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     }
     if (auto* component = scene->registry.try_get<Model>(entity)) {
         ImGui::Text("Model");
-        auto& transform = scene->registry.get<ModelTransform>(entity);
-        m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
-        for (auto&& skeleton : component->model_gpu.skeletons) {
-            inspect(skeleton, transform_matrix, &scene->render_scene);
+        uset<SkeletonGPU*> done_skeletons = {nullptr};
+        for (int i = 0; i < component->model_gpu.renderables.size(); i++) {
+            auto this_skeleton = &*component->model_gpu.renderables[i]->skeleton;
+            if (!done_skeletons.contains(this_skeleton)) {
+                m44 transform = component->model_gpu.renderables[i]->transform;
+                inspect(this_skeleton, transform, &scene->render_scene);
+                done_skeletons.insert(this_skeleton);
+            }
         }
 
         ImGui::Separator();

@@ -284,6 +284,33 @@ template <typename T> constexpr T mix(T a, T b, f32 x) {
     return a*(1.f-x)+b*x;
 }
 
+enum EaseMode {
+    EaseMode_Linear,
+    EaseMode_Quad,
+    EaseMode_Cubic,
+    EaseMode_Elastic
+};
+constexpr float ease(float x, EaseMode mode) {
+    switch (mode) {
+        case (EaseMode_Linear): {
+            return x;
+        } break;
+        case (EaseMode_Quad): {
+            return x < 0.5f ? 2.0f * math::pow(x, 2.0f) : 1.0f - math::pow(-2.0f * x + 2.0f, 2.0f) / 2.0f;
+        } break;
+        case (EaseMode_Cubic): {
+            return x < 0.5f ? 4.0f * math::pow(x, 3.0f) : 1.0f - math::pow(-2.0f * x + 2.0f, 3.0f) / 2.0f;
+        } break;
+        case (EaseMode_Elastic): {
+            const float c5 = (2.0f * math::PI) / 4.5f;
+            return x == 0.0f ? 0.0f
+                : x == 1.0f ? 1.0f
+                    : x < 0.5f ? -(math::pow(2.0f, 20 * x - 10.0f) * math::sin((20.0f * x - 11.125f) * c5)) / 2.0f
+                        : (math::pow(2.0f, -20.0f * x + 10.0f) * math::sin((20.0f * x - 11.125f) * c5)) / 2.0f + 1.0f;
+        } break;
+    }
+}
+
 inline f32 smoothstep(f32 edge0, f32 edge1, f32 x) {
     x = math::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
     return x * x * (3 - 2 * x);

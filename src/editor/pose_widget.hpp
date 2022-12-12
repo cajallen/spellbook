@@ -24,7 +24,7 @@ enum Operation {
     Operation_Count
 };
 
-struct WidgetState {
+struct PoseWidgetState {
     m44 model;
     
     u32 enabled = ~0u;
@@ -40,7 +40,7 @@ struct WidgetState {
     quat clicked_rotation;
 };
 
-struct WidgetSettings {
+struct PoseWidgetSettings {
     RenderScene& render_scene;
     
     float transform1d_size = 0.5f;
@@ -63,8 +63,8 @@ struct WidgetSettings {
     float color_axis = 1.0f;
 };
 
-bool pose_widget(ImGuiID id, v3* location, quat* rotation, const WidgetSettings& settings, m44* model = nullptr, WidgetState* widget_state = nullptr);
-void _pose_widget(WidgetState* widget_state, const WidgetSettings& settings);
-void inspect(WidgetState* state);
+bool pose_widget(ImGuiID id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);
+void _pose_widget(PoseWidgetState* widget_state, const PoseWidgetSettings& settings);
+void inspect(PoseWidgetState* state);
 
 }

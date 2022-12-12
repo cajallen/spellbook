@@ -20,7 +20,7 @@ enum FileType {
     FileType_Mesh,
     FileType_Material,
     FileType_Map,
-    FileType_Tower,
+    FileType_Lizard,
     FileType_Tile,
     FileType_Enemy,
     FileType_Spawner,
