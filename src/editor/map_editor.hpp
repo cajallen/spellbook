@@ -43,6 +43,8 @@ struct MapEditor : EditorScene {
     u32 selected_spawner = ~0u;
 
     s32 y_level = 0;
+
+    u32 rotation = 0;
     
     void setup() override;
     void update() override;
@@ -62,6 +64,17 @@ struct MapEditor : EditorScene {
         
         map_prefab.add_prefab(t, pos);
         instance_prefab(p_scene, t, pos);
+    }
+
+    template <>
+    void instance_and_write_prefab(const TilePrefab& t, v3i pos) {
+        entt::entity old_tile = p_scene->get(pos, (TilePrefab*) 0);
+        if (old_tile != entt::null) {
+            p_scene->registry.destroy(old_tile);
+        }
+        
+        map_prefab.add_prefab(t, pos, rotation);
+        instance_prefab(p_scene, t, pos, rotation);
     }
 };
 
@@ -141,7 +154,22 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
         ImGui::PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), true);
         
         if (ImGui::Button("Add")) {
-            buttons.emplace_back(std::move(add_map[name]));
+            fs::path as_path = add_map[name].item_path;
+            if (fs::is_directory(as_path)) {
+                for (auto& dir_entry : fs::directory_iterator(as_path)) {
+                    if (path_filter(from_typeinfo(typeid(T)))(dir_entry)) {
+                        buttons.emplace_back(
+                            dir_entry.path().stem().string(),
+                            add_map[name].color,
+                            dir_entry.path().string()
+                        );
+                    } else {
+                        log_warning("Directory contents not added as button as it does not match types");
+                    }
+                }
+            } else {
+                buttons.emplace_back(std::move(add_map[name]));
+            }
             add_map[name] = {};
             ImGui::CloseCurrentPopup();
         }

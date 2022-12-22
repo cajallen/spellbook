@@ -2,6 +2,7 @@
 
 #include <vuk/Buffer.hpp>
 
+#include "light.hpp"
 #include "general/string.hpp"
 
 #include "renderer/viewport.hpp"
@@ -19,12 +20,23 @@ struct SceneData {
     Color fog_color           = palette::black;
     f32 fog_depth             = -1.0f;
     v3  rim_alpha_width_start = v3(0.1f, 0.1f, 0.75f);
-    v3  sun_direction         = v3(-0.3f, 0.6f, 0.7f);
+    quat sun_direction        = quat(0.2432103, 0.3303661, 0.0885213, 0.9076734);
     f32 sun_intensity         = 1.0f;
 };
 
+enum DebugDrawMode {
+    DebugDrawMode_Lit,
+    DebugDrawMode_BaseColor,
+    DebugDrawMode_Emissive,
+    DebugDrawMode_Position,
+    DebugDrawMode_Normal,
+    DebugDrawMode_Depth,
+    DebugDrawMode_None
+};
+
 struct PostProcessData {
-    v4 outline = v4(3.0f, 5.0f, 0.1f, 1.0f);
+    v4 outline = v4(0.10f, 0.30f, 0.1f, 1.0f);
+    DebugDrawMode debug_mode = DebugDrawMode_Lit;
 };
 
 struct RenderScene {
@@ -38,8 +50,10 @@ struct RenderScene {
     PostProcessData post_process_data;
 
     vuk::Buffer buffer_camera_data;
-    vuk::Buffer buffer_scene_data;
+    vuk::Buffer buffer_sun_camera_data;
     vuk::Buffer buffer_model_mats;
+    
+    vuk::Buffer buffer_composite_data;
 
     v2i         query = v2i(-1, -1);
     vuk::Future fut_query_result;
@@ -50,6 +64,8 @@ struct RenderScene {
 
     vector<EmitterGPU> emitters;
 
+    vector<LightGPU> submitted_lights;
+
     bool render_grid = true;
     bool render_widgets = true;
     
@@ -59,6 +75,7 @@ struct RenderScene {
     void        image(v2i size);
     void        settings_gui();
     void        pre_render();
+    void        update();
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
     void        cleanup(vuk::Allocator& allocator);
 
@@ -67,8 +84,9 @@ struct RenderScene {
     Renderable* copy_renderable(Renderable* renderable);
     void        delete_renderable(Renderable* renderable);
 
-    void quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget = false);
-    
+    Renderable& quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget = false);
+    Renderable& quick_material(const MaterialCPU& material_cpu, bool frame_allocated);
+
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 };
 

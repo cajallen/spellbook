@@ -32,7 +32,7 @@ Camera::Camera(v3 pos, euler rot) {
 
 void Camera::update_proj() {
 	// console({.s=fmt_("Updated Proj on {:}", *this), .g="Camera", .c = Color(0.8f, 1.0f), .p = false});
-	proj	   = math::infinite_perspective(math::d2r(fov / 2.0f), aspect_xy, clip_planes[0]);
+	proj	   = math::perspective(math::d2r(fov / 2.0f), aspect_xy, clip_planes[0]);
 	proj_dirty = false;
 }
 
@@ -44,10 +44,8 @@ void Camera::update_view() {
 }
 
 void inspect(Camera* camera) {
-	euler heading_degrees = camera->heading.r2d();
 	camera->view_dirty |= ImGui::DragFloat3("Position", &camera->position.x, 0.025f);
-	camera->view_dirty |= ImGui::DragFloat2("Direction", &heading_degrees.yaw, 0.5f);
-	camera->heading = heading_degrees.d2r();
+	camera->view_dirty |= ImGui::DragEuler2("Direction", &camera->heading);
 	camera->proj_dirty |= ImGui::DragFloat("FOV", &camera->fov, 0.1f);
 	camera->proj_dirty |= ImGui::DragFloat2("Clip", &camera->clip_planes.x, 0.01f);
 

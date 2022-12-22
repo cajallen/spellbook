@@ -5,9 +5,10 @@
 #include "general/geometry.hpp"
 #include "general/quaternion.hpp"
 #include "general/matrix.hpp"
-#include "renderer/render_scene.hpp"
 
 namespace spellbook {
+
+struct RenderScene;
 
 enum Operation {
     Operation_TranslateX      = 0,
@@ -61,6 +62,8 @@ struct PoseWidgetSettings {
     float color_neutral = 0.1f;
     float color_neutral_hovered = 0.5f;
     float color_axis = 1.0f;
+
+    u32 disabled = 0;
 };
 
 bool pose_widget(ImGuiID id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);

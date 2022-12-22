@@ -50,8 +50,6 @@ JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_prefab_path, enemy_cost, enemy_c
 void spawner_system(Scene* scene);
 
 void inspect(SpawnerPrefab* spawner_prefab);
-void save_spawner(const SpawnerPrefab&);
-SpawnerPrefab load_spawner(const string& input_path);
 entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, v3i location);
 
 }

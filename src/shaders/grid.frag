@@ -3,8 +3,9 @@
 
 layout (location = 0) in vec4 fin_position;
 layout (location = 0) out vec4 fout_color;
-layout (location = 1) out vec4 fout_normal;
-layout (location = 2) out uvec4 fout_id;
+layout (location = 1) out vec4 fout_emissive;
+layout (location = 2) out vec4 fout_normal;
+layout (location = 3) out uvec4 fout_id;
 
 layout(binding = 1) uniform sampler2D s_grid; 
 
@@ -41,8 +42,11 @@ void main() {
             alpha_factor = 1.0;
         }
     }
-
-    fout_color = vec4(line_value, alpha_factor * value);
-    fout_normal = vec4(0,0,1,0);
+    
+    if (alpha_factor * value < 0.01)
+        discard;
+    
+    fout_emissive = vec4(line_value, alpha_factor * value);
+    fout_normal = vec4(0.0,0.0,1.0,1.0);
     fout_id = uvec4(-1,-1,-1,-1);
 }

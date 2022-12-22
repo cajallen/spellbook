@@ -24,10 +24,13 @@ void inspect(MapPrefab* map_prefab) {
 
     ImGui::Text("Tiles");
     u32 tile_i = 0;
-    for (auto& [pos, prefab] : map_prefab->tiles) {
+    for (auto& [pos, tile_state] : map_prefab->tiles) {
         ImGui::Text("%d", tile_i++);
         ImGui::Indent();
-        inspect(&prefab);
+        s32 as_int = tile_state.rotation;
+        if (ImGui::SliderInt("Rotation", &as_int, 0, 3))
+            tile_state.rotation = as_int;
+        inspect(&tile_state.prefab);
         ImGui::Unindent();
     }
     ImGui::Separator();
@@ -53,37 +56,14 @@ void inspect(MapPrefab* map_prefab) {
     ImGui::Separator();
 }
 
-void save_map(const MapPrefab& map_prefab) {
-    auto j = from_jv<json>(to_jv(map_prefab));
-    
-    string ext = fs::path(map_prefab.file_path).extension().string();
-    assert_else(ext == extension(FileType_Map));
-    
-    file_dump(j, to_resource_path(map_prefab.file_path).string());
-}
-
-MapPrefab load_map(const string& input_path) {
-    fs::path absolute_path = to_resource_path(input_path);
-    check_else(fs::exists(absolute_path))
-        return {};
-    string ext = absolute_path.extension().string();
-    assert_else(ext == extension(FileType_Map))
-        return {};
-
-    json j = parse_file(absolute_path.string());
-    auto map_prefab = from_jv<MapPrefab>(to_jv(j));
-    map_prefab.file_path = absolute_path.string();
-    return map_prefab;
-}
-
 Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     auto scene = new Scene();
     scene->setup(name);
     for (auto& [pos, prefab] : map_prefab.lizards) {
         instance_prefab(scene, prefab, pos);
     }
-    for (auto& [pos, prefab] : map_prefab.tiles) {
-        instance_prefab(scene, prefab, pos);
+    for (auto& [pos, tile_state] : map_prefab.tiles) {
+        instance_prefab(scene, tile_state.prefab, pos, tile_state.rotation);
     }
     for (auto& [pos, prefab] : map_prefab.spawners) {
         instance_prefab(scene, prefab, pos);

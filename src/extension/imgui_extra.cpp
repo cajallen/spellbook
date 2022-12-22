@@ -238,5 +238,33 @@ void StyleColorsSpellbook(ImGuiStyle* dst)
     colors[ImGuiCol_TabUnfocusedActive]     = ImLerp(colors[ImGuiCol_TabActive],    colors[ImGuiCol_TitleBg], 0.40f);
 }
 
+bool DragEuler2(const char* label, spellbook::euler* e, bool input_is_radians, float v_speed, float v_min, float v_max, const char* format, ImGuiSliderFlags flags) {
+    if (input_is_radians) {
+        spellbook::euler e_deg = input_is_radians ? spellbook::math::r2d(*e) : *e;
+        bool changed = ImGui::DragFloat2(label, &e_deg.yaw, v_speed, v_min, v_max, format, flags);
+        if (changed) {
+            *e = spellbook::math::d2r(e_deg);
+            return true;
+        }
+        return false;
+    }
+    return ImGui::DragFloat2(label, &e->yaw, v_speed, v_min, v_max, format, flags);
 }
+
+bool DragEuler3(const char* label, spellbook::euler* e, bool input_is_radians, float v_speed, float v_min, float v_max, const char* format, ImGuiSliderFlags flags) {
+    if (input_is_radians) {
+        spellbook::euler e_deg = input_is_radians ? spellbook::math::r2d(*e) : *e;
+        bool changed = ImGui::DragFloat3(label, &e_deg.yaw, v_speed, v_min, v_max, format, flags);
+        if (changed) {
+            *e = spellbook::math::d2r(e_deg);
+            return true;
+        }
+        return false;
+    }
+    return ImGui::DragFloat3(label, &e->yaw, v_speed, v_min, v_max, format, flags);
+}
+
+}
+
+
 

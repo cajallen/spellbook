@@ -4,10 +4,15 @@
 
 namespace spellbook::math {
 
-m44 infinite_perspective(f32 v_fov_r, f32 aspect_xy, f32 near) {
+m44 perspective(f32 v_fov_r, f32 aspect_xy, f32 near) {
     auto focal_length = 1.0f / math::tan(v_fov_r);
 
     m44 result = {focal_length / aspect_xy, 0, 0, 0, 0, -focal_length, 0, 0, 0, 0, 0, near, 0, 0, -1, 0};
+    return result;
+}
+
+m44 orthographic(v3 extents) {
+    m44 result = {1.0f / extents.x, 0, 0, 0, 0, -1.0f / extents.y, 0, 0, 0, 0, 1.0f / extents.z, 1.0f, 0, 0, 0, 1.0f};
     return result;
 }
 

@@ -20,9 +20,10 @@
 namespace spellbook {
 
 vector<ModelCPU> ModelCPU::split() {
+    // This should generate new IDs to not destroy the old model
     auto traverse = [](ModelCPU& model, id_ptr<Node> node, auto&& traverse) -> void {
+        model.nodes.push_back(node);
         for (id_ptr<Node> child : node->children) {
-            model.nodes.push_back(child);
             traverse(model, child, traverse);
         }
     };
@@ -32,6 +33,8 @@ vector<ModelCPU> ModelCPU::split() {
     u32 i = 0;
     for (id_ptr<Node> child : root_node->children) {
         child->parent = id_ptr<Node>::null();
+        child->transform = m44::identity();
+        models[i].file_path = child->name;
         traverse(models[i++], child, traverse);
     }
 
@@ -71,12 +74,11 @@ void inspect(ModelCPU* model) {
     }
 }
 
-
-void save_model(const ModelCPU& model) {
+template<>
+bool save_asset(const ModelCPU& model) {
     json j;
     j["root_node"] = make_shared<json_value>(to_jv(model.root_node));
 
-    // TODO: Make this a one liner and integrate this, skeletons, and bones
     vector<json_value> json_nodes;
     for (id_ptr<ModelCPU::Node> node : model.nodes) {
         json_nodes.push_back(to_jv_full(node));
@@ -91,26 +93,29 @@ void save_model(const ModelCPU& model) {
     
     
     string ext = std::filesystem::path(model.file_path).extension().string();
-    assert_else(ext == extension(FileType_Model));
+    assert_else(ext == extension(FileType_Model))
+        return false;
     
     file_dump(j, to_resource_path(model.file_path).string());
+    return true;
 }
 
 fs::path _convert_to_relative(const fs::path& path) {
     return path.lexically_proximate(game.resource_folder);
 }
 
-ModelCPU load_model(const fs::path& input_path) {
+template<>
+ModelCPU load_asset(const string& input_path) {
     fs::path absolute_path = to_resource_path(input_path);
     check_else(fs::exists(absolute_path))
         return {};
-    string ext = input_path.extension().string();
+    string ext = absolute_path.extension().string();
     check_else(ext == extension(FileType_Model))
         return {};
     
     ModelCPU model;
     json      j = parse_file(absolute_path.string());
-    model.file_path = input_path.string();
+    model.file_path = input_path;
     if (j.contains("root_node"))
         model.root_node = from_jv<id_ptr<ModelCPU::Node>>(*j["root_node"]);
 

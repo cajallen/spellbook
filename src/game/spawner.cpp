@@ -105,7 +105,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     spawner.delta_cost = spawner_prefab.delta_cost;
     switch (spawner_prefab.enemy_selection) {
         case (SpawnerPrefab::EnemySelection_Simple):
-            spawner.select_enemy = simple_select_enemy(new EnemyPrefab(load_enemy(spawner_prefab.enemy_prefab_path)), spawner_prefab.enemy_cost, spawner_prefab.enemy_cooldown);
+            spawner.select_enemy = simple_select_enemy(new EnemyPrefab(load_asset<EnemyPrefab>(spawner_prefab.enemy_prefab_path)), spawner_prefab.enemy_cost, spawner_prefab.enemy_cooldown);
             break;
     }
     switch (spawner_prefab.wave_selection) {
@@ -119,7 +119,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
 
     // Model
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_model(load_enemy(spawner_prefab.enemy_prefab_path).model_path);
+    model_comp.model_cpu = load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemy_prefab_path).model_path);
     model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
     
     scene->registry.emplace<ModelTransform>(entity);

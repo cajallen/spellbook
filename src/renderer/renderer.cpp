@@ -29,8 +29,7 @@ Renderer::Renderer()
     : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
-        .request_validation_layers(VALIDATION ? true : false)
-#if VALIDATION
+        .request_validation_layers(false)
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,
@@ -41,7 +40,6 @@ Renderer::Renderer()
                 __debugbreak();
                 return VK_FALSE;
             })
-#endif
         .set_app_name("star_stealer")
         .set_engine_name("spellbook")
         .require_api_version(1, 2, 0)
@@ -151,6 +149,18 @@ void Renderer::setup() {
     }
     {
         vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
+        pci.add_glsl(get_contents("src/shaders/point_depth.frag"), "src/shaders/point_depth.frag");
+        context->create_named_pipeline("point_depth", pci);
+    }
+    {
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
+        pci.add_glsl(get_contents("src/shaders/directional_depth.frag"), "src/shaders/directional_depth.frag");
+        context->create_named_pipeline("directional_depth", pci);
+    }
+    {
+        vuk::PipelineBaseCreateInfo pci;
         pci.add_glsl(get_contents("src/shaders/infinite_plane.vert"), "src/shaders/infinite_plane.vert");
         pci.add_glsl(get_contents("src/shaders/grid.frag"), "src/shaders/grid.frag");
         game.renderer.context->create_named_pipeline("grid_3d", pci);
@@ -182,6 +192,10 @@ void Renderer::update() {
     auto& frame_resource = super_frame_resource->get_next_frame();
     context->next_frame();
     frame_allocator.emplace(frame_resource);
+
+    for (auto scene : scenes) {
+        scene->update();
+    }
 }
 
 void Renderer::render() {
@@ -254,6 +268,7 @@ void Renderer::render() {
             tex_it++;
     }
     auto mat_it = material_cache.begin();
+    
     while (mat_it != material_cache.end()) {
         if (mat_it->second.frame_allocated)
             mat_it = material_cache.erase(mat_it);

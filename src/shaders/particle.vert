@@ -15,12 +15,10 @@ layout (binding = PARTICLES_BINDING) buffer Particles {
 };
 
 layout (binding = CAMERA_BINDING) uniform CameraData {
-    mat4 view;
-    mat4 projection;
-    vec4 camera_position;
+    mat4 vp;
 };
 
-layout(binding = 9) uniform sampler2D color_table;
+layout(binding = SPARE_BINDING_1) uniform sampler2D color_table;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -59,5 +57,5 @@ void main() {
 
     vout.uv = vin_uv;
     vout.color = texture(color_table, vec2(particle.color_x, 1.0 - particle.life / particle.life_total)).rgb;
-    gl_Position = projection * view * h_position;
+    gl_Position = vp * h_position;
 }

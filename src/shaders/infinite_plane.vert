@@ -1,10 +1,10 @@
 #version 450
 #pragma shader_stage(vertex)
 
-layout (binding = 0) uniform VP {
-	mat4 view;
-	mat4 projection;
-    vec4 camera_position;
+#include "include.glsli"
+
+layout (binding = CAMERA_BINDING) uniform CameraData {
+	mat4 vp;
 };
 
 out gl_PerVertex {
@@ -25,5 +25,5 @@ void main() {
         case 5: { position = vec3(-extent,  extent,  0.0); vout_position = vec4(position, 1.0); } break;
     }
 
-    gl_Position = projection * view * vec4(position, 1.0);
+    gl_Position = vp * vec4(position, 1.0);
 }

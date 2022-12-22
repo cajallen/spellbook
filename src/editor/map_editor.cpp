@@ -78,6 +78,11 @@ bool map_editor_scroll(ScrollCallbackArgs args) {
         map_editor.y_level += (s32) args.yoffset;
         return true;
     }
+
+    if (Input::alt) {
+        map_editor.rotation = (map_editor.rotation + 4 + (s32) args.yoffset) % 4;
+        return true;
+    }
     return false;
 }
 
@@ -130,16 +135,16 @@ void MapEditor::update() {
             map_prefab.spawners.erase(top_drawn_cell);
         }
         else if (selected_tile != -1) {
-            instance_and_write_prefab(load_tile(tile_buttons[selected_tile].item_path), top_drawn_cell);
+            instance_and_write_prefab(load_asset<TilePrefab>(tile_buttons[selected_tile].item_path), top_drawn_cell);
         }
         else if (selected_lizard != -1) {
-            instance_and_write_prefab(load_lizard(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
+            instance_and_write_prefab(load_asset<LizardPrefab>(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
         }
         else if (selected_spawner != -1) {
-            instance_and_write_prefab(load_spawner(spawner_buttons[selected_spawner].item_path), bot_drawn_cell);
+            instance_and_write_prefab(load_asset<SpawnerPrefab>(spawner_buttons[selected_spawner].item_path), bot_drawn_cell);
         }
         else if (selected_consumer != -1) {
-            instance_and_write_prefab(load_consumer(consumer_buttons[selected_consumer].item_path), bot_drawn_cell);
+            instance_and_write_prefab(load_asset<ConsumerPrefab>(consumer_buttons[selected_consumer].item_path), bot_drawn_cell);
         }
     }
 
@@ -165,12 +170,12 @@ void MapEditor::window(bool* p_open) {
             p_scene->cleanup();
             delete p_scene;
             
-            map_prefab = load_map(map_prefab.file_path);
+            map_prefab = load_asset<MapPrefab>(map_prefab.file_path);
             p_scene = instance_map(map_prefab, "Map Edit Scene");
         }
         ImGui::SameLine();
         if (ImGui::Button("Save")) {
-            save_map(map_prefab);
+            save_asset(map_prefab);
         }
 
         show_buttons("Lizards", *this, lizard_buttons, &selected_lizard);
@@ -235,7 +240,7 @@ void MapEditor::draw_preview(v3i cell) {
             {(v3) cell + v3(1.f, 0.f, 0.f), palette::gray_4, line_width}
         });
 
-        p_scene->render_scene.quick_mesh(line_mesh, true);
+        p_scene->render_scene.quick_mesh(line_mesh, true, true);
     } else if (selected_tile != -1) {
         auto line_mesh = generate_formatted_line(camera,
         {
@@ -247,7 +252,7 @@ void MapEditor::draw_preview(v3i cell) {
             {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width}
         });
 
-        p_scene->render_scene.quick_mesh(line_mesh, true);
+        p_scene->render_scene.quick_mesh(line_mesh, true, true);
     } else if (selected_lizard != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 24; i++) {
@@ -257,7 +262,7 @@ void MapEditor::draw_preview(v3i cell) {
         }
 
         auto line_mesh = generate_formatted_line(camera, std::move(vertices));
-        p_scene->render_scene.quick_mesh(line_mesh, true);
+        p_scene->render_scene.quick_mesh(line_mesh, true, true);
     }
 }
 

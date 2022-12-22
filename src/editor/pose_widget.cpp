@@ -297,7 +297,7 @@ void _pose_widget(PoseWidgetState* state, const PoseWidgetSettings& settings) {
     _rotation_widget(mouse, state, settings);
 }
 
-void disable_invalid_operations(v3* position, quat* rotation, PoseWidgetState& state) {
+void disable_invalid_operations(v3* position, quat* rotation, PoseWidgetState& state, const PoseWidgetSettings& settings) {
     if (!position) {
         state.enabled &= ~(0b1 << Operation_TranslateX | 0b1 << Operation_TranslateY | 0b1 << Operation_TranslateZ);
     }
@@ -306,6 +306,7 @@ void disable_invalid_operations(v3* position, quat* rotation, PoseWidgetState& s
     }
     state.enabled &= ~(0b1 << Operation_TranslateXY | 0b1 << Operation_TranslateYZ | 0b1 << Operation_TranslateZX);
     state.enabled &= ~(0b1 << Operation_RotateCamera | 0b1 << Operation_TranslateCamera);
+    state.enabled &= ~(settings.disabled);
 }
 
 bool pose_widget(ImGuiID id, v3* position, quat* rotation, const PoseWidgetSettings& settings, m44* model, PoseWidgetState* out_state) {
@@ -314,7 +315,7 @@ bool pose_widget(ImGuiID id, v3* position, quat* rotation, const PoseWidgetSetti
         widget_states.insert({id, PoseWidgetState{}});
     auto& state = widget_states[id];
 
-    disable_invalid_operations(position, rotation, state);
+    disable_invalid_operations(position, rotation, state, settings);
     
     v3 loc = (position ? *position : v3());
     quat rot = (rotation ? *rotation : quat());

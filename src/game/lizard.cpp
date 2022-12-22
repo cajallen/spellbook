@@ -52,7 +52,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", "lizard", i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_model(lizard_prefab.model_path);
+    model_comp.model_cpu = load_asset<ModelCPU>(lizard_prefab.model_path);
     model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
@@ -72,29 +72,6 @@ void inspect(LizardPrefab* lizard_prefab) {
     ImGui::PathSelect("File", &lizard_prefab->file_path, "resources", FileType_Lizard);
     ImGui::EnumCombo("Type", &lizard_prefab->type);
     ImGui::PathSelect("Globe Model", &lizard_prefab->model_path, "resources", FileType_Model);
-}
-
-void save_lizard(const LizardPrefab& lizard_prefab) {
-    auto j = from_jv<json>(to_jv(lizard_prefab));
-    
-    string ext = fs::path(lizard_prefab.file_path).extension().string();
-    assert_else(ext == extension(FileType_Lizard));
-    
-    file_dump(j, to_resource_path(lizard_prefab.file_path).string());
-}
-
-LizardPrefab load_lizard(const string& input_path) {
-    fs::path absolute_path = to_resource_path(input_path);
-    check_else(fs::exists(absolute_path))
-        return {};
-    string ext = absolute_path.extension().string();
-    assert_else(ext == extension(FileType_Lizard))
-        return {};
-
-    json j = parse_file(absolute_path.string());
-    auto lizard_prefab = from_jv<LizardPrefab>(to_jv(j));
-    lizard_prefab.file_path = absolute_path.string();
-    return lizard_prefab;
 }
 
 }

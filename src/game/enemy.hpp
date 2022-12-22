@@ -5,6 +5,7 @@
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "general/geometry.hpp"
+#include "game/game_file.hpp"
 
 namespace spellbook {
 
@@ -26,7 +27,6 @@ JSON_IMPL(EnemyPrefab, type, model_path, max_health, max_speed);
 struct Scene;
 entt::entity instance_prefab(Scene*, const EnemyPrefab&, v3i location);
 void inspect(EnemyPrefab*);
-void save_enemy(const EnemyPrefab&);
-EnemyPrefab load_enemy(const string& input_path);
+
 
 }

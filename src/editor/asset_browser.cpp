@@ -100,7 +100,7 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
         ImGui::Checkbox("Y-Up", &model_convert_map[window_name].y_up);
         if (ImGui::Button("Convert")) {
             auto& convert_info = model_convert_map[window_name];
-            save_model(convert_to_model(convert_info.input, convert_info.folder_path, convert_info.name, convert_info.y_up));
+            save_asset(convert_to_model(convert_info.input, convert_info.folder_path, convert_info.name, convert_info.y_up));
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

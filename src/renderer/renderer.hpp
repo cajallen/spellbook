@@ -25,15 +25,15 @@ using std::optional;
 namespace spellbook {
 
 #define CAMERA_BINDING 0
-#define SCENE_BINDING 1
-#define MODEL_BINDING 2
-#define PARTICLES_BINDING 2
-#define BONES_BINDING 3
-#define MATERIAL_BINDING 4
-#define BASE_COLOR_BINDING 5
-#define ORM_BINDING 6
-#define NORMAL_BINDING 7
-#define EMISSIVE_BINDING 8
+#define MODEL_BINDING 1
+#define BONES_BINDING 2
+#define MATERIAL_BINDING 3
+#define BASE_COLOR_BINDING 4
+#define ORM_BINDING 5
+#define NORMAL_BINDING 6
+#define EMISSIVE_BINDING 7
+#define SPARE_BINDING_1 8
+#define PARTICLES_BINDING MODEL_BINDING
 
 struct FrameTimer {
     int               ptr         = 0;

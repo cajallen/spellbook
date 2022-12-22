@@ -6,11 +6,12 @@
 
 #include "general/color.hpp"
 #include "general/string.hpp"
+#include "general/json.hpp"
 #include "renderer/vertex.hpp"
 
 
 namespace spellbook {
-struct Scene;
+struct RenderScene;
 
 struct EmitterCPU {
     string file_path;
@@ -35,6 +36,7 @@ struct EmitterCPU {
     float duration_random = 0.0f;
 
     string mesh;
+    string material;
 };
 
 struct EmitterSettings {
@@ -77,11 +79,14 @@ struct EmitterComponent {
     EmitterGPU* emitter;
 };
 
-EmitterGPU& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu);
+EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu);
 
+void inspect(EmitterCPU* emitter);
 void inspect(EmitterGPU* emitter);
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
+
+JSON_IMPL(EmitterCPU, position, velocity, damping, scale, duration, falloff, particles_per_second, color1_start, color1_end, color2_start, color2_end, velocity_random, position_random, scale_random, duration_random, mesh, material);
 
 }

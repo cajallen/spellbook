@@ -5,6 +5,7 @@
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "general/geometry.hpp"
+#include "game/game_file.hpp"
 
 namespace spellbook {
 
@@ -19,8 +20,6 @@ struct Scene;
 entt::entity instance_prefab(Scene*, const ConsumerPrefab&, v3i location);
 
 void inspect(ConsumerPrefab*);
-void save_consumer(const ConsumerPrefab&);
-ConsumerPrefab load_consumer(const string& input_path);
 entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& tile_prefab, v3i location);
 
 }

@@ -5,7 +5,8 @@
 
 namespace spellbook::math {
 
-m44 infinite_perspective(f32 vhr_fov, f32 aspect_xy, f32 near);
+m44 perspective(f32 vhr_fov, f32 aspect_xy, f32 near);
+m44 orthographic(v3 extents);
 m44 look(v3 eye, v3 vec, v3 up);
 
 m44 translate(v3 position);

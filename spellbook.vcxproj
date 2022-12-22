@@ -163,6 +163,7 @@
     <ClCompile Include="src\renderer\assets\texture_asset.cpp" />
     <ClCompile Include="src\renderer\camera.cpp" />
     <ClCompile Include="src\renderer\draw_functions.cpp" />
+    <ClCompile Include="src\renderer\light.cpp" />
     <ClCompile Include="src\renderer\renderable.cpp" />
     <ClCompile Include="src\renderer\renderer.cpp" />
     <ClCompile Include="src\renderer\render_scene.cpp" />
@@ -375,6 +376,7 @@
     <ClInclude Include="src\renderer\assets\texture_asset.hpp" />
     <ClInclude Include="src\renderer\camera.hpp" />
     <ClInclude Include="src\renderer\draw_functions.hpp" />
+    <ClInclude Include="src\renderer\light.hpp" />
     <ClInclude Include="src\renderer\renderable.hpp" />
     <ClInclude Include="src\renderer\renderer.hpp" />
     <ClInclude Include="src\renderer\render_scene.hpp" />
@@ -392,6 +394,8 @@
     <Library Include="libs\GLFW\bin\glfw3_mt.lib" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="src\shaders\directional_depth.frag" />
+    <Content Include="src\shaders\point_depth.frag" />
     <Content Include="src\shaders\depth_outline.comp" />
     <Content Include="src\shaders\grid.frag" />
     <Content Include="src\shaders\imgui.frag" />

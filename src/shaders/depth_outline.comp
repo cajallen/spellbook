@@ -5,19 +5,51 @@
 
 // compositing
 layout(binding = 0) uniform sampler2D s_color;
-layout(binding = 1) uniform sampler2D s_normal;
-layout(binding = 2) uniform sampler2D s_depth;
-layout(binding = 3) uniform sampler2D s_widget;
-layout(binding = 4) uniform sampler2D s_widget_depth;
-layout(binding = 5, rgba16f) uniform writeonly image2D u_target;
+layout(binding = 1) uniform sampler2D s_emissive;
+layout(binding = 2) uniform sampler2D s_normal;
+layout(binding = 3) uniform sampler2D s_depth;
+layout(binding = 4) uniform sampler2D s_widget;
+layout(binding = 5) uniform sampler2D s_widget_depth;
+layout(binding = 6) uniform sampler2D s_sun_depth;
+layout(binding = 7, rgba16f) uniform writeonly image2D u_target;
 
 layout(constant_id = 0) const int target_width	= 0;
 layout(constant_id = 1) const int target_height = 0;
 
+layout (binding = 8) uniform CompositeData {
+    mat4 inverse_vp;
+    vec4 camera_position;
+    
+    mat4 light_vp;
+    vec4 sun_data;
+    vec4 ambient;
+    vec4 rim_alpha_width_start;
+    
+    vec2 clip_planes;
+};
+
 layout(push_constant) uniform uPushConstant {
 	vec4 outline_step;
+	uint mode;
 } pc;
 
+struct SimpleInputRead {
+    vec3 normal;
+    float depth;
+};
+
+struct InputRead {
+    ivec2 coord;
+    vec3 position;
+    vec3 color;
+    vec3 emissive;
+    vec3 normal;
+    float roughness;
+    float depth;
+    float depth_read;
+    vec4 widget_color;
+    float widget_depth;
+};
 
 const int NUM_TAPS = 12;
 const ivec3 samples[NUM_TAPS] = ivec3[](
@@ -37,80 +69,211 @@ const ivec3 samples[NUM_TAPS] = ivec3[](
     ivec3( 0, 2, 1)
 );
 
-float compare_depth(ivec2 coordinate, float depth) {
-    vec4 depth_read = texelFetch(s_depth, coordinate, 0);
-    if (depth_read.a < 0.1 || depth_read.r < 0.0001)
-        depth_read = vec4(vec3(0.0001), 1.0);
-    
-    float other_depth = depth_read.r;
-    other_depth = 1.0 / other_depth;
-
-    float delta = abs(depth - other_depth);
-    return delta;
+SimpleInputRead read_simple_inputs(ivec2 coord) {
+    SimpleInputRead data;
+    data.normal = normalize(texelFetch(s_normal, coord, 0).rgb);
+    data.depth = 1.0 / max(texelFetch(s_depth, coord, 0).r, 0.0001);
+    return data;
 }
 
-float compare_normal(ivec2 coordinate, vec4 normal, float depth) {
-    vec4 depth_read = texelFetch(s_depth, coordinate, 0);
-    vec4 normal_read = texelFetch(s_normal, coordinate, 0);
-    if (normal_read.a == 0.0)
-        return 0.0;
+InputRead read_inputs(ivec2 coord) {
+    InputRead data;
+    data.coord = coord;
+    data.color = texelFetch(s_color, coord, 0).rgb;
+    data.emissive = texelFetch(s_emissive, coord, 0).rgb;
+    data.normal = normalize(texelFetch(s_normal, coord, 0).rgb);
+    data.roughness = texelFetch(s_normal, coord, 0).a;
+    data.depth_read = max(texelFetch(s_depth, coord, 0).r, 0.0001);
+    data.depth = 1.0 / data.depth_read;
+    data.widget_color = texelFetch(s_widget, coord, 0);
+    data.widget_depth = 1.0 / texelFetch(s_widget_depth, coord, 0).r;
     
-    float other_depth = 1.0 / depth_read.r;
-    float depth_delta = smoothstep(5.0, 10.0, abs(depth - other_depth));
-    float depth_falloff = 1.0 - depth_delta;
-
-    vec3 other_normal = normalize(normal_read.xyz);
-    float normal_cont = depth_falloff * 5.0 * smoothstep(pc.outline_step.z, pc.outline_step.w, 1.0 - abs(dot(normal.xyz, other_normal)));
-
-    return normal_cont;
+    vec2 uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
+    vec4 h_position_worldspace = inverse_vp * vec4(uv, data.depth_read, 1.0);
+    data.position = h_position_worldspace.xyz / h_position_worldspace.w;
+    return data;
 }
 
+float calculate_toon_diffuse(float NdotL) {
+    const float transition = 0.02;
+    const float transition1_start = 0.07;
+    const float transition2_start = 0.50;
+    const float range = 0.15;
+    const float mid_out = 0.5;
 
+    float val = 0.0;
+    if (NdotL < transition1_start) {
+        // low
+        float out_min = 0.0;
+        float out_max = 0.0;
+        val = map(NdotL, -1.0, transition1_start, out_min, out_max);
+    }
+    else if (NdotL < transition1_start + transition) {
+        // transition1
+        float out_min = 0.0;
+        float out_max = mid_out - 0.5 * range;
+        val = map(NdotL, transition1_start, transition1_start + transition, out_min, out_max);
+    }
+    else if (NdotL < transition2_start) {
+        // middle
+        float out_min = mid_out - 0.5 * range;
+        float out_max = mid_out + 0.5 * range;
+        val = map(NdotL, transition1_start + transition, transition2_start, out_min, out_max);
+    }
+    else if (NdotL < transition2_start + transition) {
+        // transition2
+        float out_min = mid_out + 0.5 * range;
+        float out_max = 1.0 - range;
+        val = map(NdotL, transition2_start, transition2_start + transition, out_min, out_max);
+    }
+    else {
+        // high
+        float out_min = 1.0 - range;
+        float out_max = 1.0;
+        val = map(NdotL, transition2_start + transition, 1.0, out_min, out_max);
+    } 
+    return val;
+}
+
+bool diag_shadow(inout float sum, vec2 uv, ivec2 p1, ivec2 p2, float thickness, float comparison) {
+    vec4 v1 = texelFetch(s_sun_depth, ivec2(uv)+ivec2(p1.x,p1.y), 0);
+    vec4 v2 = texelFetch(s_sun_depth, ivec2(uv)+ivec2(p2.x,p2.y), 0);
+    
+    float f1 = comparison < (v1.r) ? 0.0 : 1.0;
+    float f2 = comparison < (v2.r) ? 0.0 : 1.0;
+    
+    if (abs(f1 - f2) < 0.1) {
+    	vec2 dir = vec2(p2-p1);
+        vec2 lp = uv-(floor(uv+vec2(p1))+0.5);
+    	dir = normalize(vec2(dir.y,-dir.x));
+        float l = clamp((thickness-dot(lp,dir))*15.0,0.0,1.0);
+        sum = mix(sum,f1,l);
+    	return true;
+    }
+    return false;
+}
+
+float max(vec2 v) {
+    return max(v.x, v.y);
+}
+
+float shaded(InputRead data) {
+    vec4 h_position_lightspace = light_vp * vec4(data.position, 1.0);
+    vec3 position_lightspace = h_position_lightspace.xyz / h_position_lightspace.w;
+    vec2 uv = position_lightspace.xy * 0.5 + vec2(0.5);
+    
+    //float slope_bias = 0.05;
+    const float maxBias = 0.005;
+    const float quantize = 0.5 / (1 << 16);
+    float b = length(1.0 / textureSize(s_sun_depth, 0));
+    float bias = quantize + b * length(cross(sun_data.xyz, data.normal)) / clamp(dot(sun_data.xyz, data.normal), 0.0, 1.0);
+    bias = min(bias, maxBias);
+
+    float world_position_depth = position_lightspace.z + bias;
+    float world_read_depth = texture(s_sun_depth, uv).r;
+
+    float shaded_amount = world_position_depth < world_read_depth ? 0.0 : 1.0;
+
+    if (diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2(-1, 0), ivec2( 0, 1), 0.38197, world_position_depth)) {
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2(-1, 0), ivec2( 1, 1), 0.25, world_position_depth);
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2(-1,-1), ivec2( 0, 1), 0.25, world_position_depth);
+    }
+    if (diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 0, 1), ivec2( 1, 0), 0.38197, world_position_depth)) {
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 0, 1), ivec2( 1,-1), 0.25, world_position_depth);
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2(-1, 1), ivec2( 1, 0), 0.25, world_position_depth);
+    }
+    if (diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 1, 0), ivec2( 0,-1), 0.38197, world_position_depth)) {
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 1, 0), ivec2(-1,-1), 0.25, world_position_depth);
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 1, 1), ivec2( 0,-1), 0.25, world_position_depth);
+    }
+    if (diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 0,-1), ivec2(-1, 0), 0.38197, world_position_depth)) {
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 0,-1), ivec2(-1, 1), 0.25, world_position_depth);
+        diag_shadow(shaded_amount, uv * vec2(2048.0), ivec2( 1,-1), ivec2(-1, 0), 0.25, world_position_depth);
+    } 
+    return shaded_amount;
+}
+
+vec3 calculate_lighting(InputRead data) {
+    float shadow = shaded(data);
+
+    vec3 to_light = normalize(sun_data.xyz);
+    vec3 view_dir = normalize(data.position - camera_position.xyz);
+    vec3 reflection_dir = reflect(to_light, data.normal);
+    float NdotL = dot(data.normal, to_light);
+    float VdotR = dot(view_dir, reflection_dir);
+    float VdotN = dot(view_dir, data.normal);
+
+    float smoothness = clamp(1.0 - data.roughness, 0.001, 1.0);
+
+    float toon_diffuse = calculate_toon_diffuse(NdotL);
+    toon_diffuse = srgb_to_linear(toon_diffuse);
+    float specular_dot = pow(clamp(VdotR, 0.0, 1.0), smoothness * 100.0);
+    float toon_specular = smoothstep(0.4, 0.5, specular_dot);
+
+    float rim_dot = max(1.0 + VdotN, 0.0);
+    float rim_intensity = rim_dot * pow(NdotL, rim_alpha_width_start.y);
+    rim_intensity = smoothstep(rim_alpha_width_start.z - 0.01, rim_alpha_width_start.z + 0.01, rim_intensity);
+
+    vec3 ambient = data.color * ambient.rgb * ambient.a;
+    vec3 diffuse = data.color * clamp(toon_diffuse, 0.0, 1.0);
+    vec3 specular = toon_specular * mix(vec3(1.0), vec3(0.0), data.roughness);
+    vec3 rim = rim_intensity * mix(vec3(1.0), vec3(0.0), data.roughness) * rim_alpha_width_start.x;
+
+    return shadow * (diffuse + specular + rim) + ambient + data.emissive;
+}
 
 layout (local_size_x = 8, local_size_y = 8) in;
 void main() {
-    ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
 	
-    vec4 color = texelFetch(s_color, uv, 0);
-
-    vec4 depth_read = texelFetch(s_depth, uv, 0);
-    vec4 normal_read = texelFetch(s_normal, uv, 0);
-    if (depth_read.a < 0.1 || depth_read.r < 0.0001)
-        depth_read = vec4(vec3(0.0001), 1.0);
-
-	vec4 normal = vec4(normalize(normal_read.xyz), normal_read.a);
-    float depth = 1.0 / depth_read.r;
-
+	InputRead data = read_inputs(coord);
+	
     float depth_outline = 0.0;
-    float normal_outline = 0.0;
+    float normal_outline = 0.0;    
     for (int i = 0; i < NUM_TAPS; i++) {
-        float depth_val = compare_depth(uv + samples[i].xy, depth);
+        SimpleInputRead offset_data = read_simple_inputs(coord + samples[i].xy);
+        float depth_val = abs(data.depth - offset_data.depth);
         depth_outline += samples[i].z / 28.0 * depth_val;
+        if (data.normal != vec3(0.0)) {
+            float normal_val = smoothstep(pc.outline_step.z, pc.outline_step.w, 1.0 - abs(dot(data.normal, offset_data.normal)));
+            normal_outline += samples[i].z / 28.0 * normal_val;
+        }
     }
     depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, depth_outline);
-    
-    if (normal.a != 0.0) {
-        for (int i = 0; i < NUM_TAPS; i++) {
-            normal_outline += samples[i].z / 28.0 * compare_normal(uv + samples[i].xy, normal, depth);
-        }
-    }
     float outline = max(depth_outline, normal_outline);
 
-    color.rgb = mix(color.rgb, vec3(0.0), outline);
-
-    vec4 widget_color = texelFetch(s_widget, uv, 0);
-    vec4 widget_depth_read = texelFetch(s_widget_depth, uv, 0);
-    float widget_depth = 1.0 / widget_depth_read.r;
+    vec3 color = calculate_lighting(data);
+    color = mix(color, vec3(0.0), outline);
     
-    if (widget_color.a > 0.0) {
-        if (widget_depth < depth)
-            color.rgb = mix(color.rgb, widget_color.rgb, widget_color.a);
+    if (data.widget_color.a > 0.0) {
+        if (data.widget_depth < data.depth)
+            color = mix(color, data.widget_color.rgb, data.widget_color.a);
         else {
-            if ((uv.x % 2 == 0) && (uv.y % 2 == 0))
-                color.rgb = mix(color.rgb, widget_color.rgb, 0.5 * widget_color.a);
+            if ((coord.x % 2 == 0) && (coord.y % 2 == 0))
+                color = mix(color, data.widget_color.rgb, 0.5 * data.widget_color.a);
         }
     }
     
-	color = vec4(linear_to_srgb(color.rgb), 1.0);
-    imageStore(u_target, uv, color);
+    switch (pc.mode) {
+        case 0:
+            imageStore(u_target, coord, vec4(linear_to_srgb(color.rgb), 1.0));
+            break;
+        case 1:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.color.rgb), 1.0));
+            break;
+        case 2:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.emissive.rgb), 1.0));
+            break;
+        case 3:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.position), 1.0));
+            break;
+        case 4:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.normal), 1.0));
+            break;      
+        case 5:
+            imageStore(u_target, coord, vec4(linear_to_srgb(vec3(data.depth)), 1.0));
+            break;
+        case 6:
+            break;      
+    }
 }

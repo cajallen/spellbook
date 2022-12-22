@@ -48,6 +48,10 @@ struct Bone {
 
 struct SkeletonCPU {
     vector<id_ptr<Bone>> bones;
+    umap<string, vector<KeySet>> poses;
+    
+    bool widget_enabled = false;
+    vector<u8> widget_pose_enabled;
 };
 
 struct SkeletonGPU {
@@ -56,14 +60,12 @@ struct SkeletonGPU {
         Mode_Play
     };
     
-    Mode mode = Mode_Pose;
     vector<id_ptr<Bone>> bones;
-    vector<u8> widget_enabled;
-    vuk::Unique<vuk::Buffer> buffer = vuk::Unique<vuk::Buffer>();
-    bool render_lines = false;
-
     umap<string, vector<KeySet>> poses;
-    string pose_select;
+    
+    Mode mode = Mode_Pose;
+
+    vuk::Unique<vuk::Buffer> buffer = vuk::Unique<vuk::Buffer>();
     
     void update();
 

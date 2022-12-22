@@ -6,6 +6,7 @@
 #include "general/json.hpp"
 #include "general/geometry.hpp"
 #include "game/stat.hpp"
+#include "game/game_file.hpp"
 
 namespace spellbook {
 
@@ -74,8 +75,6 @@ JSON_IMPL(LizardPrefab, type, model_path);
 struct Scene;
 entt::entity instance_prefab(Scene*, const LizardPrefab&, v3i location);
 void inspect(LizardPrefab*);
-void save_lizard(const LizardPrefab&);
-LizardPrefab load_lizard(const string& input_path);
 
 void lizard_system(Scene* scene);
 void projectile_system(Scene* scene);

@@ -12,9 +12,7 @@ layout (location = 5) in ivec4 vin_bone_id;
 layout (location = 6) in vec4 vin_bone_weight;
 
 layout (binding = CAMERA_BINDING) uniform CameraData {
-	mat4 view;
-	mat4 projection;
-	vec4 camera_position;
+	mat4 vp;
 };
 
 layout (binding = MODEL_BINDING) buffer readonly Model {
@@ -73,5 +71,5 @@ void main() {
     
 	vout.uv = vin_uv;
 	vout.color = vin_color;
-    gl_Position = projection * view * h_position;
+    gl_Position = vp * h_position;
 }

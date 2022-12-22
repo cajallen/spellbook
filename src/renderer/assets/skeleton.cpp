@@ -146,8 +146,8 @@ void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene)
     ImGui::Indent();
     bool any_changed = false;
 
-    if (skeleton->widget_enabled.size() != skeleton->bones.size())
-        skeleton->widget_enabled.resize(skeleton->bones.size());
+    //if (skeleton->widget_enabled.size() != skeleton->bones.size())
+    //    skeleton->widget_enabled.resize(skeleton->bones.size());
 
     PoseWidgetSettings settings{*render_scene};
     if (ImGui::BeginTable("bones", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
@@ -182,20 +182,20 @@ void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene)
 
             ImGui::TableSetColumnIndex(5);
             u32 bone_index = skeleton->bones.index(bone);
-            u8& bone_widget_enabled = skeleton->widget_enabled[bone_index];
-            ImGui::Checkbox("##Widget", (bool*) &bone_widget_enabled);
+            //u8& bone_widget_enabled = skeleton->widget_enabled[bone_index];
+            //ImGui::Checkbox("##Widget", (bool*) &bone_widget_enabled);
 
-            if (bone_widget_enabled) {
-                m44 mat = bone->parent.valid() ? model * bone->parent->transform() : model;
-                any_changed |= pose_widget(bone.id, &bone->start.position.value, &bone->start.rotation.value, settings, &mat);
-            }
+            //if (bone_widget_enabled) {
+            //    m44 mat = bone->parent.valid() ? model * bone->parent->transform() : model;
+            //    any_changed |= pose_widget(bone.id, &bone->start.position.value, &bone->start.rotation.value, settings, &mat);
+            //}
             
             ImGui::PopID();
         }
         ImGui::EndTable();
     }
 
-    ImGui::InputText("Pose Name", &skeleton->pose_select);
+    /*ImGui::InputText("Pose Name", &skeleton->pose_select);
     if (ImGui::BeginCombo("Pose", skeleton->pose_select.c_str(), ImGuiComboFlags_None)) {
         for (auto& [pose_name, pose_data] : skeleton->poses) {
             const bool is_selected = pose_name == skeleton->pose_select;
@@ -224,14 +224,14 @@ void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene)
     if (ImGui::Button("Pose##Button")) {
         skeleton->stop_playing();
         any_changed = true;
-    }
+    }*/
     
-    ImGui::Checkbox("Render Lines", &skeleton->render_lines);
+    //ImGui::Checkbox("Render Lines", &skeleton->render_lines);
 
     if (any_changed || skeleton->mode == SkeletonGPU::Mode_Play)
         skeleton->update();
     
-    if (skeleton->render_lines && render_scene != nullptr) {
+    /*if (skeleton->render_lines && render_scene != nullptr) {
         uset<u64> is_parent;
         for (u32 i = 0; i < skeleton->bones.size(); i++) {
             if (skeleton->bones[i]->parent.valid())
@@ -260,7 +260,7 @@ void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene)
             render_scene->quick_mesh(joint_mesh, true, true);
         }
         
-    }
+    }*/
     
 }
 

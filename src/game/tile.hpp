@@ -24,11 +24,8 @@ struct TilePrefab {
 JSON_IMPL(TilePrefab, type, model_path);
 
 struct Scene;
-entt::entity instance_prefab(Scene*, const TilePrefab&, v3i location);
 
 void inspect(TilePrefab*);
-void save_tile(const TilePrefab&);
-TilePrefab load_tile(const string& input_path);
-entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location);
+entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, u32 rotation);
 
 }

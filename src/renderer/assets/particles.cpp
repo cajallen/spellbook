@@ -5,10 +5,10 @@
 #include "extension/fmt.hpp"
 #include "general/file.hpp"
 #include "game/game.hpp"
-
+#include "renderer/render_scene.hpp"
 namespace spellbook {
 
-EmitterGPU& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu) {
+void setup_emitter() {
     static bool setup = false;
 
     if (!setup) {
@@ -25,12 +25,19 @@ EmitterGPU& instance_emitter(Scene* scene, const EmitterCPU& emitter_cpu) {
         }
         setup = true;
     }
+}
 
+EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu) {
+    setup_emitter();
+    
     EmitterGPU emitter;
+    u64 mat_id = hash_data(emitter_cpu.material.data(), emitter_cpu.material.size());
+    assert_else(game.renderer.material_cache.contains(mat_id));
+    game.renderer.material_cache[mat_id].pipeline = game.renderer.context->get_named_pipeline("particle");
     emitter.update_from_cpu(emitter_cpu);
     
-    scene->render_scene.emitters.emplace_back(std::move(emitter));
-    return scene->render_scene.emitters.back();
+    scene.emitters.emplace_back(std::move(emitter));
+    return scene.emitters.back();
 }
 
 void EmitterGPU::update_from_cpu(const EmitterCPU& emitter) {
@@ -54,6 +61,7 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& emitter) {
     rate = 1.0f / emitter_cpu.particles_per_second;
     
     mesh = emitter_cpu.mesh;
+    material = emitter_cpu.material;
 
     update_color();
     update_size();
@@ -92,6 +100,18 @@ void EmitterGPU::update_size() {
     game.renderer.enqueue_setup(std::move(fut));
 }
 
+void inspect(EmitterCPU* emitter) {
+    ImGui::DragFloat3("Position", emitter->position.data, 0.01f);
+    ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
+    ImGui::DragFloat("Damping", &emitter->damping, 0.01f);
+    ImGui::DragFloat("Scale", &emitter->scale, 0.01f);
+    ImGui::DragFloat("Duration", &emitter->duration, 0.01f);
+    ImGui::DragFloat("Falloff", &emitter->falloff, 0.01f);
+    ImGui::DragFloat("Particles Per Second", &emitter->particles_per_second, 0.01f);
+    ImGui::DragFloat3("Position Random", emitter->position_random.data, 0.01f);
+    ImGui::DragFloat3("Velocity Random", emitter->velocity_random.data, 0.01f);
+}
+
 void inspect(EmitterGPU* emitter) {
     bool size_changed = false;
     bool color_changed = false;
@@ -101,7 +121,6 @@ void inspect(EmitterGPU* emitter) {
 
     if (color_changed)
         emitter->update_color();
-    
 }
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
@@ -124,14 +143,20 @@ void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
 void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
     MeshGPU* mesh = game.renderer.get_mesh(emitter.mesh);
     MaterialGPU* material = game.renderer.get_material(emitter.material);
+
+    if (mesh == nullptr || material == nullptr) {
+        log_error("Particles has missing mesh or material");
+        return;
+    }
+    
     command_buffer // Mesh
         .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
         .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
     command_buffer // Material
         .set_rasterization({.cullMode = material->cull_mode})
-        .bind_buffer(0, 2, *emitter.particles_buffer)
+        .bind_buffer(0, PARTICLES_BINDING, *emitter.particles_buffer)
         .bind_graphics_pipeline(material->pipeline);
-    command_buffer.bind_image(0, 9, emitter.color.global.iv).bind_sampler(0, 9, emitter.color.global.sci);
+    command_buffer.bind_image(0, SPARE_BINDING_1, emitter.color.global.iv).bind_sampler(0, SPARE_BINDING_1, emitter.color.global.sci);
     material->bind_parameters(command_buffer);
     material->bind_textures(command_buffer);
     command_buffer.draw_indexed(mesh->index_count, emitter.settings.max_particles, 0, 0, 0);

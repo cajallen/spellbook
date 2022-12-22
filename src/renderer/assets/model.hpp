@@ -8,6 +8,7 @@
 #include "general/umap.hpp"
 #include "general/id_ptr.hpp"
 #include "general/matrix.hpp"
+#include "game/game_file.hpp"
 
 namespace fs = std::filesystem;
 
@@ -57,8 +58,11 @@ struct ModelGPU {
     ModelGPU& operator=(ModelGPU&&) = default;
 };
 
-void     save_model(const ModelCPU&);
-ModelCPU load_model(const fs::path& input_path);
+template <>
+bool     save_asset(const ModelCPU& asset_file);
+template <>
+ModelCPU load_asset(const string& input_path);
+
 ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
 void     deinstance_model(RenderScene&, const ModelGPU&);
 ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up = true);
