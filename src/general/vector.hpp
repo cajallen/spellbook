@@ -221,7 +221,7 @@ void vector<T>::reserve(u32 capacity) {
 
 template <typename T>
 u32 vector<T>::find(const T& t) {
-    return this->begin() - std::find(this->begin(), this->end(), t);
+    return std::find(this->begin(), this->end(), t) - this->begin();
 }
 
 template <typename T>

@@ -68,10 +68,12 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     return entity;
 }
 
-void inspect(LizardPrefab* lizard_prefab) {
+bool inspect(LizardPrefab* lizard_prefab) {
+    bool changed = false;
     ImGui::PathSelect("File", &lizard_prefab->file_path, "resources", FileType_Lizard);
-    ImGui::EnumCombo("Type", &lizard_prefab->type);
-    ImGui::PathSelect("Globe Model", &lizard_prefab->model_path, "resources", FileType_Model);
+    changed |= ImGui::EnumCombo("Type", &lizard_prefab->type);
+    changed |= ImGui::PathSelect("Model", &lizard_prefab->model_path, "resources", FileType_Model);
+    return changed;
 }
 
 }

@@ -58,8 +58,9 @@ struct AssetEditor : EditorScene {
         Tab_Emitter
     };
 
+    entt::entity showing_entity;
+    
     ModelCPU model_cpu;
-    optional<ModelGPU> model_gpu;
     
     MeshCPU mesh_cpu;
     Renderable* mesh_gpu;
@@ -83,6 +84,7 @@ struct AssetEditor : EditorScene {
     void setup() override;
     void update() override;
     void window(bool* p_open) override;
+    void shutdown() override;
 
     void switch_tab(Tab tab);
 };

@@ -70,7 +70,7 @@ struct EmitterGPU {
         settings.max_particles = (settings.life + settings.life_random) / rate + 1;
     }
 
-    void update_from_cpu(const EmitterCPU& emitter);
+    void update_from_cpu(const EmitterCPU& new_emitter);
     void update_color();
     void update_size();
 };
@@ -81,8 +81,7 @@ struct EmitterComponent {
 
 EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu);
 
-void inspect(EmitterCPU* emitter);
-void inspect(EmitterGPU* emitter);
+bool inspect(EmitterCPU* emitter);
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);

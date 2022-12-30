@@ -22,22 +22,75 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     cbuf.bind_image(0, EMISSIVE_BINDING, emissive.global.iv).bind_sampler(0, EMISSIVE_BINDING, emissive.global.sci);
 };
 
-void inspect(MaterialCPU* material) {
+string upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
+    assert_else(!material_cpu.file_path.empty());
+    u64 material_cpu_hash               = hash_data(material_cpu.file_path.data(), material_cpu.file_path.size());
+
+    MaterialGPU material_gpu;
+    material_gpu.material_cpu = material_cpu;
+    material_gpu.frame_allocated = frame_allocation;
+    material_gpu.pipeline      = game.renderer.context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
+    material_gpu.color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.color_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.normal = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.normal_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.orm = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.orm_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.emissive = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.emissive_asset_path).value.view.get(), material_cpu.sampler.get());
+
+    material_gpu.tints         = {
+        (v4) material_cpu.color_tint,
+        (v4) material_cpu.emissive_tint,
+        {material_cpu.roughness_factor, material_cpu.metallic_factor, material_cpu.normal_factor, 1.0f},
+        {material_cpu.emissive_dot_smoothstep.x, material_cpu.emissive_dot_smoothstep.y, 0.0f, 0.0f}
+    };
+    material_gpu.cull_mode = material_cpu.cull_mode;
+    material_gpu.frame_allocated = frame_allocation;
+
+    game.renderer.material_cache[material_cpu_hash] = std::move(material_gpu);
+    return material_cpu.file_path;
+}
+
+void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
+    pipeline      = game.renderer.context->get_named_pipeline(vuk::Name(new_material.shader_name));
+    tints         = {
+        (v4) new_material.color_tint,
+        (v4) new_material.emissive_tint,
+        {new_material.roughness_factor, new_material.metallic_factor, new_material.normal_factor, 1.0f},
+        {new_material.emissive_dot_smoothstep.x, new_material.emissive_dot_smoothstep.y, 0.0f, 0.0f}
+    };
+    cull_mode = new_material.cull_mode;
+
+    if (material_cpu.color_asset_path != new_material.color_asset_path)
+        color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.color_asset_path).value.view.get(), new_material.sampler.get());
+    if (material_cpu.normal_asset_path != new_material.normal_asset_path)
+        normal = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.normal_asset_path).value.view.get(), new_material.sampler.get());
+    if (material_cpu.orm_asset_path != new_material.orm_asset_path)
+        orm = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.orm_asset_path).value.view.get(), new_material.sampler.get());
+    if (material_cpu.emissive_asset_path != new_material.emissive_asset_path)
+        emissive = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.emissive_asset_path).value.view.get(), new_material.sampler.get());
+
+    material_cpu = new_material;
+}
+
+
+
+bool inspect(MaterialCPU* material) {
+    bool changed = false;
     ImGui::PathSelect("File", &material->file_path, "resources", FileType_Material);
 
-    ImGui::ColorEdit4("color_tint", material->color_tint.data, ImGuiColorEditFlags_DisplayHSV);
-    ImGui::ColorEdit4("emissive_tint", material->emissive_tint.data, ImGuiColorEditFlags_DisplayHSV);
-    ImGui::DragFloat("roughness_factor", &material->roughness_factor, 0.01f);
-    ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
-    ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
-    ImGui::DragFloat2("emissive_dot_smoothstep", material->emissive_dot_smoothstep.data, 0.01f);
+    changed |= ImGui::ColorEdit4("color_tint", material->color_tint.data, ImGuiColorEditFlags_DisplayHSV);
+    changed |= ImGui::ColorEdit4("emissive_tint", material->emissive_tint.data, ImGuiColorEditFlags_DisplayHSV);
+    changed |= ImGui::DragFloat("roughness_factor", &material->roughness_factor, 0.01f);
+    changed |= ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
+    changed |= ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
+    changed |= ImGui::DragFloat2("emissive_dot_smoothstep", material->emissive_dot_smoothstep.data, 0.01f);
 
-    ImGui::PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
-    ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
-    ImGui::PathSelect("normal_asset_path", &material->normal_asset_path, "resources", FileType_Texture);
-    ImGui::PathSelect("emissive_asset_path", &material->emissive_asset_path, "resources", FileType_Texture);
+    changed |= ImGui::PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
+    changed |= ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
+    changed |= ImGui::PathSelect("normal_asset_path", &material->normal_asset_path, "resources", FileType_Texture);
+    changed |= ImGui::PathSelect("emissive_asset_path", &material->emissive_asset_path, "resources", FileType_Texture);
 
-    ImGui::EnumCombo("cull_mode", &material->cull_mode);
+    changed |= ImGui::EnumCombo("cull_mode", &material->cull_mode);
+
+    return changed;
 }
 
 void inspect(MaterialGPU* material) {

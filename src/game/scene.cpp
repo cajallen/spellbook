@@ -60,6 +60,7 @@ void Scene::update() {
     lizard_system(this);
     spawner_draw_system(this);
     transform_system(this);
+    skeleton_system(this);
     selection_id_system(this);
     consumer_system(this);
     health_system(this);

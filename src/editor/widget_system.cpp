@@ -36,6 +36,12 @@ void setup() {
     Input::add_callback(InputCallbackInfo{widget_click, 40, "widget_system", nullptr});
 }
 
+void update() {
+    for (auto& [id, depth] : WidgetSystem::depths) {
+        depth = FLT_MAX;
+    }
+}
+
 }
 
 }

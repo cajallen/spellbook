@@ -42,6 +42,6 @@ struct MeshGPU {
     bool frame_allocated;
 };
 
-void inspect(MeshGPU* mesh);
+string upload_mesh(const MeshCPU&, bool frame_allocation = false);
 
 }

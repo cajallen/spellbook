@@ -308,6 +308,10 @@ constexpr float ease(float x, EaseMode mode) {
                     : x < 0.5f ? -(math::pow(2.0f, 20 * x - 10.0f) * math::sin((20.0f * x - 11.125f) * c5)) / 2.0f
                         : (math::pow(2.0f, -20.0f * x + 10.0f) * math::sin((20.0f * x - 11.125f) * c5)) / 2.0f + 1.0f;
         } break;
+        default: {
+            __debugbreak();
+            return x;
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 ﻿#include "model.hpp"
 
 #include <tiny_gltf.h>
+#include <tracy/Tracy.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
@@ -41,18 +42,20 @@ vector<ModelCPU> ModelCPU::split() {
     return models;
 }
 
-void inspect(ModelCPU* model) {
+bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
     ImGui::PathSelect("File", &model->file_path, "resources", FileType_Model);
 
+    bool changed = false;
+    
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
-    traverse = [&traverse, &model](id_ptr<ModelCPU::Node> node) {
+    traverse = [&traverse, &model, &changed](id_ptr<ModelCPU::Node> node) {
         string id_str = fmt_("{}###{}", node->name, node.id);
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
-            ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
-            ImGui::PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
-            ImGui::DragMat4("Transform", &node->transform, 0.02f, "%.2f");
+            ImGui::Text("Index: %d", model->nodes.find(node));
+            changed |= ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
+            changed |= ImGui::PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
+            changed |= ImGui::DragMat4("Transform", &node->transform, 0.02f, "%.2f");
             for (auto child : node->children) {
                 traverse(child);
             }
@@ -61,17 +64,56 @@ void inspect(ModelCPU* model) {
                             
                 model->nodes.back()->parent = node;
                 node->children.emplace_back(model->nodes.back());
+                changed = true;
             }
             ImGui::Separator();
             ImGui::TreePop();
         }
     };
 
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (model->root_node.valid()) {
         traverse(model->root_node);
     } else {
         ImGui::Text("No Root Node");
     }
+
+    if (!model->skeletons.empty()) {
+        ImGui::Text("Skeletons");
+
+        for (auto skeleton_ptr : model->skeletons) {
+            inspect(&*skeleton_ptr, matrix * model->root_node->calculate_transform(), render_scene);
+        }
+    }
+    
+    return changed;
+}
+
+ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool frame) {
+    ModelGPU model_gpu;
+
+    umap<u64, u32> indices;
+    for (id_ptr<SkeletonCPU> skeleton_cpu : model.skeletons) {
+        model_gpu.skeletons.emplace_back(std::make_unique<SkeletonGPU>(upload_skeleton(skeleton_cpu)));
+        indices[skeleton_cpu.id] = indices.size();
+    }
+    
+    for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
+        ModelCPU::Node& node           = *node_ptr;
+        if (node.mesh_asset_path == "" || node.material_asset_path == "")
+            continue;
+        
+        auto new_renderable = render_scene.add_renderable(Renderable(
+            node.mesh_asset_path,
+            node.material_asset_path,
+            (m44GPU) node.transform,
+            indices.contains(node.skeleton.id) ? &*model_gpu.skeletons[indices[node.skeleton.id]] : nullptr,
+            frame
+        ));
+        model_gpu.renderables[&node] = new_renderable;
+    }
+
+    return model_gpu;
 }
 
 template<>
@@ -136,33 +178,9 @@ ModelCPU load_asset(const string& input_path) {
     return model;
 }
 
-ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool frame) {
-    ModelGPU model_gpu;
-
-    umap<u64, u32> indices;
-    for (id_ptr<SkeletonCPU> skeleton_cpu : model.skeletons) {
-        model_gpu.skeletons.emplace_back(std::make_unique<SkeletonGPU>(game.renderer.upload_skeleton(*skeleton_cpu)));
-        indices[skeleton_cpu.id] = indices.size();
-    }
-    
-    for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
-        const ModelCPU::Node& node           = *node_ptr;
-        auto new_renderable = render_scene.add_renderable(Renderable(
-            node.mesh_asset_path,
-            node.material_asset_path,
-            node.transform,
-            indices.contains(node.skeleton.id) ? &*model_gpu.skeletons[indices[node.skeleton.id]] : nullptr,
-            frame
-        ));
-        model_gpu.renderables.push_back(new_renderable);
-    }
-
-    return model_gpu;
-}
-
 void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
-    for (auto& r_slot : model.renderables) {
-        render_scene.delete_renderable(r_slot);
+    for (auto& [_, r] : model.renderables) {
+        render_scene.delete_renderable(r);
     }
 }
 
@@ -191,6 +209,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
 m44 _calculate_matrix(tinygltf::Node& node);
 
 ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up) {
+    ZoneScoped;
     // TODO: gltf can't support null materials
     fs::create_directory(game.resource_folder);
     auto folder = game.resource_folder / output_folder;
@@ -328,6 +347,45 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         }
     }
 
+    {
+        ZoneScopedN("Remove unused nodes");
+        vector<u8> used;
+        used.resize(model_cpu.nodes.size());
+        auto traverse = [&model_cpu, &used](id_ptr<ModelCPU::Node>& node, bool& uses, auto&& traverse) -> void {
+            bool this_uses = false;
+            bool children_uses = false;
+            for (id_ptr<ModelCPU::Node>& child : node->children) {
+                traverse(child, children_uses, traverse);
+            }
+            
+            if (node->material_asset_path != "" && node->mesh_asset_path != "")
+                this_uses = true;
+            if (children_uses)
+                this_uses = true;
+    
+            if (this_uses) {
+                uses = true;
+                used[model_cpu.nodes.find(node)] = true;
+            }
+        };
+    
+        bool any_used = false;
+        u32 root_index = model_cpu.nodes.find(model_cpu.root_node);
+        traverse(model_cpu.nodes[root_index], any_used, traverse);
+    
+        u32 removed = 0;
+        for (u32 i = 0; i < used.size(); i++) {
+            if (!used[i]) {
+                auto& this_node = model_cpu.nodes[i - removed];
+                check_else (this_node->parent.valid())
+                    continue;
+                this_node->parent->children.remove_value(this_node);
+                model_cpu.nodes.remove_index(i - removed, false);
+                removed++;
+            }
+        }
+    }
+
     fs::path scene_path = output_folder / output_name;
     scene_path.replace_extension(extension(FileType_Model));
 
@@ -337,6 +395,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
 }
 
 bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
+    ZoneScoped;
     umap<u32, id_ptr<Bone>> node_index_to_bone; 
     for (u32 i_skin = 0; i_skin < model.skins.size(); i_skin++) {
         model_cpu->skeletons.push_back(id_ptr<SkeletonCPU>::emplace());
@@ -392,19 +451,18 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
         if (model.nodes[node_index].scale.size() > 0) {
             bone_ptr->start.scale.value = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
         }
-        
-        // // matrix = (translation * rotation * scale); // * gltf_fixup;
-        // math::extract_tsr(bone_matrix,
-        //     &bone_ptr->positions.back().position,
-        //     &bone_ptr->scales.back().scale,
-        //     &bone_ptr->rotations.back().orientation
-        // );
     }
+    for (auto& [node_index, bone_ptr] : node_index_to_bone) {
+        if (bone_ptr->parent.valid())
+            bone_ptr->parent->length = math::length(bone_ptr->start.position.value);
+    }
+    
     return true;
 }
 
 
 void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer) {
+    ZoneScoped;
     int                   buffer_id     = accessor.bufferView;
     u64                   element_bsize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
     tinygltf::BufferView& buffer_view   = model.bufferViews[buffer_id];
@@ -428,6 +486,7 @@ void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, v
 }
 
 void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices) {
+    ZoneScoped;
     tinygltf::Accessor& pos_accessor = model.accessors[primitive.attributes["POSITION"]];
     vertices.resize(pos_accessor.count);
     vector<u8> pos_data;
@@ -635,6 +694,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
 }
 
 void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices) {
+    ZoneScoped;
     int index_accessor = primitive.indices;
 
     int    index_buffer   = model.accessors[index_accessor].bufferView;
@@ -704,6 +764,7 @@ string _calculate_gltf_material_name(tinygltf::Model& model, int material_index)
 }
 
 bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder) {
+    ZoneScoped;
     for (u32 i_mesh = 0; i_mesh < model.meshes.size(); i_mesh++) {
         auto& gltf_mesh = model.meshes[i_mesh];
 
@@ -728,6 +789,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder)
 }
 
 bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_folder) {
+    ZoneScoped;
     int material_number = 0;
     for (auto& glmat : model.materials) {
         string matname = _calculate_gltf_material_name(model, material_number++);

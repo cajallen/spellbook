@@ -25,7 +25,8 @@ enum FileType {
     FileType_Tile,
     FileType_Enemy,
     FileType_Spawner,
-    FileType_Consumer
+    FileType_Consumer,
+    FileType_Emitter
 };
 
 string extension(FileType type);

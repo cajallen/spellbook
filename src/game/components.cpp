@@ -80,16 +80,14 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     if (auto* component = scene->registry.try_get<Model>(entity)) {
         ZoneScoped;
         ImGui::Text("Model");
-        uset<SkeletonGPU*> done_skeletons = {nullptr};
-        for (int i = 0; i < component->model_gpu.renderables.size(); i++) {
-            auto this_skeleton = &*component->model_gpu.renderables[i]->skeleton;
-            if (!done_skeletons.contains(this_skeleton)) {
-                m44 transform = component->model_gpu.renderables[i]->transform;
-                inspect(this_skeleton, transform, &scene->render_scene);
-                done_skeletons.insert(this_skeleton);
-            }
+        if (scene->registry.all_of<ModelTransform>(entity)) {
+            auto transform = scene->registry.get<ModelTransform>(entity);
+            m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
+            inspect(&component->model_cpu, transform_matrix, &scene->render_scene);
         }
-
+        else {
+            inspect(&component->model_cpu, m44::identity(), &scene->render_scene);
+        }
         ImGui::Separator();
     }
 }

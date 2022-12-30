@@ -26,7 +26,7 @@ JSON_IMPL(EnemyPrefab, type, model_path, max_health, max_speed);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const EnemyPrefab&, v3i location);
-void inspect(EnemyPrefab*);
+bool inspect(EnemyPrefab*);
 
 
 }

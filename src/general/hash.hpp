@@ -11,4 +11,8 @@ u64 hash_data(T* data, u32 len, u64 seed = 14695981039346656037ull) {
     return seed;
 }
 
+inline u64 hash_string(const string& data, u64 seed = 14695981039346656037ull) {
+    return hash_data(data.data(), data.size(), seed);
+}
+
 }

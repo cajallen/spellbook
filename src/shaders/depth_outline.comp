@@ -166,7 +166,7 @@ float shaded(InputRead data) {
     const float maxBias = 0.005;
     const float quantize = 0.5 / (1 << 16);
     float b = length(1.0 / textureSize(s_sun_depth, 0));
-    float bias = quantize + b * length(cross(sun_data.xyz, data.normal)) / clamp(dot(sun_data.xyz, data.normal), 0.0, 1.0);
+    float bias = quantize + b * length(cross(sun_data.xyz, data.normal)) / clamp(dot(sun_data.xyz, data.normal), 0.01, 1.0);
     bias = min(bias, maxBias);
 
     float world_position_depth = position_lightspace.z + bias;
@@ -240,7 +240,7 @@ void main() {
         }
     }
     depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, depth_outline);
-    float outline = max(depth_outline, normal_outline);
+    float outline = max(depth_outline, 8.0 * normal_outline);
 
     vec3 color = calculate_lighting(data);
     color = mix(color, vec3(0.0), outline);

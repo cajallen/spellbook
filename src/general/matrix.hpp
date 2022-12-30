@@ -74,7 +74,7 @@ struct m44 {
             out[i] = data[i] + other.data[i];
         return out;
     }
-    inline f32* ptr() {
+    constexpr f32* ptr() {
         return data.data();
     }
 };
@@ -186,9 +186,28 @@ struct m44GPU {
             m.data[7],
             m.data[11],
             m.data[15]};
-    }
+    } 
     constexpr m44GPU() {
         data = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    }
+
+    explicit constexpr operator m44() const {
+        return m44{data[0],
+            data[4],
+            data[8],
+            data[12],
+            data[1],
+            data[5],
+            data[9],
+            data[13],
+            data[2],
+            data[6],
+            data[10],
+            data[14],
+            data[3],
+            data[7],
+            data[11],
+            data[15]};
     }
 };
 

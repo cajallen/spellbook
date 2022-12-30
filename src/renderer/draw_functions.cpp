@@ -1,5 +1,7 @@
 #include "draw_functions.hpp"
 
+#include <tracy/Tracy.hpp>
+
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/hash.hpp"
@@ -32,6 +34,7 @@ v2 position2uv(v3 v) {
 
 
 MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
+    ZoneScoped;
     string name = fmt_("cube_center:{:.2f}_extents:{:.2f}", center, extents);
     
 	return MeshCPU{name, vector<Vertex>  {

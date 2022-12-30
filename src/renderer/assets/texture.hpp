@@ -23,4 +23,6 @@ struct TextureGPU {
     bool frame_allocated;
 };
 
+string upload_texture(const TextureCPU& tex_cpu, bool frame_allocation = false);
+
 }

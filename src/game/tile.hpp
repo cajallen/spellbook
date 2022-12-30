@@ -25,7 +25,7 @@ JSON_IMPL(TilePrefab, type, model_path);
 
 struct Scene;
 
-void inspect(TilePrefab*);
+bool inspect(TilePrefab*);
 entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, u32 rotation);
 
 }

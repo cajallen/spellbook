@@ -15,7 +15,7 @@
 
 namespace spellbook {
 
-ADD_EDITOR_SCENE(MapEditor);
+// ADD_EDITOR_SCENE(MapEditor);
 
 bool map_editor_key(KeyCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
@@ -114,46 +114,44 @@ void MapEditor::setup() {
 void MapEditor::update() {
     ZoneScoped;
     Viewport& viewport = p_scene->render_scene.viewport;
-
-    if (!viewport.hovered)
-        return;
-
     
-    v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, y_level);
-    v3i top_drawn_cell      = (v3i) math::floor(intersect) - v3i(0,0,1);
-    v3i bot_drawn_cell      = (v3i) math::floor(intersect);
-    draw_preview(top_drawn_cell);
+    if (viewport.hovered) {
+        v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, y_level);
+        v3i top_drawn_cell      = (v3i) math::floor(intersect) - v3i(0,0,1);
+        v3i bot_drawn_cell      = (v3i) math::floor(intersect);
+        draw_preview(top_drawn_cell);
 
-    // we should check if this mouse input is ours in the callback)
-    if (painting) {
-        if (eraser_selected) {
-            vector<entt::entity> targets = p_scene->get_any(top_drawn_cell);
-            p_scene->registry.destroy(targets.begin(), targets.end());
-            map_prefab.tiles.erase(top_drawn_cell);
-            map_prefab.lizards.erase(top_drawn_cell);
-            map_prefab.consumers.erase(top_drawn_cell);
-            map_prefab.spawners.erase(top_drawn_cell);
-        }
-        else if (selected_tile != -1) {
-            instance_and_write_prefab(load_asset<TilePrefab>(tile_buttons[selected_tile].item_path), top_drawn_cell);
-        }
-        else if (selected_lizard != -1) {
-            instance_and_write_prefab(load_asset<LizardPrefab>(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
-        }
-        else if (selected_spawner != -1) {
-            instance_and_write_prefab(load_asset<SpawnerPrefab>(spawner_buttons[selected_spawner].item_path), bot_drawn_cell);
-        }
-        else if (selected_consumer != -1) {
-            instance_and_write_prefab(load_asset<ConsumerPrefab>(consumer_buttons[selected_consumer].item_path), bot_drawn_cell);
+        // we should check if this mouse input is ours in the callback)
+        if (painting) {
+            if (eraser_selected) {
+                vector<entt::entity> targets = p_scene->get_any(top_drawn_cell);
+                p_scene->registry.destroy(targets.begin(), targets.end());
+                map_prefab.tiles.erase(top_drawn_cell);
+                map_prefab.lizards.erase(top_drawn_cell);
+                map_prefab.consumers.erase(top_drawn_cell);
+                map_prefab.spawners.erase(top_drawn_cell);
+            }
+            else if (selected_tile != -1) {
+                instance_and_write_prefab(load_asset<TilePrefab>(tile_buttons[selected_tile].item_path), top_drawn_cell);
+            }
+            else if (selected_lizard != -1) {
+                instance_and_write_prefab(load_asset<LizardPrefab>(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
+            }
+            else if (selected_spawner != -1) {
+                instance_and_write_prefab(load_asset<SpawnerPrefab>(spawner_buttons[selected_spawner].item_path), bot_drawn_cell);
+            }
+            else if (selected_consumer != -1) {
+                instance_and_write_prefab(load_asset<ConsumerPrefab>(consumer_buttons[selected_consumer].item_path), bot_drawn_cell);
+            }
         }
     }
+    
+    p_scene->update();
 
     if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
         p_scene->registry.clear<Dragging>();
         p_scene->selected_entity = entt::null;
     }
-
-    p_scene->update();
 }
 
 void MapEditor::window(bool* p_open) {
@@ -255,8 +253,8 @@ void MapEditor::draw_preview(v3i cell) {
         p_scene->render_scene.quick_mesh(line_mesh, true, true);
     } else if (selected_lizard != -1) {
         vector<FormattedVertex> vertices;
-        for (int i = 0; i <= 24; i++) {
-            f32 angle  = i * math::TAU / 24.0f;
+        for (int i = 0; i <= 32; i++) {
+            f32 angle  = i * math::TAU / 32.0f;
             v3  center = (v3) cell + v3(0.5f, 0.5f, 1.5f);
             vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, line_width);
         }

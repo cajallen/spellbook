@@ -1,16 +1,14 @@
 #include "mesh.hpp"
 
 #include <imgui.h>
+#include <vuk/Partials.hpp>
 
 #include "extension/fmt.hpp"
+#include "game/game.hpp"
 #include "general/math.hpp"
 
 
 namespace spellbook {
-
-void inspect(MeshGPU* mesh) {
-    ImGui::Text(fmt_("Vertex Count: {}, Index Count: {}", mesh->vertex_count, mesh->index_count).c_str());
-}
 
 static v3 get_tangent(Vertex a, Vertex b, Vertex c) {
     v3 ab    = b.position - a.position;
@@ -35,5 +33,26 @@ void MeshCPU::fix_tangents() {
     }
 }
 
+string upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
+    assert_else(!mesh_cpu.file_path.empty());
+    u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_path.data(), mesh_cpu.file_path.size());
+    if (game.renderer.mesh_cache.contains(mesh_cpu_hash))
+        return mesh_cpu.file_path;
+    MeshGPU         mesh_gpu;
+    mesh_gpu.frame_allocated = frame_allocation;
+    vuk::Allocator& alloc                = frame_allocation ? *game.renderer.frame_allocator : *game.renderer.global_allocator;
+    auto            [vert_buf, vert_fut] = vuk::create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
+    mesh_gpu.vertex_buffer               = std::move(vert_buf);
+    auto [idx_buf, idx_fut]              = vuk::create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.indices));
+    mesh_gpu.index_buffer                = std::move(idx_buf);
+    mesh_gpu.index_count                 = mesh_cpu.indices.size();
+    mesh_gpu.vertex_count                = mesh_cpu.vertices.size();
+
+    game.renderer.enqueue_setup(std::move(vert_fut));
+    game.renderer.enqueue_setup(std::move(idx_fut));
+
+    game.renderer.mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
+    return mesh_cpu.file_path;
+}
 
 }

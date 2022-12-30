@@ -40,31 +40,45 @@ EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu) 
     return scene.emitters.back();
 }
 
-void EmitterGPU::update_from_cpu(const EmitterCPU& emitter) {
-    emitter_cpu = emitter;
+void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
+    settings.position_scale.xyz = new_emitter.position - 0.5f * new_emitter.position_random;
+    settings.position_scale.w = new_emitter.scale - 0.5f * new_emitter.scale_random;
+    settings.velocity_damping.xyz = new_emitter.velocity - 0.5f * new_emitter.velocity_random;
+    settings.velocity_damping.w = new_emitter.damping;
+    settings.life = new_emitter.duration - 0.5f * new_emitter.duration_random;
+    settings.falloff = new_emitter.falloff;
 
-    // Validate
-    emitter_cpu.particles_per_second = math::max(FLT_MIN, emitter_cpu.particles_per_second);
+    settings.position_scale_random.xyz = new_emitter.position_random;
+    settings.position_scale_random.w = new_emitter.scale_random;
+    settings.velocity_damping_random.xyz = new_emitter.velocity_random;
+    settings.life_random = new_emitter.duration_random;
     
-    settings.position_scale.xyz = emitter_cpu.position - 0.5f * emitter_cpu.position_random;
-    settings.position_scale.w = emitter_cpu.scale - 0.5f * emitter_cpu.scale_random;
-    settings.velocity_damping.xyz = emitter_cpu.velocity - 0.5f * emitter_cpu.velocity_random;
-    settings.velocity_damping.w = emitter_cpu.damping;
-    settings.life = emitter_cpu.duration - 0.5f * emitter_cpu.duration_random;
-    settings.falloff = emitter_cpu.falloff;
+    rate = 1.0f / new_emitter.particles_per_second;
+    
+    mesh = new_emitter.mesh;
+    material = new_emitter.material;
 
-    settings.position_scale_random.xyz = emitter_cpu.position_random;
-    settings.position_scale_random.w = emitter_cpu.scale_random;
-    settings.velocity_damping_random.xyz = emitter_cpu.velocity_random;
-    settings.life_random = emitter_cpu.duration_random;
-    
-    rate = 1.0f / emitter_cpu.particles_per_second;
-    
-    mesh = emitter_cpu.mesh;
-    material = emitter_cpu.material;
+    bool upload_color = false, upload_size = false;
+    if (emitter_cpu.color1_start != new_emitter.color1_start ||
+        emitter_cpu.color1_end != new_emitter.color1_end ||
+        emitter_cpu.color2_start != new_emitter.color2_start ||
+        emitter_cpu.color2_end != new_emitter.color2_end ||
+        color.global.iv == vuk::Handle<VkImageView>{}) {
+        upload_color = true;
+    }
+    if (emitter_cpu.particles_per_second != new_emitter.particles_per_second ||
+        emitter_cpu.duration != new_emitter.duration ||
+        emitter_cpu.duration_random != new_emitter.duration_random ||
+        !particles_buffer) {
+        upload_size = true;
+    }
 
-    update_color();
-    update_size();
+    emitter_cpu = new_emitter;
+
+    if (upload_color)
+        update_color();
+    if (upload_size)
+        update_size();
 }
 
 
@@ -86,8 +100,12 @@ void EmitterGPU::update_color() {
             color_texture.pixels[(y * color_texture.size.x + x) * 4 + 3] = u8(color.a * 255.f);
         }
     }
-    string tex_id = game.renderer.upload_texture(color_texture);
-    color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(tex_id).value.view.get(), Sampler().address(Address_Clamp).get());
+
+    u64 tex_id = hash_string(color_texture.file_path);
+    if (game.renderer.texture_cache.contains(tex_id))
+        game.renderer.texture_cache.erase(tex_id);
+    upload_texture(color_texture);
+    color = vuk::make_sampled_image(game.renderer.texture_cache[tex_id].value.view.get(), Sampler().address(Address_Clamp).get());
 }
 
 void EmitterGPU::update_size() {
@@ -100,27 +118,28 @@ void EmitterGPU::update_size() {
     game.renderer.enqueue_setup(std::move(fut));
 }
 
-void inspect(EmitterCPU* emitter) {
-    ImGui::DragFloat3("Position", emitter->position.data, 0.01f);
-    ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
-    ImGui::DragFloat("Damping", &emitter->damping, 0.01f);
-    ImGui::DragFloat("Scale", &emitter->scale, 0.01f);
-    ImGui::DragFloat("Duration", &emitter->duration, 0.01f);
-    ImGui::DragFloat("Falloff", &emitter->falloff, 0.01f);
-    ImGui::DragFloat("Particles Per Second", &emitter->particles_per_second, 0.01f);
-    ImGui::DragFloat3("Position Random", emitter->position_random.data, 0.01f);
-    ImGui::DragFloat3("Velocity Random", emitter->velocity_random.data, 0.01f);
-}
+bool inspect(EmitterCPU* emitter) {
+    bool changed = false;
+    ImGui::PathSelect("File", &emitter->file_path, "resources", FileType_Emitter);
+    changed |= ImGui::DragFloat3("Position", emitter->position.data, 0.01f);
+    changed |= ImGui::DragFloat3("Position Random", emitter->position_random.data, 0.01f);
+    changed |= ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
+    changed |= ImGui::DragFloat3("Velocity Random", emitter->velocity_random.data, 0.01f);
+    changed |= ImGui::DragFloat("Damping", &emitter->damping, 0.01f);
+    
+    changed |= ImGui::DragFloat("Scale", &emitter->scale, 0.01f);
+    changed |= ImGui::DragFloat("Scale Random", &emitter->scale_random, 0.01f);
+    changed |= ImGui::DragFloat("Particles Per Second", &emitter->particles_per_second, 0.01f);
+    changed |= ImGui::DragFloat("Duration", &emitter->duration, 0.01f);
+    changed |= ImGui::DragFloat("Duration Random", &emitter->duration_random, 0.01f);
+    changed |= ImGui::DragFloat("Falloff", &emitter->falloff, 0.01f);
 
-void inspect(EmitterGPU* emitter) {
-    bool size_changed = false;
-    bool color_changed = false;
+    changed |= ImGui::ColorEdit3("Color 1 Start", emitter->color1_start.data);
+    changed |= ImGui::ColorEdit3("Color 1 End", emitter->color1_end.data);
+    changed |= ImGui::ColorEdit3("Color 2 Start", emitter->color2_start.data);
+    changed |= ImGui::ColorEdit3("Color 2 End", emitter->color2_end.data);
 
-    if (size_changed)
-        emitter->update_size();
-
-    if (color_changed)
-        emitter->update_color();
+    return changed;
 }
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {

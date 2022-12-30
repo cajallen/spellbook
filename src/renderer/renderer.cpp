@@ -25,8 +25,7 @@
 
 namespace spellbook {
 
-Renderer::Renderer()
-    : imgui_data() {
+Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
         .request_validation_layers(false)
@@ -328,78 +327,6 @@ void Renderer::resize(v2i new_size) {
     swapchain = new_swapchain;
 }
 
-
-string Renderer::upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
-    assert_else(!mesh_cpu.file_path.empty());
-    u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_path.data(), mesh_cpu.file_path.size());
-    if (mesh_cache.contains(mesh_cpu_hash))
-        return mesh_cpu.file_path;
-    MeshGPU         mesh_gpu;
-    mesh_gpu.frame_allocated = frame_allocation;
-    vuk::Allocator& alloc                = frame_allocation ? *frame_allocator : *global_allocator;
-    auto            [vert_buf, vert_fut] = create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
-    mesh_gpu.vertex_buffer               = std::move(vert_buf);
-    auto [idx_buf, idx_fut]              = create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.indices));
-    mesh_gpu.index_buffer                = std::move(idx_buf);
-    mesh_gpu.index_count                 = mesh_cpu.indices.size();
-    mesh_gpu.vertex_count                = mesh_cpu.vertices.size();
-
-    enqueue_setup(std::move(vert_fut));
-    enqueue_setup(std::move(idx_fut));
-
-    mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
-    return mesh_cpu.file_path;
-}
-
-SkeletonGPU Renderer::upload_skeleton(const SkeletonCPU& skeleton_cpu) {
-    SkeletonGPU skeleton_gpu;
-    skeleton_gpu.bones = std::move(skeleton_cpu.bones);
-    
-    vuk::Allocator& alloc = *global_allocator;
-    u32 alloc_size = sizeof(u32) * 4 + sizeof(m44GPU) * skeleton_gpu.bones.size();
-
-    skeleton_gpu.buffer = *vuk::allocate_buffer(alloc, {vuk::MemoryUsage::eCPUtoGPU, alloc_size, 1});
-    skeleton_gpu.update();
-    return skeleton_gpu;
-}
-
-string Renderer::upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
-    assert_else(!material_cpu.file_path.empty());
-    u64 material_cpu_hash               = hash_data(material_cpu.file_path.data(), material_cpu.file_path.size());
-
-    MaterialGPU material_gpu;
-    material_gpu.frame_allocated = frame_allocation;
-    material_gpu.pipeline      = context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
-    material_gpu.color = vuk::make_sampled_image(get_texture_or_upload(material_cpu.color_asset_path).value.view.get(), material_cpu.sampler.get());
-    material_gpu.normal = vuk::make_sampled_image(get_texture_or_upload(material_cpu.normal_asset_path).value.view.get(), material_cpu.sampler.get());
-    material_gpu.orm = vuk::make_sampled_image(get_texture_or_upload(material_cpu.orm_asset_path).value.view.get(), material_cpu.sampler.get());
-    material_gpu.emissive = vuk::make_sampled_image(get_texture_or_upload(material_cpu.emissive_asset_path).value.view.get(), material_cpu.sampler.get());
-
-    material_gpu.tints         = {
-        (v4) material_cpu.color_tint,
-        (v4) material_cpu.emissive_tint,
-        {material_cpu.roughness_factor, material_cpu.metallic_factor, material_cpu.normal_factor, 1.0f},
-        {material_cpu.emissive_dot_smoothstep.x, material_cpu.emissive_dot_smoothstep.y, 0.0f, 0.0f}
-    };
-    material_gpu.cull_mode = material_cpu.cull_mode;
-    material_gpu.frame_allocated = frame_allocation;
-
-    material_cache[material_cpu_hash] = std::move(material_gpu);
-    return material_cpu.file_path;
-}
-
-string Renderer::upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
-    assert_else(!tex_cpu.file_path.empty());
-    u64 tex_cpu_hash = hash_data(tex_cpu.file_path.data(), tex_cpu.file_path.size());
-    vuk::Allocator& alloc = frame_allocation ? *frame_allocator : *global_allocator;
-    auto [tex, tex_fut] = create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), true);
-    context->set_name(tex, vuk::Name(tex_cpu.file_path));
-    enqueue_setup(std::move(tex_fut));
-    
-    texture_cache[tex_cpu_hash] = {std::move(tex), frame_allocation};
-    return tex_cpu.file_path;
-}
-
 MeshGPU* Renderer::get_mesh(const string& asset_path) {
     if (asset_path.empty())
         return nullptr;
@@ -449,7 +376,7 @@ MaterialGPU& Renderer::get_material_or_upload(const string& asset_path) {
 TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
     assert_else(!asset_path.empty());
     u64 hash = hash_data(asset_path.data(), asset_path.size());
-    if (texture_cache.count(hash))
+    if (texture_cache.contains(hash))
         return texture_cache[hash];
     upload_texture(load_texture(asset_path));
     return texture_cache[hash];

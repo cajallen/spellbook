@@ -30,10 +30,12 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     return entity;
 }
 
-void inspect(TilePrefab* tile_prefab) {
+bool inspect(TilePrefab* tile_prefab) {
+    bool changed = false;
     ImGui::PathSelect("File", &tile_prefab->file_path, "resources", FileType_Tile, true);
-    ImGui::EnumCombo("Type", &tile_prefab->type);
-    ImGui::PathSelect("Model", &tile_prefab->model_path, "resources", FileType_Model, true);
+    changed |= ImGui::EnumCombo("Type", &tile_prefab->type);
+    changed |= ImGui::PathSelect("Model", &tile_prefab->model_path, "resources", FileType_Model, true);
+    return changed;
 }
 
 }

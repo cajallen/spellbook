@@ -17,12 +17,12 @@ void main() {
     vec3 position;
     float extent = 100.0;
     switch(gl_VertexIndex) {
-        case 0: { position = vec3(-extent, -extent,  0.0); vout_position = vec4(position, 1.0); } break;
-        case 1: { position = vec3( extent,  extent,  0.0); vout_position = vec4(position, 1.0); } break;
-        case 2: { position = vec3( extent, -extent,  0.0); vout_position = vec4(position, 1.0); } break;
-        case 3: { position = vec3(-extent, -extent,  0.0); vout_position = vec4(position, 1.0); } break;
-        case 4: { position = vec3( extent,  extent,  0.0); vout_position = vec4(position, 1.0); } break;
-        case 5: { position = vec3(-extent,  extent,  0.0); vout_position = vec4(position, 1.0); } break;
+        case 0: { position = vec3(-extent, -extent,  0.01); vout_position = vec4(position, 1.0); } break;
+        case 1: { position = vec3( extent,  extent,  0.01); vout_position = vec4(position, 1.0); } break;
+        case 2: { position = vec3( extent, -extent,  0.01); vout_position = vec4(position, 1.0); } break;
+        case 3: { position = vec3(-extent, -extent,  0.01); vout_position = vec4(position, 1.0); } break;
+        case 4: { position = vec3( extent,  extent,  0.01); vout_position = vec4(position, 1.0); } break;
+        case 5: { position = vec3(-extent,  extent,  0.01); vout_position = vec4(position, 1.0); } break;
     }
 
     gl_Position = vp * vec4(position, 1.0);

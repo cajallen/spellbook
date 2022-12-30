@@ -1,5 +1,7 @@
 #include "math.hpp"
 
+#include "logger.hpp"
+
 #include <cmath>
 #include <random>
 
@@ -298,4 +300,4 @@ bool ray_intersects_aabb(v2 rstart, v2 rdir, v2 bstart, v2 bend, float* out_dist
     return tmax >= math::max(0.0f, tmin) && tmin < FLT_MAX;
 }
 
-} // namespace m
+} // namespace math

@@ -37,6 +37,8 @@ struct Bone {
     m44 local_transform;
     float time;
     math::EaseMode ease_mode = math::EaseMode_Quad;
+    
+    float length = 0.1f;
 
     m44 transform() const;
     m44 final_transform() const;
@@ -52,35 +54,28 @@ struct SkeletonCPU {
     
     bool widget_enabled = false;
     vector<u8> widget_pose_enabled;
+
+    void update();
+    void save_pose(string name);
+    void load_pose(string name, bool as_target = false, float offset = 1.0f);
 };
 
 struct SkeletonGPU {
-    enum Mode {
-        Mode_Pose,
-        Mode_Play
-    };
-    
-    vector<id_ptr<Bone>> bones;
-    umap<string, vector<KeySet>> poses;
-    
-    Mode mode = Mode_Pose;
+    id_ptr<SkeletonCPU> skeleton_cpu;
 
     vuk::Unique<vuk::Buffer> buffer = vuk::Unique<vuk::Buffer>();
     
-    void update();
-
     static vuk::Unique<vuk::Buffer>* empty_buffer();
-
-    void save_pose(string name);
-    void load_pose(string name, bool as_target = false, float offset = 1.0f);
-    void stop_playing();
+    void update();
 };
 
-void inspect(SkeletonGPU* skeleton, const m44& model, RenderScene* render_scene);
+SkeletonGPU upload_skeleton(id_ptr<SkeletonCPU> skeleton_cpu);
+
+bool inspect(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene);
 
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);
-JSON_IMPL(Bone, name, parent, start, inverse_bind_matrix);
+JSON_IMPL(Bone, name, parent, start, inverse_bind_matrix, length);
 
 inline SkeletonCPU from_jv_impl(const json_value& jv, SkeletonCPU* _) {
     json j = from_jv<json>(jv);

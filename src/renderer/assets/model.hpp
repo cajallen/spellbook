@@ -28,7 +28,7 @@ struct ModelCPU {
         string material_asset_path;
         m44 transform = {};
 
-        id_ptr<SkeletonCPU> skeleton;
+        id_ptr<SkeletonCPU> skeleton = id_ptr<SkeletonCPU>::null();
         
         id_ptr<Node> parent = {};
         vector<id_ptr<Node>> children = {};
@@ -46,7 +46,7 @@ struct ModelCPU {
 JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, skeleton, parent, children);
 
 struct ModelGPU {
-    vector<Renderable*> renderables;
+    umap<ModelCPU::Node*, Renderable*> renderables;
     vector<std::unique_ptr<SkeletonGPU>> skeletons;
 
     ModelGPU() {
@@ -69,6 +69,6 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
 
 ModelCPU quick_model(const string& name, const string& mesh, const string& material);
 
-void inspect(ModelCPU* model);
+bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene = nullptr);
 
 }

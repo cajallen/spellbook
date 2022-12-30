@@ -258,7 +258,8 @@ void Console::window(bool* open) {
 
 void Console::_handle_message_queue() {
     while (!message_queue.empty()) {
-        BasicMessage& message = message_queue.front();
+        BasicMessage message = message_queue.front();
+        message_queue.pop();
         console({.str = message.str, .group = message.group, .color = message.color});
     }
 }

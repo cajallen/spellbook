@@ -12,6 +12,7 @@ extern umap<u64, float> depths;
 extern u64 pressed_id;
 
 void setup();
+void update();
 
 }
 

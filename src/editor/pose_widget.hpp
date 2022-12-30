@@ -66,7 +66,7 @@ struct PoseWidgetSettings {
     u32 disabled = 0;
 };
 
-bool pose_widget(ImGuiID id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);
+bool pose_widget(u64 id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);
 void _pose_widget(PoseWidgetState* widget_state, const PoseWidgetSettings& settings);
 void inspect(PoseWidgetState* state);
 

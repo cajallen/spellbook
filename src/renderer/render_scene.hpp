@@ -20,7 +20,7 @@ struct SceneData {
     Color fog_color           = palette::black;
     f32 fog_depth             = -1.0f;
     v3  rim_alpha_width_start = v3(0.1f, 0.1f, 0.75f);
-    quat sun_direction        = quat(0.2432103, 0.3303661, 0.0885213, 0.9076734);
+    quat sun_direction        = quat(0.2432103, 0.3503661, 0.0885213, 0.9076734);
     f32 sun_intensity         = 1.0f;
 };
 
@@ -85,6 +85,7 @@ struct RenderScene {
     void        delete_renderable(Renderable* renderable);
 
     Renderable& quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget = false);
+    Renderable& quick_mesh(const string& mesh_name, bool frame_allocated, bool widget = false);
     Renderable& quick_material(const MaterialCPU& material_cpu, bool frame_allocated);
 
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);

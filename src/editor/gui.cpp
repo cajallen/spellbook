@@ -42,7 +42,6 @@ void GUI::shutdown() {
     TO_JSON_MEMBER(windows);
     TO_JSON_MEMBER(item_state);
     TO_JSON_MEMBER(asset_browser_file);
-
     file_dump(j, gui_file.string());
 }
 
@@ -75,6 +74,8 @@ void GUI::_main_menu_bar() {
 void GUI::update() {
     ZoneScoped;
 
+    WidgetSystem::update();
+    
     // main
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);

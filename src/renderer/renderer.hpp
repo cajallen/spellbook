@@ -99,12 +99,6 @@ struct Renderer {
 
     void add_scene(RenderScene*);
 
-    // Uploads asset, stores in alias and cache, overwrites old cache entry
-    string upload_mesh(const MeshCPU&, bool frame_allocation = false);
-    string upload_material(const MaterialCPU&, bool frame_allocation = false);
-    string upload_texture(const TextureCPU&, bool frame_allocation = false);
-    SkeletonGPU upload_skeleton(const SkeletonCPU&);
-
     // Returns an asset given the path of the .sb*** asset, nullptr if not uploaded
     MeshGPU* get_mesh(const string& asset_path);
     MaterialGPU* get_material(const string& asset_path);

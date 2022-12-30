@@ -56,18 +56,20 @@ void spawner_system(Scene* scene) {
     }
 }
 
-void inspect(SpawnerPrefab* spawner_prefab) {
+bool inspect(SpawnerPrefab* spawner_prefab) {
+    bool changed = false;
     ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources", FileType_Spawner, true);
 
-    ImGui::EnumCombo("enemy_selection", &spawner_prefab->enemy_selection);
-    ImGui::PathSelect("enemy_path", &spawner_prefab->enemy_prefab_path, "resources", FileType_Enemy);
-    ImGui::DragFloat("enemy_cost", &spawner_prefab->enemy_cost, 0.01f);
-    ImGui::DragFloat("enemy_cooldown", &spawner_prefab->enemy_cooldown, 0.01f);
+    changed |= ImGui::EnumCombo("enemy_selection", &spawner_prefab->enemy_selection);
+    changed |= ImGui::PathSelect("enemy_path", &spawner_prefab->enemy_prefab_path, "resources", FileType_Enemy);
+    changed |= ImGui::DragFloat("enemy_cost", &spawner_prefab->enemy_cost, 0.01f);
+    changed |= ImGui::DragFloat("enemy_cooldown", &spawner_prefab->enemy_cooldown, 0.01f);
 
-    ImGui::EnumCombo("wave_selection", &spawner_prefab->wave_selection);
-    ImGui::DragFloat("wave_cost", &spawner_prefab->wave_cost, 0.01f);
+    changed |= ImGui::EnumCombo("wave_selection", &spawner_prefab->wave_selection);
+    changed |= ImGui::DragFloat("wave_cost", &spawner_prefab->wave_cost, 0.01f);
     
-    ImGui::DragFloat("delta_cost", &spawner_prefab->delta_cost, 0.01f);
+    changed |= ImGui::DragFloat("delta_cost", &spawner_prefab->delta_cost, 0.01f);
+    return changed;
 }
 
 void save_spawner(const SpawnerPrefab& spawner_prefab) {

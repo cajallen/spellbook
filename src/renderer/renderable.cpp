@@ -29,14 +29,14 @@ void upload_dependencies(Renderable& renderable) {
         return;
     if (mesh == nullptr) {
         if (exists(to_resource_path(renderable.mesh_asset_path))) {
-            game.renderer.upload_mesh(load_mesh(renderable.mesh_asset_path));
+            upload_mesh(load_mesh(renderable.mesh_asset_path));
         } else {
             console({.str = "Renderable mesh asset not found: " + renderable.mesh_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
         }
     }
     if (material == nullptr) {
         if (exists(to_resource_path(renderable.material_asset_path))) {
-            game.renderer.upload_material(load_material(renderable.material_asset_path));
+            upload_material(load_material(renderable.material_asset_path));
         } else {
             console({.str = "Renderable material asset not found: " + renderable.material_asset_path, .group = "assets", .frame_tags = {"render_scene"}});
         }
@@ -46,7 +46,7 @@ void upload_dependencies(Renderable& renderable) {
 void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index) {
     MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
     MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
-    if (mesh == nullptr || material == nullptr) {
+    assert_else (mesh != nullptr && material != nullptr) {
         if (item_index)
             (*item_index)++;
         return;
@@ -71,7 +71,7 @@ void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int
     command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index ? (*item_index)++ : 0);
 }
 
-void render_widget(Renderable& renderable, vuk::CommandBuffer& command_buffer) {
+void render_widget(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index) {
     MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
     MaterialGPU* material = game.renderer.get_material(renderable.material_asset_path);
     assert_else(mesh != nullptr && material != nullptr)
@@ -88,8 +88,23 @@ void render_widget(Renderable& renderable, vuk::CommandBuffer& command_buffer) {
         .bind_graphics_pipeline(material->pipeline);
 
     // Draw call
-    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, 0);
+    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index ? (*item_index)++ : 0);
 }
 
+void render_shadow(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index) {
+    MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
+    if (mesh == nullptr) {
+        (*item_index)++;
+        return;
+    }
+    // Bind mesh
+    command_buffer
+        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32)
+        .bind_buffer(0, BONES_BINDING, renderable.skeleton != nullptr ? renderable.skeleton->buffer.get() : SkeletonGPU::empty_buffer()->get());
+                
+    // Draw call
+    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, (*item_index)++);
+}
 
 }

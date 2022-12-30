@@ -74,7 +74,7 @@ JSON_IMPL(LizardPrefab, type, model_path);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const LizardPrefab&, v3i location);
-void inspect(LizardPrefab*);
+bool inspect(LizardPrefab*);
 
 void lizard_system(Scene* scene);
 void projectile_system(Scene* scene);

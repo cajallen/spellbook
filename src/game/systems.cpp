@@ -77,20 +77,20 @@ void health_draw_system(Scene* scene) {
     static string health_name;
     static string health_bar_name;
     if (!deps) {
-        mesh_name = game.renderer.upload_mesh(generate_cube(v3(0), v3(1)));
+        mesh_name = upload_mesh(generate_cube(v3(0), v3(1)));
         
         MaterialCPU material1_cpu = {
             .file_path     = "health_material",
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
-        health_name = game.renderer.upload_material(material1_cpu);
+        health_name = upload_material(material1_cpu);
         MaterialCPU material2_cpu = {
             .file_path     = "health_bar_material",
             .color_tint    = palette::black,
             .cull_mode     = vuk::CullModeFlagBits::eFront
         };
-        health_bar_name = game.renderer.upload_material(material2_cpu);
+        health_bar_name = upload_material(material2_cpu);
         deps = true;
     }
 
@@ -116,8 +116,8 @@ void health_draw_system(Scene* scene) {
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
                            math::scale(v3(0.5f * width + gap, thickness + gap, thickness + gap));
 
-        auto renderable1 = Renderable{mesh_name, health_name, inner_matrix, {}, true};
-        auto renderable2 = Renderable{mesh_name, health_bar_name, outer_matrix, {}, true};
+        auto renderable1 = Renderable{mesh_name, health_name, (m44GPU) inner_matrix, {}, true};
+        auto renderable2 = Renderable{mesh_name, health_bar_name, (m44GPU) outer_matrix, {}, true};
         scene->render_scene.add_renderable(renderable1);
         scene->render_scene.add_renderable(renderable2);
     }
@@ -151,9 +151,8 @@ void transform_system(Scene* scene) {
     // Apply transforms to renderables
     for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
         m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
-        int i = 0;
-        for (auto renderable : model.model_gpu.renderables) {
-            renderable->transform = transform_matrix * model.model_cpu.nodes[i++]->calculate_transform();
+        for (auto& [node, renderable] : model.model_gpu.renderables) {
+            renderable->transform = (m44GPU) (transform_matrix * node->calculate_transform());
         }
     }
 }
@@ -208,8 +207,18 @@ void selection_id_system(Scene* scene) {
         auto attach = scene->registry.try_get<LogicTransformAttach>(entity);
         if (attach != nullptr)
             id = (u32) attach->to;
-        for (auto p_renderable : model.model_gpu.renderables) {
-            p_renderable->selection_id = id;
+        for (auto [_, r] : model.model_gpu.renderables) {
+            r->selection_id = id;
+        }
+    }
+}
+
+void skeleton_system(Scene* scene) {
+    ZoneScoped;
+    auto model_view = scene->registry.view<Model>();
+    for (auto [entity, model] : model_view.each()) {
+        for (auto& skeleton : model.model_gpu.skeletons) {
+            skeleton->update();
         }
     }
 }
@@ -227,7 +236,8 @@ void dragging_update_system(Scene* scene) {
             scene->selected_entity = (entt::entity) result_int;
             v3  intersect = math::intersect_axis_plane(scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
             auto transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
-            assert_else(transform);
+            if (!transform)
+                return;
 
             scene->registry.emplace<Dragging>(scene->selected_entity, scene->time, transform->position, intersect);
 

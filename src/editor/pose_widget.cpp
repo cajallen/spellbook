@@ -309,7 +309,7 @@ void disable_invalid_operations(v3* position, quat* rotation, PoseWidgetState& s
     state.enabled &= ~(settings.disabled);
 }
 
-bool pose_widget(ImGuiID id, v3* position, quat* rotation, const PoseWidgetSettings& settings, m44* model, PoseWidgetState* out_state) {
+bool pose_widget(u64 id, v3* position, quat* rotation, const PoseWidgetSettings& settings, m44* model, PoseWidgetState* out_state) {
     static umap<u32, PoseWidgetState> widget_states;
     if (widget_states.count(id) == 0)
         widget_states.insert({id, PoseWidgetState{}});
@@ -338,7 +338,7 @@ bool pose_widget(ImGuiID id, v3* position, quat* rotation, const PoseWidgetSetti
         }
     }
 
-    WidgetSystem::depths[id] = closest_depth;
+    WidgetSystem::depths[id] = math::min(closest_depth, WidgetSystem::depths[id]);
 
     if (WidgetSystem::pressed_id == id) {
         // First clicked frame

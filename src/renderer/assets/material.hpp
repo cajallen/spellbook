@@ -48,6 +48,7 @@ struct MaterialDataGPU {
 };
 
 struct MaterialGPU {
+    MaterialCPU material_cpu;
     // uses master shader
     vuk::PipelineBaseInfo* pipeline;
     vuk::SampledImage      color    = vuk::SampledImage(vuk::SampledImage::Global{});
@@ -62,11 +63,14 @@ struct MaterialGPU {
     
     void bind_parameters(vuk::CommandBuffer& cbuf);
     void bind_textures(vuk::CommandBuffer& cbuf);
+
+    void update_from_cpu(const MaterialCPU& new_material);
 };
 
-void inspect(MaterialCPU* material);
+bool inspect(MaterialCPU* material);
 void inspect(MaterialGPU* material);
 
+string upload_material(const MaterialCPU&, bool frame_allocation = false);
 void        save_material(const MaterialCPU&);
 MaterialCPU load_material(const string& file_name);
 

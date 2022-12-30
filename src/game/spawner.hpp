@@ -49,7 +49,7 @@ JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_prefab_path, enemy_cost, enemy_c
 
 void spawner_system(Scene* scene);
 
-void inspect(SpawnerPrefab* spawner_prefab);
+bool inspect(SpawnerPrefab* spawner_prefab);
 entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, v3i location);
 
 }

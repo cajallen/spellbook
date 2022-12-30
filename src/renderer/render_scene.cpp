@@ -107,11 +107,13 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     auto [pubo_sun_camera, fubo_sun_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&sun_cam_data, 1));
     buffer_sun_camera_data              = *pubo_sun_camera;
     
-    buffer_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * renderables.size(), 1});
+    buffer_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, sizeof(m44GPU) * (renderables.size() + widget_renderables.size()), 1});
     int i = 0;
     for (const auto& renderable : renderables) {
-        auto transform_gpu = m44GPU(renderable.transform);
-        memcpy(reinterpret_cast<m44GPU*>(buffer_model_mats.mapped_ptr) + i++, &transform_gpu, sizeof(m44GPU));
+        memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i++, &renderable.transform, sizeof(m44GPU));
+    }
+    for (const auto& renderable : widget_renderables) {
+        memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i++, &renderable.transform, sizeof(m44GPU));
     }
 
     struct CompositeData {
@@ -171,7 +173,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     console({.str = "render_scene render", .group = "render_scene", .frame_tags = {"render_scene"}});
 
     _upload_buffer_objects(frame_allocator);
-
+    
     auto rg = make_shared<vuk::RenderGraph>("graph");
     rg->attach_in("target_input", std::move(target));
     // Set up the pass to draw the textured cube, with a color and a depth attachment
@@ -207,26 +209,13 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                 .bind_buffer(0, CAMERA_BINDING, buffer_sun_camera_data)
                 .bind_buffer(0, MODEL_BINDING, buffer_model_mats);
             
-            // Render items
-            int  i = 0;
             command_buffer
                 .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
                 .bind_graphics_pipeline("directional_depth");
             
+            int item_index = 0;
             for (Renderable& renderable : renderables) {
-                MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh_asset_path);
-                if (mesh == nullptr) {
-                    i++;
-                    continue;
-                }
-                // Bind mesh
-                command_buffer
-                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32)
-                    .bind_buffer(0, BONES_BINDING, renderable.skeleton != nullptr ? renderable.skeleton->buffer.get() : SkeletonGPU::empty_buffer()->get());
-                
-                // Draw call
-                command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, i++);
+                render_shadow(renderable, command_buffer, &item_index);
             }
         }
     });
@@ -262,9 +251,9 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
             
 
             // Render items
-            int  i = 0;
+            int item_index = 0;
             for (Renderable& renderable : renderables) {
-                render_item(renderable, command_buffer, &i);
+                render_item(renderable, command_buffer, &item_index);
             }
 
             for (auto& emitter : emitters) {
@@ -287,7 +276,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
             }
         }
     });
-        rg->add_pass({
+    rg->add_pass({
         .name = "widget",
         .resources = {
             "widget_input"_image >> vuk::eColorWrite     >> "widget_output",
@@ -307,10 +296,13 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
                     })
                     .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend});
                 
-                command_buffer.bind_buffer(0, CAMERA_BINDING, buffer_camera_data);
+                command_buffer
+                    .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
+                    .bind_buffer(0, MODEL_BINDING, buffer_model_mats);
                 // Render items
+                int item_index = 0 + renderables.size();
                 for (Renderable& renderable : widget_renderables) {
-                    render_widget(renderable, command_buffer);
+                    render_widget(renderable, command_buffer, &item_index);
                 }
             }
         }});
@@ -408,7 +400,7 @@ void widget_setup() {
     game.renderer.context->create_named_pipeline("widget", pci);
     
     MaterialCPU widget_mat = { .file_path = "widget", .shader_name = "widget" };
-    game.renderer.upload_material(widget_mat);
+    upload_material(widget_mat);
 }
 
 Renderable& RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget) {
@@ -416,7 +408,19 @@ Renderable& RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocate
         widget_setup();
     
     Renderable r;
-    r.mesh_asset_path = game.renderer.upload_mesh(mesh_cpu, frame_allocated);
+    r.mesh_asset_path = upload_mesh(mesh_cpu, frame_allocated);
+    r.material_asset_path = widget ? "widget" : "default";
+    r.frame_allocated = frame_allocated;
+    
+    return *(widget ? widget_renderables : renderables).emplace(r);
+}
+
+Renderable& RenderScene::quick_mesh(const string& mesh_name, bool frame_allocated, bool widget) {
+    if (widget)
+        widget_setup();
+    
+    Renderable r;
+    r.mesh_asset_path = mesh_name;
     r.material_asset_path = widget ? "widget" : "default";
     r.frame_allocated = frame_allocated;
     
@@ -428,7 +432,7 @@ void material_setup() {
     if (initialized)
         return;
     initialized = true;
-    game.renderer.upload_mesh(generate_icosphere(3));
+    upload_mesh(generate_icosphere(3));
 }
 
 Renderable& RenderScene::quick_material(const MaterialCPU& material_cpu, bool frame_allocated) {
@@ -436,7 +440,7 @@ Renderable& RenderScene::quick_material(const MaterialCPU& material_cpu, bool fr
     
     Renderable r;
     r.mesh_asset_path = "icosphere_subdivisions:3";
-    r.material_asset_path = game.renderer.upload_material(material_cpu, frame_allocated);
+    r.material_asset_path = upload_material(material_cpu, frame_allocated);
     r.frame_allocated = frame_allocated;
     
     return *renderables.emplace(r);

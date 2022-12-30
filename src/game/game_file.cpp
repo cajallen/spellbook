@@ -39,6 +39,8 @@ string extension(FileType type) {
             return ".sbspw";
         case (FileType_Consumer):
             return ".sbcon";
+        case (FileType_Emitter):
+            return ".sbemt";
     }
     log_error("extension NYI");
     return "NYI";
@@ -65,6 +67,7 @@ std::function<bool(const fs::path&)> path_filter(FileType type) {
          case (FileType_Enemy):
          case (FileType_Spawner):
          case (FileType_Consumer):
+         case (FileType_Emitter):
              return [type](const fs::path& path) { return path.extension().string() == extension(type); };
      }
      log_error("extension NYI");
@@ -103,6 +106,8 @@ string dnd_key(FileType type) {
             return "DND_SPAWNER";
         case (FileType_Consumer):
             return "DND_CONSUMER";
+        case (FileType_Emitter):
+            return "DND_EMITTER";
     }
     log_error("extension NYI");
     return "DND_UNKNOWN";
@@ -129,6 +134,8 @@ FileType from_typeinfo(const type_info& input) {
         return FileType_Consumer;
     if (input == typeid(MapPrefab))
         return FileType_Map;
+    if (input == typeid(EmitterCPU))
+        return FileType_Emitter;
     
     log_error("extension NYI");
     return FileType_Unknown;

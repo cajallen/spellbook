@@ -31,9 +31,11 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     return entity;
 }
 
-void inspect(ConsumerPrefab* consumer_prefab) {
+bool inspect(ConsumerPrefab* consumer_prefab) {
+    bool changed = false;
     ImGui::PathSelect("File", &consumer_prefab->file_path, "resources", FileType_Consumer, true);
-    ImGui::PathSelect("Model", &consumer_prefab->model_path, "resources", FileType_Model, true);
+    changed |= ImGui::PathSelect("Model", &consumer_prefab->model_path, "resources", FileType_Model, true);
+    return changed;
 }
 
 }

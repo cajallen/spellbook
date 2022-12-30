@@ -6,7 +6,7 @@
 #define ORM_BINDING 5
 #define NORMAL_BINDING 6
 #define EMISSIVE_BINDING 7
-#define SPARE_BINDING_1 7
+#define SPARE_BINDING_1 8
 #define PARTICLES_BINDING MODEL_BINDING
 
 struct Particle {
