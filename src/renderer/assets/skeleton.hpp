@@ -82,6 +82,8 @@ inline SkeletonCPU from_jv_impl(const json_value& jv, SkeletonCPU* _) {
     SkeletonCPU value;
     if (j.contains("bones"))
         value.bones = from_jv<decltype(value.bones)>(*j.at("bones"));
+    FROM_JSON_ELE(poses);
+    
     return value;
 }
 inline json_value to_jv(const SkeletonCPU& value) {
@@ -92,6 +94,7 @@ inline json_value to_jv(const SkeletonCPU& value) {
         _list.push_back(to_jv_full(e));
 
     j["bones"] = make_shared<json_value>(_list);
+    TO_JSON_ELE(poses);
     
     return to_jv(j);
 }

@@ -39,7 +39,7 @@ Renderer::Renderer() : imgui_data() {
                 __debugbreak();
                 return VK_FALSE;
             })
-        .set_app_name("star_stealer")
+        .set_app_name("lizard_wizards")
         .set_engine_name("spellbook")
         .require_api_version(1, 2, 0)
         .set_app_version(0, 1, 0);

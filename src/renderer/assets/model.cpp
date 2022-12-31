@@ -456,6 +456,10 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
         if (bone_ptr->parent.valid())
             bone_ptr->parent->length = math::length(bone_ptr->start.position.value);
     }
+
+    for (auto& skeleton : model_cpu->skeletons) {
+        skeleton->save_pose("default");
+    }
     
     return true;
 }

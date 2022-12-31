@@ -121,6 +121,7 @@
     <ClCompile Include="src\editor\gui.cpp" />
     <ClCompile Include="src\editor\map_editor.cpp" />
     <ClCompile Include="src\editor\pose_widget.cpp" />
+    <ClCompile Include="src\editor\skeleton_widget.cpp" />
     <ClCompile Include="src\editor\test_scene.cpp" />
     <ClCompile Include="src\editor\widget_system.cpp" />
     <ClCompile Include="src\game\camera_controller.cpp" />
@@ -323,6 +324,7 @@
     <ClInclude Include="src\editor\gui.hpp" />
     <ClInclude Include="src\editor\map_editor.hpp" />
     <ClInclude Include="src\editor\pose_widget.hpp" />
+    <ClInclude Include="src\editor\skeleton_widget.hpp" />
     <ClInclude Include="src\editor\test_scene.hpp" />
     <ClInclude Include="src\editor\widget_system.hpp" />
     <ClInclude Include="src\extension\fmt.hpp" />

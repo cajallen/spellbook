@@ -143,6 +143,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
         v3 left;
         v3 right;
         Color color;
+        bool separate = false;
     };
 
     vector<Segment> segments;
@@ -150,10 +151,28 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
     for (u32 i = 0; i < vertices.size(); i++) {
         FormattedVertex& vertex = vertices[i];
         v3 cam_vec = math::normalize(vertex.position - camera->position);
-        // End vertices don't have corners to deal with
-        if (i == 0 || (i + 1) == vertices.size()) {
-            int index1 = i+1 == vertices.size() ? i-1 : i+0;
-            int index2 = i+1 == vertices.size() ? i+0 : i+1;
+
+        if (vertex.color.a == 0.0f) {
+            segments.push_back({.separate = true});
+            continue;
+        }
+
+        // none_before/none_after is to skip the corner smoothing
+        bool none_before = i == 0;
+        bool none_after = (i + 1) == vertices.size();
+        if (!none_before && !none_after) {
+            FormattedVertex& vertex1 = vertices[i-1];
+            FormattedVertex& vertex3 = vertices[i+1];
+            none_before |= vertex1.color.a == 0.0f;
+            none_after |= vertex3.color.a == 0.0f;
+        }
+
+        if (none_before && none_after)
+            continue;
+        
+        if (none_before || none_after) {
+            int index1 = none_after ? i-1 : i+0;
+            int index2 = none_after ? i+0 : i+1;
 
             v3 line_vec = math::normalize(vertices[index2].position - vertices[index1].position);
             if (line_vec == v3(0))
@@ -166,7 +185,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
                 vertex.position - (right * vertex.width),
                 vertex.color
             );
-        } 
+        }
         // Take both rights of corner, use middle
         else {
             FormattedVertex& vertex1 = vertices[i-1];
@@ -206,23 +225,26 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
     int quad_count = segments.size() - 1;
     mesh_cpu.vertices.reserve(quad_count * 6);
     mesh_cpu.indices.reserve(quad_count * 6);
-
-    for (int i = 0; i < segments.size() - 1; i++) {
+    
+    for (int i = 0, j = 0; i < segments.size() - 1; i++) {
         Segment& seg1 = segments[i+0];
         Segment& seg2 = segments[i+1];
-        
+        if (seg1.separate || seg2.separate)
+            continue;
+
         mesh_cpu.vertices.emplace_back(seg1.left, v3(0,0,1), v3(1,0,0), seg1.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg1.right, v3(0,0,1), v3(1,0,0), seg1.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg2.right, v3(0,0,1), v3(1,0,0), seg2.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg1.left, v3(0,0,1), v3(1,0,0), seg1.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg2.right, v3(0,0,1), v3(1,0,0), seg2.color.rgb, v2(0));
         mesh_cpu.vertices.emplace_back(seg2.left, v3(0,0,1), v3(1,0,0), seg2.color.rgb, v2(0));
-        mesh_cpu.indices.push_back(i*6+0);
-        mesh_cpu.indices.push_back(i*6+1);
-        mesh_cpu.indices.push_back(i*6+2);
-        mesh_cpu.indices.push_back(i*6+3);
-        mesh_cpu.indices.push_back(i*6+4);
-        mesh_cpu.indices.push_back(i*6+5);
+        mesh_cpu.indices.push_back(j*6+0);
+        mesh_cpu.indices.push_back(j*6+1);
+        mesh_cpu.indices.push_back(j*6+2);
+        mesh_cpu.indices.push_back(j*6+3);
+        mesh_cpu.indices.push_back(j*6+4);
+        mesh_cpu.indices.push_back(j*6+5);
+        j++;
     }
     return mesh_cpu;
 }

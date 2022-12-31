@@ -8,15 +8,12 @@
 
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
-#include "editor/widget_system.hpp"
+#include "editor/skeleton_widget.hpp"
 #include "extension/fmt.hpp"
 #include "general/matrix_math.hpp"
-#include "general/logger.hpp"
 #include "game/input.hpp"
 #include "game/game.hpp"
-#include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
-
 
 namespace spellbook {
 
@@ -137,8 +134,6 @@ vuk::Unique<vuk::Buffer>* SkeletonGPU::empty_buffer() {
     return &skeleton_gpu.buffer;
 }
 
-void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene);
-
 bool inspect(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene) {
     ZoneScoped;
     ImGui::Text("Skeleton");
@@ -240,101 +235,6 @@ bool inspect(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene)
         skeleton_widget(skeleton, model, render_scene);
     }
     return any_changed;
-}
-
-struct Mouse3DInfo {
-    m44 model;
-    m44 mvp;
-    v2 uv_position;
-    ray3 os_ray;
-    ray3 os_center_ray;
-
-    v2 viewport_size;
-};
-
-struct LineProjectInfo {
-    float distance = 0.0f;
-    float axis_value = 0.0f;
-    float visual_axis_value = 0.0f;
-    v3 position = v3(0.0f);
-};
-
-LineProjectInfo skeleton_mouse_to_3d_line(const Mouse3DInfo& mouse, float radius, int axis) {
-    LineProjectInfo return_info;
-
-    auto axis_ray = ray3(v3(0.0f), v3(0.0f));
-    axis_ray.dir[axis] = 1.0f;
-    
-    return_info.axis_value = math::line_intersection_3d(axis_ray, mouse.os_ray);
-    return_info.visual_axis_value = math::clamp(return_info.axis_value, math::min(0.0f, radius), math::max(0.0f, radius));
-    
-    v3 axis_projected = v3(0.0f);
-    axis_projected[axis] = return_info.visual_axis_value;
-    v4 h_screen_axis = mouse.mvp * v4(axis_projected, 1.0f);
-    v2 uv_axis_position = math::to_unsigned_range(h_screen_axis.xy / h_screen_axis.w);
-    return_info.distance = math::length((uv_axis_position - mouse.uv_position) * mouse.viewport_size);
-    return_info.position[axis] = return_info.visual_axis_value;
-    
-    return return_info;
-}
-
-void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene) {
-    static bool initialized = false;
-    static string joint_name = "";
-    if (!initialized) {
-        auto joint_mesh = generate_cube(v3(0.0f), v3(0.01f), palette::gray_5);
-        joint_name = upload_mesh(joint_mesh, false);
-        initialized = true;
-    }
-
-    ImGui::Text("pressed_widget: %d", WidgetSystem::pressed_id);
-    
-    for (id_ptr<Bone>& bone : skeleton->bones) {
-        ZoneScoped;
-        m44 bone_transform = model * bone->transform();
-        auto& r = render_scene->quick_mesh(joint_name, true, true);
-        r.transform = (m44GPU) bone_transform;
-
-        auto line = generate_formatted_line(render_scene->viewport.camera, {
-            {math::apply_transform(bone_transform, v3(0.0f)), palette::gray_5, 0.003f},
-            {math::apply_transform(bone_transform, v3(0.0f, bone->length, 0.0f)), palette::gray_5, 0.003f}
-        });
-        render_scene->quick_mesh(line, true, true);
-
-        Mouse3DInfo mouse;
-        mouse.model = bone_transform;
-        mouse.mvp = render_scene->viewport.camera->vp * mouse.model;
-        mouse.uv_position = render_scene->viewport.mouse_uv();
-        mouse.os_ray = math::transformed_ray(mouse.mvp, mouse.uv_position);
-        v4 h_screen_position = mouse.mvp * v4(v3(0.0f), 1.0f);
-        v2 uv_screen_position = math::to_unsigned_range(h_screen_position.xy / h_screen_position.w);
-        mouse.os_center_ray = math::transformed_ray(mouse.mvp, uv_screen_position);
-        mouse.viewport_size = v2(render_scene->viewport.size);
-
-        auto line_project_info = skeleton_mouse_to_3d_line(mouse, bone->length, 1);
-
-        auto& depth = WidgetSystem::depths[bone.id];
-        if (line_project_info.distance < 5.0f) {
-            constexpr float bias = 0.02f;
-            depth = math::min(depth, math::length(line_project_info.position - render_scene->viewport.camera->position) + bias);
-        } else {
-            depth = math::min(depth, FLT_MAX);
-        }
-        
-        if (Input::mouse_click[0]) {
-            if (depth < FLT_MAX) {
-                console({"test"});
-            } else {
-                skeleton->widget_pose_enabled[skeleton->bones.index(bone)] = false;
-            }
-        }
-
-        auto pressed_id = WidgetSystem::pressed_id;
-        if (pressed_id != 0)
-            console({"test"});
-        if (pressed_id == bone.id)
-            skeleton->widget_pose_enabled[skeleton->bones.index(bone)] = true;
-    }
 }
 
 

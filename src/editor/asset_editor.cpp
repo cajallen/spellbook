@@ -140,16 +140,16 @@ void AssetEditor::switch_tab(Tab new_tab) {
 template<typename T>
 void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, T& asset_value, const std::function<void(bool)>& callback = {}) {
     if (ImGui::BeginTabItem(name.c_str())) {
-        if (ImGui::Button("Reload") || asset_editor.tab != type)
+        if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
             asset_editor.switch_tab(type);
                     
         bool changed = inspect(&asset_value);
                     
-        if (ImGui::Button("Save")) {
+        if (ImGui::Button("Save##AssetTab")) {
             save_asset(asset_value);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Load")) {
+        if (ImGui::Button("Load##AssetTab")) {
             asset_value = load_asset<T>(asset_value.file_path);
         }
         if (callback)
@@ -161,16 +161,16 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, T&
 template<>
 void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, ModelCPU& asset_value, const std::function<void(bool)>& callback) {
     if (ImGui::BeginTabItem(name.c_str())) {
-        if (ImGui::Button("Reload") || asset_editor.tab != type)
+        if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
             asset_editor.switch_tab(type);
         
         bool changed = inspect(&asset_value, m44::identity(), &asset_editor.p_scene->render_scene);
                     
-        if (ImGui::Button("Save")) {
+        if (ImGui::Button("Save##AssetTab")) {
             save_asset(asset_value);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Load")) {
+        if (ImGui::Button("Load##AssetTab")) {
             asset_value = load_asset<ModelCPU>(asset_value.file_path);
         }
         if (callback)

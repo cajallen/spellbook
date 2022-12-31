@@ -357,7 +357,7 @@ inline bool contains_angle(range r, float angle) {
 
 inline float clamp_angle(float angle, range r) {
     r.start = wrap_angle(r.start);
-    r.end = wrap_angle(r.end);
+    r.end = wrap_angle(r.end - 0.001f);
     angle = wrap_angle(angle);
 
     // Clamp the angle to the range of the two given angles
