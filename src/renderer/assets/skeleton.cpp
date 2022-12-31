@@ -40,17 +40,30 @@ void SkeletonCPU::save_pose(string name) {
 }
 
 void SkeletonCPU::load_pose(string name, bool as_target, float offset) {
+    console({.str=name});
+    current_pose = name;
     for (u32 i = 0; i < bones.size(); i++) {
-        if (!as_target)
+        if (!as_target) {
             bones[i]->start = poses[name][i];
+            bones[i]->target.position.time = -1.0f;
+            bones[i]->target.rotation.time = -1.0f;
+            bones[i]->target.scale.time = -1.0f;
+        }
         else {
+            if (bones[i]->target.position.time != -1.0f)
+                bones[i]->start.position.value = bones[i]->target.position.value;
+            if (bones[i]->target.rotation.time != -1.0f)
+                bones[i]->start.rotation.value = bones[i]->target.rotation.value;
+            if (bones[i]->target.scale.time != -1.0f)
+                bones[i]->start.scale.value = bones[i]->target.scale.value;
+            bones[i]->start.position.time = Input::time;
+            bones[i]->start.rotation.time = Input::time;
+            bones[i]->start.scale.time = Input::time;
+            
             bones[i]->target = poses[name][i];
             bones[i]->target.position.time = Input::time + offset;
             bones[i]->target.rotation.time = Input::time + offset;
             bones[i]->target.scale.time = Input::time + offset;
-            bones[i]->start.position.time = Input::time;
-            bones[i]->start.rotation.time = Input::time;
-            bones[i]->start.scale.time = Input::time;
         }
     }
 }
@@ -81,38 +94,38 @@ void Bone::update(float new_time) {
 }
 
 m44 Bone::update_position() {
-    if (time == -1.0f)
+    if (time == -1.0f || target.position.time == -1.0f)
         return math::translate(start.position.value);
     
     float t = math::from_range(time, range(start.position.time, target.position.time));
-    t = math::abs(1.0f - math::mod(t, 2.0f));
+    //t = math::abs(1.0f - math::mod(t, 2.0f));
     v3 interpolated = math::mix(start.position.value, target.position.value, math::ease(t, ease_mode));
     return math::translate(interpolated);
 }
 
 m44 Bone::update_rotation() {
-    if (time == -1.0f)
+    if (time == -1.0f || target.position.time == -1.0f)
         return math::rotation(start.rotation.value);
 
     float t = math::from_range(time, range(start.rotation.time, target.rotation.time));
-    t = math::abs(1.0f - math::mod(t, 2.0f));
+    //t = math::abs(1.0f - math::mod(t, 2.0f));
     quat interpolated = math::slerp(start.rotation.value, target.rotation.value, math::ease(t, ease_mode));
     return math::rotation(interpolated);
 }
 
 m44 Bone::update_scaling() {
-    if (time == -1.0f)
+    if (time == -1.0f || target.position.time == -1.0f)
         return math::scale(start.scale.value);
 
     float t = math::from_range(time, range(start.scale.time, target.scale.time));
-    t = math::abs(1.0f - math::mod(t, 2.0f));
+    //t = math::abs(1.0f - math::mod(t, 2.0f));
     v3 interpolated = math::mix(start.scale.value, target.scale.value, math::ease(t, ease_mode));
     return math::scale(interpolated);
 }
 
 void SkeletonCPU::update() {
     for (auto bone_ptr : bones) {
-        bone_ptr->update(true ? -1.0f : Input::time);
+        bone_ptr->update(false ? -1.0f : Input::time);
     }
 }
 
@@ -228,7 +241,7 @@ bool inspect(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene)
     
     ImGui::Checkbox("3D Widget", &skeleton->widget_enabled);
 
-    if (any_changed) // || playing
+    if (any_changed || true) // || playing
         skeleton->update();
     
     if (skeleton->widget_enabled && render_scene != nullptr) {

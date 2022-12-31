@@ -76,12 +76,18 @@ struct Dragging {
     v3  start_intersect = v3(0.0f);
     
     f32 vertical_offset = 0.0f;
+
     v3 logic_position = v3(0.0f);
 };
 
 struct Collision {
     f32                radius = 0.0f;
     uset<entt::entity> with = {};
+};
+
+struct PoseController {
+    f32 time_scale = -1.0f;
+    string target_state;
 };
 
 void inspect_components(Scene* scene, entt::entity entity);

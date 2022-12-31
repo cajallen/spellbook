@@ -223,6 +223,43 @@ void skeleton_system(Scene* scene) {
     }
 }
 
+void pose_system(Scene* scene) {
+    ZoneScoped;
+    auto model_view = scene->registry.view<Model, PoseController>();
+    for (auto [entity, model, poser] : model_view.each()) {
+        for (auto& skeleton : model.model_gpu.skeletons) {
+            auto& skeleton_cpu = *skeleton->skeleton_cpu;
+            skeleton_cpu.time += Input::delta_time;
+            auto& poses = skeleton_cpu.poses;
+            if (poser.target_state == "flail") {
+                if (poses.contains("flail_1") && poses.contains("flail_2")) {
+                    if (math::mod(skeleton_cpu.time, 0.5f) < 0.25f) {
+                        if (skeleton_cpu.current_pose != "flail_1")
+                            skeleton_cpu.load_pose("flail_1", true, 0.25f);
+                    } else {
+                        if (skeleton_cpu.current_pose != "flail_2") {
+                            skeleton_cpu.load_pose("flail_2", true, 0.25f);
+                        }
+                    }
+                }
+                else {
+                    log_warning("Pose doesn't support flail");
+                }
+            }
+            if (poser.target_state == "default") {
+                if (poses.contains("default")) {
+                    if (skeleton_cpu.current_pose != "default")
+                        skeleton_cpu.load_pose("default");
+                }
+                else {
+                    log_warning("Pose doesn't support default");
+                }
+            }
+        }
+    }
+}
+
+
 // Adds dragging to entities
 void dragging_update_system(Scene* scene) {
     ZoneScoped;
@@ -256,7 +293,7 @@ void dragging_system(Scene* scene) {
     Viewport& viewport = scene->render_scene.viewport;
     v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
 
-    constexpr f32 raise_speed = 0.25f;
+    constexpr f32 raise_speed = 0.10f;
     auto drags = scene->registry.view<Dragging>();
     for (auto [entity, drag] : drags.each()) {
         v3 logic_offset = intersect - drag.start_intersect;
@@ -267,13 +304,16 @@ void dragging_system(Scene* scene) {
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();
     for (auto [entity, dragging, transform] : _view.each()) {
-        v3 model_offset = v3(0.0f, 0.0f, dragging.vertical_offset);
-
-        if (scene->registry.any_of<TransformLink>(entity)) {
-            model_offset += scene->registry.get<TransformLink>(entity).offset;
+        v3 pos = dragging.logic_position + v3(0.0f, 0.0f, dragging.vertical_offset);
+        if (scene->registry.all_of<TransformLink>(entity)) {
+            pos += scene->registry.get<TransformLink>(entity).offset;
         }
-        
-        transform.translation = dragging.logic_position + model_offset;
+        transform.translation = pos;
+    }
+
+    auto posers = scene->registry.view<Dragging, PoseController>();
+    for (auto [entity, _, poser] : posers.each()) {
+        poser.target_state = "flail";
     }
 }
 

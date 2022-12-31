@@ -16,7 +16,7 @@ struct RenderScene;
 template<typename T>
 struct KeyFrame {
     T value;
-    float time;
+    float time = -1.0f;
 };
 
 struct KeySet {
@@ -51,9 +51,12 @@ struct Bone {
 struct SkeletonCPU {
     vector<id_ptr<Bone>> bones;
     umap<string, vector<KeySet>> poses;
+    string current_pose;
     
     bool widget_enabled = false;
     vector<u8> widget_pose_enabled;
+
+    float time = 0.0f;
 
     void update();
     void save_pose(string name);

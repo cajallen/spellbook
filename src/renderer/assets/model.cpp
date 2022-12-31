@@ -81,8 +81,11 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
     if (!model->skeletons.empty()) {
         ImGui::Text("Skeletons");
 
-        for (auto skeleton_ptr : model->skeletons) {
-            inspect(&*skeleton_ptr, matrix * model->root_node->calculate_transform(), render_scene);
+        if (ImGui::TreeNode("Skeleton")) {
+            for (auto skeleton_ptr : model->skeletons) {
+                inspect(&*skeleton_ptr, matrix * model->root_node->calculate_transform(), render_scene);
+            }
+            ImGui::TreePop();
         }
     }
     

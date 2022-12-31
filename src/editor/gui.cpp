@@ -105,9 +105,9 @@ void GUI::update() {
     if (*(p_open = window_open("demo")))
         ImGui::ShowDemoWindow(p_open);
 
-    for (auto editor_scene : EditorScenes::values()) {
-        if (*(p_open = window_open(editor_scene->p_scene->name)))
-            editor_scene->window(p_open);
+    for (int i = 0; i < EditorScenes::values().size(); i++) {
+        if (*(p_open = window_open(EditorScenes::values()[i]->p_scene->name)))
+            EditorScenes::values()[i]->window(p_open);
     }
     if (*(p_open = window_open("var_system")))
         VarSystem::window(p_open);

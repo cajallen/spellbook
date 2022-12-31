@@ -59,6 +59,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<ModelTransform>(entity);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     scene->registry.emplace<Lizard>(entity, lizard_prefab.type);
+    scene->registry.emplace<PoseController>(entity, 1.0f, "default");
 
     switch (lizard_prefab.type) {
         default:

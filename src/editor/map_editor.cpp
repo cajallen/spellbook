@@ -15,7 +15,7 @@
 
 namespace spellbook {
 
-// ADD_EDITOR_SCENE(MapEditor);
+ADD_EDITOR_SCENE(MapEditor);
 
 bool map_editor_key(KeyCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
@@ -113,6 +113,20 @@ void MapEditor::setup() {
 
 void MapEditor::update() {
     ZoneScoped;
+
+    bool any = false;
+    for (auto& editor_scene : EditorScenes::values()) {
+        auto game_scene = dynamic_cast<GameScene*>(editor_scene);
+        if (game_scene) {
+            if (game_scene->p_scene->render_scene.viewport.focused) {
+                any = true;
+            }
+        }
+    }
+    p_scene->pause = any;
+    
+    if (p_scene->pause)
+        return;
     Viewport& viewport = p_scene->render_scene.viewport;
     
     if (viewport.hovered) {
@@ -161,6 +175,7 @@ void MapEditor::window(bool* p_open) {
             ADD_EDITOR_SCENE(GameScene);
             auto game_scene = (GameScene*) EditorScenes::values().back();
             game_scene->setup(map_prefab);
+            p_scene->pause = true;
         }
         
         ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, true);
@@ -253,10 +268,10 @@ void MapEditor::draw_preview(v3i cell) {
         p_scene->render_scene.quick_mesh(line_mesh, true, true);
     } else if (selected_lizard != -1) {
         vector<FormattedVertex> vertices;
-        for (int i = 0; i <= 32; i++) {
-            f32 angle  = i * math::TAU / 32.0f;
+        for (int i = 0; i <= 48; i++) {
+            f32 angle  = i * math::TAU / 48.0f;
             v3  center = (v3) cell + v3(0.5f, 0.5f, 1.5f);
-            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, line_width);
+            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.04f), palette::white, line_width);
         }
 
         auto line_mesh = generate_formatted_line(camera, std::move(vertices));

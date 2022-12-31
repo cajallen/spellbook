@@ -27,6 +27,8 @@ struct Scene {
     float time = 0.0f;
     float delta_time = 0.0f;
     float time_scale = 0.0f;
+
+    bool pause = false;
     
     void setup(const string& name);
     void update();

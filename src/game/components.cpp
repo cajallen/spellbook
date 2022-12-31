@@ -90,6 +90,12 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         }
         ImGui::Separator();
     }
+    if (auto* component = scene->registry.try_get<PoseController>(entity)) {
+        ZoneScoped;
+        ImGui::Text("Poser");
+        ImGui::Text("State: %s", component->target_state.c_str());
+        ImGui::Separator();
+    }
 }
 
 void preview_3d_components(Scene* scene, entt::entity entity) {

@@ -24,6 +24,10 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     if (l_transform) {
         l_transform->position = math::round(dragging->logic_position);
     }
+
+    auto poser = registry.try_get<PoseController>(entity);
+    if (poser)
+        poser->target_state = "default";
 }
 
 
@@ -61,6 +65,7 @@ void Scene::update() {
     spawner_draw_system(this);
     transform_system(this);
     skeleton_system(this);
+    pose_system(this);
     selection_id_system(this);
     consumer_system(this);
     health_system(this);
