@@ -28,6 +28,7 @@ struct Model {
 
 struct LogicTransform {
     v3 position = v3(0.0f);
+    euler rotation = euler();
 };
 
 struct ModelTransform {
@@ -62,7 +63,7 @@ struct Health {
 };
 
 struct Consumer {
-    f32 consume_distance = 0.01f;
+    f32 consume_distance = 0.02f;
     int amount_consumed = 0;
 };
 
@@ -71,13 +72,12 @@ struct Killed {
 };
 
 struct Dragging {
-    f32 when = 0.0f;
+    f32 start_time = 0.0f;
     v3  start_logic_position = v3(0.0f);
     v3  start_intersect = v3(0.0f);
     
-    f32 vertical_offset = 0.0f;
-
-    v3 logic_position = v3(0.0f);
+    v3 target_position = v3(0.0f);
+    v3 potential_logic_position = v3(0.0f);
 };
 
 struct Collision {
@@ -87,7 +87,25 @@ struct Collision {
 
 struct PoseController {
     f32 time_scale = -1.0f;
+    f32 time_to_target = 0.0f;
+    f32 cycle_duration = 0.0f;
     string target_state;
+
+    bool reset_time = false;
+
+    void set_state(const string& new_state, float to_target, float cycle = 0.0f) {
+        if (target_state != new_state) {
+            reset_time = true;
+            target_state = new_state;
+            time_to_target = to_target;
+            cycle_duration = cycle;
+        }
+    }
+};
+
+struct EmitterComponent {
+    EmitterGPU* emitter;
+    Timer* timer;
 };
 
 void inspect_components(Scene* scene, entt::entity entity);

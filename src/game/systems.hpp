@@ -26,6 +26,11 @@ void dragging_update_system(Scene* scene);
 void dragging_system(Scene* scene);
 void collision_update_system(Scene* scene);
 
+void lizard_targeting_system(Scene* scene);
+void lizard_casting_system(Scene* scene);
+
+void emitter_system(Scene* scene);
+
 void spawner_draw_system(Scene* scene);
 
 }

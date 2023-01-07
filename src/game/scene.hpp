@@ -10,6 +10,7 @@
 #include "game/spawner.hpp"
 #include "game/tile.hpp"
 #include "game/lizard.hpp"
+#include "game/timer.hpp"
 
 #include "renderer/render_scene.hpp"
 
@@ -29,6 +30,9 @@ struct Scene {
     float time_scale = 0.0f;
 
     bool pause = false;
+
+    plf::colony<Timer> timers;
+    vector<TimerCallback> timer_callbacks;
     
     void setup(const string& name);
     void update();
@@ -40,9 +44,9 @@ struct Scene {
 
     void model_cleanup(entt::registry&, entt::entity);
     void dragging_cleanup(entt::registry&, entt::entity);
-
     
     entt::entity get_lizard(v3i);
+    entt::entity get_tile(v2i);
     entt::entity get_tile(v3i);
     entt::entity get_spawner(v3i);
     entt::entity get_consumer(v3i);
@@ -54,5 +58,8 @@ struct Scene {
     entt::entity get(v3i, SpawnerPrefab* t);
     entt::entity get(v3i, ConsumerPrefab* t);
 };
+
+entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const string& emitter_path, float duration);
+entt::entity quick_emitter(Scene* scene, const string& name, v3 position, EmitterCPU emitter_cpu, float duration);
 
 }

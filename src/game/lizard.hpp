@@ -2,11 +2,13 @@
 
 #include <entt/fwd.hpp>
 
+#include "ability.hpp"
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "general/geometry.hpp"
 #include "game/stat.hpp"
 #include "game/game_file.hpp"
+#include "general/id_ptr.hpp"
 
 namespace spellbook {
 
@@ -67,6 +69,8 @@ struct TargetAttack {
 
 struct Lizard { // Component
     LizardType type;
+
+    id_ptr<Ability> basic_ability;
 };
 
 

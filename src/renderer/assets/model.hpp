@@ -61,7 +61,7 @@ struct ModelGPU {
 template <>
 bool     save_asset(const ModelCPU& asset_file);
 template <>
-ModelCPU load_asset(const string& input_path);
+ModelCPU load_asset(const string& input_path, bool assert_exist);
 
 ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
 void     deinstance_model(RenderScene&, const ModelGPU&);

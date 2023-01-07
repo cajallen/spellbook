@@ -44,6 +44,7 @@ struct RenderScene {
 
     plf::colony<Renderable> renderables;
     plf::colony<Renderable> widget_renderables;
+    plf::colony<EmitterGPU> emitters;
     Viewport                viewport;
 
     SceneData       scene_data;
@@ -62,7 +63,6 @@ struct RenderScene {
     bool cull_pause = false;
     vuk::Texture render_target;
 
-    vector<EmitterGPU> emitters;
 
     vector<LightGPU> submitted_lights;
 

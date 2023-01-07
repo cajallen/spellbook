@@ -113,22 +113,11 @@ void MapEditor::setup() {
 
 void MapEditor::update() {
     ZoneScoped;
-
-    bool any = false;
-    for (auto& editor_scene : EditorScenes::values()) {
-        auto game_scene = dynamic_cast<GameScene*>(editor_scene);
-        if (game_scene) {
-            if (game_scene->p_scene->render_scene.viewport.focused) {
-                any = true;
-            }
-        }
-    }
-    p_scene->pause = any;
     
     if (p_scene->pause)
         return;
-    Viewport& viewport = p_scene->render_scene.viewport;
     
+    Viewport& viewport = p_scene->render_scene.viewport;
     if (viewport.hovered) {
         v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, y_level);
         v3i top_drawn_cell      = (v3i) math::floor(intersect) - v3i(0,0,1);

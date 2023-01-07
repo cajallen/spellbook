@@ -44,7 +44,16 @@ void main() {
     if (particle.life < 0)
         M[3][3] = 1.0 / 0.0;
 
-    
+    if (particles[index].alignment.w > 0.0) {
+        vec3 a = particles[index].alignment.xyz;
+        vec3 b = normalize(particles[index].velocity_damping.xyz);
+        vec3 vr = b - dot(a, b) * a;
+        vec3 basis_2 = normalize(vr);
+        vec3 basis_3 = normalize(cross(b, a));
+        vec3 basis_1 = normalize(cross(basis_2, basis_3));
+        mat3 rotation = mat3(basis_1, basis_2, basis_3);
+        M = M * mat4(rotation);
+    }
     vec4 h_position = M * vec4(vin_position, 1.0);
     vout.position = h_position.xyz / h_position.w;
     

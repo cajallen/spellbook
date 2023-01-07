@@ -12,6 +12,7 @@
 struct Particle {
     vec4 position_scale;
     vec4 velocity_damping;
+    vec4 alignment;
     float color_x;
     float life;
     float life_total;
@@ -70,3 +71,5 @@ float float_noise(uint i, uint seed) {
 float map(float value, float min_in, float max_in, float min_out, float max_out) {
     return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in);
 }
+
+#define TAU 6.2831853071

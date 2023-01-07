@@ -160,12 +160,26 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
         rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
         return vuk::Future {rg, "target_output"};
     }
+
+    for (auto it = emitters.begin(); it != emitters.end();) {
+        if (it->deinstance_at <= (Input::time - Input::delta_time - 0.1f))
+            it = emitters.erase(it);
+        else
+            it++;
+    }
+    std::erase_if(emitters, [](const EmitterGPU& emitter) {
+        return emitter.deinstance_at <= (Input::time - Input::delta_time - 0.1f);
+    });
+
     
     for (Renderable& renderable : renderables) {
         upload_dependencies(renderable);
     }
     for (Renderable& renderable : widget_renderables) {
         upload_dependencies(renderable);
+    }
+    for (EmitterGPU& emitter : emitters) {
+        upload_dependencies(emitter);
     }
 
     game.renderer.wait_for_futures();

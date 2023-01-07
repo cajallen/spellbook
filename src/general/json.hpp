@@ -258,9 +258,9 @@ T from_jv_impl(const json_value& jv, T* _) {
 }
 
 #define EXPAND(x) x
-#define GET_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, NAME, ...) NAME
+#define GET_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, NAME, ...) NAME
 #define PASTE(...) \
-    EXPAND(GET_MACRO(__VA_ARGS__, PASTE19, PASTE18, PASTE17, PASTE16, PASTE15, PASTE14, PASTE13, PASTE12, PASTE11, PASTE10, PASTE9, PASTE8, PASTE7, PASTE6, PASTE5, PASTE4, PASTE3, PASTE2, PASTE1)(__VA_ARGS__))
+    EXPAND(GET_MACRO(__VA_ARGS__, PASTE20, PASTE19, PASTE18, PASTE17, PASTE16, PASTE15, PASTE14, PASTE13, PASTE12, PASTE11, PASTE10, PASTE9, PASTE8, PASTE7, PASTE6, PASTE5, PASTE4, PASTE3, PASTE2, PASTE1)(__VA_ARGS__))
 #define PASTE2(func, v1) func(v1)
 #define PASTE3(func, v1, v2) PASTE2(func, v1) PASTE2(func, v2)
 #define PASTE4(func, v1, v2, v3) PASTE2(func, v1) PASTE3(func, v2, v3)
@@ -279,6 +279,7 @@ T from_jv_impl(const json_value& jv, T* _) {
 #define PASTE17(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16) PASTE2(func, v1) PASTE16(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16)
 #define PASTE18(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17) PASTE2(func, v1) PASTE17(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17)
 #define PASTE19(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18) PASTE2(func, v1) PASTE18(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18)
+#define PASTE20(func, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19) PASTE2(func, v1) PASTE19(func, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19)
 
 #define FROM_JSON_ELE(var)                                     \
     if (j.contains(#var)) {                                    \

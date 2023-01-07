@@ -34,6 +34,7 @@ layout(push_constant) uniform uPushConstant {
 } pc;
 
 struct SimpleInputRead {
+    vec3 position;
     vec3 normal;
     float depth;
 };
@@ -72,7 +73,12 @@ const ivec3 samples[NUM_TAPS] = ivec3[](
 SimpleInputRead read_simple_inputs(ivec2 coord) {
     SimpleInputRead data;
     data.normal = normalize(texelFetch(s_normal, coord, 0).rgb);
-    data.depth = 1.0 / max(texelFetch(s_depth, coord, 0).r, 0.0001);
+    float depth_read = texelFetch(s_depth, coord, 0).r;
+    data.depth = 1.0 / max(depth_read, 0.0001);
+    
+    vec2 uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
+    vec4 h_position_worldspace = inverse_vp * vec4(uv, depth_read, 1.0);
+    data.position = h_position_worldspace.xyz / h_position_worldspace.w;
     return data;
 }
 
@@ -192,6 +198,8 @@ float shaded(InputRead data) {
     } 
     return shaded_amount;
 }
+
+
 
 vec3 calculate_lighting(InputRead data) {
     float shadow = shaded(data);

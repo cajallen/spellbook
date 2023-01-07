@@ -105,7 +105,6 @@ void health_draw_system(Scene* scene) {
 
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
         
-        constexpr float gap = 0.02f;
         constexpr float thickness = 0.03f;
         constexpr float width = 0.6f;
         m44 inner_matrix = math::translate(position) * 
@@ -114,7 +113,7 @@ void health_draw_system(Scene* scene) {
                            math::scale(v3(percentage * 0.5f * width, thickness, thickness));
         m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 0.5) + position) *
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
-                           math::scale(v3(0.5f * width + gap, thickness + gap, thickness + gap));
+                           math::scale(v3(0.5f * width, thickness, thickness));
 
         auto renderable1 = Renderable{mesh_name, health_name, (m44GPU) inner_matrix, {}, true};
         auto renderable2 = Renderable{mesh_name, health_bar_name, (m44GPU) outer_matrix, {}, true};
@@ -229,16 +228,24 @@ void pose_system(Scene* scene) {
     for (auto [entity, model, poser] : model_view.each()) {
         for (auto& skeleton : model.model_gpu.skeletons) {
             auto& skeleton_cpu = *skeleton->skeleton_cpu;
+            if (poser.reset_time) {
+                console({.str="Reset"});
+                skeleton_cpu.time = 0.0f;
+                poser.reset_time = false;
+            }
             skeleton_cpu.time += Input::delta_time;
             auto& poses = skeleton_cpu.poses;
             if (poser.target_state == "flail") {
                 if (poses.contains("flail_1") && poses.contains("flail_2")) {
-                    if (math::mod(skeleton_cpu.time, 0.5f) < 0.25f) {
-                        if (skeleton_cpu.current_pose != "flail_1")
-                            skeleton_cpu.load_pose("flail_1", true, 0.25f);
+                    if (math::mod(skeleton_cpu.time, poser.time_to_target) < poser.time_to_target * 0.5f) {
+                        if (skeleton_cpu.current_pose != "flail_1") {
+                            skeleton_cpu.load_pose("flail_1", true, poser.time_to_target * 0.5f);
+                            poser.time_to_target = poser.cycle_duration;
+                        }
                     } else {
                         if (skeleton_cpu.current_pose != "flail_2") {
-                            skeleton_cpu.load_pose("flail_2", true, 0.25f);
+                            skeleton_cpu.load_pose("flail_2", true, poser.time_to_target * 0.5f);
+                            poser.time_to_target = poser.cycle_duration;
                         }
                     }
                 }
@@ -246,10 +253,38 @@ void pose_system(Scene* scene) {
                     log_warning("Pose doesn't support flail");
                 }
             }
+            if (poser.target_state == "attacking") {
+                if (poses.contains("windup") || poses.contains("followthrough")) {
+                    if (skeleton_cpu.time < poser.time_to_target * 0.5f) {
+                        if (skeleton_cpu.current_pose != "windup")
+                            skeleton_cpu.load_pose("windup", true, poser.time_to_target * 0.5f);
+                    } else {
+                        if (skeleton_cpu.current_pose != "followthrough") {
+                            skeleton_cpu.load_pose("followthrough", true, poser.time_to_target * 0.5f);
+                        }
+                    }
+                }
+                else {
+                    log_warning("Pose doesn't support attacking");
+                }
+            }
             if (poser.target_state == "default") {
-                if (poses.contains("default")) {
+                if (poses.contains("idle_1") && poses.contains("idle_2")) {
+                    if (math::mod(skeleton_cpu.time, poser.time_to_target) < poser.time_to_target * 0.5f) {
+                        if (skeleton_cpu.current_pose != "idle_1") {
+                            skeleton_cpu.load_pose("idle_1", true, poser.time_to_target * 0.5f);
+                            poser.time_to_target = poser.cycle_duration;
+                        }
+                    } else {
+                        if (skeleton_cpu.current_pose != "idle_2") {
+                            skeleton_cpu.load_pose("idle_2", true, poser.time_to_target * 0.5f);
+                            poser.time_to_target = poser.cycle_duration;
+                        }
+                    }
+                }
+                else if (poses.contains("default")) {
                     if (skeleton_cpu.current_pose != "default")
-                        skeleton_cpu.load_pose("default");
+                        skeleton_cpu.load_pose("default", poser.time_to_target != 0.0f, poser.time_to_target);
                 }
                 else {
                     log_warning("Pose doesn't support default");
@@ -297,14 +332,20 @@ void dragging_system(Scene* scene) {
     auto drags = scene->registry.view<Dragging>();
     for (auto [entity, drag] : drags.each()) {
         v3 logic_offset = intersect - drag.start_intersect;
-        drag.logic_position = drag.start_logic_position + logic_offset;
-        
-        drag.vertical_offset = 0.5f * math::smoothstep(drag.when, drag.when + raise_speed, scene->time);
+        drag.target_position = drag.start_logic_position + logic_offset;
+
+        entt::entity potential_entity = scene->get_tile(math::round_cast(drag.target_position.xy));
+        auto potential_transform = scene->registry.try_get<LogicTransform>(potential_entity);
+        if (potential_transform) {
+            drag.potential_logic_position = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
+        }
+        drag.target_position.z = drag.potential_logic_position.z;
     }
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();
-    for (auto [entity, dragging, transform] : _view.each()) {
-        v3 pos = dragging.logic_position + v3(0.0f, 0.0f, dragging.vertical_offset);
+    for (auto [entity, drag, transform] : _view.each()) {
+        f32 vertical_offset = 0.5f * math::smoothstep(drag.start_time, drag.start_time + raise_speed, scene->time);
+        v3 pos = drag.target_position + v3(0.0f, 0.0f, vertical_offset);
         if (scene->registry.all_of<TransformLink>(entity)) {
             pos += scene->registry.get<TransformLink>(entity).offset;
         }
@@ -313,7 +354,7 @@ void dragging_system(Scene* scene) {
 
     auto posers = scene->registry.view<Dragging, PoseController>();
     for (auto [entity, _, poser] : posers.each()) {
-        poser.target_state = "flail";
+        poser.set_state("flail", 0.2f, 0.75f);
     }
 }
 
@@ -351,6 +392,20 @@ void collision_update_system(Scene* scene) {
     }
 }
 
+void lizard_targeting_system(Scene* scene) {
+    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
+        if (!lizard.basic_ability->post_trigger_timer->ticking && lizard.basic_ability->targeting_callback)
+            lizard.basic_ability->targeting_callback(lizard.basic_ability->targeting_payload);
+    }
+}
+
+void lizard_casting_system(Scene* scene) {
+    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
+        if (lizard.basic_ability->has_target && lizard.basic_ability->ready_to_cast())
+            lizard.basic_ability->request_cast();
+    }
+}
+
 void spawner_draw_system(Scene* scene) {
     for (auto [entity, spawner, m_transform, transform_link] : scene->registry.view<Spawner, ModelTransform, TransformLink>().each()) {
         transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * scene->time);
@@ -358,5 +413,15 @@ void spawner_draw_system(Scene* scene) {
         m_transform.rotation.yaw = 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time);
     }
 }
+
+void emitter_system(Scene* scene) {
+    for (auto [entity, emitter_comp, logic_transform] : scene->registry.view<EmitterComponent, LogicTransform>().each()) {
+        if (emitter_comp.emitter->emitter_cpu.position != logic_transform.position) {
+            emitter_comp.emitter->emitter_cpu.position = logic_transform.position;
+            emitter_comp.emitter->update_from_cpu(emitter_comp.emitter->emitter_cpu);
+        }
+    }
+}
+
 
 }

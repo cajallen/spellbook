@@ -150,10 +150,15 @@ fs::path _convert_to_relative(const fs::path& path) {
 }
 
 template<>
-ModelCPU load_asset(const string& input_path) {
+ModelCPU load_asset(const string& input_path, bool assert_exists) {
     fs::path absolute_path = to_resource_path(input_path);
-    check_else(fs::exists(absolute_path))
-        return {};
+    if (assert_exists) {
+        assert_else(fs::exists(absolute_path))
+            return {};      
+    } else {
+        check_else(fs::exists(absolute_path))
+            return {};
+    }
     string ext = absolute_path.extension().string();
     check_else(ext == extension(FileType_Model))
         return {};

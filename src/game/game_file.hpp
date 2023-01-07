@@ -50,10 +50,15 @@ bool save_asset(const T& asset_value) {
 }
 
 template <typename T>
-T load_asset(const string& file_path) {
+T load_asset(const string& file_path, bool assert_exists = false) {
     fs::path absolute_path = to_resource_path(file_path);
-    check_else(fs::exists(absolute_path))
-        return {};
+    if (assert_exists) {
+        assert_else(fs::exists(absolute_path))
+            return {};
+    } else {
+        check_else(fs::exists(absolute_path))
+            return {};
+    }
     string ext = absolute_path.extension().string();
     assert_else(ext == extension(from_typeinfo(typeid(T))))
         return {};

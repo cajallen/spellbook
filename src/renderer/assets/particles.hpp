@@ -8,6 +8,7 @@
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "renderer/vertex.hpp"
+#include "renderer/image.hpp"
 
 
 namespace spellbook {
@@ -16,6 +17,7 @@ struct RenderScene;
 struct EmitterCPU {
     string file_path;
     
+    v3 offset = v3(0.0f);
     v3 position = v3(0.0f);
     v3 velocity = v3(0.0f);
     float damping = 1.0f;
@@ -35,6 +37,9 @@ struct EmitterCPU {
     float scale_random = 0.0f;
     float duration_random = 0.0f;
 
+    v3 alignment_vector = v3(0.0f);
+    v3 alignment_random = v3(0.0f);
+
     string mesh;
     string material;
 };
@@ -45,7 +50,10 @@ struct EmitterSettings {
 
     v4 position_scale_random;
     v4 velocity_damping_random;
-    
+
+    v4 alignment_vector;
+    v4 alignment_random;
+
     float life;
     float life_random;
     float falloff;
@@ -61,10 +69,12 @@ struct EmitterGPU {
     float rate;
     float next_spawn;
     
-    vuk::SampledImage color = vuk::SampledImage(vuk::SampledImage::Global{});
+    Image color;
     vuk::Unique<vuk::Buffer> particles_buffer;
     string mesh;
     string material;
+
+    float deinstance_at = FLT_MAX;
 
     void calculate_max() {
         settings.max_particles = (settings.life + settings.life_random) / rate + 1;
@@ -75,17 +85,16 @@ struct EmitterGPU {
     void update_size();
 };
 
-struct EmitterComponent {
-    EmitterGPU* emitter;
-};
-
 EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu);
+void deinstance_emitter(EmitterGPU& emitter, bool wait_despawn = true);
 
 bool inspect(EmitterCPU* emitter);
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 
-JSON_IMPL(EmitterCPU, position, velocity, damping, scale, duration, falloff, particles_per_second, color1_start, color1_end, color2_start, color2_end, velocity_random, position_random, scale_random, duration_random, mesh, material);
+void upload_dependencies(EmitterGPU& emitter);
+
+JSON_IMPL(EmitterCPU, offset, velocity, damping, scale, duration, falloff, particles_per_second, color1_start, color1_end, color2_start, color2_end, velocity_random, position_random, scale_random, duration_random, alignment_vector, alignment_random, mesh, material);
 
 }

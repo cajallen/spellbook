@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "extension/imgui_extra.hpp"
 #include "general/string.hpp"
 #include "general/matrix_math.hpp"
 #include "game/scene.hpp"
@@ -14,6 +15,19 @@
 namespace spellbook {
 
 void          inspect_components(Scene* scene, entt::entity entity) {
+    if (auto* component = scene->registry.try_get<Model>(entity)) {
+        ZoneScoped;
+        ImGui::Text("Model");
+        if (scene->registry.all_of<ModelTransform>(entity)) {
+            auto transform = scene->registry.get<ModelTransform>(entity);
+            m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
+            inspect(&component->model_cpu, transform_matrix, &scene->render_scene);
+        }
+        else {
+            inspect(&component->model_cpu, m44::identity(), &scene->render_scene);
+        }
+        ImGui::Separator();
+    }
     if (auto* component = scene->registry.try_get<LogicTransform>(entity)) {
         ImGui::Text("LogicTransform");
         ImGui::DragFloat3("Position", component->position.data, 0.01f);
@@ -31,19 +45,37 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::DragFloat3("Offset", component->offset.data, 0.01f);
         ImGui::Separator();
     }
+    if (auto* component = scene->registry.try_get<LogicTransformAttach>(entity)) {
+        ImGui::Text("LogicTransformAttach");
+        ImGui::DragFloat3("Offset", component->offset.data, 0.01f);
+        ImGui::Separator();
+    }
     if (auto* component = scene->registry.try_get<GridSlot>(entity)) {
         ImGui::Text("GridSlot");
         ImGui::Checkbox("Path", &component->path);
         ImGui::Separator();
     }
+    if (auto* component = scene->registry.try_get<Traveler>(entity)) {
+        ImGui::Text("Traveler");
+        if (ImGui::TreeNode("Max Speed")) {
+            inspect(&component->max_speed);
+            ImGui::TreePop();
+        }
+        ImGui::Separator();
+    }
     if (auto* component = scene->registry.try_get<Health>(entity)) {
         ImGui::Text("Health");
-        ImGui::DragFloat("Position", &component->value, 0.01f);
+        ImGui::DragFloat("Value", &component->value, 0.01f);
+        if (ImGui::TreeNode("Max Health")) {
+            inspect(&component->max_health);
+            ImGui::TreePop();
+        }
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<Consumer>(entity)) {
         ImGui::Text("Consumer");
         ImGui::DragFloat("Consume Distance", &component->consume_distance, 0.01f);
+        ImGui::Text("Amount Consumed: %d", component->amount_consumed);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<Killed>(entity)) {
@@ -53,8 +85,11 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     }
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
         ImGui::Text("Dragging");
+        ImGui::DragFloat("Start Time", &component->start_time, 0.01f);
         ImGui::DragFloat3("Start Logic Position", component->start_logic_position.data, 0.01f);
         ImGui::DragFloat3("Start Intersect", component->start_intersect.data, 0.01f);
+        ImGui::DragFloat3("Target Position", component->target_position.data, 0.01f);
+        ImGui::DragFloat3("Potential Position", component->potential_logic_position.data, 0.01f);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<Collision>(entity)) {
@@ -77,23 +112,21 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::DragFloat("Cooldown", &component->cooldown, 0.01f);
         ImGui::Separator();
     }
-    if (auto* component = scene->registry.try_get<Model>(entity)) {
-        ZoneScoped;
-        ImGui::Text("Model");
-        if (scene->registry.all_of<ModelTransform>(entity)) {
-            auto transform = scene->registry.get<ModelTransform>(entity);
-            m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
-            inspect(&component->model_cpu, transform_matrix, &scene->render_scene);
-        }
-        else {
-            inspect(&component->model_cpu, m44::identity(), &scene->render_scene);
-        }
-        ImGui::Separator();
-    }
     if (auto* component = scene->registry.try_get<PoseController>(entity)) {
         ZoneScoped;
         ImGui::Text("Poser");
+        ImGui::DragFloat("Time Scale", &component->time_scale);
         ImGui::Text("State: %s", component->target_state.c_str());
+        ImGui::Separator();
+    }
+    if (auto* component = scene->registry.try_get<Lizard>(entity)) {
+        ZoneScoped;
+        ImGui::Text("Lizard");
+        ImGui::EnumCombo("Type", &component->type);
+        if (ImGui::TreeNode("Basic Ability")) {
+            inspect(&*component->basic_ability);
+            ImGui::TreePop();
+        }
         ImGui::Separator();
     }
 }
@@ -109,15 +142,14 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
         vector<FormattedVertex> vertices;
 
-        v3 circ_pos = math::round(component->logic_position);
-        circ_pos.z  = 0.03f;
-        for (int i = 0; i <= 24; i++) {
-            f32 angle  = i * math::TAU / 24.0f;
-            v3  center = circ_pos + v3(0.5f, 0.5f, 0.0f);
-            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.05f), palette::white, 0.03f);
+        v3 center = component->potential_logic_position + v3(0.5f, 0.5f, 0.05f);
+        for (int i = 0; i <= 32; i++) {
+            constexpr f32 radius = 0.5f;
+            f32 angle  = i * math::TAU / 32.0f;
+            vertices.emplace_back(center + radius * v3(math::cos(angle), math::sin(angle), 0.0f), palette::white, 0.02f);
         }
 
-        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true);
+        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, false);
     }
 }
 

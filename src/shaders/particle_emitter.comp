@@ -15,6 +15,9 @@ layout(binding = 1) uniform EmitterSettings {
     vec4 position_scale_random;
     vec4 velocity_damping_random;
     
+    vec4 alignment_vector;
+    vec4 alignment_random;
+    
     float life;
     float life_random;
     float falloff;
@@ -36,24 +39,30 @@ void main() {
     bool spawn1 = head <= index && index < head + pc.spawn_count;
     bool spawn2 = (head + pc.spawn_count > max_particles) && index < ((head + pc.spawn_count) % max_particles);
 
-    float pr0 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 0);
-    float pr1 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 1);
-    float pr2 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 2);
-    float pr3 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 3);
+    float pr0 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 0);
+    float pr1 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 1);
+    float pr2 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 2);
+    float pr3 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 3);
 
-    float vr4 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 4);
-    float vr5 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 5);
-    float vr6 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 6);
-    float vr7 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 7);
+    float vr4 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 4);
+    float vr5 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 5);
+    float vr6 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 6);
+    float vr7 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 7);
 
-    float lr8 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 8);
+    float lr8 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 8);
     
-    float cr9 = float_noise(uint(pc.dt * 43758.5453), index * 10 + 9);
+    float cr9 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 9);
+    
+    float ar10 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 10);
+    float ar11 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 11);
+    float ar12 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 12);
+
 
     if (spawn1 || spawn2) {
         particles[index] = Particle(
             position_scale + vec4(pr0, pr1, pr2, pr3) * position_scale_random,
             velocity_damping + vec4(vr4, vr5, vr6, vr7) * velocity_damping_random,
+            vec4(normalize(alignment_vector.xyz + vec3(ar10, ar11, ar12) * alignment_random.xyz), alignment_vector.w),
             cr9,
             life + lr8 * life_random,
             life + lr8 * life_random,

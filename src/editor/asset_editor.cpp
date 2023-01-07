@@ -19,6 +19,7 @@ void AssetEditor::setup() {
     p_scene->setup("Asset Editor");
     p_scene->edit_mode = true;
 
+    p_scene->render_scene.scene_data.ambient = Color(palette::white, 0.20);
     
     fs::path asset_editor_file = fs::path(game.user_folder) / ("asset_editor" + extension(FileType_General));
     
@@ -96,7 +97,7 @@ void AssetEditor::switch_tab(Tab new_tab) {
         } break;
         case (Tab_Emitter): {
             if (emitter_gpu != nullptr);
-                render_scene.emitters.remove_index(render_scene.emitters.index(*emitter_gpu));
+                deinstance_emitter(*emitter_gpu, false);
             emitter_gpu = nullptr;
         } break;
         default: break;
@@ -172,6 +173,29 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Mo
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
             asset_value = load_asset<ModelCPU>(asset_value.file_path);
+        }
+        if (callback)
+            callback(changed);
+        ImGui::EndTabItem();
+    }
+}
+
+template<>
+void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, EmitterCPU& asset_value, const std::function<void(bool)>& callback) {
+    if (ImGui::BeginTabItem(name.c_str())) {
+        if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
+            asset_editor.switch_tab(type);
+        
+        bool changed = inspect(&asset_value);
+                    
+        if (ImGui::Button("Save##AssetTab")) {
+            save_asset(asset_value);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load##AssetTab")) {
+            string old_mat = asset_value.material;
+            asset_value = load_asset<EmitterCPU>(asset_value.file_path);
+            asset_value.material = old_mat;
         }
         if (callback)
             callback(changed);

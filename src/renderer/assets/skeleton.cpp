@@ -56,14 +56,14 @@ void SkeletonCPU::load_pose(string name, bool as_target, float offset) {
                 bones[i]->start.rotation.value = bones[i]->target.rotation.value;
             if (bones[i]->target.scale.time != -1.0f)
                 bones[i]->start.scale.value = bones[i]->target.scale.value;
-            bones[i]->start.position.time = Input::time;
-            bones[i]->start.rotation.time = Input::time;
-            bones[i]->start.scale.time = Input::time;
+            bones[i]->start.position.time = time;
+            bones[i]->start.rotation.time = time;
+            bones[i]->start.scale.time = time;
             
             bones[i]->target = poses[name][i];
-            bones[i]->target.position.time = Input::time + offset;
-            bones[i]->target.rotation.time = Input::time + offset;
-            bones[i]->target.scale.time = Input::time + offset;
+            bones[i]->target.position.time = time + offset;
+            bones[i]->target.rotation.time = time + offset;
+            bones[i]->target.scale.time = time + offset;
         }
     }
 }
@@ -98,6 +98,7 @@ m44 Bone::update_position() {
         return math::translate(start.position.value);
     
     float t = math::from_range(time, range(start.position.time, target.position.time));
+    t = math::clamp(t, range(0.0f, 1.0f));
     //t = math::abs(1.0f - math::mod(t, 2.0f));
     v3 interpolated = math::mix(start.position.value, target.position.value, math::ease(t, ease_mode));
     return math::translate(interpolated);
@@ -108,6 +109,7 @@ m44 Bone::update_rotation() {
         return math::rotation(start.rotation.value);
 
     float t = math::from_range(time, range(start.rotation.time, target.rotation.time));
+    t = math::clamp(t, range(0.0f, 1.0f));
     //t = math::abs(1.0f - math::mod(t, 2.0f));
     quat interpolated = math::slerp(start.rotation.value, target.rotation.value, math::ease(t, ease_mode));
     return math::rotation(interpolated);
@@ -118,6 +120,7 @@ m44 Bone::update_scaling() {
         return math::scale(start.scale.value);
 
     float t = math::from_range(time, range(start.scale.time, target.scale.time));
+    t = math::clamp(t, range(0.0f, 1.0f));
     //t = math::abs(1.0f - math::mod(t, 2.0f));
     v3 interpolated = math::mix(start.scale.value, target.scale.value, math::ease(t, ease_mode));
     return math::scale(interpolated);
@@ -125,7 +128,7 @@ m44 Bone::update_scaling() {
 
 void SkeletonCPU::update() {
     for (auto bone_ptr : bones) {
-        bone_ptr->update(false ? -1.0f : Input::time);
+        bone_ptr->update(time);
     }
 }
 

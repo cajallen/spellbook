@@ -124,6 +124,7 @@
     <ClCompile Include="src\editor\skeleton_widget.cpp" />
     <ClCompile Include="src\editor\test_scene.cpp" />
     <ClCompile Include="src\editor\widget_system.cpp" />
+    <ClCompile Include="src\game\ability.cpp" />
     <ClCompile Include="src\game\camera_controller.cpp" />
     <ClCompile Include="src\game\components.cpp" />
     <ClCompile Include="src\game\consumer.cpp" />
@@ -138,6 +139,7 @@
     <ClCompile Include="src\game\systems.cpp" />
     <ClCompile Include="src\game\tile.cpp" />
     <ClCompile Include="src\game\lizard.cpp" />
+    <ClCompile Include="src\game\timer.cpp" />
     <ClCompile Include="src\general\logger.cpp" />
     <ClCompile Include="src\h_impl.cpp" />
     <ClCompile Include="src\general\astar.cpp" />
@@ -328,6 +330,7 @@
     <ClInclude Include="src\editor\test_scene.hpp" />
     <ClInclude Include="src\editor\widget_system.hpp" />
     <ClInclude Include="src\extension\fmt.hpp" />
+    <ClInclude Include="src\game\ability.hpp" />
     <ClInclude Include="src\game\camera_controller.hpp" />
     <ClInclude Include="src\game\consumer.hpp" />
     <ClInclude Include="src\game\enemy.hpp" />
@@ -342,6 +345,7 @@
     <ClInclude Include="src\game\components.hpp" />
     <ClInclude Include="src\game\stat.hpp" />
     <ClInclude Include="src\game\systems.hpp" />
+    <ClInclude Include="src\game\timer.hpp" />
     <ClInclude Include="src\general\logger.hpp" />
     <ClInclude Include="src\global.hpp" />
     <ClInclude Include="src\general\astar.hpp" />
@@ -378,6 +382,7 @@
     <ClInclude Include="src\renderer\assets\texture_asset.hpp" />
     <ClInclude Include="src\renderer\camera.hpp" />
     <ClInclude Include="src\renderer\draw_functions.hpp" />
+    <ClInclude Include="src\renderer\image.hpp" />
     <ClInclude Include="src\renderer\light.hpp" />
     <ClInclude Include="src\renderer\renderable.hpp" />
     <ClInclude Include="src\renderer\renderer.hpp" />

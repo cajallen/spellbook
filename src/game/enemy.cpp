@@ -25,7 +25,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& enemy_prefab, v3i 
     scene->registry.emplace<TransformLink>(entity, v3(0.5));
 
     scene->registry.emplace<Traveler>(entity, vector<v3i>{}, enemy_prefab.max_speed);
-    scene->registry.emplace<Health>(entity, enemy_prefab.max_health * 20.f, enemy_prefab.max_health * 20.f);
+    scene->registry.emplace<Health>(entity, enemy_prefab.max_health, enemy_prefab.max_health);
     
     return entity;  
 }
