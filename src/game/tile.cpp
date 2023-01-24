@@ -12,7 +12,7 @@
 
 namespace spellbook {
 
-entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, u32 rotation) {
+entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location) {
     static int i      = 0;
     
     auto       entity = scene->registry.create();
@@ -23,7 +23,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     model_comp.model_gpu = std::move(instance_model(scene->render_scene, model_comp.model_cpu));
 
     scene->registry.emplace<LogicTransform>(entity, v3(location));
-    scene->registry.emplace<ModelTransform>(entity, v3(location), euler{float(rotation) * math::PI / 2.0f});
+    scene->registry.emplace<ModelTransform>(entity, v3(location));
     scene->registry.emplace<TransformLink>(entity, v3(0.5f));
     scene->registry.emplace<GridSlot>(entity, tile_prefab.type == TileType_Path);
 

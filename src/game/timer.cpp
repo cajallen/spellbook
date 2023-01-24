@@ -4,9 +4,21 @@
 
 namespace spellbook {
 
-Timer& add_timer(Scene* scene, string name, void(*callback)(void*), void* payload, float time) {
+Timer& add_timer(Scene* scene, string name, void(*callback)(Timer*, void*), void* payload, float time) {
     assert_else(!(callback != nullptr ^ payload != nullptr));
-    return *scene->timers.emplace(name, time, TimerCallback{callback, payload}, scene);
+    auto& timer = *scene->timers.emplace(name, time);
+    timer.callback = TimerCallback{callback, &timer, payload};
+    timer.scene = scene;
+    return timer;
+}
+
+Timer& add_tween_timer(Scene* scene, string name, void(*callback)(Timer*, void*), void* payload, float time) {
+    assert_else(!(callback != nullptr ^ payload != nullptr));
+    auto& timer = *scene->timers.emplace(name, time);
+    timer.callback = TimerCallback{callback, &timer, payload};
+    timer.trigger_every_tick = true;
+    timer.scene = scene;
+    return timer;
 }
 
 void remove_timer(Scene* scene, string name) {
@@ -27,13 +39,16 @@ void Timer::update(float delta) {
         return;
 
     remaining_time -= delta;
+    if (trigger_every_tick)
+        if (callback.callback)
+            scene->timer_callbacks.push_back(callback);
     if (remaining_time < 0.0f)
         timeout();
 }
 
 void Timer::timeout() {
     stop();
-    if (callback.callback)
+    if (!trigger_every_tick && callback.callback)
         scene->timer_callbacks.push_back(callback);
 }
 

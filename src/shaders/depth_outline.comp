@@ -169,7 +169,7 @@ float shaded(InputRead data) {
     vec2 uv = position_lightspace.xy * 0.5 + vec2(0.5);
     
     //float slope_bias = 0.05;
-    const float maxBias = 0.005;
+    const float maxBias = 0.001;
     const float quantize = 0.5 / (1 << 16);
     float b = length(1.0 / textureSize(s_sun_depth, 0));
     float bias = quantize + b * length(cross(sun_data.xyz, data.normal)) / clamp(dot(sun_data.xyz, data.normal), 0.01, 1.0);

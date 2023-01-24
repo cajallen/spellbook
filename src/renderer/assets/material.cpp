@@ -39,7 +39,6 @@ string upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
         (v4) material_cpu.color_tint,
         (v4) material_cpu.emissive_tint,
         {material_cpu.roughness_factor, material_cpu.metallic_factor, material_cpu.normal_factor, 1.0f},
-        {material_cpu.emissive_dot_smoothstep.x, material_cpu.emissive_dot_smoothstep.y, 0.0f, 0.0f}
     };
     material_gpu.cull_mode = material_cpu.cull_mode;
     material_gpu.frame_allocated = frame_allocation;
@@ -54,7 +53,6 @@ void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
         (v4) new_material.color_tint,
         (v4) new_material.emissive_tint,
         {new_material.roughness_factor, new_material.metallic_factor, new_material.normal_factor, 1.0f},
-        {new_material.emissive_dot_smoothstep.x, new_material.emissive_dot_smoothstep.y, 0.0f, 0.0f}
     };
     cull_mode = new_material.cull_mode;
 
@@ -81,7 +79,6 @@ bool inspect(MaterialCPU* material) {
     changed |= ImGui::DragFloat("roughness_factor", &material->roughness_factor, 0.01f);
     changed |= ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
     changed |= ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
-    changed |= ImGui::DragFloat2("emissive_dot_smoothstep", material->emissive_dot_smoothstep.data, 0.01f);
 
     changed |= ImGui::PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
     changed |= ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
@@ -120,8 +117,6 @@ void inspect(MaterialGPU* material) {
     ImGui::DragFloat("Metallic Factor", &material->tints.roughness_metallic_normal_scale.y, 0.01f);
     ImGui::DragFloat("Normal Factor", &material->tints.roughness_metallic_normal_scale.z, 0.01f);
     ImGui::DragFloat("UV Scale", &material->tints.roughness_metallic_normal_scale.w, 0.01f);
-    
-    ImGui::DragFloat2("Emissive Direction", material->tints.emissive_dot_smoothstep.data, 0.01f);
 }
 
 void save_material(const MaterialCPU& material_cpu) {

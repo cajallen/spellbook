@@ -33,44 +33,12 @@ struct LizardPrefab {
     string file_path;
 };
 
-struct Projectile { // Component
-    entt::entity parent = {};
-    v3           velocity = v3(0.0f);
-    f32          lifetime = 0.0f;
-};
-
-struct ProjectileAttack {
-    f32 last_tick = -FLT_MAX;
-    f32 rate = 5.0f;
-    f32 damage = 0.0f;
-    
-    f32 projectile_speed = 3.0f;
-    f32 projectile_radius = 0.2f;
-    f32 projectile_lifetime = 1.0f;
-    int projectile_pierce = 1;
-    f32 projectile_growth = 0.0f;
-};
-
-struct ZoneAttack {
-    f32 last_tick = -FLT_MAX;
-    f32 rate = 0.5f;
-    f32 damage = 1.0f; 
-    
-    f32 radius = 3.0f;
-};
-
-struct TargetAttack {
-    f32 last_tick = -FLT_MAX;
-    f32 rate = 0.5f;
-    f32 damage = 0.0f;
-    
-    f32 radius = 3.0f;
-};
-
 struct Lizard { // Component
     LizardType type;
 
     id_ptr<Ability> basic_ability;
+
+    Stat damage_multiplier = Stat(1.0f);
 };
 
 

@@ -26,7 +26,8 @@ enum FileType {
     FileType_Enemy,
     FileType_Spawner,
     FileType_Consumer,
-    FileType_Emitter
+    FileType_Emitter,
+    FileType_VisualTileSet
 };
 
 string extension(FileType type);
@@ -60,8 +61,13 @@ T load_asset(const string& file_path, bool assert_exists = false) {
             return {};
     }
     string ext = absolute_path.extension().string();
-    assert_else(ext == extension(from_typeinfo(typeid(T))))
-        return {};
+    if (assert_exists) {
+        assert_else(ext == extension(from_typeinfo(typeid(T))))
+            return {};
+    } else {
+        check_else(ext == extension(from_typeinfo(typeid(T))))
+            return {};
+    }
 
     json j = parse_file(absolute_path.string());
     auto asset_value = from_jv<T>(to_jv(j));

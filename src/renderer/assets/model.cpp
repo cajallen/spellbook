@@ -35,9 +35,11 @@ vector<ModelCPU> ModelCPU::split() {
     for (id_ptr<Node> child : root_node->children) {
         child->parent = id_ptr<Node>::null();
         child->transform = m44::identity();
+        child->cache_transform();
         models[i].file_path = child->name;
         traverse(models[i++], child, traverse);
     }
+    
 
     return models;
 }
@@ -55,7 +57,10 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
             ImGui::Text("Index: %d", model->nodes.find(node));
             changed |= ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
             changed |= ImGui::PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
-            changed |= ImGui::DragMat4("Transform", &node->transform, 0.02f, "%.2f");
+            if (ImGui::DragMat4("Transform", &node->transform, 0.02f, "%.2f")) {
+                changed = true;
+                node->cache_transform();
+            }
             for (auto child : node->children) {
                 traverse(child);
             }
@@ -83,7 +88,7 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
 
         if (ImGui::TreeNode("Skeleton")) {
             for (auto skeleton_ptr : model->skeletons) {
-                inspect(&*skeleton_ptr, matrix * model->root_node->calculate_transform(), render_scene);
+                inspect(&*skeleton_ptr, matrix * model->root_node->cached_transform, render_scene);
             }
             ImGui::TreePop();
         }
@@ -166,8 +171,6 @@ ModelCPU load_asset(const string& input_path, bool assert_exists) {
     ModelCPU model;
     json      j = parse_file(absolute_path.string());
     model.file_path = input_path;
-    if (j.contains("root_node"))
-        model.root_node = from_jv<id_ptr<ModelCPU::Node>>(*j["root_node"]);
 
     if (j.contains("nodes")) {
         for (const json_value& jv : j["nodes"]->get_list()) {
@@ -175,6 +178,14 @@ ModelCPU load_asset(const string& input_path, bool assert_exists) {
             model.nodes.push_back(node);
         }
     }
+    
+    if (j.contains("root_node"))
+        model.root_node = from_jv<id_ptr<ModelCPU::Node>>(*j["root_node"]);
+
+    if (model.root_node.id == 0)
+        for (auto node : model.nodes)
+            if (!node->parent.valid())
+                model.root_node = node;
 
     if (j.contains("skeletons")) {
         for (const json_value& jv : j["skeletons"]->get_list()) {
@@ -182,6 +193,7 @@ ModelCPU load_asset(const string& input_path, bool assert_exists) {
             model.skeletons.push_back(skeleton);
         }
     }
+    model.root_node->cache_transform();
     
     return model;
 }
@@ -192,8 +204,10 @@ void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
     }
 }
 
-m44 ModelCPU::Node::calculate_transform() const {
-    return !parent.valid() ? transform : parent->calculate_transform() * transform;
+void ModelCPU::Node::cache_transform() {
+    cached_transform = !parent.valid() ? transform : parent->cached_transform * transform;
+    for (auto child : children)
+        child->cache_transform();
 }
 
 
@@ -394,6 +408,8 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         }
     }
 
+    model_cpu.root_node->cache_transform();
+    
     fs::path scene_path = output_folder / output_name;
     scene_path.replace_extension(extension(FileType_Model));
 

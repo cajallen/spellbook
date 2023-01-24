@@ -441,6 +441,15 @@ Renderable& RenderScene::quick_mesh(const string& mesh_name, bool frame_allocate
     return *(widget ? widget_renderables : renderables).emplace(r);
 }
 
+Renderable& RenderScene::quick_mesh(const string& mesh_name, const string& mat_name, bool frame_allocated) {
+    Renderable r;
+    r.mesh_asset_path = mesh_name;
+    r.material_asset_path = mat_name;
+    r.frame_allocated = frame_allocated;
+    
+    return *renderables.emplace(r);
+}
+
 void material_setup() {
     static bool initialized = false;
     if (initialized)

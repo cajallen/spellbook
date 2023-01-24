@@ -78,7 +78,62 @@ template <enum_concept T>
 json_value to_jv(T input_enum);
 
 
-template <typename JsonT> json_value to_jv(const vector<JsonT>& _vector) {
+template <typename JsonT>
+json_value to_jv(const vector<JsonT>& _vector) {
+    vector<json_value> _list = {};
+    for (const JsonT& e : _vector) {
+        json_value jv  = to_jv(e);
+        bool       add = true;
+        visit(overloaded{
+                [&](const json& j) {
+                    if (j.size() == 0)
+                        add = false;
+                },
+                [&](const vector<json_value>& jvs) {
+                    if (jvs.size() == 0)
+                        add = false;
+                },
+                [](auto a) {
+                }
+            },
+            jv.value);
+        if (add)
+            _list.push_back(to_jv(e));
+    }
+    json_value jv;
+    jv.value = json_variant{_list};
+    return jv;
+}
+
+template <typename JsonT, size_t N>
+json_value to_jv(const std::array<JsonT, N>& _array) {
+    vector<json_value> _list = {};
+    for (const JsonT& e : _array) {
+        json_value jv  = to_jv(e);
+        bool       add = true;
+        visit(overloaded{
+                [&](const json& j) {
+                    if (j.size() == 0)
+                        add = false;
+                },
+                [&](const vector<json_value>& jvs) {
+                    if (jvs.size() == 0)
+                        add = false;
+                },
+                [](auto a) {
+                }
+            },
+            jv.value);
+        if (add)
+            _list.push_back(to_jv(e));
+    }
+    json_value jv;
+    jv.value = json_variant{_list};
+    return jv;
+}
+
+template <typename JsonT>
+json_value to_jv(const uset<JsonT>& _vector) {
     vector<json_value> _list = {};
     for (const JsonT& e : _vector) {
         json_value jv  = to_jv(e);
@@ -188,6 +243,27 @@ vector<JsonT> from_jv_impl(const json_value& jv, vector<JsonT>* _) {
     t.reserve(t.size() + _list.size());
     for (auto& e : _list) {
         t.push_back(from_jv<JsonT>(e));
+    }
+    return t;
+}
+
+template <typename JsonT, size_t N>
+std::array<JsonT, N> from_jv_impl(const json_value& jv, std::array<JsonT, N>* _) {
+    std::array<JsonT, N> t;
+    vector<json_value> _list = jv.get_list();
+    u32 i = 0;
+    for (auto& e : _list) {
+        t[i++] = from_jv<JsonT>(e);
+    }
+    return t;
+}
+
+template <typename JsonT>
+uset<JsonT> from_jv_impl(const json_value& jv, uset<JsonT>* _) {
+    uset<JsonT>      t;
+    vector<json_value> _list = jv.get_list();
+    for (auto& e : _list) {
+        t.insert(from_jv<JsonT>(e));
     }
     return t;
 }

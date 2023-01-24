@@ -25,7 +25,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& enemy_prefab, v3i 
     scene->registry.emplace<TransformLink>(entity, v3(0.5));
 
     scene->registry.emplace<Traveler>(entity, vector<v3i>{}, enemy_prefab.max_speed);
-    scene->registry.emplace<Health>(entity, enemy_prefab.max_health, enemy_prefab.max_health);
+    scene->registry.emplace<Health>(entity, enemy_prefab.max_health, &scene->render_scene, enemy_prefab.hurt_path);
     
     return entity;  
 }
@@ -35,6 +35,7 @@ bool inspect(EnemyPrefab* enemy_prefab) {
     ImGui::PathSelect("File", &enemy_prefab->file_path, "resources", FileType_Enemy);
     changed |= ImGui::EnumCombo("Type", &enemy_prefab->type);
     changed |= ImGui::PathSelect("Model", &enemy_prefab->model_path, "resources", FileType_Model);
+    changed |= ImGui::PathSelect("Hurt", &enemy_prefab->hurt_path, "resources/emitters", FileType_Emitter);
     changed |= ImGui::DragFloat("Max Health", &enemy_prefab->max_health, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Max Speed", &enemy_prefab->max_speed, 0.01f, 0.0f);
     return changed;

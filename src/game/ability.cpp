@@ -10,7 +10,7 @@ id_ptr<Ability> make_ability(Scene* set_scene, const string& set_name) {
     ability->scene = set_scene;
     ability->name = set_name;
     ability->pre_trigger_timer = &add_timer(set_scene, fmt_("{}::pre", set_name),
-        [](void* payload) {
+        [](Timer* timer, void* payload) {
             auto ability = id_ptr<Ability>((u64) payload);
             if (ability->trigger_callback != NULL)
                 ability->trigger_callback(ability->trigger_payload);
@@ -19,14 +19,14 @@ id_ptr<Ability> make_ability(Scene* set_scene, const string& set_name) {
         }, (void*) ability.id
     );
     ability->post_trigger_timer = &add_timer(set_scene, fmt_("{}::post", set_name),
-    [](void* payload) {
+    [](Timer* timer, void* payload) {
             auto ability = id_ptr<Ability>((u64) payload);
             if (ability->end_callback != nullptr)
                 ability->end_callback(ability->end_payload);
         }, (void*) ability.id
     );
     ability->cooldown_timer = &add_timer(set_scene, fmt_("{}::cd", set_name),
-        [](void* payload) {
+        [](Timer* timer, void* payload) {
             auto ability = id_ptr<Ability>((u64) payload);
             if (ability->ready_callback != nullptr)
                 ability->ready_callback(ability->ready_payload);

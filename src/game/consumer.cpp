@@ -25,6 +25,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
     scene->registry.emplace<ModelTransform>(entity);
+    scene->registry.emplace<PoseController>(entity, 1.0f, 0.0f, 4.0f, "default");
     scene->registry.emplace<TransformLink>(entity, v3(0.5f));
     scene->registry.emplace<Consumer>(entity);
 

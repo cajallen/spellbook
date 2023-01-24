@@ -3,6 +3,7 @@
 #include <tracy/Tracy.hpp>
 #include <entt/entt.hpp>
 
+#include "editor/console.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/math.hpp"
@@ -32,11 +33,17 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     }
 }
 
+void Scene::health_cleanup(entt::registry& registry, entt::entity entity) {
+    auto health = registry.try_get<Health>(entity);
+    if (health && health->hurt_emitter) {
+        deinstance_emitter(*health->hurt_emitter, true);
+    }
+}
 
 void Scene::setup(const string& input_name) {
     name = input_name;
 	render_scene.name = name + "::render_scene";
-	camera = Camera(v3(-8, 0, 4), math::d2r(euler{0, -30}));
+	camera = Camera(v3(-8.0f, 0.0f, 4.0f), math::d2r(euler{0.0f, -30.0f}));
 	render_scene.viewport.name	 = render_scene.name + "::viewport";
 	render_scene.viewport.camera = &camera;
 	render_scene.viewport.setup();
@@ -45,6 +52,7 @@ void Scene::setup(const string& input_name) {
 
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
+    registry.on_destroy<Health>().connect<&Scene::health_cleanup>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
@@ -60,7 +68,7 @@ void Scene::update() {
         timer.update(delta_time);
     }
     for (auto& timer_callback : timer_callbacks) {
-        timer_callback.callback(timer_callback.payload);
+        timer_callback.callback(timer_callback.timer, timer_callback.payload);
     }
     timer_callbacks.clear();
     
@@ -76,6 +84,7 @@ void Scene::update() {
     lizard_targeting_system(this);
     lizard_casting_system(this);
     
+    visual_tile_widget_system(this);
     spawner_draw_system(this);
     transform_system(this);
     emitter_system(this);
@@ -86,6 +95,7 @@ void Scene::update() {
     health_system(this);
     health_draw_system(this);
     disposal_system(this);
+
 
     for (auto entity : registry.view<Name>()) {
         preview_3d_components(this, entity);
@@ -153,7 +163,24 @@ void Scene::settings_window(bool* p_open) {
 			ImGui::EndTabBar();
 		}
 	}
-	ImGui::End();
+    ImGui::End();
+    
+    if (!edit_mode) {
+        if (ImGui::Begin((name + " Shop").c_str())) {
+            if (ImGui::BeginTabBar("ShopTabBar")) {
+                if (ImGui::BeginTabItem("Shop")) {
+                    show_shop(&shop, &player);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Generator")) {
+                    shop.shop_generator->inspect();
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
+        }
+        ImGui::End();
+    }
 }
 
 void Scene::output_window(bool* p_open) {
@@ -163,6 +190,15 @@ void Scene::output_window(bool* p_open) {
         pause = false;
         render_scene.viewport.window_hovered = ImGui::IsWindowHovered();
         render_scene.image((v2i) ImGui::GetContentRegionAvail());
+        if (ImGui::IsItemHovered()) {
+            console({.str=fmt_("Hovered window: {}", name)});
+        }
+        // if (ImGui::BeginDragDropTarget()) {
+        //     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ENTITY_LIZARD")) {
+        //         
+        //     }
+        //     ImGui::EndDragDropTarget();
+        // }
         render_scene.cull_pause = false;
     } else {
         pause = true;
@@ -283,7 +319,7 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
     scene->registry.emplace<LogicTransform>(e, position);
     auto& emitter_comp = scene->registry.emplace<EmitterComponent>(e, 
         &instance_emitter(scene->render_scene, emitter_cpu),
-        &add_timer(scene, fmt_("{}_timer", name), [](void* data) {
+        &add_timer(scene, fmt_("{}_timer", name), [](Timer* timer, void* data) {
             auto payload = (EmitterTimerTimeoutPayload*) data;
             auto& emitter_component = payload->scene->registry.get<EmitterComponent>(payload->entity);
             deinstance_emitter(*emitter_component.emitter, true);
@@ -295,6 +331,23 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
     emitter_comp.timer->start(duration);
     
     return e;
+}
+
+void Scene::select_entity(entt::entity entity) {
+    selected_entity = entity;
+    v3  intersect = math::intersect_axis_plane(render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+    auto transform = registry.try_get<LogicTransform>(selected_entity);
+    if (!transform)
+        return;
+
+    registry.emplace<Dragging>(selected_entity, time, transform->position, intersect);
+
+    for (auto [entity, attach] : registry.view<LogicTransformAttach>().each()) {
+        if (attach.to == selected_entity) {
+            auto attachee_transform = registry.try_get<LogicTransform>(entity);
+            registry.emplace<Dragging>(entity, time, attachee_transform->position, intersect);
+        }
+    }
 }
 
 

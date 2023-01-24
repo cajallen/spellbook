@@ -28,7 +28,7 @@ namespace spellbook {
 Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
-        .request_validation_layers(true)
+        .request_validation_layers(false)
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,

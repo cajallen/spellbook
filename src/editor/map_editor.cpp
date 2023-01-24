@@ -11,11 +11,124 @@
 #include "game/components.hpp"
 #include "game/input.hpp"
 #include "editor/asset_browser.hpp"
+#include "extension/fmt.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
 
 ADD_EDITOR_SCENE(MapEditor);
+
+template <typename T>
+bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& buttons, u32* selected) {
+    static umap<string, Button<T>> add_map;
+    static umap<string, u32> edit_map;
+
+    bool ret = false;
+    
+    ImGui::PushID(name.c_str());
+    
+    ImGui::Text("%s", name.c_str());
+
+    if (!add_map.contains(name)) add_map[name] = {};
+
+    if (ImGui::Button("Add")) {
+        ImGui::OpenPopup("Add Button");
+    }
+    
+    float  window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    ImVec2 button_size   = ImVec2(100, 30);
+    for (u32 i = 0; i < buttons.size(); i++) {
+        Color normal_color  = buttons[i].color;
+        Color hovered_color = mix(normal_color, palette::white, 0.2f);
+        Color pressed_color = mix(normal_color, palette::white, 0.1f);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) normal_color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) hovered_color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) pressed_color);
+        if (ImGui::Button(buttons[i].text.c_str(), button_size)) {
+            if (*selected == i)
+                *selected = -1;
+            else {
+                map_editor.unselect_buttons();
+                *selected = i;
+            }
+            ret = true;
+        }
+        bool open_popup = false;
+        if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::Selectable("Edit")) {
+                open_popup = true;
+            }
+            if (ImGui::Selectable("Delete")) {
+                buttons.remove_index(i);
+                i--;
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::PopStyleColor(3);
+        
+        if (open_popup) {
+            ImGui::OpenPopup("Edit Button");
+            edit_map[name] = i;
+        }
+
+        if (*selected == i) {
+            v2 min = v2(ImGui::GetItemRectMin()) - v2(1);
+            v2 max = v2(ImGui::GetItemRectMax()) + v2(1);
+
+            ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (u32) palette::white, 0.0f, 0, 2.0f);
+        }
+        float last_button_x2 = ImGui::GetItemRectMax().x;
+        float next_button_x2 = last_button_x2 + ImGui::GetStyle().ItemSpacing.x + button_size.x;
+        // Expected position if next button was on same line
+        if (i + 1 < buttons.size() && next_button_x2 < window_visible_x2)
+            ImGui::SameLine();
+    }
+
+    bool add_open = true;
+    if (ImGui::BeginPopupModal("Add Button", &add_open)) {
+        ImGui::InputText("Text", &add_map[name].text);
+        ImGui::ColorEdit3("Color", add_map[name].color.data);
+        ImGui::PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), true);
+        
+        if (ImGui::Button("Add")) {
+            fs::path as_path = add_map[name].item_path;
+            if (fs::is_directory(as_path)) {
+                for (auto& dir_entry : fs::directory_iterator(as_path)) {
+                    if (path_filter(from_typeinfo(typeid(T)))(dir_entry)) {
+                        buttons.emplace_back(
+                            dir_entry.path().stem().string(),
+                            add_map[name].color,
+                            dir_entry.path().string()
+                        );
+                    } else {
+                        log_warning("Directory contents not added as button as it does not match types");
+                    }
+                }
+            } else {
+                buttons.emplace_back(std::move(add_map[name]));
+            }
+            add_map[name] = {};
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    bool edit_open;
+    if (ImGui::BeginPopupModal("Edit Button", &edit_open)) {
+        ImGui::InputText("Text", &buttons[edit_map[name]].text);
+        ImGui::ColorEdit3("Color", buttons[edit_map[name]].color.data);
+        ImGui::PathSelect("Path", &buttons[edit_map[name]].item_path, "resources", from_typeinfo(typeid(T)), true);
+
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    
+    ImGui::PopID();
+    return ret;
+}
 
 bool map_editor_key(KeyCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
@@ -133,9 +246,12 @@ void MapEditor::update() {
                 map_prefab.lizards.erase(top_drawn_cell);
                 map_prefab.consumers.erase(top_drawn_cell);
                 map_prefab.spawners.erase(top_drawn_cell);
+                map_prefab.solid_tiles.erase(top_drawn_cell);
             }
             else if (selected_tile != -1) {
                 instance_and_write_prefab(load_asset<TilePrefab>(tile_buttons[selected_tile].item_path), top_drawn_cell);
+                map_prefab.solid_tiles.insert(top_drawn_cell);
+                build_visuals();
             }
             else if (selected_lizard != -1) {
                 instance_and_write_prefab(load_asset<LizardPrefab>(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
@@ -166,6 +282,14 @@ void MapEditor::window(bool* p_open) {
             game_scene->setup(map_prefab);
             p_scene->pause = true;
         }
+
+        ImGui::PathSelect("VTS", &vts_path, "resources/visual_tile_sets", FileType_VisualTileSet);
+        ImGui::SameLine();
+        if (ImGui::Button("Load")) {
+            visual_tileset = convert_to_entry_pool(load_asset<VisualTileSet>(vts_path));
+            build_visuals();
+        }
+        
         
         ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, true);
         if (ImGui::Button("Load")) {
@@ -217,6 +341,30 @@ void MapEditor::shutdown() {
     Input::remove_callback<KeyCallback>("map_editor");
     Input::remove_callback<ClickCallback>("map_editor");
 }
+
+void MapEditor::build_visuals() {
+    for (entt::entity e : visual_map_entities) {
+        p_scene->registry.destroy(e);
+    }
+    visual_map_entities.clear();
+    auto visual_tiles = build_visual_tiles(map_prefab.solid_tiles, visual_tileset);
+    for (auto& [pos, tile_entry] : visual_tiles) {
+        auto entity = p_scene->registry.create();
+        p_scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
+        visual_map_entities.push_back(entity);
+                
+        auto& model_comp = p_scene->registry.emplace<Model>(entity);
+        model_comp.model_cpu = load_asset<ModelCPU>(tile_entry.model_path);
+        model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
+                
+        p_scene->registry.emplace<ModelTransform>(entity,
+            v3(pos) + v3(1.0f),
+            euler{tile_entry.rotation.yaw * math::PI * 0.5f},
+            tile_entry.rotation.flip ? v3(-1.0f, 1.0f, 1.0f) : v3(1.0f, 1.0f, 1.0f)
+        );
+    }
+}
+
 
 void MapEditor::draw_preview(v3i cell) {
     constexpr float line_width = 0.03f;

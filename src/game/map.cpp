@@ -24,13 +24,10 @@ void inspect(MapPrefab* map_prefab) {
 
     ImGui::Text("Tiles");
     u32 tile_i = 0;
-    for (auto& [pos, tile_state] : map_prefab->tiles) {
+    for (auto& [pos, prefab] : map_prefab->tiles) {
         ImGui::Text("%d", tile_i++);
         ImGui::Indent();
-        s32 as_int = tile_state.rotation;
-        if (ImGui::SliderInt("Rotation", &as_int, 0, 3))
-            tile_state.rotation = as_int;
-        inspect(&tile_state.prefab);
+        inspect(&prefab);
         ImGui::Unindent();
     }
     ImGui::Separator();
@@ -62,8 +59,8 @@ Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     for (auto& [pos, prefab] : map_prefab.lizards) {
         instance_prefab(scene, prefab, pos);
     }
-    for (auto& [pos, tile_state] : map_prefab.tiles) {
-        instance_prefab(scene, tile_state.prefab, pos, tile_state.rotation);
+    for (auto& [pos, prefab] : map_prefab.tiles) {
+        instance_prefab(scene, prefab, pos);
     }
     for (auto& [pos, prefab] : map_prefab.spawners) {
         instance_prefab(scene, prefab, pos);

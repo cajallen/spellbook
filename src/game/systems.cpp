@@ -75,6 +75,7 @@ void health_draw_system(Scene* scene) {
     static bool deps = false;
     static string mesh_name;
     static string health_name;
+    static string health_buffer_name;
     static string health_bar_name;
     if (!deps) {
         mesh_name = upload_mesh(generate_cube(v3(0), v3(1)));
@@ -85,6 +86,12 @@ void health_draw_system(Scene* scene) {
             .emissive_tint = palette::green
         };
         health_name = upload_material(material1_cpu);
+        MaterialCPU material3_cpu = {
+            .file_path     = "health_buffer_material",
+            .color_tint    = palette::black,
+            .emissive_tint = palette::yellow
+        };
+        health_buffer_name = upload_material(material3_cpu);
         MaterialCPU material2_cpu = {
             .file_path     = "health_bar_material",
             .color_tint    = palette::black,
@@ -100,6 +107,7 @@ void health_draw_system(Scene* scene) {
             continue;
 
         float percentage = health.value / health.max_health.value();
+        float percentage2 = health.buffer_value / health.max_health.value();
         auto link = scene->registry.try_get<TransformLink>(entity);
         v3 position = link ? transform.position + link->offset : transform.position;
 
@@ -111,14 +119,20 @@ void health_draw_system(Scene* scene) {
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
                            math::translate(v3(-(1.0f - percentage) * 0.5f * width, 0.0f, 0.5f)) *
                            math::scale(v3(percentage * 0.5f * width, thickness, thickness));
+        m44 buffer_matrix = math::translate(position) * 
+                           math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
+                           math::translate(v3(-(1.0f - percentage2) * 0.5f * width, 0.0f, 0.5f)) *
+                           math::scale(v3(percentage2 * 0.5f * width, thickness, thickness) * 0.999f);
         m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 0.5) + position) *
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
                            math::scale(v3(0.5f * width, thickness, thickness));
 
         auto renderable1 = Renderable{mesh_name, health_name, (m44GPU) inner_matrix, {}, true};
         auto renderable2 = Renderable{mesh_name, health_bar_name, (m44GPU) outer_matrix, {}, true};
+        auto renderable3 = Renderable{mesh_name, health_buffer_name, (m44GPU) buffer_matrix, {}, true};
         scene->render_scene.add_renderable(renderable1);
         scene->render_scene.add_renderable(renderable2);
+        scene->render_scene.add_renderable(renderable3);
     }
 }
 
@@ -145,13 +159,12 @@ void transform_system(Scene* scene) {
         if (registry.any_of<Dragging>(entity))
             continue;
         
-        m_transform.translation = l_transform.position + link.offset;
+        m_transform.set_translation(l_transform.position + link.offset);
     }
     // Apply transforms to renderables
     for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
-        m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
         for (auto& [node, renderable] : model.model_gpu.renderables) {
-            renderable->transform = (m44GPU) (transform_matrix * node->calculate_transform());
+            renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
         }
     }
 }
@@ -162,12 +175,6 @@ void consumer_system(Scene* scene) {
     auto consumees = scene->registry.view<Traveler, LogicTransform>();
 
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
-        auto consumer_mtransform = scene->registry.try_get<ModelTransform>(e_consumer);
-        if (consumer_mtransform) {
-            consumer_mtransform->rotation.yaw += (scene->time_scale == 0.0f ? Input::delta_time : scene->delta_time) * math::TAU / 6.f;
-            consumer_mtransform->rotation.pitch += (scene->time_scale == 0.0f ? Input::delta_time : scene->delta_time) * math::TAU / 11.f;
-            consumer_mtransform->rotation.roll += (scene->time_scale == 0.0f ? Input::delta_time : scene->delta_time) * math::TAU / 19.f;
-        }
         for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
             if (scene->registry.any_of<Killed>(e_consumee))
                 continue;
@@ -192,6 +199,21 @@ void health_system(Scene* scene) {
     ZoneScoped;
     auto healths = scene->registry.view<Health>();
     for (auto [entity, health] : healths.each()) {
+        float dh = 2.0f * (health.buffer_value - health.value) + 0.2f;
+        health.buffer_value = math::max(health.buffer_value - dh * scene->delta_time, health.value);
+
+        auto pos = scene->registry.get<LogicTransform>(entity);
+        
+        if (health.hurt_emitter) {
+            health.hurt_emitter->emitting = health.hurt_until > Input::time;
+            if (health.hurt_emitter->emitting) {
+                float length = math::length(health.hurt_emitter->emitter_cpu.velocity);
+                health.hurt_emitter->emitter_cpu.velocity = length * health.hurt_direction;
+                health.hurt_emitter->emitter_cpu.position = pos.position + v3(0.5f);
+                health.hurt_emitter->update_from_cpu(health.hurt_emitter->emitter_cpu);
+            }
+        }
+        
         if (health.value <= 0.001f) {
             scene->registry.emplace<Killed>(entity, scene->time);
         }
@@ -305,20 +327,7 @@ void dragging_update_system(Scene* scene) {
         scene->render_scene.fut_query_result = {};
 
         if (scene->registry.valid((entt::entity) result_int)) {
-            scene->selected_entity = (entt::entity) result_int;
-            v3  intersect = math::intersect_axis_plane(scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-            auto transform = scene->registry.try_get<LogicTransform>(scene->selected_entity);
-            if (!transform)
-                return;
-
-            scene->registry.emplace<Dragging>(scene->selected_entity, scene->time, transform->position, intersect);
-
-            for (auto [entity, attach] : scene->registry.view<LogicTransformAttach>().each()) {
-                if (attach.to == scene->selected_entity) {
-                    auto attachee_transform = scene->registry.try_get<LogicTransform>(entity);
-                    scene->registry.emplace<Dragging>(entity, scene->time, attachee_transform->position, intersect);
-                }
-            }
+            scene->select_entity((entt::entity) result_int);
         }
     }
 }
@@ -349,7 +358,7 @@ void dragging_system(Scene* scene) {
         if (scene->registry.all_of<TransformLink>(entity)) {
             pos += scene->registry.get<TransformLink>(entity).offset;
         }
-        transform.translation = pos;
+        transform.set_translation(pos);
     }
 
     auto posers = scene->registry.view<Dragging, PoseController>();
@@ -409,8 +418,12 @@ void lizard_casting_system(Scene* scene) {
 void spawner_draw_system(Scene* scene) {
     for (auto [entity, spawner, m_transform, transform_link] : scene->registry.view<Spawner, ModelTransform, TransformLink>().each()) {
         transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * scene->time);
-        m_transform.scale = 0.6f;
-        m_transform.rotation.yaw = 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time);
+        m_transform.set_scale(v3(0.6f));
+        m_transform.set_rotation(euler{
+            .yaw = 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time),
+            .pitch = m_transform.rotation.pitch,
+            .roll = m_transform.rotation.roll
+        });
     }
 }
 
@@ -423,5 +436,31 @@ void emitter_system(Scene* scene) {
     }
 }
 
+void visual_tile_widget_system(Scene* scene) {
+    static string mesh_name;
+    static string mat_off_name;
+    static string mat_on_name;
+    if (mesh_name.empty()) {
+        mesh_name = upload_mesh(generate_icosphere(3), false);
+        mat_off_name = upload_material({.file_path = "mat_off_name", .color_tint = palette::gray_1}, false);
+        mat_on_name = upload_material({.file_path = "mat_on_name", .color_tint = palette::gray_1, .emissive_tint = palette::spellbook_1}, false);
+    }
+    for (auto [entity, vtsw] : scene->registry.view<VisualTileSetWidget>().each()) {
+        if (vtsw.tile_set != nullptr) {
+            auto& tiles = vtsw.tile_set->tiles;
+            u32 width = u32(math::ceil(math::sqrt(f32(tiles.size()))));
+            u32 i = 0;
+            for (VisualTilePrefab& tile_entry : tiles) {
+                v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;
+                i++;
+                for (int c = 0; c < 8; c++) {
+                    auto& r = scene->render_scene.quick_mesh(mesh_name, tile_entry.corners[c] > 0 ? mat_on_name : mat_off_name, true);           
+                    r.transform = m44GPU(math::translate(pos + v3(visual_direction_offsets[c]) - v3(0.5f)) * math::scale(0.05f));
+                }
+            }
+            
+        }
+    }
+}
 
 }

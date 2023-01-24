@@ -15,7 +15,7 @@ void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* rende
     static bool initialized = false;
     static string joint_name;
     if (!initialized) {
-        auto joint_mesh = generate_cube(v3(0.0f), v3(0.01f), palette::gray_5);
+        auto joint_mesh = generate_cube(v3(0.0f), v3(0.01f), palette::white);
         joint_name = upload_mesh(joint_mesh, false);
         initialized = true;
     }
@@ -27,8 +27,8 @@ void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* rende
         auto& r = render_scene->quick_mesh(joint_name, true, true);
         r.transform = (m44GPU) bone_transform;
 
-        vertices.emplace_back(math::apply_transform(bone_transform, v3(0.0f)), palette::gray_5, 0.003f);
-        vertices.emplace_back(math::apply_transform(bone_transform, v3(0.0f, bone->length, 0.0f)), palette::gray_5, 0.003f);
+        vertices.emplace_back(math::apply_transform(bone_transform, v3(0.0f)), palette::white, 0.003f);
+        vertices.emplace_back(math::apply_transform(bone_transform, v3(0.0f, bone->length, 0.0f)), palette::white, 0.003f);
         vertices.emplace_back(FormattedVertex::separate());
 
         WidgetSystem::Mouse3DInfo mouse;

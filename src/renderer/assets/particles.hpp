@@ -74,6 +74,8 @@ struct EmitterGPU {
     string mesh;
     string material;
 
+    bool emitting = true;
+    
     float deinstance_at = FLT_MAX;
 
     void calculate_max() {

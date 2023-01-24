@@ -86,6 +86,7 @@ struct RenderScene {
 
     Renderable& quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget = false);
     Renderable& quick_mesh(const string& mesh_name, bool frame_allocated, bool widget = false);
+    Renderable& quick_mesh(const string& mesh_name, const string& mat_name, bool frame_allocated);
     Renderable& quick_material(const MaterialCPU& material_cpu, bool frame_allocated);
 
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);

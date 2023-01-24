@@ -11,6 +11,8 @@
 #include "game/tile.hpp"
 #include "game/lizard.hpp"
 #include "game/timer.hpp"
+#include "game/shop.hpp"
+#include "game/player.hpp"
 
 #include "renderer/render_scene.hpp"
 
@@ -23,7 +25,9 @@ struct Scene {
     CameraController controller;
     entt::registry   registry;
     entt::entity     selected_entity;
-
+    Shop shop;
+    Player player;
+    
     bool edit_mode = true; // disables certain features
     float time = 0.0f;
     float delta_time = 0.0f;
@@ -44,6 +48,9 @@ struct Scene {
 
     void model_cleanup(entt::registry&, entt::entity);
     void dragging_cleanup(entt::registry&, entt::entity);
+    void health_cleanup(entt::registry&, entt::entity);
+
+    void select_entity(entt::entity entity);
     
     entt::entity get_lizard(v3i);
     entt::entity get_tile(v2i);

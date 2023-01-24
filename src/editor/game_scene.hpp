@@ -12,6 +12,8 @@ struct GameScene : EditorScene {
     void update() override;
     void window(bool* p_open) override;
     void shutdown() override;
+
+    void setup_player_stuff();
 };
 
 }

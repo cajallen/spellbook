@@ -3,6 +3,7 @@
 #include <entt/fwd.hpp>
 #include <imgui.h>
 
+#include "visual_tile.hpp"
 #include "general/string.hpp"
 #include "general/umap.hpp"
 #include "general/geometry.hpp"
@@ -34,7 +35,14 @@ struct LogicTransform {
 struct ModelTransform {
     v3    translation = v3(0.0f);
     euler rotation    = euler();
-    f32   scale       = 1.0f;
+    v3    scale       = v3(1.0f);
+
+    bool dirty = true;
+    m44 transform;
+    void set_translation(const v3& v);
+    void set_rotation(const euler& e);
+    void set_scale(const v3& v);
+    const m44& get_transform();
 };
 
 struct TransformLink {
@@ -57,9 +65,31 @@ struct Traveler {
 
 struct Health {
     float value = 0.0f;
+    float buffer_value = 0.0f;
+    
     Stat max_health = {};
+    EmitterGPU* hurt_emitter;
+    v3 hurt_direction;
+    float hurt_until;
 
-    Stat burn = 0.f;
+    Stat burn = {};
+
+    Health(float health_value, RenderScene* render_scene, string hurt_emitter_path = "") {
+        value = health_value;
+        buffer_value = value;
+        max_health = Stat(value);
+        if (!hurt_emitter_path.empty())
+            hurt_emitter = &instance_emitter(*render_scene, load_asset<EmitterCPU>(hurt_emitter_path, true));
+    }
+
+    void damage(float amount, v3 direction) {
+        value -= amount;
+        hurt_direction = math::normalize(direction);
+        hurt_until = math::max(
+            hurt_until,
+            Input::time + math::smoothstep(0.0f, max_health.value(), amount) * 0.2f
+        );
+    }
 };
 
 struct Consumer {
@@ -106,6 +136,10 @@ struct PoseController {
 struct EmitterComponent {
     EmitterGPU* emitter;
     Timer* timer;
+};
+
+struct VisualTileSetWidget {
+    VisualTileSet* tile_set = nullptr;
 };
 
 void inspect_components(Scene* scene, entt::entity entity);

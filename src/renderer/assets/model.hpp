@@ -32,8 +32,10 @@ struct ModelCPU {
         
         id_ptr<Node> parent = {};
         vector<id_ptr<Node>> children = {};
-
-        m44 calculate_transform() const;
+        
+        m44 cached_transform;
+        
+        void cache_transform();
     };
     
     vector<id_ptr<Node>> nodes = {};

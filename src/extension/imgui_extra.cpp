@@ -170,6 +170,9 @@ bool PathSelect(const string& hint, string* out, const string& base_folder, spel
 }
 
 bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType file_type, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    if (!fs::exists(base_folder))
+        fs::create_directory(base_folder);
+    
     bool changed = false;
     PushID(hint.c_str());
     BeginGroup();

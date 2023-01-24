@@ -41,6 +41,8 @@ string extension(FileType type) {
             return ".sbcon";
         case (FileType_Emitter):
             return ".sbemt";
+        case (FileType_VisualTileSet):
+            return ".sbvts";
     }
     log_error("extension NYI");
     return "NYI";
@@ -56,22 +58,9 @@ std::function<bool(const fs::path&)> path_filter(FileType type) {
              return [](const fs::path& path) { return vector<string>{".gltf", ".glb"}.contains(path.extension().string()); };
          case (FileType_TextureAsset):
              return [](const fs::path& path) { return vector<string>{".png", ".jpg", ".jpeg"}.contains(path.extension().string()); };
-         case (FileType_General):
-         case (FileType_Model):
-         case (FileType_Texture):
-         case (FileType_Mesh):
-         case (FileType_Material):
-         case (FileType_Map):
-         case (FileType_Lizard):
-         case (FileType_Tile):
-         case (FileType_Enemy):
-         case (FileType_Spawner):
-         case (FileType_Consumer):
-         case (FileType_Emitter):
+         default:
              return [type](const fs::path& path) { return path.extension().string() == extension(type); };
      }
-     log_error("extension NYI");
-     return [](const fs::path& path) { return true; };
 }
 
 string dnd_key(FileType type) {
@@ -108,7 +97,8 @@ string dnd_key(FileType type) {
             return "DND_CONSUMER";
         case (FileType_Emitter):
             return "DND_EMITTER";
-    }
+        case (FileType_VisualTileSet):
+            return "DND_VISUAL_TILE_SET";    }
     log_error("extension NYI");
     return "DND_UNKNOWN";
 }
@@ -136,6 +126,8 @@ FileType from_typeinfo(const type_info& input) {
         return FileType_Map;
     if (input == typeid(EmitterCPU))
         return FileType_Emitter;
+    if (input == typeid(VisualTileSet))
+        return FileType_VisualTileSet;
     
     log_error("extension NYI");
     return FileType_Unknown;

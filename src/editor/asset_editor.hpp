@@ -7,6 +7,7 @@
 #include "game/spawner.hpp"
 #include "game/lizard.hpp"
 #include "game/tile.hpp"
+#include "game/visual_tile.hpp"
 
 namespace fs = std::filesystem;
 using std::optional;
@@ -55,10 +56,9 @@ struct AssetEditor : EditorScene {
         Tab_Enemy,
         Tab_Spawner,
         Tab_Consumer,
-        Tab_Emitter
+        Tab_Emitter,
+        Tab_TileSet
     };
-
-    entt::entity showing_entity;
     
     ModelCPU model_cpu;
     
@@ -77,8 +77,8 @@ struct AssetEditor : EditorScene {
     SpawnerPrefab spawner_prefab;
     ConsumerPrefab consumer_prefab;
 
-    
-    // Used as readonly
+    VisualTileSet tile_set;
+
     Tab tab;
     
     void setup() override;

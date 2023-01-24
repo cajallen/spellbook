@@ -5,6 +5,7 @@
 
 #include "extension/icons/font_awesome4.h"
 #include "extension/imgui_extra.hpp"
+#include "extension/fmt.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
 #include "game/components.hpp"
@@ -65,10 +66,11 @@ void AssetEditor::update() {
 
 void AssetEditor::switch_tab(Tab new_tab) {
     auto& render_scene = p_scene->render_scene;
+
+    p_scene->registry.clear();
     
     switch (tab) {
         case (Tab_Model): {
-            p_scene->registry.destroy(showing_entity);
         } break;
         case (Tab_Mesh): {
             if (mesh_gpu != nullptr);
@@ -100,12 +102,14 @@ void AssetEditor::switch_tab(Tab new_tab) {
                 deinstance_emitter(*emitter_gpu, false);
             emitter_gpu = nullptr;
         } break;
+        case (Tab_TileSet): {
+        } break;
         default: break;
     }
     
     switch (new_tab) {
         case (Tab_Model): {
-            showing_entity = p_scene->registry.create();
+            entt::entity showing_entity = p_scene->registry.create();
             p_scene->registry.emplace<Model>(showing_entity, model_cpu, instance_model(render_scene, model_cpu, false));
             p_scene->registry.emplace<ModelTransform>(showing_entity, v3(0.0f));
         } break;
@@ -132,6 +136,23 @@ void AssetEditor::switch_tab(Tab new_tab) {
         } break;
         case (Tab_Emitter): {
             emitter_gpu = &instance_emitter(render_scene, emitter_cpu);
+        } break;
+        case (Tab_TileSet): {
+            u32 width = u32(math::ceil(math::sqrt(f32(tile_set.tiles.size()))));
+            u32 i = 0;
+            for (VisualTilePrefab& tile_entry : tile_set.tiles) {
+                auto entity = p_scene->registry.create();
+                v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;
+                i++;
+                p_scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
+                
+                auto& model_comp = p_scene->registry.emplace<Model>(entity);
+                model_comp.model_cpu = load_asset<ModelCPU>(tile_entry.model_path);
+                model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
+                
+                p_scene->registry.emplace<ModelTransform>(entity, v3(pos));
+                p_scene->registry.emplace<VisualTileSetWidget>(entity, &tile_set);
+            }
         } break;
         default: break;
     }
@@ -203,12 +224,33 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Em
     }
 }
 
+template<>
+void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, VisualTileSet& asset_value, const std::function<void(bool)>& callback) {
+    if (ImGui::BeginTabItem(name.c_str())) {
+        if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
+            asset_editor.switch_tab(type);
+        
+        bool changed = inspect(&asset_value);
+                    
+        if (ImGui::Button("Save##AssetTab")) {
+            save_asset(asset_value);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load##AssetTab")) {
+            asset_value = load_asset<VisualTileSet>(asset_value.file_path);
+        }
+        if (callback)
+            callback(changed);
+        ImGui::EndTabItem();
+    }
+}
+
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
 
     if (ImGui::Begin("Asset Editor", p_open)) {
         if (ImGui::BeginTabBar("Asset Types")) {
-            asset_tab(*this, "Model", Tab_Model, model_cpu, [this](bool changed) {
+            asset_tab(*this, ICON_FA_SITEMAP " Model", Tab_Model, model_cpu, [this](bool changed) {
                 ImGui::SameLine();
                 if (ImGui::Button("Split")) {
                     vector<ModelCPU> models = model_cpu.split();
@@ -220,20 +262,21 @@ void AssetEditor::window(bool* p_open) {
                     model_cpu = models.front();
                 }
             });
-            asset_tab(*this, "Material", Tab_Material, material_cpu, [this](bool changed) {
+            asset_tab(*this, ICON_FA_TINT " Material", Tab_Material, material_cpu, [this](bool changed) {
                 if (changed)
                     game.renderer.material_cache[hash_string(material_gpu->material_asset_path)].update_from_cpu(material_cpu);
             });
-            asset_tab(*this, "Lizard", Tab_Lizard, lizard_prefab);
-            asset_tab(*this, "Tile", Tab_Tile, tile_prefab);
-            asset_tab(*this, "Enemy", Tab_Enemy, enemy_prefab);
-            asset_tab(*this, "Spawner", Tab_Spawner, spawner_prefab);
-            asset_tab(*this, "Consumer", Tab_Consumer, consumer_prefab);
-            asset_tab(*this, "Emitter", Tab_Emitter, emitter_cpu, [this](bool changed) {
+            asset_tab(*this, ICON_FA_USER " Lizard", Tab_Lizard, lizard_prefab);
+            asset_tab(*this, ICON_FA_CUBE " Tile", Tab_Tile, tile_prefab);
+            asset_tab(*this, ICON_FA_APPLE " Enemy", Tab_Enemy, enemy_prefab);
+            asset_tab(*this, ICON_FA_SIGN_OUT "Spawner", Tab_Spawner, spawner_prefab);
+            asset_tab(*this, ICON_FA_SIGN_IN " Consumer", Tab_Consumer, consumer_prefab);
+            asset_tab(*this, ICON_FA_SNOWFLAKE_O " Emitter", Tab_Emitter, emitter_cpu, [this](bool changed) {
                 if (changed)
                     emitter_gpu->update_from_cpu(emitter_cpu);
             });
-            
+            asset_tab(*this, ICON_FA_CUBES " Tile Set", Tab_TileSet, tile_set);
+
             ImGui::EndTabBar();
         }
     }

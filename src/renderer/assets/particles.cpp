@@ -94,7 +94,8 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
     if (upload_size)
         update_size();
 
-    next_spawn = Input::time;
+    if (next_spawn <= 0.0f)
+        next_spawn = Input::time;
 }
 
 
@@ -137,6 +138,7 @@ void EmitterGPU::update_size() {
 bool inspect(EmitterCPU* emitter) {
     bool changed = false;
     ImGui::PathSelect("File", &emitter->file_path, "resources", FileType_Emitter);
+    changed |= ImGui::DragFloat3("Position", emitter->position.data, 0.01f);
     changed |= ImGui::DragFloat3("Offset", emitter->offset.data, 0.01f);
     changed |= ImGui::DragFloat3("Offset Random", emitter->position_random.data, 0.01f);
     changed |= ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
@@ -170,6 +172,8 @@ void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
     } pc;
     pc.spawn_count = math::max((Input::time - emitter.next_spawn) / emitter.rate, 0.0f);
     emitter.next_spawn += emitter.rate * pc.spawn_count;
+    if (!emitter.emitting)
+        pc.spawn_count = 0;
                 
     pc.dt = Input::delta_time;
     command_buffer

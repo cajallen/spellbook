@@ -20,8 +20,7 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::Text("Model");
         if (scene->registry.all_of<ModelTransform>(entity)) {
             auto transform = scene->registry.get<ModelTransform>(entity);
-            m44 transform_matrix = math::translate(transform.translation) * math::rotation(transform.rotation) * math::scale(transform.scale);
-            inspect(&component->model_cpu, transform_matrix, &scene->render_scene);
+            inspect(&component->model_cpu, transform.transform, &scene->render_scene);
         }
         else {
             inspect(&component->model_cpu, m44::identity(), &scene->render_scene);
@@ -37,7 +36,7 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::Text("ModelTransform");
         ImGui::DragFloat3("Translation", component->translation.data, 0.01f);
         ImGui::DragFloat3("Rotation", component->rotation.data, 0.5f);
-        ImGui::DragFloat("Scale", &component->scale, 0.01f);
+        ImGui::DragFloat3("Scale", component->scale.data, 0.01f);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<TransformLink>(entity)) {
@@ -151,6 +150,34 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
 
         render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, false);
     }
+}
+
+
+void ModelTransform::set_translation(const v3& v) {
+    if (translation != v) {
+        translation = v;
+        dirty = true;
+    }
+}
+void ModelTransform::set_rotation(const euler& e) {
+    if (rotation != e) {
+        rotation = e;
+        dirty = true;
+    }
+}
+void ModelTransform::set_scale(const v3& v) {
+    if (scale != v) {
+        scale = v;
+        dirty = true;
+    }
+}
+
+const m44& ModelTransform::get_transform() {
+    if (dirty) {
+        dirty = false;
+        transform = math::translate(translation) * math::rotation(rotation) * math::scale(scale);
+    }
+    return transform;
 }
 
 }

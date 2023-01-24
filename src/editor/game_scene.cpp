@@ -19,7 +19,7 @@ bool game_scene_on_key(KeyCallbackArgs args) {
 
 bool game_scene_click_dragging(ClickCallbackArgs args) {
     GameScene& game_scene = *((GameScene*) args.data);
-    if (args.action == GLFW_PRESS) {
+    if (game_scene.p_scene->render_scene.viewport.hovered && args.action == GLFW_PRESS) {
         game_scene.p_scene->render_scene.query = v2i(Input::mouse_pos) - game_scene.p_scene->render_scene.viewport.start;
         return true;
     }
@@ -36,6 +36,7 @@ void GameScene::setup(const MapPrefab& map_prefab) {
     p_scene = instance_map(map_prefab, "Game Scene");
     p_scene->edit_mode = false;
     p_scene->time_scale = 1.0f;
+    setup_player_stuff();
 }
 
 void GameScene::update() {
@@ -55,6 +56,13 @@ void GameScene::shutdown() {
     Input::remove_callback<KeyCallback>("Game Scene");
     p_scene->cleanup();
 }
+
+void GameScene::setup_player_stuff() {
+    p_scene->player.scene = p_scene;
+    p_scene->shop.shop_generator = std::make_unique<SimpleShopGenerator>();
+    p_scene->shop.shop_generator->setup();
+}
+
 
 
 }
