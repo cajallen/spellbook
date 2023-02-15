@@ -43,15 +43,15 @@ struct MapEditor : EditorScene {
     u32 selected_tile  = ~0u;
     u32 selected_spawner = ~0u;
 
-    s32 y_level = 0;
+    s32 z_level = 0;
 
     u32 rotation = 0;
 
     string vts_path;
-    umap<std::array<u8, 8>, vector<string>> visual_tileset;
-    vector<entt::entity> visual_map_entities;
+    umap<VisualTileCorners, vector<string>> visual_tileset;
     
     void setup() override;
+    void setup_scene(Scene* scene, bool scene_setup);
     void update() override;
     void window(bool* p_open) override;
     void shutdown() override;
@@ -60,18 +60,12 @@ struct MapEditor : EditorScene {
 
     void draw_preview(v3i cell);
 
-    void build_visuals();
+    void build_visuals(Scene* scene, v3i* tile);
     
-    template <typename T>
-    void instance_and_write_prefab(const T& t, v3i pos) {
-        entt::entity old_tile = p_scene->get(pos, (T*) 0);
-        if (old_tile != entt::null) {
-            p_scene->registry.destroy(old_tile);
-        }
-        
-        map_prefab.add_prefab(t, pos);
-        instance_prefab(p_scene, t, pos);
-    }
+    void instance_and_write_consumer(const string& path, v3i input_pos);
+    void instance_and_write_spawner(const string& path, v3i input_pos);
+    void instance_and_write_lizard(const string& path, v3i input_pos);
+    void instance_and_write_tile(const string& path, v3i input_pos, u32 rotation = 0);
 };
 
 JSON_IMPL_TEMPLATE(template <typename T>, Button<T>, text, color, item_path);

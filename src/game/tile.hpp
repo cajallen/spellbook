@@ -12,7 +12,8 @@ enum TileType {
     TileType_Empty,
     TileType_TowerSlot,
     TileType_Path,
-    TileType_Scenery
+    TileType_Scenery,
+    TileType_Ramp
 };
 
 struct TilePrefab {
@@ -26,6 +27,6 @@ JSON_IMPL(TilePrefab, type, model_path);
 struct Scene;
 
 bool inspect(TilePrefab*);
-entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location);
+entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, u32 rotation = 0);
 
 }

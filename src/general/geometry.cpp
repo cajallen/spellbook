@@ -3,6 +3,7 @@
 #include <vuk/Types.hpp>
 
 #include "math.hpp"
+#include "logger.hpp"
 
 namespace spellbook {
 
@@ -143,6 +144,55 @@ euler string2euler(string word) {
         std::stof(word.substr(offset, first - offset)) * (units == RAD ? 1.0f : math::D2R),
         std::stof(word.substr(first + 1))              * (units == RAD ? 1.0f : math::D2R)
     };
+}
+
+v3i direction_to_vec(Direction direction) {
+    switch (direction) {
+        case (Direction_PosX): return v3i::X;
+        case (Direction_NegX): return -v3i::X;
+        case (Direction_PosY): return v3i::Y;
+        case (Direction_NegY): return -v3i::Y;
+        case (Direction_PosZ): return v3i::Z;
+        case (Direction_NegZ): return -v3i::Z;
+        default: {
+            assert_else(false)
+                return v3i::X;
+        }
+    }
+}
+
+Direction flip_direction(Direction direction) {
+    switch (direction) {
+        case (Direction_PosX): return Direction_NegX;
+        case (Direction_NegX): return Direction_PosX;
+        case (Direction_PosY): return Direction_NegY;
+        case (Direction_NegY): return Direction_PosY;
+        case (Direction_PosZ): return Direction_NegZ;
+        case (Direction_NegZ): return Direction_PosZ;
+        default: {
+            assert_else(false)
+                return Direction_NegX;
+        }
+    }
+}
+
+
+Direction vec_to_direction(v3i vec) {
+    if (vec == v3i::X)
+        return Direction_PosX;
+    if (vec == -v3i::X)
+        return Direction_NegX;
+    if (vec == v3i::Y)
+        return Direction_PosY;
+    if (vec == -v3i::Y)
+        return Direction_NegY;
+    if (vec == v3i::Z)
+        return Direction_PosZ;
+    if (vec == -v3i::Z)
+        return Direction_NegZ;
+
+    assert_else(false)
+        return Direction_PosX;
 }
 
 }

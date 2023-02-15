@@ -11,6 +11,7 @@
 #include "game/components.hpp"
 #include "game/spawner.hpp"
 #include "game/systems.hpp"
+#include "general/bitmask_3d.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
@@ -21,11 +22,11 @@ void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
 }
 
 void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
-    auto    dragging = registry.try_get<Dragging>(entity);
-    auto l_transform = registry.try_get<LogicTransform>(entity);
-    if (l_transform) {
-        l_transform->position = math::round(dragging->potential_logic_position);
-    }
+    auto&    dragging = registry.get<Dragging>(entity);
+    auto& l_transform = registry.get<LogicTransform>(entity);
+    if (math::length(l_transform.position - math::round(dragging.potential_logic_position)) > 0.1f)
+        player.drags_available--;
+    l_transform.position = math::round(dragging.potential_logic_position);
 
     auto poser = registry.try_get<PoseController>(entity);
     if (poser) {
@@ -83,6 +84,8 @@ void Scene::update() {
 
     lizard_targeting_system(this);
     lizard_casting_system(this);
+
+    pickup_system(this);
     
     visual_tile_widget_system(this);
     spawner_draw_system(this);
@@ -100,9 +103,12 @@ void Scene::update() {
     for (auto entity : registry.view<Name>()) {
         preview_3d_components(this, entity);
     }
+}
 
-    render_scene.render_grid = edit_mode;
-    render_scene.render_widgets = edit_mode;
+void Scene::set_edit_mode(bool to) {
+    render_scene.render_grid = to;
+    render_scene.render_widgets = to;
+    edit_mode = to;
 }
 
 void Scene::cleanup() {
@@ -190,9 +196,6 @@ void Scene::output_window(bool* p_open) {
         pause = false;
         render_scene.viewport.window_hovered = ImGui::IsWindowHovered();
         render_scene.image((v2i) ImGui::GetContentRegionAvail());
-        if (ImGui::IsItemHovered()) {
-            console({.str=fmt_("Hovered window: {}", name)});
-        }
         // if (ImGui::BeginDragDropTarget()) {
         //     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ENTITY_LIZARD")) {
         //         
@@ -340,15 +343,30 @@ void Scene::select_entity(entt::entity entity) {
     if (!transform)
         return;
 
-    registry.emplace<Dragging>(selected_entity, time, transform->position, intersect);
-
-    for (auto [entity, attach] : registry.view<LogicTransformAttach>().each()) {
-        if (attach.to == selected_entity) {
-            auto attachee_transform = registry.try_get<LogicTransform>(entity);
-            registry.emplace<Dragging>(entity, time, attachee_transform->position, intersect);
+    if (registry.all_of<Draggable>(selected_entity) && player.drags_available > 0) {
+        registry.emplace<Dragging>(selected_entity, time, transform->position, intersect);
+    
+        for (auto [entity, attach] : registry.view<LogicTransformAttach>().each()) {
+            if (attach.to == selected_entity) {
+                auto attachee_transform = registry.try_get<LogicTransform>(entity);
+                registry.emplace<Dragging>(entity, time, attachee_transform->position, intersect);
+            }
         }
     }
 }
+
+bool Scene::get_object_placement(v3i& pos) {
+    auto slots     = registry.view<GridSlot, LogicTransform>();
+    Bitmask3D bitmask;
+    for (auto [entity, slot, logic_pos] : slots.each()) {
+        bitmask.set(v3i(logic_pos.position));
+    }
+    
+    ray3 mouse_ray = render_scene.viewport.ray(math::round_cast(Input::mouse_pos));
+    v3 intersect;
+    return bitmask.ray_intersection(mouse_ray, intersect, pos);
+}
+
 
 
 }

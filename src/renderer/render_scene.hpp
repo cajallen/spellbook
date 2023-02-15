@@ -15,8 +15,11 @@ namespace spellbook {
 
 struct Renderable;
 
+using mesh_id = u64;
+using mat_id = u64;
+
 struct SceneData {
-    Color ambient             = Color(palette::white, 0.05);
+    Color ambient             = Color(palette::white, 0.15);
     Color fog_color           = palette::black;
     f32 fog_depth             = -1.0f;
     v3  rim_alpha_width_start = v3(0.1f, 0.1f, 0.75f);
@@ -35,13 +38,13 @@ enum DebugDrawMode {
 };
 
 struct PostProcessData {
-    v4 outline = v4(0.10f, 0.30f, 0.1f, 1.0f);
+    v4 outline = v4(0.10f, 0.50f, 0.1f, 1.0f);
     DebugDrawMode debug_mode = DebugDrawMode_Lit;
 };
 
 struct RenderScene {
     string              name;
-
+    
     plf::colony<Renderable> renderables;
     plf::colony<Renderable> widget_renderables;
     plf::colony<EmitterGPU> emitters;
@@ -52,7 +55,6 @@ struct RenderScene {
 
     vuk::Buffer buffer_camera_data;
     vuk::Buffer buffer_sun_camera_data;
-    vuk::Buffer buffer_model_mats;
     
     vuk::Buffer buffer_composite_data;
 
@@ -62,8 +64,7 @@ struct RenderScene {
     bool user_pause = false;
     bool cull_pause = false;
     vuk::Texture render_target;
-
-
+    
     vector<LightGPU> submitted_lights;
 
     bool render_grid = true;
@@ -77,6 +78,15 @@ struct RenderScene {
     void        pre_render();
     void        update();
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
+
+    void add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg);
+
+    void prune_emitters();
+
     void        cleanup(vuk::Allocator& allocator);
 
     Renderable* add_renderable(Renderable&& renderable);
@@ -90,6 +100,13 @@ struct RenderScene {
     Renderable& quick_material(const MaterialCPU& material_cpu, bool frame_allocated);
 
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
+
+    vuk::Buffer buffer_model_mats;
+    vuk::Buffer buffer_ids;
+    umap<mat_id, umap<mesh_id, vector<m44GPU*>>> renderables_built;
+    umap<mat_id, umap<mesh_id, vector<std::pair<SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
+    vector<u32> selection_ids;
+    void setup_renderables_for_passes(vuk::Allocator& allocator);
 };
 
 }

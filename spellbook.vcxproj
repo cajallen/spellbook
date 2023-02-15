@@ -143,6 +143,7 @@
     <ClCompile Include="src\game\lizard.cpp" />
     <ClCompile Include="src\game\timer.cpp" />
     <ClCompile Include="src\game\visual_tile.cpp" />
+    <ClCompile Include="src\general\bitmask_3d.cpp" />
     <ClCompile Include="src\general\logger.cpp" />
     <ClCompile Include="src\h_impl.cpp" />
     <ClCompile Include="src\general\astar.cpp" />
@@ -352,6 +353,7 @@
     <ClInclude Include="src\game\systems.hpp" />
     <ClInclude Include="src\game\visual_tile.hpp" />
     <ClInclude Include="src\game\timer.hpp" />
+    <ClInclude Include="src\general\bitmask_3d.hpp" />
     <ClInclude Include="src\general\logger.hpp" />
     <ClInclude Include="src\global.hpp" />
     <ClInclude Include="src\general\astar.hpp" />

@@ -8,6 +8,7 @@ layout (location = 0) in VS_OUT {
     vec3 color;
     vec2 uv;
     mat3 TBN;
+    int id;
 } fin;
 
 layout (location = 0) out vec4 fout_color;
@@ -23,11 +24,7 @@ layout(binding = MATERIAL_BINDING) uniform MaterialData {
 layout(binding = BASE_COLOR_BINDING) uniform sampler2D s_base_color; 
 layout(binding = ORM_BINDING) uniform sampler2D s_metallic_roughness; 
 layout(binding = NORMAL_BINDING) uniform sampler2D s_normal; 
-layout(binding = EMISSIVE_BINDING) uniform sampler2D s_emissive; 
-
-layout(push_constant) uniform uPushConstant {
-    int selection_id;
-} pc;
+layout(binding = EMISSIVE_BINDING) uniform sampler2D s_emissive;
 
 vec2 calculate_uv() {
     return fin.uv * roughness_metallic_normals_scale.w;
@@ -43,5 +40,5 @@ void main() {
 
     vec4 emissive_input = texture(s_emissive, uv);
     fout_emissive = vec4(emissive_input.rgb * emissive_input.a * emissive_tint.rgb * emissive_tint.a + fin.color, 1.0);
-    fout_id = uvec4(pc.selection_id, 0.0, 0.0, 0.0);
+    fout_id = uvec4(fin.id, 0.0, 0.0, 0.0);
 }

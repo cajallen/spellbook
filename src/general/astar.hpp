@@ -5,35 +5,37 @@
 #include "vector.hpp"
 #include "geometry.hpp"
 #include "math.hpp"
+#include "bitmask_3d.hpp"
 
 namespace spellbook::astar {
-using HeuristicFunction = std::function<u32(v2i, v2i)>;
+using HeuristicFunction = std::function<u32(v3i, v3i)>;
 
 struct Node {
     u32   G, H;
-    v2i   position;
+    v3i   position;
     shared_ptr<Node> parent;
 
-    Node(v2i coord_, shared_ptr<Node> parent_ = nullptr);
+    Node(v3i coord_, shared_ptr<Node> parent_ = nullptr);
     u32 get_score();
 };
 
 struct Navigation {
-    bool  _detect_collision(v2i position);
-    shared_ptr<Node> _find_node_on_list(vector<shared_ptr<Node>>& nodes, v2i position);
-
+    bool  _position_viable(v3i position);
+    shared_ptr<Node> _find_node_on_list(vector<shared_ptr<Node>>& nodes, v3i position);
+    vector<std::pair<v3i, u32>> _get_neighbors(v3i position);
+    
     // includes start/end, reverse order (target first)
-    vector<v2i> find_path(v2i source, v2i target);
-    void        remove_collision(v2i position);
+    vector<v3i> find_path(v3i source, v3i target);
 
-    HeuristicFunction heuristic = [](v2i start, v2i end) {
-        v2i delta = end - start;
+    HeuristicFunction heuristic = [](v3i start, v3i end) {
+        v3i delta = end - start;
         return 10 * math::abs(delta.x) + 10 * math::abs(delta.y);
     };
-    vector<v2i> positions = {};
-    bool        diagonal  = false;
+    Bitmask3D solids = {};
+    umap<v3i, Direction> ramps = {};
+    bool diagonal = false;
 
-    static const vector<v2i> directions;
+    static const vector<v3i> directions;
 };
 
 }

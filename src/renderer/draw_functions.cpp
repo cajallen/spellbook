@@ -10,9 +10,9 @@ namespace spellbook {
 
 namespace icosphere {
 
-const float IX = .525731112119133606f;
-const float IZ = .850650808352039932f;
-const float IN = 0.f;
+const float IX = 0.525731112119133606f;
+const float IZ = 0.850650808352039932f;
+const float IN = 0.0f;
 
 static const vector<Vertex> vertices = {
     {v3{-IX, IN, IZ}}, {v3{ IX, IN,  IZ}}, {v3{-IX,  IN, -IZ}}, {v3{ IX,  IN, -IZ}},

@@ -39,11 +39,34 @@ bool contains(range3 r, v3 v) {
     return r.start[0] < v[0] && v[0] < r.end[0] && r.start[1] < v[1] && v[1] < r.end[1] && r.start[2] < v[2] && v[2] < r.end[2];
 }
 
+s32 round_cast(float value) {
+    return (s32) math::round(value);
+}
 v2i round_cast(v2 value) {
     return v2i((s32) math::round(value.x), (s32) math::round(value.y));
 }
 v3i round_cast(v3 value) {
     return v3i((s32) math::round(value.x), (s32) math::round(value.y), (s32) math::round(value.z));
+}
+
+s32 floor_cast(float value) {
+    return (s32) math::floor(value);
+}
+v2i floor_cast(v2 value) {
+    return v2i((s32) math::floor(value.x), (s32) math::floor(value.y));
+}
+v3i floor_cast(v3 value) {
+    return v3i((s32) math::floor(value.x), (s32) math::floor(value.y), (s32) math::floor(value.z));
+}
+
+s32 ceil_cast(float value) {
+    return (s32) math::ceil(value);
+}
+v2i ceil_cast(v2 value) {
+    return v2i((s32) math::ceil(value.x), (s32) math::ceil(value.y));
+}
+v3i ceil_cast(v3 value) {
+    return v3i((s32) math::ceil(value.x), (s32) math::ceil(value.y), (s32) math::ceil(value.z));
 }
 
 v3 convert_h(v4 v) {

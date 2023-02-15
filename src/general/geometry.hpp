@@ -12,12 +12,18 @@ struct Extent3D;
 namespace spellbook {
 
 enum Direction {
+    Direction_PosX = 1 << 0,
+    Direction_NegX = 1 << 1,
+    Direction_PosY = 1 << 2,
+    Direction_NegY = 1 << 3,
+    Direction_PosZ = 1 << 4,
+    Direction_NegZ = 1 << 5,
     Direction_Up       = 1 << 0,
     Direction_Down     = 1 << 1,
     Direction_Left     = 1 << 2,
     Direction_Right    = 1 << 3,
     Direction_Forward  = 1 << 4,
-    Direction_Backward = 1 << 5,
+    Direction_Backward = 1 << 5
 };
 
 template <typename T> struct v2_ {
@@ -184,7 +190,7 @@ template <typename T> struct v3_ {
     };
 
     v3_() : x(), y(), z() {}
-    constexpr v3_(T s) {
+    constexpr explicit v3_(T s) {
         x = s;
         y = s;
         z = s;
@@ -355,7 +361,7 @@ template <typename T> struct v4_ {
     };
 
     v4_() : x(), y(), z(), w() {}
-    constexpr v4_(T s) {
+    constexpr explicit v4_(T s) {
         x = s;
         y = s;
         z = s;
@@ -616,6 +622,10 @@ inline v3_<f32> operator%(v3_<f32> v, f32 s) {
     return v3_(std::fmod(v.x, s), std::fmod(v.y, s), std::fmod(v.z, s));
 }
 
+
+v3i direction_to_vec(Direction direction);
+Direction flip_direction(Direction direction);
+Direction vec_to_direction(v3i vec);
 
 }
 

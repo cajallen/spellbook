@@ -40,7 +40,6 @@ void SkeletonCPU::save_pose(string name) {
 }
 
 void SkeletonCPU::load_pose(string name, bool as_target, float offset) {
-    console({.str=name});
     current_pose = name;
     for (u32 i = 0; i < bones.size(); i++) {
         if (!as_target) {

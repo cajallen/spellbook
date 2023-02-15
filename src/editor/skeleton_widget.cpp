@@ -53,7 +53,6 @@ void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* rende
         
         if (Input::mouse_click[0]) {
             if (depth < FLT_MAX) {
-                console({"test"});
             } else {
                 skeleton->widget_pose_enabled[skeleton->bones.index(bone)] = false;
             }

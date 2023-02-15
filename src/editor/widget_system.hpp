@@ -30,6 +30,10 @@ struct LineProjectInfo {
     v3 position = v3(0.0f);
 };
 
+struct DotProjectInfo {
+    float distance = 0.0f;
+};
+
 struct PlaneProjectInfo {
     v3 position = v3(0.0f);
 };
@@ -47,6 +51,7 @@ struct Mouse3DInfo {
 CircleProjectInfo mouse_to_3d_circle(const Mouse3DInfo& mouse, float radius, int axis, range angle_range);
 LineProjectInfo mouse_to_3d_line(const Mouse3DInfo& mouse, float radius, int axis);
 PlaneProjectInfo mouse_to_3d_plane(const Mouse3DInfo& mouse, int axis);
+DotProjectInfo mouse_to_3d_dot(const Mouse3DInfo& mouse);
 
 }
 

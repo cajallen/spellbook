@@ -2,6 +2,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
+#include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
 #include "game/components.hpp"
 #include "game/scene.hpp"
@@ -10,18 +11,14 @@
 
 namespace spellbook {
 
-std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> simple_select_enemy(EnemyPrefab* input_enemy_prefab, f32 input_cost, f32 input_cooldown) {
-    return [input_enemy_prefab, input_cost, input_cooldown](f32* cost_left, f32* cooldown) -> EnemyPrefab* {
-        if (*cost_left < input_cost)
-            return nullptr;
-        *cooldown += input_cooldown;
-        *cost_left -= input_cost;
-        return input_enemy_prefab;
+std::function<EnemySpawnInfo(int)> simple_select_enemy(EnemySpawnInfo enemy) {
+    return [enemy](int id) -> EnemySpawnInfo {
+        return enemy;
     };
 }
 
-std::function<bool(f32 cost_total)> simple_wave(f32 input_threshold) {
-    return [input_threshold](f32 cost_total) -> bool {
+std::function<bool(float cost_total)> simple_wave(float input_threshold) {
+    return [input_threshold](float cost_total) -> bool {
         return cost_total >= input_threshold;
     };
 }
@@ -35,15 +32,17 @@ void spawner_system(Scene* scene) {
         spawner.cooldown -= Input::delta_time;
         
         if (spawner.wave_happening) {
-            if (spawner.cooldown > 0)
-                continue;
-            auto enemy_prefab = spawner.select_enemy(&spawner.cost_total, &spawner.cooldown);
-            if (enemy_prefab == nullptr) {
+            if (spawner.cost_total < 0.0f) {
                 spawner.wave_happening = false;
                 continue;
             }
+            if (spawner.cooldown > -spawner.selected_enemy.spawn_pre_delay)
+                continue;
             
-            instance_prefab(scene, *enemy_prefab, v3i(logic_transform.position));
+            instance_prefab(scene, load_asset<EnemyPrefab>(spawner.selected_enemy.prefab_path), v3i(logic_transform.position));
+            spawner.cost_total -= spawner.selected_enemy.cost;
+            spawner.cooldown += spawner.selected_enemy.spawn_pre_delay + spawner.selected_enemy.spawn_post_delay;
+            spawner.selected_enemy = spawner.select_enemy(spawner.wave_spawned++);
         }
         
         
@@ -51,23 +50,44 @@ void spawner_system(Scene* scene) {
             // We don't want burst at start of next wave
             spawner.cooldown = math::max(spawner.cooldown, 0.0f);
 
-            spawner.wave_happening = spawner.wave_start(spawner.cost_total);           
+            spawner.wave_happening = spawner.wave_start(spawner.cost_total);
+            spawner.selected_enemy = spawner.select_enemy(spawner.wave_spawned++);
         }
     }
 }
 
+bool inspect(EnemySpawnInfo* enemy_entry) {
+    bool changed = false;
+    changed |= ImGui::PathSelect("Path", &enemy_entry->prefab_path, "resources/enemies", FileType_Enemy);
+    changed |= ImGui::DragFloat("Cost", &enemy_entry->cost, 0.01f);
+    changed |= ImGui::DragFloat("Pre Delay", &enemy_entry->spawn_pre_delay, 0.01f);
+    changed |= ImGui::DragFloat("Post Delay", &enemy_entry->spawn_post_delay, 0.01f);
+    return changed;   
+}
+
 bool inspect(SpawnerPrefab* spawner_prefab) {
     bool changed = false;
-    ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources", FileType_Spawner, true);
+    ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources/spawners", FileType_Spawner, true);
 
     changed |= ImGui::EnumCombo("enemy_selection", &spawner_prefab->enemy_selection);
-    changed |= ImGui::PathSelect("enemy_path", &spawner_prefab->enemy_prefab_path, "resources", FileType_Enemy);
-    changed |= ImGui::DragFloat("enemy_cost", &spawner_prefab->enemy_cost, 0.01f);
-    changed |= ImGui::DragFloat("enemy_cooldown", &spawner_prefab->enemy_cooldown, 0.01f);
+    if (ImGui::Button(ICON_FA_PLUS, {100, 0})) {
+        spawner_prefab->enemy_entries.emplace_back();
+        changed = true;
+    }
+    for (auto& entry : spawner_prefab->enemy_entries) {
+        ImGui::BeginGroup();
+        changed |= inspect(&entry);
+        ImGui::EndGroup();
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_TIMES)) {
+            spawner_prefab->enemy_entries.remove_index(spawner_prefab->enemy_entries.index(entry), true);
+            break;
+        } 
+        ImGui::Separator();
+    }
 
     changed |= ImGui::EnumCombo("wave_selection", &spawner_prefab->wave_selection);
-    changed |= ImGui::DragFloat("wave_cost", &spawner_prefab->wave_cost, 0.01f);
-    
+    changed |= ImGui::DragFloat("wave_threshold", &spawner_prefab->wave_cost, 0.01f);
     changed |= ImGui::DragFloat("delta_cost", &spawner_prefab->delta_cost, 0.01f);
     return changed;
 }
@@ -107,7 +127,8 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     spawner.delta_cost = spawner_prefab.delta_cost;
     switch (spawner_prefab.enemy_selection) {
         case (SpawnerPrefab::EnemySelection_Simple):
-            spawner.select_enemy = simple_select_enemy(new EnemyPrefab(load_asset<EnemyPrefab>(spawner_prefab.enemy_prefab_path)), spawner_prefab.enemy_cost, spawner_prefab.enemy_cooldown);
+            auto entry = !spawner_prefab.enemy_entries.empty() ? spawner_prefab.enemy_entries.front() : EnemySpawnInfo{};
+            spawner.select_enemy = simple_select_enemy(entry);
             break;
     }
     switch (spawner_prefab.wave_selection) {
@@ -121,7 +142,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
 
     // Model
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemy_prefab_path).model_path);
+    model_comp.model_cpu = load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemy_entries.front().prefab_path).model_path);
     model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
     
     scene->registry.emplace<ModelTransform>(entity);

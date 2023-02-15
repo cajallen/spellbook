@@ -151,6 +151,10 @@ bool map_editor_key(KeyCallbackArgs args) {
 
 bool map_editor_click_painting(ClickCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
+    Viewport& viewport = map_editor.p_scene->render_scene.viewport;
+    if (!viewport.hovered && !viewport.focused)
+        return false;
+    
     if (args.action == GLFW_PRESS && args.button == GLFW_MOUSE_BUTTON_LEFT) {
         if (map_editor.selected_consumer != ~0u ||
             map_editor.selected_lizard != ~0u ||
@@ -167,19 +171,6 @@ bool map_editor_click_painting(ClickCallbackArgs args) {
     return false;
 }
 
-bool map_editor_click_dragging(ClickCallbackArgs args) {
-    MapEditor& map_editor = *((MapEditor*) args.data);
-    if (args.action == GLFW_PRESS) {
-        map_editor.p_scene->render_scene.query = v2i(Input::mouse_pos) - map_editor.p_scene->render_scene.viewport.start;
-        return true;
-    }
-    if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
-        map_editor.p_scene->registry.clear<Dragging>();
-        map_editor.p_scene->selected_entity = entt::null;
-    }
-    return false;
-}
-
 bool map_editor_scroll(ScrollCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
     Viewport& viewport = map_editor.p_scene->render_scene.viewport;
@@ -188,7 +179,7 @@ bool map_editor_scroll(ScrollCallbackArgs args) {
         return false;
     
     if (Input::shift) {
-        map_editor.y_level += (s32) args.yoffset;
+        map_editor.z_level += (s32) args.yoffset;
         return true;
     }
 
@@ -201,9 +192,6 @@ bool map_editor_scroll(ScrollCallbackArgs args) {
 
 void MapEditor::setup() {
     ZoneScoped;
-    p_scene = new Scene();
-    p_scene->setup("Map Edit Scene");
-    p_scene->edit_mode = true;
     
     fs::path map_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
 
@@ -216,11 +204,34 @@ void MapEditor::setup() {
     FROM_JSON_MEMBER(spawner_buttons);
     FROM_JSON_MEMBER(consumer_buttons);
     FROM_JSON_MEMBER(map_prefab.file_path);
+    FROM_JSON_MEMBER(vts_path);
+    
+    if (!vts_path.empty())
+        visual_tileset = convert_to_entry_pool(load_asset<VisualTileSet>(vts_path));
+    if (!map_prefab.file_path.empty()) {
+        map_prefab = load_asset<MapPrefab>(map_prefab.file_path);
+        setup_scene(instance_map(map_prefab, "Map Edit Scene"), true);
+    } else {
+        setup_scene(new Scene(), false);
+    }
 
     Input::add_callback(InputCallbackInfo{map_editor_key, 60, "map_editor", this});
     Input::add_callback(InputCallbackInfo{map_editor_scroll, 10, "map_editor", this});
     Input::add_callback(InputCallbackInfo{map_editor_click_painting, 20, "map_editor", this});
-    Input::add_callback(InputCallbackInfo{map_editor_click_dragging, 60, "map_editor", this});
+}
+
+void MapEditor::setup_scene(Scene* scene, bool scene_setup) {
+    p_scene = scene;
+    if (!scene_setup)
+        p_scene->setup("Map Edit Scene");
+    p_scene->set_edit_mode(true);
+    if (!map_prefab.file_path.empty() && !vts_path.empty())
+        build_visuals(scene, nullptr);
+    
+    auto cube = generate_cube(v3(0.0f, 0.0f, -1.0f), v3(100.0f, 100.0f, 0.5f));
+    auto cube_name = upload_mesh(cube);
+    auto water_name = upload_material(MaterialCPU{.file_path = "water_mat", .color_tint = palette::dodger_blue});
+    p_scene->render_scene.quick_mesh(cube_name, water_name, false);
 }
 
 
@@ -232,35 +243,44 @@ void MapEditor::update() {
     
     Viewport& viewport = p_scene->render_scene.viewport;
     if (viewport.hovered) {
-        v3  intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, y_level);
-        v3i top_drawn_cell      = (v3i) math::floor(intersect) - v3i(0,0,1);
-        v3i bot_drawn_cell      = (v3i) math::floor(intersect);
-        draw_preview(top_drawn_cell);
+        v3i cell;
+        if ((selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) && p_scene->get_object_placement(cell)) {
+            z_level = cell.z;
+        } else {
+            if (eraser_selected) {
+                cell = math::floor_cast(math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, z_level));
+                cell.z -= 1;
+            }
+            else
+                cell = math::floor_cast(math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, z_level));
+        }
+        draw_preview(cell);
 
         // we should check if this mouse input is ours in the callback)
         if (painting) {
             if (eraser_selected) {
-                vector<entt::entity> targets = p_scene->get_any(top_drawn_cell);
+                vector<entt::entity> targets = p_scene->get_any(cell);
                 p_scene->registry.destroy(targets.begin(), targets.end());
-                map_prefab.tiles.erase(top_drawn_cell);
-                map_prefab.lizards.erase(top_drawn_cell);
-                map_prefab.consumers.erase(top_drawn_cell);
-                map_prefab.spawners.erase(top_drawn_cell);
-                map_prefab.solid_tiles.erase(top_drawn_cell);
+                map_prefab.tiles.erase(cell);
+                map_prefab.lizards.erase(cell);
+                map_prefab.consumers.erase(cell);
+                map_prefab.spawners.erase(cell);
+                map_prefab.solid_tiles.erase(cell);
+
+                build_visuals(p_scene, &cell);
             }
             else if (selected_tile != -1) {
-                instance_and_write_prefab(load_asset<TilePrefab>(tile_buttons[selected_tile].item_path), top_drawn_cell);
-                map_prefab.solid_tiles.insert(top_drawn_cell);
-                build_visuals();
-            }
-            else if (selected_lizard != -1) {
-                instance_and_write_prefab(load_asset<LizardPrefab>(lizard_buttons[selected_lizard].item_path), bot_drawn_cell);
+                instance_and_write_tile(tile_buttons[selected_tile].item_path, cell, rotation);
+                build_visuals(p_scene, &cell);
             }
             else if (selected_spawner != -1) {
-                instance_and_write_prefab(load_asset<SpawnerPrefab>(spawner_buttons[selected_spawner].item_path), bot_drawn_cell);
+                instance_and_write_spawner(spawner_buttons[selected_spawner].item_path, cell);
             }
             else if (selected_consumer != -1) {
-                instance_and_write_prefab(load_asset<ConsumerPrefab>(consumer_buttons[selected_consumer].item_path), bot_drawn_cell);
+                instance_and_write_consumer(consumer_buttons[selected_consumer].item_path, cell);
+            }
+            else if (selected_lizard != -1) {
+                instance_and_write_lizard(lizard_buttons[selected_lizard].item_path, cell);
             }
         }
     }
@@ -281,36 +301,38 @@ void MapEditor::window(bool* p_open) {
             auto game_scene = (GameScene*) EditorScenes::values().back();
             game_scene->setup(map_prefab);
             p_scene->pause = true;
+            build_visuals(game_scene->p_scene, nullptr);
         }
 
         ImGui::PathSelect("VTS", &vts_path, "resources/visual_tile_sets", FileType_VisualTileSet);
         ImGui::SameLine();
-        if (ImGui::Button("Load")) {
+        if (ImGui::Button("Load##VTS")) {
             visual_tileset = convert_to_entry_pool(load_asset<VisualTileSet>(vts_path));
-            build_visuals();
+            build_visuals(p_scene, nullptr);
         }
         
         
         ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, true);
-        if (ImGui::Button("Load")) {
+        ImGui::SameLine();
+        if (ImGui::Button("Load##Map")) {
             p_scene->cleanup();
             delete p_scene;
             
             map_prefab = load_asset<MapPrefab>(map_prefab.file_path);
-            p_scene = instance_map(map_prefab, "Map Edit Scene");
+            setup_scene(instance_map(map_prefab, "Map Edit Scene"), true);
         }
         ImGui::SameLine();
         if (ImGui::Button("Save")) {
             save_asset(map_prefab);
         }
 
-        show_buttons("Lizards", *this, lizard_buttons, &selected_lizard);
-        ImGui::Separator();
         show_buttons("Tiles", *this, tile_buttons, &selected_tile);
         ImGui::Separator();
         show_buttons("Spawners", *this, spawner_buttons, &selected_spawner);
         ImGui::Separator();
         show_buttons("Consumers", *this, consumer_buttons, &selected_consumer);
+        ImGui::Separator();
+        show_buttons("Lizards", *this, lizard_buttons, &selected_lizard);
     } else {
         unselect_buttons();
     }
@@ -335,6 +357,8 @@ void MapEditor::shutdown() {
     TO_JSON_MEMBER(tile_buttons);
     TO_JSON_MEMBER(spawner_buttons);
     TO_JSON_MEMBER(consumer_buttons);
+    TO_JSON_MEMBER(map_prefab.file_path);
+    TO_JSON_MEMBER(vts_path);
 
     file_dump(j, map_editor_file.string());
 
@@ -342,25 +366,90 @@ void MapEditor::shutdown() {
     Input::remove_callback<ClickCallback>("map_editor");
 }
 
-void MapEditor::build_visuals() {
-    for (entt::entity e : visual_map_entities) {
-        p_scene->registry.destroy(e);
+void MapEditor::instance_and_write_consumer(const string& path, v3i pos) {
+    entt::entity old_tile = p_scene->get_consumer(pos);
+    if (old_tile != entt::null) {
+        p_scene->registry.destroy(old_tile);
     }
-    visual_map_entities.clear();
-    auto visual_tiles = build_visual_tiles(map_prefab.solid_tiles, visual_tileset);
+        
+    map_prefab.consumers[pos] = path;
+    instance_prefab(p_scene, load_asset<ConsumerPrefab>(path), pos);
+}
+
+void MapEditor::instance_and_write_spawner(const string& path, v3i pos) {
+    entt::entity old_tile = p_scene->get_spawner(pos);
+    if (old_tile != entt::null) {
+        p_scene->registry.destroy(old_tile);
+    }
+        
+    map_prefab.spawners[pos] = path;
+    instance_prefab(p_scene, load_asset<SpawnerPrefab>(path), pos);
+}
+
+void MapEditor::instance_and_write_lizard(const string& path, v3i pos) {
+    entt::entity old_tile = p_scene->get_lizard(pos);
+    if (old_tile != entt::null) {
+        p_scene->registry.destroy(old_tile);
+    }
+        
+    map_prefab.lizards[pos] = path;
+    instance_prefab(p_scene, load_asset<LizardPrefab>(path), pos);
+}
+
+void MapEditor::instance_and_write_tile(const string& path, v3i input_pos, u32 rotation) {
+    TilePrefab tile_prefab = load_asset<TilePrefab>(path);
+    auto type = tile_prefab.type;
+    v3i pos;
+    switch (type) {
+        case (TileType_Path):
+            pos = input_pos;
+            map_prefab.solid_tiles[pos] = 0b100;
+        break;
+        case (TileType_TowerSlot):
+            pos = input_pos;
+            map_prefab.solid_tiles[pos] = 0b010;
+        break;
+        case (TileType_Ramp):
+            pos = input_pos;
+            map_prefab.solid_tiles[pos] = 0b001;
+        break;
+        default:
+            pos = input_pos + v3i(0,0,1);
+            map_prefab.solid_tiles[pos] = 0b001;
+    }
+        
+    entt::entity old_tile = p_scene->get_tile(pos);
+    if (old_tile != entt::null) {
+        p_scene->registry.destroy(old_tile);
+    }
+
+    map_prefab.tiles[pos] = {path, rotation};
+    instance_prefab(p_scene, tile_prefab, pos, rotation);
+}
+
+void MapEditor::build_visuals(Scene* scene, v3i* tile) {
+    auto visual_tiles = build_visual_tiles(map_prefab.solid_tiles, visual_tileset, tile);
     for (auto& [pos, tile_entry] : visual_tiles) {
-        auto entity = p_scene->registry.create();
-        p_scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
-        visual_map_entities.push_back(entity);
-                
-        auto& model_comp = p_scene->registry.emplace<Model>(entity);
+        if (scene->visual_map_entities.contains(pos)) {
+            scene->registry.destroy(scene->visual_map_entities[pos]);
+            scene->visual_map_entities.erase(pos);
+        }
+
+        if (tile_entry.model_path.empty())
+            continue;
+        
+        auto entity = scene->registry.create();
+        scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
+        scene->visual_map_entities[pos] = entity;
+
+        auto& model_comp = scene->registry.emplace<Model>(entity);
         model_comp.model_cpu = load_asset<ModelCPU>(tile_entry.model_path);
-        model_comp.model_gpu = instance_model(p_scene->render_scene, model_comp.model_cpu);
+        model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
                 
-        p_scene->registry.emplace<ModelTransform>(entity,
+        scene->registry.emplace<ModelTransform>(entity,
             v3(pos) + v3(1.0f),
             euler{tile_entry.rotation.yaw * math::PI * 0.5f},
-            tile_entry.rotation.flip ? v3(-1.0f, 1.0f, 1.0f) : v3(1.0f, 1.0f, 1.0f)
+            v3(tile_entry.rotation.flip_x ? -1.0f : 1.0f, 1.0f, tile_entry.rotation.flip_z ? -1.0f : 1.0f)
         );
     }
 }
@@ -392,23 +481,55 @@ void MapEditor::draw_preview(v3i cell) {
 
         p_scene->render_scene.quick_mesh(line_mesh, true, true);
     } else if (selected_tile != -1) {
-        auto line_mesh = generate_formatted_line(camera,
-        {
-            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
-            {(v3) cell + v3(1.f, 0.f, 1.05f), palette::white, line_width},
-            {(v3) cell + v3(1.f, 1.f, 1.05f), palette::white, line_width},
-            {(v3) cell + v3(0.f, 1.f, 1.05f), palette::white, line_width},
-            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
-            {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width}
-        });
-
-        p_scene->render_scene.quick_mesh(line_mesh, true, true);
-    } else if (selected_lizard != -1) {
+        TilePrefab tile_prefab = load_asset<TilePrefab>(tile_buttons[selected_tile].item_path);
+        if (tile_prefab.type == TileType_Ramp) {
+            v3 dir;
+            v3 perp;
+            switch (rotation) {
+                case 0: {
+                    dir = v3(0.5f, 0.0f, 0.5f);
+                    perp = v3(0.0f, 0.5f, 0.0f);
+                } break;
+                case 1: {
+                    dir = v3(0.0f, 0.5f, 0.5f);
+                    perp = v3(0.5f, 0.0f, 0.0f);
+                } break;
+                case 2: {
+                    dir = v3(-0.5f, 0.0f, 0.5f);
+                    perp = v3(0.0f, 0.5f, 0.0f);
+                } break;
+                case 3: {
+                    dir = v3(0.0f, -0.5f, 0.5f);
+                    perp = v3(0.5f, 0.0f, 0.0f);
+                } break;
+            }
+            auto ramp_line_mesh = generate_formatted_line(camera,
+            {
+                {(v3) cell + v3(0.5f) - dir - perp, palette::white, line_width},
+                {(v3) cell + v3(0.5f) + dir - perp, palette::white, line_width},
+                {(v3) cell + v3(0.5f) + dir + perp, palette::white, line_width},
+                {(v3) cell + v3(0.5f) - dir + perp, palette::white, line_width},
+                {(v3) cell + v3(0.5f) - dir - perp, palette::white, line_width}
+            });
+            p_scene->render_scene.quick_mesh(ramp_line_mesh, true, true);
+        } else {
+            auto line_mesh = generate_formatted_line(camera,
+            {
+                {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, line_width},
+                {(v3) cell + v3(1.f, 0.f, 0.05f), palette::white, line_width},
+                {(v3) cell + v3(1.f, 1.f, 0.05f), palette::white, line_width},
+                {(v3) cell + v3(0.f, 1.f, 0.05f), palette::white, line_width},
+                {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, line_width},
+                {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, line_width}
+            });
+            p_scene->render_scene.quick_mesh(line_mesh, true, true);
+        }
+    } else if (selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 48; i++) {
             f32 angle  = i * math::TAU / 48.0f;
-            v3  center = (v3) cell + v3(0.5f, 0.5f, 1.5f);
-            vertices.emplace_back(center + 0.5f * v3(math::cos(angle), math::sin(angle), 0.04f), palette::white, line_width);
+            v3  center = (v3) cell + v3(0.5f, 0.5f, 0.05f);
+            vertices.emplace_back(center + 0.4f * v3(math::cos(angle), math::sin(angle), 0.04f), palette::white, line_width);
         }
 
         auto line_mesh = generate_formatted_line(camera, std::move(vertices));

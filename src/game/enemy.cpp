@@ -14,7 +14,7 @@ namespace spellbook {
 entt::entity instance_prefab(Scene* scene, const EnemyPrefab& enemy_prefab, v3i location) {
     static int i      = 0;
     auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", "enemy", i++));
+    scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(enemy_prefab.file_path).stem().string(), i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
     model_comp.model_cpu = load_asset<ModelCPU>(enemy_prefab.model_path);
@@ -26,7 +26,9 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& enemy_prefab, v3i 
 
     scene->registry.emplace<Traveler>(entity, vector<v3i>{}, enemy_prefab.max_speed);
     scene->registry.emplace<Health>(entity, enemy_prefab.max_health, &scene->render_scene, enemy_prefab.hurt_path);
-    
+    if (enemy_prefab.drop_chance > 0.0f)
+        scene->registry.emplace<DropChance>(entity, enemy_prefab.drop_path, enemy_prefab.drop_chance);
+
     return entity;  
 }
 
@@ -38,6 +40,9 @@ bool inspect(EnemyPrefab* enemy_prefab) {
     changed |= ImGui::PathSelect("Hurt", &enemy_prefab->hurt_path, "resources/emitters", FileType_Emitter);
     changed |= ImGui::DragFloat("Max Health", &enemy_prefab->max_health, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Max Speed", &enemy_prefab->max_speed, 0.01f, 0.0f);
+    changed |= ImGui::PathSelect("Drop", &enemy_prefab->drop_path, "resources/drops", FileType_Drop);
+    changed |= ImGui::SliderFloat("Drop Chance", &enemy_prefab->drop_chance, 0.0f, 1.0f);
+    
     return changed;
 }
 

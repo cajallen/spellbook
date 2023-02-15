@@ -39,7 +39,7 @@ Renderer::Renderer() : imgui_data() {
                 __debugbreak();
                 return VK_FALSE;
             })
-        .set_app_name("lizard_wizards")
+        .set_app_name("saurian_sorcery")
         .set_engine_name("spellbook")
         .require_api_version(1, 2, 0)
         .set_app_version(0, 1, 0);
@@ -412,7 +412,7 @@ void Renderer::upload_defaults() {
     };
     upload_texture(tex_white_upload);
 
-    constexpr u32 grid_size = 2048;
+    constexpr u32 grid_size = 1024;
     TextureCPU tex_grid_upload {
         .file_path = "textures/grid.sbtex",
         .size = v2i(grid_size, grid_size),

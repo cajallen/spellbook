@@ -83,6 +83,15 @@ struct Color {
 
         return Color(v * math::mix(v3(1.f), rgb, s), a);
     }
+    static Color hsvf(float h, float s, float v, float a = 1.0f) {
+        v3 rgb = math::clamp(
+            math::abs((v3(h*6.f)+v3(0.f,4.f,2.f)) % 6.f - 3.f)-v3(1.f), 
+            v3(0.f), 
+            v3(1.f)
+        );
+
+        return Color(v * math::mix(v3(1.f), rgb, s), a);
+    }
 };
 
 JSON_IMPL(Color, r, g, b, a);
@@ -98,6 +107,8 @@ namespace palette {
 const Color x(1.0f, 0.5f, 0.5f);
 const Color y(0.5f, 1.0f, 0.5f);
 const Color z(0.5f, 0.5f, 1.0f);
+
+const Color clear = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
 const Color gray_1 = Color(0.1f, 0.1f, 0.1f, 1.0f);
 const Color gray_2 = Color(0.2f, 0.2f, 0.2f, 1.0f);

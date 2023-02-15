@@ -82,6 +82,10 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::DragFloat("When", &component->when, 0.01f);
         ImGui::Separator();
     }
+    if (scene->registry.all_of<Draggable>(entity)) {
+        ImGui::Text("Draggable");
+        ImGui::Separator();
+    }
     if (auto* component = scene->registry.try_get<Dragging>(entity)) {
         ImGui::Text("Dragging");
         ImGui::DragFloat("Start Time", &component->start_time, 0.01f);

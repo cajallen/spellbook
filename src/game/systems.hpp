@@ -31,6 +31,7 @@ void lizard_casting_system(Scene* scene);
 
 void emitter_system(Scene* scene);
 void visual_tile_widget_system(Scene* scene);
+void pickup_system(Scene* scene);
 
 void spawner_draw_system(Scene* scene);
 

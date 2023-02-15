@@ -21,8 +21,17 @@ bool contains(range2 r, v2 v);
 bool contains(range2i r, v2i v);
 bool contains(range3 r, v3 v);
 
+s32 round_cast(float value);
 v2i round_cast(v2 value);
 v3i round_cast(v3 value);
+
+s32 floor_cast(float value);
+v2i floor_cast(v2 value);
+v3i floor_cast(v3 value);
+
+s32 ceil_cast(float value);
+v2i ceil_cast(v2 value);
+v3i ceil_cast(v3 value);
 
 v3 convert_h(v4 v);
 v4 convert_h(v3 v);
@@ -324,8 +333,22 @@ inline f32 mod(f32 input, f32 divisor) {
     return std::fmod(input, divisor);
 }
 
+inline s32 mod(s32 input, s32 divisor) {
+    return input % divisor;
+}
+
+template <typename T>
+v2_<T> mod(v2_<T> input, v2_<T> divisor) {
+    return v2_<T>{math::mod(input.x, divisor.x), math::mod(input.y, divisor.y)};
+}
+
+template <typename T>
+v3_<T> mod(v3_<T> input, v3_<T> divisor) {
+    return v3_<T>{math::mod(input.x, divisor.x), math::mod(input.y, divisor.y), math::mod(input.z, divisor.z)};
+}
+
 inline f32 fract(f32 input) {
-    return math::mod(input, 1);
+    return math::mod(input, 1.0f);
 }
 
 inline f32 lerp_angle(f32 t, range r) {

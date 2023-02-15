@@ -31,6 +31,9 @@ struct LizardPrefab {
     LizardType type = LizardType_Empty;
     string model_path;
     string file_path;
+    
+    f32 max_health = 1.0f;
+    string hurt_path;
 };
 
 struct Lizard { // Component
@@ -42,7 +45,7 @@ struct Lizard { // Component
 };
 
 
-JSON_IMPL(LizardPrefab, type, model_path);
+JSON_IMPL(LizardPrefab, type, model_path, max_health);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const LizardPrefab&, v3i location);

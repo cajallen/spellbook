@@ -55,6 +55,8 @@ struct vector {
     [[nodiscard]] T*       end();
     [[nodiscard]] T&       front();
     [[nodiscard]] T&       back();
+    [[nodiscard]] const T& front() const;
+    [[nodiscard]] const T& back() const;
     [[nodiscard]] const T* data() const;
     [[nodiscard]] const T* begin() const;
     [[nodiscard]] const T* end() const;
@@ -273,6 +275,16 @@ T& vector<T>::front() {
 
 template <typename T>
 T& vector<T>::back() {
+    return internal.back();
+}
+
+template <typename T>
+const T& vector<T>::front() const {
+    return internal.front();
+}
+
+template <typename T>
+const T& vector<T>::back() const {
     return internal.back();
 }
 

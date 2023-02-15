@@ -6,6 +6,7 @@
 #include "general/logger.hpp"
 #include "game/components.hpp"
 #include "game/game_file.hpp"
+#include "extension/imgui_extra.hpp"
 
 namespace fs = std::filesystem;
 
@@ -17,17 +18,24 @@ void inspect(MapPrefab* map_prefab) {
     for (auto& [pos, prefab] : map_prefab->lizards) {
         ImGui::Text("%d", lizard_i++);
         ImGui::Indent();
-        inspect(&prefab);
+        ImGui::PushID(prefab.c_str());
+        ImGui::PathSelect("Path", &prefab, "resources/lizards", FileType_Lizard);
+        ImGui::PopID();
         ImGui::Unindent();
     }
     ImGui::Separator();
 
     ImGui::Text("Tiles");
     u32 tile_i = 0;
-    for (auto& [pos, prefab] : map_prefab->tiles) {
+    for (auto& [pos, entry] : map_prefab->tiles) {
         ImGui::Text("%d", tile_i++);
         ImGui::Indent();
-        inspect(&prefab);
+        ImGui::PushID(entry.prefab_path.c_str());
+        ImGui::PathSelect("Path", &entry.prefab_path, "resources/tiles", FileType_Tile);
+        int rot = entry.rotation;
+        if (ImGui::SliderInt("Rotation", &rot, 0, 3))
+            entry.rotation = rot;
+        ImGui::PopID();
         ImGui::Unindent();
     }
     ImGui::Separator();
@@ -37,7 +45,9 @@ void inspect(MapPrefab* map_prefab) {
     for (auto& [pos, prefab] : map_prefab->spawners) {
         ImGui::Text("%d", spawner_i++);
         ImGui::Indent();
-        inspect(&prefab);
+        ImGui::PushID(prefab.c_str());
+        ImGui::PathSelect("Path", &prefab, "resources/spawners", FileType_Spawner);
+        ImGui::PopID();
         ImGui::Unindent();
     }
     ImGui::Separator();
@@ -47,7 +57,9 @@ void inspect(MapPrefab* map_prefab) {
     for (auto& [pos, prefab] : map_prefab->consumers) {
         ImGui::Text("%d", consumer_i++);
         ImGui::Indent();
-        inspect(&prefab);
+        ImGui::PushID(prefab.c_str());
+        ImGui::PathSelect("Path", &prefab, "resources/consumers", FileType_Consumer);
+        ImGui::PopID();
         ImGui::Unindent();
     }
     ImGui::Separator();
@@ -57,16 +69,24 @@ Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     auto scene = new Scene();
     scene->setup(name);
     for (auto& [pos, prefab] : map_prefab.lizards) {
-        instance_prefab(scene, prefab, pos);
+        if (prefab.empty())
+            continue;
+        instance_prefab(scene, load_asset<LizardPrefab>(prefab), pos);
     }
-    for (auto& [pos, prefab] : map_prefab.tiles) {
-        instance_prefab(scene, prefab, pos);
+    for (auto& [pos, entry] : map_prefab.tiles) {
+        if (entry.prefab_path.empty())
+            continue;
+        instance_prefab(scene, load_asset<TilePrefab>(entry.prefab_path), pos, entry.rotation);
     }
     for (auto& [pos, prefab] : map_prefab.spawners) {
-        instance_prefab(scene, prefab, pos);
+        if (prefab.empty())
+            continue;
+        instance_prefab(scene, load_asset<SpawnerPrefab>(prefab), pos);
     }
     for (auto& [pos, prefab] : map_prefab.consumers) {
-        instance_prefab(scene, prefab, pos);
+        if (prefab.empty())
+            continue;
+        instance_prefab(scene, load_asset<ConsumerPrefab>(prefab), pos);
     }
     return scene;
 }

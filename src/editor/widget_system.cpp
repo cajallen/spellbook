@@ -7,7 +7,7 @@
 namespace spellbook {
 
 bool widget_click(ClickCallbackArgs args) {
-    if (args.action == GLFW_PRESS) {
+    if (args.action != GLFW_RELEASE) {
         float closest_depth = FLT_MAX;
         u64 closest_id;
         for (auto& [id, depth] : WidgetSystem::depths) {
@@ -85,6 +85,17 @@ LineProjectInfo mouse_to_3d_line(const Mouse3DInfo& mouse, float radius, int axi
     v2 uv_axis_position = math::to_unsigned_range(h_screen_axis.xy / h_screen_axis.w);
     return_info.distance = math::length((uv_axis_position - mouse.uv_position) * mouse.viewport_size);
     return_info.position[axis] = return_info.visual_axis_value;
+    
+    return return_info;
+}
+
+DotProjectInfo mouse_to_3d_dot(const Mouse3DInfo& mouse) {
+    DotProjectInfo return_info;
+
+    v3 projected = v3(0.0f);
+    v4 h_screen_axis = mouse.mvp * v4(projected, 1.0f);
+    v2 uv_axis_position = math::to_unsigned_range(h_screen_axis.xy / h_screen_axis.w);
+    return_info.distance = math::length((uv_axis_position - mouse.uv_position) * mouse.viewport_size);
     
     return return_info;
 }

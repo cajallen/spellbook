@@ -13,6 +13,7 @@
 #include "game/components.hpp"
 #include "game/input.hpp"
 #include "editor/console.hpp"
+#include "editor/widget_system.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
 
@@ -27,10 +28,14 @@ void travel_system(Scene* scene) {
 
     astar::Navigation nav;
     for (auto [entity, slot, logic_pos] : slots.each()) {
+        if (slot.ramp) {
+            nav.ramps[v3i(logic_pos.position)] = slot.direction;
+            continue;
+        }
         if (slot.path)
-            nav.positions.push_back(v2i(logic_pos.position.xy));
+            nav.solids.set(v3i(logic_pos.position));
     }
-
+    
     // handle actual traveling
     for (auto [entity, traveler, transform] : entities.each()) {
         bool has_path = !traveler.targets.empty();
@@ -38,12 +43,12 @@ void travel_system(Scene* scene) {
         if (!has_path && !consumers.empty()) {
             int       random_consumer = math::random_s32() % s32(consumers.size());
             auto      consumer_entity = consumers[random_consumer];
-            LogicTransform* p_logic_position          = scene->registry.try_get<LogicTransform>(consumer_entity);
-            assert_else(p_logic_position);
+            LogicTransform* consumer_position          = scene->registry.try_get<LogicTransform>(consumer_entity);
+            assert_else(consumer_position);
 
-            auto path = nav.find_path(math::round_cast(transform.position.xy), v2i(p_logic_position->position.xy));
+            auto path = nav.find_path(math::round_cast(transform.position), v3i(consumer_position->position));
             for (auto it = path.begin(); it != path.end(); ++it) {
-                traveler.targets.emplace_back(it->x, it->y, 0);
+                traveler.targets.push_back(*it);
             }
         }
         assert_else(!math::is_nan(transform.position.x)) {
@@ -74,27 +79,36 @@ void health_draw_system(Scene* scene) {
     // dependencies
     static bool deps = false;
     static string mesh_name;
-    static string health_name;
+    static string health_friendly_name;
+    static string health_enemy_name;
     static string health_buffer_name;
     static string health_bar_name;
     if (!deps) {
         mesh_name = upload_mesh(generate_cube(v3(0), v3(1)));
         
-        MaterialCPU material1_cpu = {
-            .file_path     = "health_material",
+        MaterialCPU health_friendly_material = {
+            .file_path     = "health_friendly_material",
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
-        health_name = upload_material(material1_cpu);
+        health_friendly_name = upload_material(health_friendly_material);
+        MaterialCPU health_enemy_material = {
+            .file_path     = "health_enemy_material",
+            .color_tint    = palette::black,
+            .emissive_tint = palette::fire_brick
+        };
+        health_enemy_name = upload_material(health_enemy_material);
         MaterialCPU material3_cpu = {
             .file_path     = "health_buffer_material",
             .color_tint    = palette::black,
-            .emissive_tint = palette::yellow
+            .emissive_tint = palette::yellow,
+            .cull_mode = vuk::CullModeFlagBits::eFront
         };
         health_buffer_name = upload_material(material3_cpu);
         MaterialCPU material2_cpu = {
             .file_path     = "health_bar_material",
             .color_tint    = palette::black,
+            .roughness_factor = 1.0f,
             .cull_mode     = vuk::CullModeFlagBits::eFront
         };
         health_bar_name = upload_material(material2_cpu);
@@ -103,6 +117,7 @@ void health_draw_system(Scene* scene) {
 
     auto       health_draw_system = scene->registry.view<LogicTransform, Health>();
     for (auto [entity, transform, health] : health_draw_system.each()) {
+        bool friendly = scene->registry.all_of<Lizard>(entity);
         if (health.value <= 0.0f)
             continue;
 
@@ -110,24 +125,25 @@ void health_draw_system(Scene* scene) {
         float percentage2 = health.buffer_value / health.max_health.value();
         auto link = scene->registry.try_get<TransformLink>(entity);
         v3 position = link ? transform.position + link->offset : transform.position;
-
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
+
+        float width = friendly ? 0.7f : 0.6f;
+        float vertical_offset = friendly ? 1.2f : 0.5f;
+        float thickness = friendly ? 0.05f : 0.035f;
         
-        constexpr float thickness = 0.03f;
-        constexpr float width = 0.6f;
         m44 inner_matrix = math::translate(position) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
-                           math::translate(v3(-(1.0f - percentage) * 0.5f * width, 0.0f, 0.5f)) *
+                           math::translate(v3(-(1.0f - percentage) * 0.5f * width, 0.0f, vertical_offset)) *
                            math::scale(v3(percentage * 0.5f * width, thickness, thickness));
         m44 buffer_matrix = math::translate(position) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
-                           math::translate(v3(-(1.0f - percentage2) * 0.5f * width, 0.0f, 0.5f)) *
-                           math::scale(v3(percentage2 * 0.5f * width, thickness, thickness) * 0.999f);
-        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, 0.5) + position) *
+                           math::translate(v3(-(1.0f - percentage2) * 0.5f * width, 0.0f, vertical_offset)) *
+                           math::scale(v3(percentage2 * 0.5f * width, thickness, thickness) * 0.9f);
+        m44 outer_matrix = math::translate(v3(0.0f, 0.0f, vertical_offset) + position) *
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
                            math::scale(v3(0.5f * width, thickness, thickness));
 
-        auto renderable1 = Renderable{mesh_name, health_name, (m44GPU) inner_matrix, {}, true};
+        auto renderable1 = Renderable{mesh_name, friendly ? health_friendly_name : health_enemy_name, (m44GPU) inner_matrix, {}, true};
         auto renderable2 = Renderable{mesh_name, health_bar_name, (m44GPU) outer_matrix, {}, true};
         auto renderable3 = Renderable{mesh_name, health_buffer_name, (m44GPU) buffer_matrix, {}, true};
         scene->render_scene.add_renderable(renderable1);
@@ -191,6 +207,11 @@ void disposal_system(Scene* scene) {
     if (scene->edit_mode)
         return;
     
+    for (auto [entity, transform, drop_chance, killed] : scene->registry.view<LogicTransform, DropChance, Killed>().each()) {
+        if (math::random_f32(1.0f) < drop_chance.drop_chance) {
+            instance_prefab(scene, load_asset<BeadPrefab>(drop_chance.bead_prefab_path), transform.position);
+        }
+    }
     auto killed = scene->registry.view<Killed>();
     scene->registry.destroy(killed.begin(), killed.end());
 }
@@ -338,15 +359,17 @@ void dragging_system(Scene* scene) {
     v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
 
     constexpr f32 raise_speed = 0.10f;
-    auto drags = scene->registry.view<Dragging>();
-    for (auto [entity, drag] : drags.each()) {
+    auto drags = scene->registry.view<LogicTransform, Dragging, Draggable>();
+    for (auto [entity, transform, drag, draggable] : drags.each()) {
         v3 logic_offset = intersect - drag.start_intersect;
         drag.target_position = drag.start_logic_position + logic_offset;
 
         entt::entity potential_entity = scene->get_tile(math::round_cast(drag.target_position.xy));
         auto potential_transform = scene->registry.try_get<LogicTransform>(potential_entity);
         if (potential_transform) {
-            drag.potential_logic_position = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
+            v3 new_potential_pos = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
+            if (math::max(math::abs(new_potential_pos.x - transform.position.x), math::abs(new_potential_pos.x - transform.position.x)) <= draggable.drag_distance)
+                drag.potential_logic_position = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
         }
         drag.target_position.z = drag.potential_logic_position.z;
     }
@@ -436,30 +459,41 @@ void emitter_system(Scene* scene) {
     }
 }
 
-void visual_tile_widget_system(Scene* scene) {
-    static string mesh_name;
-    static string mat_off_name;
-    static string mat_on_name;
-    if (mesh_name.empty()) {
-        mesh_name = upload_mesh(generate_icosphere(3), false);
-        mat_off_name = upload_material({.file_path = "mat_off_name", .color_tint = palette::gray_1}, false);
-        mat_on_name = upload_material({.file_path = "mat_on_name", .color_tint = palette::gray_1, .emissive_tint = palette::spellbook_1}, false);
-    }
-    for (auto [entity, vtsw] : scene->registry.view<VisualTileSetWidget>().each()) {
-        if (vtsw.tile_set != nullptr) {
-            auto& tiles = vtsw.tile_set->tiles;
-            u32 width = u32(math::ceil(math::sqrt(f32(tiles.size()))));
-            u32 i = 0;
-            for (VisualTilePrefab& tile_entry : tiles) {
-                v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;
-                i++;
-                for (int c = 0; c < 8; c++) {
-                    auto& r = scene->render_scene.quick_mesh(mesh_name, tile_entry.corners[c] > 0 ? mat_on_name : mat_off_name, true);           
-                    r.transform = m44GPU(math::translate(pos + v3(visual_direction_offsets[c]) - v3(0.5f)) * math::scale(0.05f));
+void pickup_system(Scene* scene) {
+    auto lizard_view = scene->registry.view<Lizard, LogicTransform>();
+    for (auto [entity, pickup, bead_transform] : scene->registry.view<Pickup, LogicTransform>().each()) {
+        v3 closest_position = bead_transform.position;
+        float closest_distance = FLT_MAX;
+        for (auto [lizard_entity, lizard, lizard_transform] : lizard_view.each()) {
+            float distance = math::length(bead_transform.position - lizard_transform.position);
+            if (distance < 0.2f) {
+                scene->player.bank.beads[pickup.bead_type]++;
+                scene->registry.emplace<Killed>(entity);
+            } else {
+                if (math::abs(bead_transform.position.z - lizard_transform.position.z) >= 0.8f)
+                    continue;
+
+                if (distance < closest_distance) {
+                    closest_position = lizard_transform.position;
+                    closest_distance = distance;
                 }
             }
-            
         }
+
+        if (closest_distance < 10.0f) {
+            v3 to_position = closest_position - bead_transform.position;
+            to_position = math::normalize(to_position) * scene->delta_time * 2.0f;
+            bead_transform.position += to_position;
+        }
+
+        
+        pickup.cycle_point = math::mod(pickup.cycle_point + 0.4f * scene->delta_time, 10.0f);
+        
+        bead_transform.rotation.yaw = pickup.cycle_point * math::TAU;
+        bead_transform.rotation.pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f;
+        scene->registry.get<ModelTransform>(entity).rotation.yaw = pickup.cycle_point * math::TAU;
+        scene->registry.get<ModelTransform>(entity).rotation.pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f;
+        scene->registry.get<TransformLink>(entity).offset.z = 0.1f * math::sin(pickup.cycle_point * math::TAU) + 0.3f;
     }
 }
 

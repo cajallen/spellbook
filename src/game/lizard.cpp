@@ -42,10 +42,11 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     auto& liz = scene->registry.emplace<Lizard>(entity, lizard_prefab.type);
     scene->registry.emplace<PoseController>(entity, 1.0f, 0.0f, 2.0f, "default");
+    scene->registry.emplace<Health>(entity, lizard_prefab.max_health, &scene->render_scene, lizard_prefab.hurt_path);
+    scene->registry.emplace<Draggable>(entity);
 
     switch (lizard_prefab.type) {
         case (LizardType_Assassin): {
-            // TODO: spawn blood
             liz.basic_ability = make_ability(scene, "Assassin Basic");
             liz.basic_ability->caster = entity;
             liz.basic_ability->pre_trigger_time = Stat(0.2f);
@@ -66,11 +67,73 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                     auto& health = ability->scene->registry.get<Health>(enemy);
                     auto& this_lt = ability->scene->registry.get<LogicTransform>(ability->caster);
                     auto& enemy_lt = ability->scene->registry.get<LogicTransform>(enemy);
-                    health.damage(1.0f, enemy_lt.position - this_lt.position);
+                    health.damage(3.5f, enemy_lt.position - this_lt.position);
                 }
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
                     poser->set_state("default", ability->post_trigger_time.value(), 2.0f);
+                }
+            };
+            liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
+
+            liz.basic_ability->targeting_callback = [](void* payload) {
+                auto ability = id_ptr<Ability>((u64) payload);
+                v3i caster_pos = math::round_cast(ability->scene->registry.get<LogicTransform>(ability->caster).position);
+                struct Entry {
+                    v3i offset = {};
+                    int count;
+                };
+                vector<Entry> entries;
+                auto add_entry = [&ability, &entries, &caster_pos](v3i offset) {
+                    entries.emplace_back(offset, ability->scene->get_enemies(caster_pos + offset).size());
+                };
+                add_entry(v3i( 1, 0,0));
+                add_entry(v3i( 0, 1,0));
+                add_entry(v3i(-1, 0,0));
+                add_entry(v3i( 0,-1,0));
+                vector closest_entries = {entries.front()};
+                for (auto& entry : entries) {
+                    if (entry.count > closest_entries.begin()->count)
+                        closest_entries = {entry};
+                    else if (entry.count == closest_entries.begin()->count)
+                        closest_entries.push_back(entry);
+                }
+                if (closest_entries.front().count > 0) {
+                    ability->target = caster_pos + closest_entries[math::random_s32(closest_entries.size())].offset;
+                    ability->has_target = true;
+                } else {
+                    ability->has_target = false;
+                }
+            };
+            liz.basic_ability->targeting_payload = (void*) liz.basic_ability.id;
+        } break;
+        case (LizardType_Bulwark): {
+            // TODO: spawn blood
+            liz.basic_ability = make_ability(scene, "Bulwark Basic");
+            liz.basic_ability->caster = entity;
+            liz.basic_ability->pre_trigger_time = Stat(0.3f);
+            liz.basic_ability->post_trigger_time = Stat(1.0f);
+            liz.basic_ability->cooldown_time = Stat(1.0f);
+            liz.basic_ability->start_callback = [](void* payload) {
+                auto ability = id_ptr<Ability>((u64) payload);
+                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
+                if (poser) {
+                    poser->set_state("attacking", ability->pre_trigger_time.value());
+                }
+            };
+            liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
+            liz.basic_ability->trigger_callback = [](void* payload) {
+                auto ability = id_ptr<Ability>((u64) payload);
+                auto enemies = ability->scene->get_enemies(ability->target);
+                for (auto& enemy : enemies) {
+                    auto& health = ability->scene->registry.get<Health>(enemy);
+                    auto& this_lt = ability->scene->registry.get<LogicTransform>(ability->caster);
+                    auto& enemy_lt = ability->scene->registry.get<LogicTransform>(enemy);
+                    health.damage(2.0f, enemy_lt.position - this_lt.position);
+                }
+                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
+                if (poser) {
+                    poser->set_state("default", ability->post_trigger_time.value(), 3.0f);
                 }
             };
             liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
@@ -169,7 +232,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                     auto enemies = scene->get_enemies(payload->target);
                     for (auto& enemy : enemies) {
                         auto& health = scene->registry.get<Health>(enemy);
-                        health.damage(1.0f, v3(0, 0, -1));
+                        health.damage(2.5f, v3(0, 0, -1));
                     }
                     delete payload;
                 },  new IllusionBasicHurtPayload{ability->scene,

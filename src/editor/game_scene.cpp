@@ -1,6 +1,7 @@
 ﻿#include "game_scene.hpp"
 
 #include "game/game.hpp"
+#include "renderer/draw_functions.hpp"
 
 namespace spellbook {
 
@@ -34,9 +35,14 @@ void GameScene::setup(const MapPrefab& map_prefab) {
     Input::add_callback(InputCallbackInfo{game_scene_on_key, 20, "Game Scene", this});
     Input::add_callback(InputCallbackInfo{game_scene_click_dragging, 50, "Game Scene", this});
     p_scene = instance_map(map_prefab, "Game Scene");
-    p_scene->edit_mode = false;
+    p_scene->set_edit_mode(false);
     p_scene->time_scale = 1.0f;
     setup_player_stuff();
+
+    auto cube = generate_cube(v3(0.0f, 0.0f, -1.0f), v3(100.0f, 100.0f, 0.5f));
+    auto cube_name = upload_mesh(cube);
+    auto water_name = upload_material(MaterialCPU{.file_path = "water_mat", .color_tint = palette::dodger_blue});
+    p_scene->render_scene.quick_mesh(cube_name, water_name, false);
 }
 
 void GameScene::update() {

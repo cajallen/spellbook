@@ -9,9 +9,14 @@
 namespace spellbook {
 
 struct Scene;
+struct Spawner;
 
-std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> simple_select_enemy(EnemyPrefab* enemy_prefab, f32 cost, f32 cooldown);
-std::function<bool(f32 cost_total)> simple_wave(f32 threshold);
+struct EnemySpawnInfo {
+    string prefab_path;
+    float cost;
+    float spawn_pre_delay;
+    float spawn_post_delay;
+};
 
 struct SpawnerPrefab {
     string file_path;
@@ -24,9 +29,7 @@ struct SpawnerPrefab {
     };
 
     EnemySelection enemy_selection;
-    string enemy_prefab_path;
-    f32 enemy_cost;
-    f32 enemy_cooldown;
+    vector<EnemySpawnInfo> enemy_entries;
 
     WaveSelection wave_selection;
     f32 wave_cost;
@@ -35,20 +38,26 @@ struct SpawnerPrefab {
 };
 
 struct Spawner {
-    // Would be nice to move this out of a two state system into something arbitrary
     Stat delta_cost;
-    std::function<EnemyPrefab*(f32* cost_left, f32* cooldown)> select_enemy;
     std::function<bool(f32 cost_total)> wave_start;
+    std::function<EnemySpawnInfo(int)> select_enemy;
+    EnemySpawnInfo selected_enemy;
+    int wave_spawned = 0;
 
     bool wave_happening = false;
     f32 cost_total = 0.0f;
     f32 cooldown = 0.0f;
 };
 
-JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_prefab_path, enemy_cost, enemy_cooldown, wave_selection, wave_cost, delta_cost);
+JSON_IMPL(EnemySpawnInfo, prefab_path, cost, spawn_pre_delay, spawn_post_delay);
+JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_entries, wave_selection, wave_cost, delta_cost);
+
+std::function<EnemySpawnInfo(int)> simple_select_enemy(EnemySpawnInfo enemy);
+std::function<bool(f32 cost_total)> simple_wave(f32 threshold);
 
 void spawner_system(Scene* scene);
 
+bool inspect(EnemySpawnInfo* enemy_entry);
 bool inspect(SpawnerPrefab* spawner_prefab);
 entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, v3i location);
 

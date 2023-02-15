@@ -56,6 +56,8 @@ struct LogicTransformAttach {
 
 struct GridSlot {
     bool path = false;
+    bool ramp = false;
+    Direction direction = Direction_Up;
 };
 
 struct Traveler {
@@ -68,9 +70,9 @@ struct Health {
     float buffer_value = 0.0f;
     
     Stat max_health = {};
-    EmitterGPU* hurt_emitter;
-    v3 hurt_direction;
-    float hurt_until;
+    EmitterGPU* hurt_emitter = nullptr;
+    v3 hurt_direction = {};
+    float hurt_until = 0.0f;
 
     Stat burn = {};
 
@@ -101,6 +103,10 @@ struct Killed {
     f32 when = -FLT_MAX;
 };
 
+struct Draggable {
+    float drag_distance = 4.0f;
+    int drag_cost = 1;
+};
 struct Dragging {
     f32 start_time = 0.0f;
     v3  start_logic_position = v3(0.0f);
@@ -133,13 +139,20 @@ struct PoseController {
     }
 };
 
+struct DropChance {
+    string bead_prefab_path;
+    float drop_chance;
+};
+
+struct Pickup {
+    // Could be replaced with a callback
+    Bead bead_type;
+    float cycle_point;
+};
+
 struct EmitterComponent {
     EmitterGPU* emitter;
     Timer* timer;
-};
-
-struct VisualTileSetWidget {
-    VisualTileSet* tile_set = nullptr;
 };
 
 void inspect_components(Scene* scene, entt::entity entity);

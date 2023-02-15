@@ -18,6 +18,11 @@ layout (binding = CAMERA_BINDING) uniform CameraData {
 layout (binding = MODEL_BINDING) buffer readonly Model {
 	mat4 model[];
 };
+
+layout (binding = ID_BINDING) buffer readonly SelectionIds {
+	int selection_id[];
+};
+
 layout (binding = BONES_BINDING) buffer readonly Bones {
 	int bone_count;
 	mat4 bones[];
@@ -32,6 +37,7 @@ layout(location = 0) out VS_OUT {
     vec3 color;
     vec2 uv;
     mat3 TBN;
+	int id;
 } vout;
 
 
@@ -59,10 +65,17 @@ void main() {
 	total_normal = bones_used > 0 ? total_normal : vin_normal;
 	total_tangent = bones_used > 0 ? total_tangent : vin_tangent;
 	
-    vec4 h_position = model[gl_BaseInstance] * total_position;
-    vout.position = h_position.xyz / h_position.w;
+    vec4 h_position = model[gl_InstanceIndex] * total_position;
+    
+	if (bones_used == 0) {
+		vec3 p = h_position.xyz / h_position.w;
+		p = round(p * 1000.0) / 1000.0;
+		h_position = vec4(p, 1.0);
+	}
 	
-    mat3 N = inverse(transpose(mat3(model[gl_BaseInstance])));
+	vout.position = h_position.xyz / h_position.w;
+	
+    mat3 N = inverse(transpose(mat3(model[gl_InstanceIndex])));
 	vec3 n = normalize(N * normalize(total_normal));
 	vec3 t = normalize(N * normalize(total_tangent));
 	t = normalize(t - dot(t, n) * n);
@@ -71,5 +84,6 @@ void main() {
     
 	vout.uv = vin_uv;
 	vout.color = vin_color;
+	vout.id = selection_id[gl_InstanceIndex];
     gl_Position = vp * h_position;
 }

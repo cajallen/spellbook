@@ -17,6 +17,12 @@ enum Bead {
     Bead_Count
 };
 
+struct BeadPrefab {
+    string file_path;
+    string model_path;
+    Bead type;
+};
+
 struct ShopEntry {
     Bead cost_type;
     int cost_amount;
@@ -60,10 +66,15 @@ struct Shop {
 bool button(ShopEntry* shop_entry);
 void show_shop(Shop* shop, Player* player);
 
+entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 position);
+
 void inspect(ShopEntry* shop_entry);
 void inspect(Warehouse* warehouse);
+bool inspect(BeadPrefab* bead_prefab);
 //void inspect(Shop* shop);
 
 Color bead_color(Bead bead);
+
+JSON_IMPL(BeadPrefab, model_path, type);
 
 }

@@ -60,12 +60,13 @@ void ShopGenerator::inspect() {
 
 void SimpleShopGenerator::setup() {
     warehouse.add_entry({Bead_Oak, 4, "lizards/zord.sbliz"}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 6, "lizards/rokko.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 6, "lizards/merque.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 8, "lizards/azura.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 8, "lizards/sauria.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 6, "lizards/rafaj.sbliz"}, 1.0f);
 
-    warehouse.add_entry({Bead_Malachite, 4, "lizards/zord.sbliz"}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 4, "lizards/rokko.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Malachite, 3, "lizards/merque.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Malachite, 3, "lizards/azura.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Malachite, 3, "lizards/sauria.sbliz"}, 1.0f);
@@ -110,6 +111,33 @@ bool button(ShopEntry* shop_entry) {
         shop_entry->cost_amount > 1 ? "s" : ""
     );
     return ImGui::Button(button_text.c_str());
+}
+
+
+entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 position) {
+    static int i      = 0;
+    auto       entity = scene->registry.create();
+    scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(bead_prefab.file_path).stem().string(), i++));
+    
+    auto& model_comp = scene->registry.emplace<Model>(entity);
+    model_comp.model_cpu = load_asset<ModelCPU>(bead_prefab.model_path);
+    model_comp.model_gpu = std::move(instance_model(scene->render_scene, model_comp.model_cpu));
+
+    scene->registry.emplace<LogicTransform>(entity, position);
+    scene->registry.emplace<ModelTransform>(entity);
+    scene->registry.emplace<TransformLink>(entity, v3(0.5));
+
+    scene->registry.emplace<Pickup>(entity, bead_prefab.type);
+    
+    return entity;  
+}
+
+bool inspect(BeadPrefab* bead_prefab) {
+    bool changed = false;
+    ImGui::PathSelect("File", &bead_prefab->file_path, "resources/drops", FileType_Drop, true);
+    changed |= ImGui::EnumCombo("Type", &bead_prefab->type);
+    changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, "resources/models", FileType_Model, true);
+    return changed;
 }
 
 void inspect(ShopEntry* shop_entry) {

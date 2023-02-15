@@ -130,7 +130,8 @@ void default_mouse_button_callback(GLFWwindow* window, int button, int action, i
     auto& stack = InputCallbackInfo<ClickCallback>::stack();
     for (auto& callback_info : stack) {
         auto& [fp, prio, name, data] = callback_info;
-        bool  esc                    = (*fp)({window, button, action, mods, data});
+        ClickCallbackArgs args = {.window = window, .button = button, .action = action, .mods = mods, .data = data};
+        bool  esc                    = (*fp)(args);
         if (esc)
             return;
     }

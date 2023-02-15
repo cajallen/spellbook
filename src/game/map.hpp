@@ -15,19 +15,19 @@ namespace spellbook {
 
 struct MapPrefab {
     string file_path;
-    
-    umap<v3i, LizardPrefab> lizards;
-    umap<v3i, TilePrefab> tiles;
-    umap<v3i, SpawnerPrefab> spawners;
-    umap<v3i, ConsumerPrefab> consumers;
-    uset<v3i> solid_tiles;
 
-    void add_prefab(const LizardPrefab& prefab, v3i pos) { lizards[pos] = prefab; }
-    void add_prefab(const TilePrefab& prefab, v3i pos) { tiles[pos] = prefab; }
-    void add_prefab(const SpawnerPrefab& prefab, v3i pos) { spawners[pos] = prefab; }
-    void add_prefab(const ConsumerPrefab& prefab, v3i pos) { consumers[pos] = prefab; }
+    struct TileEntry {
+        string prefab_path;
+        u32 rotation;
+    };
+    umap<v3i, TileEntry> tiles;
+    umap<v3i, string> spawners;
+    umap<v3i, string> consumers;
+    umap<v3i, string> lizards;
+    umap<v3i, u8> solid_tiles;
 };
-JSON_IMPL(MapPrefab, lizards, tiles, spawners, consumers, solid_tiles);
+JSON_IMPL(MapPrefab::TileEntry, prefab_path, rotation);
+JSON_IMPL(MapPrefab, tiles, spawners, consumers, lizards, solid_tiles);
 
 void inspect(MapPrefab*);
 Scene* instance_map(const MapPrefab&, const string& name);

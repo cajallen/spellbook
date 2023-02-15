@@ -45,7 +45,7 @@ vector<ModelCPU> ModelCPU::split() {
 }
 
 bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
-    ImGui::PathSelect("File", &model->file_path, "resources", FileType_Model);
+    ImGui::PathSelect("File", &model->file_path, "resources/models", FileType_Model, false);
 
     bool changed = false;
     

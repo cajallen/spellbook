@@ -57,7 +57,8 @@ struct AssetEditor : EditorScene {
         Tab_Spawner,
         Tab_Consumer,
         Tab_Emitter,
-        Tab_TileSet
+        Tab_TileSet,
+        Tab_Drop
     };
     
     ModelCPU model_cpu;
@@ -78,6 +79,8 @@ struct AssetEditor : EditorScene {
     ConsumerPrefab consumer_prefab;
 
     VisualTileSet tile_set;
+
+    BeadPrefab bead_prefab;
 
     Tab tab;
     

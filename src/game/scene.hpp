@@ -31,12 +31,14 @@ struct Scene {
     bool edit_mode = true; // disables certain features
     float time = 0.0f;
     float delta_time = 0.0f;
-    float time_scale = 0.0f;
+    float time_scale = 1.0f;
 
     bool pause = false;
 
     plf::colony<Timer> timers;
     vector<TimerCallback> timer_callbacks;
+
+    umap<v3i, entt::entity> visual_map_entities;
     
     void setup(const string& name);
     void update();
@@ -51,7 +53,8 @@ struct Scene {
     void health_cleanup(entt::registry&, entt::entity);
 
     void select_entity(entt::entity entity);
-    
+
+    // Helper query functions
     entt::entity get_lizard(v3i);
     entt::entity get_tile(v2i);
     entt::entity get_tile(v3i);
@@ -64,6 +67,10 @@ struct Scene {
     entt::entity get(v3i, TilePrefab* t);
     entt::entity get(v3i, SpawnerPrefab* t);
     entt::entity get(v3i, ConsumerPrefab* t);
+
+    bool get_object_placement(v3i& pos);
+
+    void set_edit_mode(bool to);
 };
 
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const string& emitter_path, float duration);
