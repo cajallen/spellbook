@@ -1,5 +1,6 @@
 ﻿#include "timer.hpp"
 
+#include <imgui.h>
 #include "game/scene.hpp"
 
 namespace spellbook {

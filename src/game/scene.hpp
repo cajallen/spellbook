@@ -5,7 +5,7 @@
 #include "general/vector.hpp"
 #include "general/string.hpp"
 
-#include "camera_controller.hpp"
+#include "game/camera_controller.hpp"
 #include "game/consumer.hpp"
 #include "game/spawner.hpp"
 #include "game/tile.hpp"

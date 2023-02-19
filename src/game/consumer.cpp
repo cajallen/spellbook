@@ -8,6 +8,7 @@
 #include "general/logger.hpp"
 #include "game/scene.hpp"
 #include "game/components.hpp"
+#include "game/pose_controller.hpp"
 #include "game/game_file.hpp"
 #include "editor/asset_browser.hpp"
 
@@ -25,10 +26,12 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
     scene->registry.emplace<ModelTransform>(entity);
-    scene->registry.emplace<PoseController>(entity, 1.0f, 0.0f, 4.0f, "default");
+    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu.skeleton, PoseController::State_Invalid);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f));
     scene->registry.emplace<Consumer>(entity);
 
+    poser.set_state(PoseController::State_Idle, 0.0f);
+    
     return entity;
 }
 

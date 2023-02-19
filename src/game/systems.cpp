@@ -2,6 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 #include <entt/entt.hpp>
+#include <vuk/RenderGraph.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
@@ -12,6 +13,7 @@
 #include "game/scene.hpp"
 #include "game/components.hpp"
 #include "game/input.hpp"
+#include "game/pose_controller.hpp"
 #include "editor/console.hpp"
 #include "editor/widget_system.hpp"
 #include "renderer/render_scene.hpp"
@@ -255,87 +257,6 @@ void selection_id_system(Scene* scene) {
     }
 }
 
-void skeleton_system(Scene* scene) {
-    ZoneScoped;
-    auto model_view = scene->registry.view<Model>();
-    for (auto [entity, model] : model_view.each()) {
-        for (auto& skeleton : model.model_gpu.skeletons) {
-            skeleton->update();
-        }
-    }
-}
-
-void pose_system(Scene* scene) {
-    ZoneScoped;
-    auto model_view = scene->registry.view<Model, PoseController>();
-    for (auto [entity, model, poser] : model_view.each()) {
-        for (auto& skeleton : model.model_gpu.skeletons) {
-            auto& skeleton_cpu = *skeleton->skeleton_cpu;
-            if (poser.reset_time) {
-                console({.str="Reset"});
-                skeleton_cpu.time = 0.0f;
-                poser.reset_time = false;
-            }
-            skeleton_cpu.time += Input::delta_time;
-            auto& poses = skeleton_cpu.poses;
-            if (poser.target_state == "flail") {
-                if (poses.contains("flail_1") && poses.contains("flail_2")) {
-                    if (math::mod(skeleton_cpu.time, poser.time_to_target) < poser.time_to_target * 0.5f) {
-                        if (skeleton_cpu.current_pose != "flail_1") {
-                            skeleton_cpu.load_pose("flail_1", true, poser.time_to_target * 0.5f);
-                            poser.time_to_target = poser.cycle_duration;
-                        }
-                    } else {
-                        if (skeleton_cpu.current_pose != "flail_2") {
-                            skeleton_cpu.load_pose("flail_2", true, poser.time_to_target * 0.5f);
-                            poser.time_to_target = poser.cycle_duration;
-                        }
-                    }
-                }
-                else {
-                    log_warning("Pose doesn't support flail");
-                }
-            }
-            if (poser.target_state == "attacking") {
-                if (poses.contains("windup") || poses.contains("followthrough")) {
-                    if (skeleton_cpu.time < poser.time_to_target * 0.5f) {
-                        if (skeleton_cpu.current_pose != "windup")
-                            skeleton_cpu.load_pose("windup", true, poser.time_to_target * 0.5f);
-                    } else {
-                        if (skeleton_cpu.current_pose != "followthrough") {
-                            skeleton_cpu.load_pose("followthrough", true, poser.time_to_target * 0.5f);
-                        }
-                    }
-                }
-                else {
-                    log_warning("Pose doesn't support attacking");
-                }
-            }
-            if (poser.target_state == "default") {
-                if (poses.contains("idle_1") && poses.contains("idle_2")) {
-                    if (math::mod(skeleton_cpu.time, poser.time_to_target) < poser.time_to_target * 0.5f) {
-                        if (skeleton_cpu.current_pose != "idle_1") {
-                            skeleton_cpu.load_pose("idle_1", true, poser.time_to_target * 0.5f);
-                            poser.time_to_target = poser.cycle_duration;
-                        }
-                    } else {
-                        if (skeleton_cpu.current_pose != "idle_2") {
-                            skeleton_cpu.load_pose("idle_2", true, poser.time_to_target * 0.5f);
-                            poser.time_to_target = poser.cycle_duration;
-                        }
-                    }
-                }
-                else if (poses.contains("default")) {
-                    if (skeleton_cpu.current_pose != "default")
-                        skeleton_cpu.load_pose("default", poser.time_to_target != 0.0f, poser.time_to_target);
-                }
-                else {
-                    log_warning("Pose doesn't support default");
-                }
-            }
-        }
-    }
-}
 
 
 // Adds dragging to entities
@@ -386,7 +307,7 @@ void dragging_system(Scene* scene) {
 
     auto posers = scene->registry.view<Dragging, PoseController>();
     for (auto [entity, _, poser] : posers.each()) {
-        poser.set_state("flail", 0.2f, 0.75f);
+        poser.set_state(PoseController::State_Flailing, 0.2f);
     }
 }
 

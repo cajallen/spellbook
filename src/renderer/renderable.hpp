@@ -2,13 +2,13 @@
 
 #include <vuk/vuk_fwd.hpp>
 
-#include "assets/skeleton.hpp"
 #include "general/matrix.hpp"
 
 namespace spellbook {
 
 struct MeshGPU;
 struct MaterialGPU;
+struct SkeletonGPU;
 
 struct Renderable {
     string mesh_asset_path;

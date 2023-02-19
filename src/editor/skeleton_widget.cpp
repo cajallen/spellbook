@@ -1,17 +1,18 @@
 ﻿#include "skeleton_widget.hpp"
 
-#include <Tracy/Tracy.hpp>
+// #include <Tracy/Tracy.hpp>
 
-#include "general/matrix_math.hpp"
-#include "game/input.hpp"
-#include "editor/widget_system.hpp"
-#include "editor/console.hpp"
-#include "renderer/draw_functions.hpp"
-#include "renderer/render_scene.hpp"
+// #include "general/matrix_math.hpp"
+// #include "game/input.hpp"
+// #include "editor/widget_system.hpp"
+// #include "editor/console.hpp"
+// #include "renderer/draw_functions.hpp"
+// #include "renderer/render_scene.hpp"
 
 namespace spellbook {
 
 void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene) {
+    /*
     static bool initialized = false;
     static string joint_name;
     if (!initialized) {
@@ -67,6 +68,7 @@ void skeleton_widget(SkeletonCPU* skeleton, const m44& model, RenderScene* rende
 
     auto line = generate_formatted_line(render_scene->viewport.camera, vertices);
     render_scene->quick_mesh(line, true, true);
+    */
 }
 
 }

@@ -1,24 +1,20 @@
 ﻿#pragma once
+
 #include <optional>
 #include <mutex>
+#include <array>
 
-#include <vuk/Allocator.hpp>
-#include <vuk/Context.hpp>
-#include <vuk/RenderGraph.hpp>
-#include <vuk/SampledImage.hpp>
 #include <vuk/resources/DeviceFrameResource.hpp>
 #include <VkBootstrap.h>
 
-#include "extension/glfw.hpp"
 #include "extension/vuk_imgui.hpp"
-#include "general/string.hpp"
 #include "general/vector.hpp"
-#include "general/matrix.hpp"
-#include "general/umap.hpp"
-#include "renderer/assets/model.hpp"
-#include "renderer/assets/mesh.hpp"
+#include "general/geometry.hpp"
 #include "renderer/assets/material.hpp"
+#include "renderer/assets/mesh.hpp"
 #include "renderer/assets/texture.hpp"
+
+struct GLFWwindow;
 
 using std::optional;
 
@@ -39,8 +35,8 @@ namespace spellbook {
 struct FrameTimer {
     int               ptr         = 0;
     int               filled      = 0;
-    array<float, 200> frame_times = {};
-    array<float, 200> delta_times = {};
+    std::array<float, 200> frame_times = {};
+    std::array<float, 200> delta_times = {};
 
     void update();
     void inspect();
@@ -84,11 +80,6 @@ struct Renderer {
 
     bool suspend = false;
     
-    void enqueue_setup(vuk::Future&& fut) {
-        std::scoped_lock _(setup_lock);
-        futures.emplace_back(std::move(fut));
-    }
-
     Renderer();
     void setup();
     void update();
@@ -96,6 +87,7 @@ struct Renderer {
     void cleanup();
     ~Renderer();
 
+    void enqueue_setup(vuk::Future&& fut);
     void wait_for_futures();
 
     void add_scene(RenderScene*);

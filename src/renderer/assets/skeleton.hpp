@@ -3,6 +3,7 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
+#include "game/scene.hpp"
 #include "general/geometry.hpp"
 #include "general/matrix.hpp"
 #include "general/quaternion.hpp"
@@ -25,21 +26,51 @@ struct KeySet {
     KeyFrame<v3> scale;
 };
 
+struct PoseSet {
+    enum Type {
+        Type_Idle,
+        Type_Flail,
+        Type_Walking,
+        Type_Attacking,
+        Type_Attacked // At point of attacking, pick if we're attacking again or not, pick attacked animation according
+    };
+    
+    vector<umap<string, KeySet>> poses;
+    vector<string> ordering;
+    umap<string, float> timings; // These are fractional for linear states, absolute for cycling states
+};
+
+struct BonePrefab {
+    string name;
+    id_ptr<BonePrefab> parent;
+    KeySet position; // not technically needed
+    m44 inverse_bind_matrix;
+    float length = 0.1f;
+};
+
+struct SkeletonPrefab {
+    string file_path;
+
+    vector<id_ptr<BonePrefab>> bones;
+    umap<PoseSet::Type, PoseSet> poses;
+
+    PoseSet pose_backfill;
+};
+
 struct Bone {
     string name;
-    id_ptr<Bone> parent;
+    Bone* parent = nullptr;
 
-    KeySet start;
-    KeySet target;
-
-    m44 inverse_bind_matrix;
-
-    m44 local_transform;
-    float time;
-    math::EaseMode ease_mode = math::EaseMode_Quad;
-    
+    m44 inverse_bind_matrix = {};
     float length = 0.1f;
+    
+    math::EaseMode ease_mode = math::EaseMode_Quad;
+    KeySet start = {};
+    KeySet target = {};
 
+    float time = 0.0f;
+    m44 local_transform = {};
+    
     m44 transform() const;
     m44 final_transform() const;
     void update(float new_time = -1.0f);
@@ -49,57 +80,39 @@ struct Bone {
 };
 
 struct SkeletonCPU {
-    vector<id_ptr<Bone>> bones;
-    umap<string, vector<KeySet>> poses;
+    SkeletonPrefab* prefab;
+    vector<std::unique_ptr<Bone>> bones;
     string current_pose;
-    
-    bool widget_enabled = false;
-    vector<u8> widget_pose_enabled;
 
     float time = 0.0f;
 
     void update();
-    void save_pose(string name);
-    void load_pose(string name, bool as_target = false, float offset = 1.0f);
+    void save_pose(PoseSet::Type pose_set, string pose_name, float timing, int pose_index = -1);
+    void load_pose(PoseSet& pose_set, string pose_name, float offset = -1.0f);
+    void store_pose(const string& pose_name);
 };
 
 struct SkeletonGPU {
-    id_ptr<SkeletonCPU> skeleton_cpu;
-
     vuk::Unique<vuk::Buffer> buffer = vuk::Unique<vuk::Buffer>();
     
     static vuk::Unique<vuk::Buffer>* empty_buffer();
-    void update();
+    void update(const SkeletonCPU& skeleton);
 };
 
-SkeletonGPU upload_skeleton(id_ptr<SkeletonCPU> skeleton_cpu);
-
-bool inspect(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene);
+SkeletonCPU instance_prefab(SkeletonPrefab& prefab);
+SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu);
 
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);
-JSON_IMPL(Bone, name, parent, start, inverse_bind_matrix, length);
+JSON_IMPL(BonePrefab, name, parent, position, inverse_bind_matrix);
+JSON_IMPL(PoseSet, poses, ordering, timings);
 
-inline SkeletonCPU from_jv_impl(const json_value& jv, SkeletonCPU* _) {
-    json j = from_jv<json>(jv);
-    SkeletonCPU value;
-    if (j.contains("bones"))
-        value.bones = from_jv<decltype(value.bones)>(*j.at("bones"));
-    FROM_JSON_ELE(poses);
-    
-    return value;
-}
-inline json_value to_jv(const SkeletonCPU& value) {
-    auto j = json();
-    
-    vector<json_value> _list = {};
-    for (id_ptr<Bone> e : value.bones)
-        _list.push_back(to_jv_full(e));
+template <>
+bool     save_asset(const SkeletonPrefab& asset_file);
+template <>
+SkeletonPrefab& load_asset(const string& input_path, bool assert_exist);
 
-    j["bones"] = make_shared<json_value>(_list);
-    TO_JSON_ELE(poses);
-    
-    return to_jv(j);
-}
+bool inspect(SkeletonPrefab* skeleton_prefab);
+bool inspect(PoseSet* pose_set);
 
 }

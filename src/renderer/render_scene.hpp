@@ -1,22 +1,28 @@
 #pragma once
 
+#include <plf_colony.h>
+#include <vuk/vuk_fwd.hpp>
 #include <vuk/Buffer.hpp>
+#include <vuk/Image.hpp>
+#include <vuk/Future.hpp>
 
-#include "light.hpp"
 #include "general/string.hpp"
+#include "general/geometry.hpp"
+#include "general/quaternion.hpp"
+#include "general/color.hpp"
 
 #include "renderer/viewport.hpp"
-#include "renderer/renderer.hpp"
-#include "renderer/assets/particles.hpp"
 #include "renderer/renderable.hpp"
-
+#include "renderer/assets/particles.hpp"
 
 namespace spellbook {
 
-struct Renderable;
-
 using mesh_id = u64;
 using mat_id = u64;
+
+struct MeshCPU;
+struct MaterialCPU;
+struct SkeletonGPU;
 
 struct SceneData {
     Color ambient             = Color(palette::white, 0.15);
@@ -64,8 +70,6 @@ struct RenderScene {
     bool user_pause = false;
     bool cull_pause = false;
     vuk::Texture render_target;
-    
-    vector<LightGPU> submitted_lights;
 
     bool render_grid = true;
     bool render_widgets = true;

@@ -18,6 +18,8 @@ struct MeshCPU;
 struct MaterialCPU;
 struct Renderable;
 struct RenderScene;
+struct SkeletonCPU;
+struct SkeletonGPU;
 
 struct ModelCPU {
     string file_path;
@@ -27,8 +29,6 @@ struct ModelCPU {
         string mesh_asset_path;
         string material_asset_path;
         m44 transform = {};
-
-        id_ptr<SkeletonCPU> skeleton = id_ptr<SkeletonCPU>::null();
         
         id_ptr<Node> parent = {};
         vector<id_ptr<Node>> children = {};
@@ -40,20 +40,26 @@ struct ModelCPU {
     
     vector<id_ptr<Node>> nodes = {};
     id_ptr<Node> root_node = id_ptr<Node>::null();
-    vector<id_ptr<SkeletonCPU>> skeletons;
+    std::unique_ptr<SkeletonCPU> skeleton;
 
     vector<ModelCPU> split();
+
+    ModelCPU() = default;
+    ModelCPU(ModelCPU&&) = default;
+    ModelCPU(const ModelCPU& oth);
+
+    ModelCPU& operator = (const ModelCPU& oth);
 };
 
-JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, skeleton, parent, children);
+JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
 
 struct ModelGPU {
     umap<ModelCPU::Node*, Renderable*> renderables;
-    vector<std::unique_ptr<SkeletonGPU>> skeletons;
+    std::unique_ptr<SkeletonGPU> skeleton;
 
     ModelGPU() {
         renderables = {};
-        skeletons = {};
+        skeleton = {};
     }
     ModelGPU(const ModelGPU&) = delete;
     ModelGPU(ModelGPU&& other) = default;
@@ -63,7 +69,7 @@ struct ModelGPU {
 template <>
 bool     save_asset(const ModelCPU& asset_file);
 template <>
-ModelCPU load_asset(const string& input_path, bool assert_exist);
+ModelCPU& load_asset(const string& input_path, bool assert_exist);
 
 ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
 void     deinstance_model(RenderScene&, const ModelGPU&);

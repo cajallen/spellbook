@@ -11,6 +11,7 @@
 #include "general/logger.hpp"
 #include "game/scene.hpp"
 #include "game/components.hpp"
+#include "game/pose_controller.hpp"
 #include "game/input.hpp"
 #include "editor/console.hpp"
 #include "general/matrix_math.hpp"
@@ -41,10 +42,12 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<ModelTransform>(entity);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     auto& liz = scene->registry.emplace<Lizard>(entity, lizard_prefab.type);
-    scene->registry.emplace<PoseController>(entity, 1.0f, 0.0f, 2.0f, "default");
+    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu.skeleton, PoseController::State_Invalid);
     scene->registry.emplace<Health>(entity, lizard_prefab.max_health, &scene->render_scene, lizard_prefab.hurt_path);
     scene->registry.emplace<Draggable>(entity);
 
+    poser.set_state(PoseController::State_Idle, 0.0f);
+    
     switch (lizard_prefab.type) {
         case (LizardType_Assassin): {
             liz.basic_ability = make_ability(scene, "Assassin Basic");
@@ -56,7 +59,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 auto ability = id_ptr<Ability>((u64) payload);
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state("attacking", ability->pre_trigger_time.value());
+                    poser->set_state(PoseController::State_Attacking, 0.1f, ability->pre_trigger_time.value() - 0.1f);
                 }
             };
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
@@ -71,7 +74,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 }
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state("default", ability->post_trigger_time.value(), 2.0f);
+                    poser->set_state(PoseController::State_Attacked, 0.1f, ability->post_trigger_time.value() - 0.1f);
                 }
             };
             liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
@@ -118,7 +121,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 auto ability = id_ptr<Ability>((u64) payload);
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state("attacking", ability->pre_trigger_time.value());
+                    poser->set_state(PoseController::State_Attacking, 0.1f, ability->pre_trigger_time.value() - 0.1f);
                 }
             };
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
@@ -133,7 +136,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 }
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state("default", ability->post_trigger_time.value(), 3.0f);
+                    poser->set_state(PoseController::State_Attacked, 0.1f, ability->post_trigger_time.value() - 0.1f);
                 }
             };
             liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
@@ -177,18 +180,10 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
             liz.basic_ability->cooldown_time = Stat(1.0f);
             liz.basic_ability->start_callback = [](void* payload) {
                 auto ability = id_ptr<Ability>((u64) payload);
-                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
-                if (poser) {
-                    poser->set_state("attacking", ability->pre_trigger_time.value());
-                }
             };
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
             liz.basic_ability->trigger_callback = [](void* payload) {
                 auto ability = id_ptr<Ability>((u64) payload);
-                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
-                if (poser) {
-                    poser->set_state("default", ability->post_trigger_time.value(), 2.0f);
-                }
             };
             liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
 
@@ -207,18 +202,10 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
             liz.basic_ability->cooldown_time = Stat(0.3f);
             liz.basic_ability->start_callback = [](void* payload) {
                 auto ability = id_ptr<Ability>((u64) payload);
-                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
-                if (poser) {
-                    poser->set_state("attacking", ability->pre_trigger_time.value());
-                }
             };
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
             liz.basic_ability->trigger_callback = [](void* payload) {
                 auto ability = id_ptr<Ability>((u64) payload);
-                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
-                if (poser) {
-                    poser->set_state("default", ability->post_trigger_time.value(), 2.0f);
-                }
 
                 quick_emitter(ability->scene, "Illusion Basic", v3(ability->target), "emitters/shadow_daggers.sbemt", 0.2f);
                 struct IllusionBasicHurtPayload {
@@ -282,10 +269,6 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
             liz.basic_ability->cooldown_time = Stat(1.2f);
             liz.basic_ability->start_callback = [](void* payload) {
                 auto ability = id_ptr<Ability>((u64) payload);
-                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
-                if (poser) {
-                    poser->set_state("attacking", ability->pre_trigger_time.value());
-                }
 
                 add_tween_timer(ability->scene, "Emissive Up", [](Timer* timer, void* payload) {
                     auto ribbon_mat = game.renderer.get_material("models\\liz\\Ribbon.sbmat");
@@ -297,19 +280,15 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
             liz.basic_ability->trigger_callback = [](void* payload) {
                 auto ability = id_ptr<Ability>((u64) payload);
-                auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 auto model = ability->scene->registry.try_get<Model>(ability->caster);
                 auto transform = ability->scene->registry.try_get<ModelTransform>(ability->caster);
-                auto& skeleton = model->model_cpu.skeletons.front();
+                auto& skeleton = model->model_cpu.skeleton;
                 for (auto& bone : skeleton->bones) {
                     if (bone->name == "crystal") {
                         m44 t =  transform->get_transform() * model->model_cpu.root_node->cached_transform * bone->final_transform();
                         v3 pos = math::apply_transform(t, v3(0.0f, 0.5f, 0.0f));
                         quick_emitter(ability->scene, "Warlock Crush", v3(pos), "emitters/warlock_crush.sbemt", 0.1f);
                     }
-                }
-                if (poser) {
-                    poser->set_state("default", ability->post_trigger_time.value(), 2.0f);
                 }
                 add_tween_timer(ability->scene, "Emissive Down", [](Timer* timer, void* payload) {
                     auto ribbon_mat = game.renderer.get_material("models\\liz\\Ribbon.sbmat");

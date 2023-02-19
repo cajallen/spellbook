@@ -4,7 +4,6 @@
 #include <tracy/Tracy.hpp>
 #include <vuk/Partials.hpp>
 
-#include "draw_functions.hpp"
 #include "extension/fmt_renderer.hpp"
 #include "general/file.hpp"
 #include "general/matrix_math.hpp"
@@ -14,7 +13,11 @@
 #include "renderer/samplers.hpp"
 #include "renderer/viewport.hpp"
 #include "renderer/renderable.hpp"
+#include "renderer/draw_functions.hpp"
+#include "renderer/assets/particles.hpp"
 #include "renderer/assets/mesh_asset.hpp"
+#include "renderer/assets/material.hpp"
+#include "renderer/assets/texture.hpp"
 
 namespace vuk {
 static Texture allocate_texture(Allocator& allocator, Format format, Extent3D extent) {
@@ -195,7 +198,6 @@ void RenderScene::pre_render() {
 
 
 void RenderScene::update() {
-    submitted_lights.clear();
 }
 
 vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {

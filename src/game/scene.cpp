@@ -7,11 +7,12 @@
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/math.hpp"
+#include "general/bitmask_3d.hpp"
 #include "game/game.hpp"
 #include "game/components.hpp"
 #include "game/spawner.hpp"
 #include "game/systems.hpp"
-#include "general/bitmask_3d.hpp"
+#include "game/pose_controller.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
@@ -30,7 +31,7 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
 
     auto poser = registry.try_get<PoseController>(entity);
     if (poser) {
-        poser->set_state("default", 0.2f, 2.0f);
+        poser->set_state(PoseController::State_Idle, 0.3f);
     }
 }
 
@@ -91,7 +92,6 @@ void Scene::update() {
     spawner_draw_system(this);
     transform_system(this);
     emitter_system(this);
-    skeleton_system(this);
     pose_system(this);
     selection_id_system(this);
     consumer_system(this);

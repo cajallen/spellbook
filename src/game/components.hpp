@@ -121,24 +121,6 @@ struct Collision {
     uset<entt::entity> with = {};
 };
 
-struct PoseController {
-    f32 time_scale = -1.0f;
-    f32 time_to_target = 0.0f;
-    f32 cycle_duration = 0.0f;
-    string target_state;
-
-    bool reset_time = false;
-
-    void set_state(const string& new_state, float to_target, float cycle = 0.0f) {
-        if (target_state != new_state) {
-            reset_time = true;
-            target_state = new_state;
-            time_to_target = to_target;
-            cycle_duration = cycle;
-        }
-    }
-};
-
 struct DropChance {
     string bead_prefab_path;
     float drop_chance;

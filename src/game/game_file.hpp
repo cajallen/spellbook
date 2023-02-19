@@ -28,7 +28,8 @@ enum FileType {
     FileType_Consumer,
     FileType_Emitter,
     FileType_VisualTileSet,
-    FileType_Drop
+    FileType_Drop,
+    FileType_Skeleton
 };
 
 string extension(FileType type);
@@ -38,6 +39,12 @@ FileType from_typeinfo(const type_info& input);
 
 fs::path to_resource_path(const fs::path& path);
 fs::path from_resource_path(const fs::path& path);
+
+template <typename T>
+umap<string, T>& asset_cache() {
+    static umap<string, T> t_cache;
+    return t_cache;
+}
 
 template <typename T>
 bool save_asset(const T& asset_value) {
@@ -51,29 +58,29 @@ bool save_asset(const T& asset_value) {
     return true;
 }
 
+// Usually the ref will want to be copied
 template <typename T>
-T load_asset(const string& file_path, bool assert_exists = false) {
+T& load_asset(const string& file_path, bool assert_exists = false) {
     fs::path absolute_path = to_resource_path(file_path);
-    if (assert_exists) {
-        assert_else(fs::exists(absolute_path))
-            return {};
-    } else {
-        check_else(fs::exists(absolute_path))
-            return {};
-    }
+    string absolute_path_string = absolute_path.string();
+    if (asset_cache<T>().contains(absolute_path_string))
+        return asset_cache<T>()[absolute_path_string];
+    
+    bool exists = fs::exists(absolute_path_string);
     string ext = absolute_path.extension().string();
+    bool corrext = ext == extension(from_typeinfo(typeid(T)));
     if (assert_exists) {
-        assert_else(ext == extension(from_typeinfo(typeid(T))))
-            return {};
+        assert_else(exists && corrext)
+            return asset_cache<T>().emplace(absolute_path_string, T()).first->second;
     } else {
-        check_else(ext == extension(from_typeinfo(typeid(T))))
-            return {};
+        check_else(exists && corrext)
+            return asset_cache<T>().emplace(absolute_path_string, T()).first->second;
     }
 
     json j = parse_file(absolute_path.string());
-    auto asset_value = from_jv<T>(to_jv(j));
-    asset_value.file_path = absolute_path.string();
-    return asset_value;
+    T& t = asset_cache<T>().emplace(absolute_path_string, from_jv<T>(to_jv(j))).first->second;
+    t.file_path = absolute_path.string();
+    return t;
 }
 
 }

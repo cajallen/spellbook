@@ -5,11 +5,13 @@
 #include <vuk/AllocatorHelpers.hpp>
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
+#include <magic_enum.hpp>
 
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
 #include "editor/skeleton_widget.hpp"
 #include "extension/fmt.hpp"
+#include "extension/icons/font_awesome4.h"
 #include "general/matrix_math.hpp"
 #include "game/input.hpp"
 #include "game/game.hpp"
@@ -17,65 +19,123 @@
 
 namespace spellbook {
 
-SkeletonGPU upload_skeleton(id_ptr<SkeletonCPU> skeleton_cpu) {
+SkeletonCPU instance_prefab(SkeletonPrefab& prefab) {
+    umap<u64, Bone*> bones;
+    SkeletonCPU skeleton_cpu;
+    skeleton_cpu.prefab = &prefab;
+    skeleton_cpu.current_pose = "default";
+    for (const id_ptr<BonePrefab>& bone_prefab : prefab.bones) {
+        auto temp_bone = std::make_unique<Bone>();
+        Bone* bone = &*skeleton_cpu.bones.emplace_back(std::move(temp_bone));
+        bone->name = bone_prefab->name;
+        bone->inverse_bind_matrix = bone_prefab->inverse_bind_matrix;
+        bone->start = bone_prefab->position;
+        bone->length = bone_prefab->length;
+        bones[bone_prefab.id] = bone;
+    }
+
+    for (const id_ptr<BonePrefab>& bone_prefab : prefab.bones) {
+        u64 this_id = bone_prefab.id;
+        u64 parent_id = bone_prefab->parent.id;
+        bones[this_id]->parent = bones.contains(parent_id) ? bones[parent_id] : nullptr;
+    }
+    return skeleton_cpu;
+}
+
+SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu) {
     SkeletonGPU skeleton_gpu;
     vuk::Allocator& alloc = *game.renderer.global_allocator;
-    u32 alloc_size = sizeof(u32) * 4 + sizeof(m44GPU) * skeleton_cpu->bones.size();
+    u32 alloc_size = sizeof(u32) * 4 + sizeof(m44GPU) * skeleton_cpu.bones.size();
 
-    skeleton_gpu.skeleton_cpu = skeleton_cpu;
     skeleton_gpu.buffer = *vuk::allocate_buffer(alloc, {vuk::MemoryUsage::eCPUtoGPU, alloc_size, 1});
-    skeleton_gpu.update();
     return skeleton_gpu;
 }
 
-void SkeletonCPU::save_pose(string name) {
-    if (!poses.contains(name)) {
-        poses[name] = vector<KeySet>();
-        poses[name].resize(bones.size());
+void SkeletonCPU::save_pose(PoseSet::Type set_type, string pose_name, float timing, int pose_index) {
+    if (!prefab->poses.contains(set_type)) {
+        prefab->poses[set_type] = {};
     }
+    PoseSet& pose_set = prefab->poses[set_type];
+
+    if (pose_set.timings.contains(pose_name)) {
+        int index = pose_set.ordering.find(pose_name);
+        pose_set.ordering.remove_index(index, false);
+        pose_set.poses.remove_index(index, false);
+    }
+
+    umap<string, KeySet>* bone_map;
+    if (pose_index == -1) {
+        pose_set.ordering.push_back(pose_name);
+        bone_map = &pose_set.poses.emplace_back();
+    } else {
+        pose_set.ordering.insert(pose_index, pose_name);
+        bone_map = &pose_set.poses.emplace(pose_index);
+    }
+    pose_set.timings[pose_name] = timing;
     
-    for (u32 i = 0; i < bones.size(); i++) {
-        poses[name][i] = bones[i]->start;
+    for (std::unique_ptr<Bone>& bone : bones) {
+        (*bone_map)[bone->name] = bone->start;
     }
 }
 
-void SkeletonCPU::load_pose(string name, bool as_target, float offset) {
-    current_pose = name;
-    for (u32 i = 0; i < bones.size(); i++) {
-        if (!as_target) {
-            bones[i]->start = poses[name][i];
-            bones[i]->target.position.time = -1.0f;
-            bones[i]->target.rotation.time = -1.0f;
-            bones[i]->target.scale.time = -1.0f;
+void SkeletonCPU::store_pose(const string& pose_name) {
+    PoseSet& pose_set = prefab->pose_backfill;
+
+    if (pose_set.timings.contains(pose_name)) {
+        u32 index = pose_set.ordering.find(pose_name);
+        pose_set.ordering.remove_index(index, false);
+        pose_set.poses.remove_index(index, false);
+    }
+
+    pose_set.ordering.push_back(pose_name);
+    umap<string, KeySet>* bone_map = &pose_set.poses.emplace_back();
+    pose_set.timings[pose_name] = 0.0f;
+    
+    for (std::unique_ptr<Bone>& bone : bones) {
+        (*bone_map)[bone->name] = bone->start;
+    }
+}
+
+void SkeletonCPU::load_pose(PoseSet& pose_set, string pose_name, float offset) {
+    current_pose = pose_name;
+    for (std::unique_ptr<Bone>& bone : bones) {
+        if (offset == 0.0f) {
+            int pose_index = pose_set.ordering.find(pose_name);
+            bone->start = pose_set.poses[pose_index][bone->name];
+            bone->target.position.time = -1.0f;
+            bone->target.rotation.time = -1.0f;
+            bone->target.scale.time = -1.0f;
+            continue;
         }
-        else {
-            if (bones[i]->target.position.time != -1.0f)
-                bones[i]->start.position.value = bones[i]->target.position.value;
-            if (bones[i]->target.rotation.time != -1.0f)
-                bones[i]->start.rotation.value = bones[i]->target.rotation.value;
-            if (bones[i]->target.scale.time != -1.0f)
-                bones[i]->start.scale.value = bones[i]->target.scale.value;
-            bones[i]->start.position.time = time;
-            bones[i]->start.rotation.time = time;
-            bones[i]->start.scale.time = time;
-            
-            bones[i]->target = poses[name][i];
-            bones[i]->target.position.time = time + offset;
-            bones[i]->target.rotation.time = time + offset;
-            bones[i]->target.scale.time = time + offset;
-        }
+        
+        if (bone->target.position.time != -1.0f)
+            bone->start.position.value = bone->target.position.value;
+        if (bone->target.rotation.time != -1.0f)
+            bone->start.rotation.value = bone->target.rotation.value;
+        if (bone->target.scale.time != -1.0f)
+            bone->start.scale.value = bone->target.scale.value;
+        bone->start.position.time = time;
+        bone->start.rotation.time = time;
+        bone->start.scale.time = time;
+
+        int pose_index = pose_set.ordering.find(pose_name);
+        float used_offset = offset > 0.0f ? offset : pose_set.timings[pose_name];
+        bone->target = pose_set.poses[pose_index][bone->name];
+        bone->target.position.time = time + used_offset;
+        bone->target.rotation.time = time + used_offset;
+        bone->target.scale.time = time + used_offset;
     }
 }
 
 
 m44 Bone::transform() const {
-    if (parent.valid())
+    if (parent != nullptr)
         return parent->transform() * local_transform;
     return local_transform;
 }
 
 m44 Bone::final_transform() const {
-    if (parent.valid())
+    if (parent != nullptr)
         return parent->transform() * local_transform * inverse_bind_matrix;
     return local_transform * inverse_bind_matrix;
 }
@@ -126,131 +186,126 @@ m44 Bone::update_scaling() {
 }
 
 void SkeletonCPU::update() {
-    for (auto bone_ptr : bones) {
-        bone_ptr->update(time);
+    for (auto& bone : bones) {
+        bone->update(time);
     }
 }
 
-void SkeletonGPU::update() {
-    skeleton_cpu->update();
-    vector<u8> bones_data( sizeof(u32) * 4 + sizeof(m44GPU) * skeleton_cpu->bones.size());
-    bones_data.append_data(skeleton_cpu->bones.size());
+void SkeletonGPU::update(const SkeletonCPU& skeleton) {
+    vector<u8> bones_data( sizeof(u32) * 4 + sizeof(m44GPU) * skeleton.bones.size());
+    bones_data.append_data(skeleton.bones.size());
     struct { u32 a,b,c; } padding;
     bones_data.append_data(padding);
-    for (id_ptr<Bone> bone : skeleton_cpu->bones) {
+    for (const std::unique_ptr<Bone>& bone : skeleton.bones) {
         bones_data.append_data((m44GPU) bone->final_transform());
     }
     memcpy(buffer->mapped_ptr, bones_data.data(), bones_data.size());
 }
 
 vuk::Unique<vuk::Buffer>* SkeletonGPU::empty_buffer() {
-    static id_ptr<SkeletonCPU> empty_skeleton = id_ptr<SkeletonCPU>::emplace();
+    static SkeletonCPU empty_skeleton = {};
     static SkeletonGPU skeleton_gpu = upload_skeleton(empty_skeleton);
     return &skeleton_gpu.buffer;
 }
 
-bool inspect(SkeletonCPU* skeleton, const m44& model, RenderScene* render_scene) {
-    ZoneScoped;
-    ImGui::Text("Skeleton");
-    ImGui::Indent();
-    bool any_changed = false;
 
-    if (skeleton->widget_pose_enabled.size() != skeleton->bones.size())
-        skeleton->widget_pose_enabled.resize(skeleton->bones.size());
-
-    PoseWidgetSettings settings{*render_scene};
-    if (ImGui::BeginTable("bones", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-        ImGui::TableSetupColumn("Name/Id");
-        ImGui::TableSetupColumn("Parent");
-        ImGui::TableSetupColumn("Position");
-        ImGui::TableSetupColumn("Rotation");
-        ImGui::TableSetupColumn("Scale");
-        ImGui::TableSetupColumn("Widget");
-        ImGui::TableHeadersRow();
-        for (id_ptr<Bone>& bone : skeleton->bones) {
-            ImGui::PushID(bone.id);
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", bone->name.empty() ? fmt_("{}", bone.id).c_str() : bone->name.c_str());
-            ImGui::TableSetColumnIndex(1);
-            ImGui::Text("%s", bone->parent.valid() ? (bone->parent->name.empty() ? fmt_("{}", bone->parent.id).c_str() : bone->parent->name.c_str()) : "");
-            
-            ImGui::TableSetColumnIndex(2);
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-            any_changed |= ImGui::DragFloat3("##Position", bone->start.position.value.data, 0.01f);               
-            ImGui::TableSetColumnIndex(3);
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-            euler e = math::to_euler(bone->start.rotation.value.data);
-            if (ImGui::DragFloat4("##Rotation", bone->start.rotation.value.data, 0.01f)) {
-                bone->start.rotation.value = math::to_quat(e);
-                any_changed = true;
-            }
-            ImGui::TableSetColumnIndex(4);
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-            any_changed |= ImGui::DragFloat3("##Scale", bone->start.scale.value.data, 0.01f);
-
-            ImGui::TableSetColumnIndex(5);
-            u32 bone_index = skeleton->bones.index(bone);
-            u8& bone_widget_enabled = skeleton->widget_pose_enabled[bone_index];
-            ImGui::Checkbox("##Widget", (bool*) &bone_widget_enabled);
-
-            if (bone_widget_enabled) {
-                m44 mat = bone->parent.valid() ? model * bone->parent->transform() : model;
-                any_changed |= pose_widget(bone.id, &bone->start.position.value, &bone->start.rotation.value, settings, &mat);
-            }
-            
-            ImGui::PopID();
+bool inspect(SkeletonPrefab* prefab) {
+    bool changed = false;
+    ImGui::Text("Poses");
+    for (int i = 0; i < magic_enum::enum_count<PoseSet::Type>(); i++) {
+        auto type = PoseSet::Type(i);
+        if (prefab->poses.contains(type)) {
+            string enum_name = string(magic_enum::enum_name(PoseSet::Type(i)));
+            ImGui::Text("%s", enum_name.c_str());
+            ImGui::Indent();
+            changed |= inspect(&prefab->poses[type]);
+            ImGui::Unindent();
         }
-        ImGui::EndTable();
     }
-
-    static umap<SkeletonCPU*, string> pose_selects;
-    if (!pose_selects.contains(skeleton))
-        pose_selects[skeleton] = "";
-
-    string& pose_select = pose_selects[skeleton];
-    
-    ImGui::InputText("Pose Name", &pose_select);
-    if (ImGui::BeginCombo("Pose", pose_select.c_str(), ImGuiComboFlags_None)) {
-        for (auto& [pose_name, pose_data] : skeleton->poses) {
-            const bool is_selected = pose_name == pose_select;
-            if (ImGui::Selectable(pose_name.c_str(), is_selected))
-                pose_select = pose_name;
-            if (is_selected)
-                ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-    
-    if (ImGui::Button("Save")) {
-        skeleton->save_pose(pose_select);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Load")) {
-        skeleton->load_pose(pose_select);
-        any_changed = true;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Load As Target")) {
-        skeleton->load_pose(pose_select, true, 1.0f);
-        any_changed = true;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Pose##Button")) {
-        //skeleton->stop_playing();
-        any_changed = true;
-    }
-    
-    ImGui::Checkbox("3D Widget", &skeleton->widget_enabled);
-
-    if (any_changed || true) // || playing
-        skeleton->update();
-    
-    if (skeleton->widget_enabled && render_scene != nullptr) {
-        skeleton_widget(skeleton, model, render_scene);
-    }
-    return any_changed;
+    return changed;
 }
+
+bool inspect(PoseSet* pose_set) {
+    ImGui::PushID(pose_set);
+    bool changed = false;
+    for (int i = 0; i < pose_set->ordering.size(); i++) {
+        changed |= ImGui::DragFloat("Time", &pose_set->timings[pose_set->ordering[i]], 0.01f);
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(-60.0f);
+        if (i > 0)
+            if (ImGui::Button(ICON_FA_ARROW_UP, {25.f, 0.f})) {
+                std::swap(pose_set->ordering[i-1], pose_set->ordering[i]);
+                std::swap(pose_set->poses[i-1], pose_set->poses[i]);
+                changed = true;
+                break;
+            }
+        ImGui::SameLine();
+        if (i + 1 < pose_set->ordering.size())
+            if (ImGui::Button(ICON_FA_ARROW_DOWN, {25.f, 0.f})) {
+                std::swap(pose_set->ordering[i], pose_set->ordering[i+1]);
+                std::swap(pose_set->poses[i], pose_set->poses[i+1]);
+                changed = true;
+                break;
+            }
+        ImGui::Separator();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+template <>
+bool     save_asset(const SkeletonPrefab& value) {
+    json j;
+    vector<json_value> json_bones;
+    for (id_ptr<BonePrefab> bone : value.bones) {
+        json_bones.push_back(to_jv_full(bone));
+    }
+    j["bones"] = make_shared<json_value>(to_jv(json_bones));
+    TO_JSON_ELE(poses);
+    TO_JSON_ELE(pose_backfill);
+
+    string ext = std::filesystem::path(value.file_path).extension().string();
+    assert_else(ext == extension(FileType_Skeleton))
+        return false;
+    
+    file_dump(j, to_resource_path(value.file_path).string());
+    return true;
+}
+
+template <>
+SkeletonPrefab& load_asset(const string& input_path, bool assert_exists) {
+    fs::path absolute_path = to_resource_path(input_path);
+    if (asset_cache<SkeletonPrefab>().contains(absolute_path.string()))
+        return asset_cache<SkeletonPrefab>()[absolute_path.string()];
+
+    SkeletonPrefab& value = asset_cache<SkeletonPrefab>().emplace(absolute_path.string(), SkeletonPrefab()).first->second;
+
+    string ext = absolute_path.extension().string();
+    bool exists = fs::exists(absolute_path.string());
+    bool corrext = ext == extension(from_typeinfo(typeid(SkeletonPrefab)));
+    if (assert_exists) {
+        assert_else(exists && corrext)
+            return value;
+    } else {
+        check_else(exists && corrext)
+            return value;
+    }
+    
+    json      j = parse_file(absolute_path.string());
+    value.file_path = input_path;
+
+    if (j.contains("bones")) {
+        for (const json_value& jv : j["bones"]->get_list()) {
+            id_ptr<BonePrefab> bone = from_jv_impl(jv, (id_ptr<BonePrefab>*) 0);
+            value.bones.push_back(bone);
+        }
+    }
+    FROM_JSON_ELE(poses);
+    FROM_JSON_ELE(pose_backfill);
+    
+    return value;
+}
+
 
 
 }

@@ -20,8 +20,6 @@ void consumer_system(Scene* scene);
 void health_system(Scene* scene);
 void disposal_system(Scene* scene);
 void selection_id_system(Scene* scene);
-void skeleton_system(Scene* scene);
-void pose_system(Scene* scene);
 void dragging_update_system(Scene* scene);
 void dragging_system(Scene* scene);
 void collision_update_system(Scene* scene);

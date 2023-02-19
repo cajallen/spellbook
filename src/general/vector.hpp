@@ -17,14 +17,14 @@ struct vector {
     explicit vector(u32 size, const T& t);
 
     template <typename... Args>
-    void emplace_back(Args&&...args);
-    void push_back(T&& t);
-    void push_back(const T& t);
+    T& emplace_back(Args&&...args);
+    T& push_back(T&& t);
+    T& push_back(const T& t);
 
     template <typename... Args>
-    void emplace(u32 i, Args&&...args);
-    void insert(u32 i, T&& t);
-    void insert(u32 i, const T& t);
+    T& emplace(u32 i, Args&&...args);
+    T& insert(u32 i, T&& t);
+    T& insert(u32 i, const T& t);
 
     void append(const vector<T>& other);
     template <typename S>
@@ -98,34 +98,37 @@ vector<T>::vector(u32 size, const T& t)
 
 template <typename T>
 template <typename... Args>
-void vector<T>::emplace_back(Args&&... args) {
-    internal.emplace_back(std::forward<Args>(args)...);
+T& vector<T>::emplace_back(Args&&... args) {
+    return internal.emplace_back(std::forward<Args>(args)...);
 }
 
 template <typename T>
-void vector<T>::push_back(T&& t) {
+T& vector<T>::push_back(T&& t) {
     internal.push_back(t);
+    return internal.back();
 }
 
 template <typename T>
-void vector<T>::push_back(const T& t) {
+T& vector<T>::push_back(const T& t) {
     internal.push_back(t);
+    return internal.back();
 }
 
 template <typename T>
 template <typename... Args>
-void vector<T>::emplace(u32 i, Args&&... args) {
-    internal.emplace(internal.begin() + i, std::forward<Args>(args)...);
+T& vector<T>::emplace(u32 i, Args&&... args) {
+    return *internal.emplace(internal.begin() + i, std::forward<Args>(args)...);
 }
 
 template <typename T>
-void vector<T>::insert(u32 i, T&& t) {
-    internal.insert(internal.begin() + i, t);
+T& vector<T>::insert(u32 i, T&& t) {
+    return *internal.insert(internal.begin() + i, t);
 }
 
 template <typename T>
-void vector<T>::insert(u32 i, const T& t) {
+T& vector<T>::insert(u32 i, const T& t) {
     internal.insert(internal.begin() + i, t);
+    return internal[i];
 }
 
 template <typename T>

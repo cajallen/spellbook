@@ -1,5 +1,7 @@
 ﻿#include "ability.hpp"
 
+#include <imgui/imgui.h>
+
 #include "extension/fmt.hpp"
 #include "game/scene.hpp"
 

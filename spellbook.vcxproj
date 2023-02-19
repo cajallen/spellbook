@@ -134,6 +134,7 @@
     <ClCompile Include="src\game\input.cpp" />
     <ClCompile Include="src\game\map.cpp" />
     <ClCompile Include="src\game\player.cpp" />
+    <ClCompile Include="src\game\pose_controller.cpp" />
     <ClCompile Include="src\game\scene.cpp" />
     <ClCompile Include="src\game\shop.cpp" />
     <ClCompile Include="src\game\spawner.cpp" />
@@ -343,6 +344,7 @@
     <ClInclude Include="src\game\input.hpp" />
     <ClInclude Include="src\game\map.hpp" />
     <ClInclude Include="src\game\player.hpp" />
+    <ClInclude Include="src\game\pose_controller.hpp" />
     <ClInclude Include="src\game\scene.hpp" />
     <ClInclude Include="src\game\shop.hpp" />
     <ClInclude Include="src\game\spawner.hpp" />

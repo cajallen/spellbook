@@ -9,6 +9,7 @@
 #include "game/game.hpp"
 #include "game/input.hpp"
 #include "game/components.hpp"
+#include "game/pose_controller.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {
@@ -124,8 +125,12 @@ void AssetEditor::switch_tab(Tab new_tab) {
     switch (new_tab) {
         case (Tab_Model): {
             entt::entity showing_entity = p_scene->registry.create();
-            p_scene->registry.emplace<Model>(showing_entity, model_cpu, instance_model(render_scene, model_cpu, false));
+            auto& model = p_scene->registry.emplace<Model>(showing_entity, model_cpu, instance_model(render_scene, model_cpu, false));
             p_scene->registry.emplace<ModelTransform>(showing_entity, v3(0.0f));
+            if (model.model_cpu.skeleton) {
+                auto& poser = p_scene->registry.emplace<PoseController>(showing_entity, *model.model_cpu.skeleton, PoseController::State_Invalid);
+                poser.set_state(PoseController::State_Idle, 0.0f);
+            }
         } break;
         case (Tab_Mesh): {
             mesh_gpu = &render_scene.quick_mesh(mesh_cpu, false, false);

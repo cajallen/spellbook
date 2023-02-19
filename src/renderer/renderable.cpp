@@ -1,12 +1,13 @@
 #include "renderable.hpp"
 
 #include <imgui.h>
+#include <tracy/Tracy.hpp>
 
 #include "extension/imgui_extra.hpp"
 #include "game/game.hpp"
 #include "editor/console.hpp"
+#include "renderer/assets/skeleton.hpp"
 #include "renderer/assets/mesh_asset.hpp"
-#include "tracy/Tracy.hpp"
 
 namespace spellbook {
 

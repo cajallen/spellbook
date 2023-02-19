@@ -1,6 +1,7 @@
 #include "components.hpp"
 
 #include <imgui.h>
+#include <tracy/Tracy.hpp>
 
 #include "extension/imgui_extra.hpp"
 #include "general/string.hpp"
@@ -8,8 +9,8 @@
 #include "game/scene.hpp"
 #include "game/spawner.hpp"
 #include "game/lizard.hpp"
+#include "game/pose_controller.hpp"
 #include "renderer/draw_functions.hpp"
-#include "tracy/Tracy.hpp"
 
 
 namespace spellbook {
@@ -118,8 +119,6 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     if (auto* component = scene->registry.try_get<PoseController>(entity)) {
         ZoneScoped;
         ImGui::Text("Poser");
-        ImGui::DragFloat("Time Scale", &component->time_scale);
-        ImGui::Text("State: %s", component->target_state.c_str());
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<Lizard>(entity)) {

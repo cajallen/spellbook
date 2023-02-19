@@ -2,10 +2,12 @@
 
 #include <vuk/src/RenderGraphUtil.hpp>
 #include <vuk/Partials.hpp>
+#include <vuk/Allocator.hpp>
 #include <backends/imgui_impl_glfw.h>
 #include <tracy/Tracy.hpp>
 #include <stb_image.h>
 
+#include "extension/glfw.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "extension/imgui_extra.hpp"
@@ -117,6 +119,11 @@ Renderer::Renderer() : imgui_data() {
     super_frame_resource.emplace(*context, num_inflight_frames);
     global_allocator.emplace(*super_frame_resource);
     swapchain = context->add_swapchain(make_swapchain(vkbdevice));
+}
+
+void Renderer::enqueue_setup(vuk::Future&& fut) {
+    std::scoped_lock _(setup_lock);
+    futures.emplace_back(std::move(fut));
 }
 
 void Renderer::add_scene(RenderScene* scene) {
@@ -388,16 +395,6 @@ void Renderer::debug_window(bool* p_open) {
         ImGui::Text(fmt_("Window Size: {}", window_size).c_str());
 
         frame_timer.inspect();
-
-        if (ImGui::CollapsingHeader("Uploaded Meshes")) {
-
-        }
-        if (ImGui::CollapsingHeader("Uploaded Materials")) {
-
-        }
-        if (ImGui::CollapsingHeader("Uploaded Textures")) {
-
-        }
     }
     ImGui::End();
 }

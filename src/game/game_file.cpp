@@ -45,6 +45,8 @@ string extension(FileType type) {
             return ".sbvts";
         case (FileType_Drop):
             return ".sbdrp";
+        case (FileType_Skeleton):
+            return ".sbskl";
     }
     log_error("extension NYI");
     return "NYI";
@@ -103,7 +105,8 @@ string dnd_key(FileType type) {
             return "DND_VISUAL_TILE_SET";
         case (FileType_Drop):
             return "DND_DROP";
-    }
+        case (FileType_Skeleton):
+            return "DND_SKELETON";    }
     log_error("extension NYI");
     return "DND_UNKNOWN";
 }
@@ -135,6 +138,8 @@ FileType from_typeinfo(const type_info& input) {
         return FileType_VisualTileSet;
     if (input == typeid(BeadPrefab))
         return FileType_Drop;
+    if (input == typeid(SkeletonPrefab))
+        return FileType_Skeleton;
     
     log_error("extension NYI");
     return FileType_Unknown;

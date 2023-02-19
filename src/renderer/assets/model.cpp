@@ -4,6 +4,7 @@
 #include <tracy/Tracy.hpp>
 
 #include "extension/fmt.hpp"
+#include "extension/fmt_geometry.hpp"
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
@@ -19,6 +20,43 @@
 #include "renderer/assets/texture_asset.hpp"
 
 namespace spellbook {
+
+ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
+    console({.str = fmt_("Model Copy")});
+    file_path = oth.file_path;
+    umap<u64, u64> old_to_new;
+    for (id_ptr<Node> old_node : oth.nodes) {
+        id_ptr<Node> new_node = id_ptr<Node>::emplace(
+            old_node->name,
+            old_node->mesh_asset_path,
+            old_node->material_asset_path,
+            old_node->transform,
+            old_node->parent,
+            old_node->children
+        );
+        old_to_new[old_node.id] = new_node.id;
+        nodes.push_back(new_node);
+    }
+
+    // remap ids
+    root_node = old_to_new[oth.root_node.id];
+    for (id_ptr<Node> node : nodes) {
+        if (node->parent.id != 0)
+            node->parent.id = old_to_new[node->parent.id];
+        for (id_ptr<Node>& child : node->children)
+            child.id = old_to_new[child.id];
+    }
+
+    root_node->cache_transform();
+    
+    if (oth.skeleton != nullptr)
+        skeleton = std::make_unique<SkeletonCPU>(instance_prefab(*oth.skeleton->prefab));
+    return *this;
+}
+
+ModelCPU::ModelCPU(const ModelCPU& oth) {
+    *this = oth;
+}
 
 vector<ModelCPU> ModelCPU::split() {
     // This should generate new IDs to not destroy the old model
@@ -39,7 +77,6 @@ vector<ModelCPU> ModelCPU::split() {
         models[i].file_path = child->name;
         traverse(models[i++], child, traverse);
     }
-    
 
     return models;
 }
@@ -57,14 +94,19 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
             ImGui::Text("Index: %d", model->nodes.find(node));
             changed |= ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
             changed |= ImGui::PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
-            if (ImGui::DragMat4("Transform", &node->transform, 0.02f, "%.2f")) {
-                changed = true;
-                node->cache_transform();
+            if (ImGui::TreeNode("Transform")) {
+                if (ImGui::DragMat4("##Transform", &node->transform, 0.02f, "%.2f")) {
+                    changed = true;
+                    node->cache_transform();
+                }
+                ImGui::TreePop();
             }
+            ImGui::Text("Children");
+            ImGui::Indent();
             for (auto child : node->children) {
                 traverse(child);
             }
-            if (ImGui::Button(ICON_FA_PLUS_CIRCLE, {-ImGui::GetStyle().FramePadding.x, 0})) {
+            if (ImGui::Button("  " ICON_FA_PLUS_CIRCLE "  Add Child  ")) {
                 model->nodes.push_back(id_ptr<ModelCPU::Node>::emplace());
                             
                 model->nodes.back()->parent = node;
@@ -72,6 +114,7 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
                 changed = true;
             }
             ImGui::Separator();
+            ImGui::Unindent();
             ImGui::TreePop();
         }
     };
@@ -83,15 +126,9 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
         ImGui::Text("No Root Node");
     }
 
-    if (!model->skeletons.empty()) {
-        ImGui::Text("Skeletons");
-
-        if (ImGui::TreeNode("Skeleton")) {
-            for (auto skeleton_ptr : model->skeletons) {
-                inspect(&*skeleton_ptr, matrix * model->root_node->cached_transform, render_scene);
-            }
-            ImGui::TreePop();
-        }
+    if (model->skeleton != nullptr) {
+        ImGui::Text("Skeleton");
+        inspect(model->skeleton->prefab);
     }
     
     return changed;
@@ -100,22 +137,19 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
 ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool frame) {
     ModelGPU model_gpu;
 
-    umap<u64, u32> indices;
-    for (id_ptr<SkeletonCPU> skeleton_cpu : model.skeletons) {
-        model_gpu.skeletons.emplace_back(std::make_unique<SkeletonGPU>(upload_skeleton(skeleton_cpu)));
-        indices[skeleton_cpu.id] = indices.size();
-    }
+    if (model.skeleton)
+        model_gpu.skeleton = std::make_unique<SkeletonGPU>(upload_skeleton(*model.skeleton));
     
     for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
         ModelCPU::Node& node           = *node_ptr;
-        if (node.mesh_asset_path == "" || node.material_asset_path == "")
+        if (node.mesh_asset_path.empty() || node.material_asset_path.empty())
             continue;
         
         auto new_renderable = render_scene.add_renderable(Renderable(
             node.mesh_asset_path,
             node.material_asset_path,
             (m44GPU) node.transform,
-            indices.contains(node.skeleton.id) ? &*model_gpu.skeletons[indices[node.skeleton.id]] : nullptr,
+            model_gpu.skeleton ? &*model_gpu.skeleton : nullptr,
             frame
         ));
         model_gpu.renderables[&node] = new_renderable;
@@ -134,13 +168,11 @@ bool save_asset(const ModelCPU& model) {
         json_nodes.push_back(to_jv_full(node));
     }
     j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
-
-    vector<json_value> json_skeletons;
-    for (id_ptr<SkeletonCPU> skeleton : model.skeletons) {
-        json_skeletons.push_back(to_jv_full(skeleton));
-    }
-    j["skeletons"] = make_shared<json_value>(to_jv(json_skeletons));
-    
+    if (model.skeleton)
+        if (model.skeleton->prefab) {
+            save_asset<SkeletonPrefab>(*model.skeleton->prefab);
+            j["skeleton"] = make_shared<json_value>(to_jv(model.skeleton->prefab->file_path));
+        }
     
     string ext = std::filesystem::path(model.file_path).extension().string();
     assert_else(ext == extension(FileType_Model))
@@ -155,20 +187,24 @@ fs::path _convert_to_relative(const fs::path& path) {
 }
 
 template<>
-ModelCPU load_asset(const string& input_path, bool assert_exists) {
+ModelCPU& load_asset(const string& input_path, bool assert_exists) {
     fs::path absolute_path = to_resource_path(input_path);
-    if (assert_exists) {
-        assert_else(fs::exists(absolute_path))
-            return {};      
-    } else {
-        check_else(fs::exists(absolute_path))
-            return {};
-    }
+    if (asset_cache<ModelCPU>().contains(absolute_path.string()))
+        return asset_cache<ModelCPU>()[absolute_path.string()];
+
+    ModelCPU& model = asset_cache<ModelCPU>().emplace(absolute_path.string(), ModelCPU()).first->second;
+
     string ext = absolute_path.extension().string();
-    check_else(ext == extension(FileType_Model))
-        return {};
+    bool exists = fs::exists(absolute_path.string());
+    bool corrext = ext == extension(from_typeinfo(typeid(ModelCPU)));
+    if (assert_exists) {
+        assert_else(exists && corrext)
+            return model;
+    } else {
+        check_else(exists && corrext)
+            return model;
+    }
     
-    ModelCPU model;
     json      j = parse_file(absolute_path.string());
     model.file_path = input_path;
 
@@ -187,11 +223,10 @@ ModelCPU load_asset(const string& input_path, bool assert_exists) {
             if (!node->parent.valid())
                 model.root_node = node;
 
-    if (j.contains("skeletons")) {
-        for (const json_value& jv : j["skeletons"]->get_list()) {
-            id_ptr<SkeletonCPU> skeleton = from_jv_impl(jv, (id_ptr<SkeletonCPU>*) 0);
-            model.skeletons.push_back(skeleton);
-        }
+    if (j.contains("skeleton")) {
+        model.skeleton = std::make_unique<SkeletonCPU>(instance_prefab(
+            load_asset<SkeletonPrefab>(from_jv<std::string>(*j["skeleton"]), true)
+        ));
     }
     model.root_node->cache_transform();
     
@@ -256,6 +291,10 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         return {};
 
     ModelCPU model_cpu;
+    fs::path scene_path = output_folder / output_name;
+    scene_path.replace_extension(extension(FileType_Model));
+    model_cpu.file_path = scene_path.string();
+    
     _convert_gltf_skeletons(gltf_model, &model_cpu);
     _convert_gltf_meshes(gltf_model, output_folder);
     _convert_gltf_materials(gltf_model, output_folder);
@@ -317,8 +356,9 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             model_node.mesh_asset_path     = mesh_path.string();
             model_node.material_asset_path = material_path.string();
             model_node.transform           = _calculate_matrix(gltf_node);
-            if (gltf_node.skin != -1)
-                model_node.skeleton = model_cpu.skeletons[gltf_node.skin];
+            if (gltf_node.skin != -1) {
+                assert_else(gltf_node.skin == 0);
+            }
         }
         // Serving hierarchy
         else {
@@ -364,8 +404,6 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
             model_node_ptr->transform = m44::identity();
             model_node_ptr->parent    = model_cpu.nodes[multimat_node_index];
             model_cpu.nodes[multimat_node_index]->children.push_back(model_node_ptr);
-            if (gltf_model.nodes[multimat_node_index].skin != -1)
-                model_node_ptr->skeleton = model_cpu.skeletons[gltf_model.nodes[multimat_node_index].skin];
         }
     }
 
@@ -409,81 +447,124 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     }
 
     model_cpu.root_node->cache_transform();
-    
-    fs::path scene_path = output_folder / output_name;
-    scene_path.replace_extension(extension(FileType_Model));
-
-    model_cpu.file_path = scene_path.string();
 
     return model_cpu;
 }
 
 bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
     ZoneScoped;
-    umap<u32, id_ptr<Bone>> node_index_to_bone; 
-    for (u32 i_skin = 0; i_skin < model.skins.size(); i_skin++) {
-        model_cpu->skeletons.push_back(id_ptr<SkeletonCPU>::emplace());
-        auto& skeleton = model_cpu->skeletons.back();
-        for (u32 i_bone = 0; i_bone < model.skins[i_skin].joints.size(); i_bone++) {
-            skeleton->bones.push_back(id_ptr<Bone>::emplace());
-            u32 bone_node_index = model.skins[i_skin].joints[i_bone];
-            node_index_to_bone[bone_node_index] = skeleton->bones.back();
-            // node_index_to_bone[bone_node_index]->inverse_bind_matrix;
-
-        }
-        u32 ibm_index = model.skins[i_skin].inverseBindMatrices;
-        tinygltf::Accessor& ibm_accessor = model.accessors[ibm_index];
-        vector<u8> pos_data;
-        _unpack_gltf_buffer(model, ibm_accessor, pos_data);
-        
-        for (int i = 0; i < ibm_accessor.count; i++) {
-            check_else (ibm_accessor.type == TINYGLTF_TYPE_MAT4)
-                continue;
-            
-            check_else (ibm_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
-                continue;
-            
-            float* dtf = (float*) pos_data.data();
-
-            model_cpu->skeletons[i_skin]->bones[i]->inverse_bind_matrix = {
-                *(dtf + (i * 16) + 0), *(dtf + (i * 16) + 4), *(dtf + (i * 16) +  8), *(dtf + (i * 16) + 12),
-                *(dtf + (i * 16) + 1), *(dtf + (i * 16) + 5), *(dtf + (i * 16) +  9), *(dtf + (i * 16) + 13),
-                *(dtf + (i * 16) + 2), *(dtf + (i * 16) + 6), *(dtf + (i * 16) + 10), *(dtf + (i * 16) + 14),
-                *(dtf + (i * 16) + 3), *(dtf + (i * 16) + 7), *(dtf + (i * 16) + 11), *(dtf + (i * 16) + 15)
-            };
-        }
+    umap<u32, id_ptr<BonePrefab>> node_index_to_bone;
+    assert_else(model.skins.size() == 1);
+    
+    auto model_path = fs::path(model_cpu->file_path);
+    auto skeleton_path = model_path;
+    string skeleton_path_string = skeleton_path.replace_extension(extension(FileType_Skeleton)).string();
+    SkeletonPrefab& skeleton = asset_cache<SkeletonPrefab>().contains(skeleton_path_string) ?
+        asset_cache<SkeletonPrefab>()[skeleton_path_string] :
+        asset_cache<SkeletonPrefab>().emplace(skeleton_path_string, SkeletonPrefab()).first->second;
+    skeleton.file_path = skeleton_path_string;
+    
+    for (u32 i_bone = 0; i_bone < model.skins[0].joints.size(); i_bone++) {
+        skeleton.bones.push_back(id_ptr<BonePrefab>::emplace());
+        u32 bone_node_index = model.skins[0].joints[i_bone];
+        node_index_to_bone[bone_node_index] = skeleton.bones.back();
     }
+    u32 ibm_index = model.skins[0].inverseBindMatrices;
+    tinygltf::Accessor& ibm_accessor = model.accessors[ibm_index];
+    vector<u8> pos_data;
+    _unpack_gltf_buffer(model, ibm_accessor, pos_data);
+        
+    for (int i = 0; i < ibm_accessor.count; i++) {
+        check_else (ibm_accessor.type == TINYGLTF_TYPE_MAT4)
+            continue;
+            
+        check_else (ibm_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+            continue;
+            
+        float* dtf = (float*) pos_data.data();
+
+        skeleton.bones[i]->inverse_bind_matrix = {
+            *(dtf + (i * 16) + 0), *(dtf + (i * 16) + 4), *(dtf + (i * 16) +  8), *(dtf + (i * 16) + 12),
+            *(dtf + (i * 16) + 1), *(dtf + (i * 16) + 5), *(dtf + (i * 16) +  9), *(dtf + (i * 16) + 13),
+            *(dtf + (i * 16) + 2), *(dtf + (i * 16) + 6), *(dtf + (i * 16) + 10), *(dtf + (i * 16) + 14),
+            *(dtf + (i * 16) + 3), *(dtf + (i * 16) + 7), *(dtf + (i * 16) + 11), *(dtf + (i * 16) + 15)
+        };
+    }
+    
     for (auto& [node_index, bone_ptr] : node_index_to_bone) {
         for (u32 child_index : model.nodes[node_index].children) {
             if (node_index_to_bone.contains(child_index))
                 node_index_to_bone[child_index]->parent = bone_ptr;
         }
-        // m44 bone_matrix = _calculate_matrix(model.nodes[node_index]);
-
         bone_ptr->name = model.nodes[node_index].name;
-        bone_ptr->start.scale.value = v3(1,1,1);
+        bone_ptr->position.scale.value = v3(1,1,1);
         
         if (model.nodes[node_index].translation.size() > 0) {
             auto translation = model.nodes[node_index].translation;
-            bone_ptr->start.position.value = v3{(f32) translation[0], (f32) translation[1], (f32) translation[2]};
+            bone_ptr->position.position.value = v3{(f32) translation[0], (f32) translation[1], (f32) translation[2]};
         }
 
         if (model.nodes[node_index].rotation.size() > 0) {
-            bone_ptr->start.rotation.value = quat((f32) model.nodes[node_index].rotation[0], (f32) model.nodes[node_index].rotation[1], (f32) model.nodes[node_index].rotation[2], (f32) model.nodes[node_index].rotation[3]);
+            bone_ptr->position.rotation.value = quat((f32) model.nodes[node_index].rotation[0], (f32) model.nodes[node_index].rotation[1], (f32) model.nodes[node_index].rotation[2], (f32) model.nodes[node_index].rotation[3]);
         }
 
         if (model.nodes[node_index].scale.size() > 0) {
-            bone_ptr->start.scale.value = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
+            bone_ptr->position.scale.value = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
         }
     }
     for (auto& [node_index, bone_ptr] : node_index_to_bone) {
         if (bone_ptr->parent.valid())
-            bone_ptr->parent->length = math::length(bone_ptr->start.position.value);
+            bone_ptr->parent->length = math::length(bone_ptr->position.position.value);
     }
 
-    for (auto& skeleton : model_cpu->skeletons) {
-        skeleton->save_pose("default");
+
+    vector<umap<int, KeySet>> key_sets;
+    for (tinygltf::Animation& animation : model.animations) {
+        for (auto& channel : animation.channels) {
+            auto& sampler = animation.samplers[channel.sampler];
+            auto& input_accessor = model.accessors[sampler.input];
+            vector<u8> input_buffer; // The inputs are the times of the keyframes
+            _unpack_gltf_buffer(model, input_accessor, input_buffer);
+            vector<float> floats;
+            key_sets.resize(input_accessor.count);
+            floats.resize(input_accessor.count);
+            float* input_ptr = (float*) input_buffer.data();
+            for (int i = 0; i < input_accessor.count; i++)
+                floats[i] = *(input_ptr + i);
+            
+            auto& output_accessor = model.accessors[sampler.output];
+            vector<u8> output_buffer;
+            _unpack_gltf_buffer(model, output_accessor, output_buffer);
+            for (int i = 0; i < floats.size(); i++) {
+                if (!key_sets[i].contains(channel.target_node))
+                    key_sets[i].emplace(channel.target_node, KeySet{});
+
+                if (channel.target_path == "translation") {
+                    v3* output_ptr = (v3*) output_buffer.data();
+                    key_sets[i][channel.target_node].position.value = *(output_ptr + i);
+                } else if (channel.target_path == "rotation") {
+                    quat* output_ptr = (quat*) output_buffer.data();
+                    key_sets[i][channel.target_node].rotation.value = *(output_ptr + i);
+                } else if (channel.target_path == "scale") {
+                    v3* output_ptr = (v3*) output_buffer.data();
+                    key_sets[i][channel.target_node].scale.value = *(output_ptr + i);
+                }
+            }
+        }
     }
+
+    for (auto& pose : key_sets) {
+        string new_name = fmt_("pose_{}", key_sets.index(pose));
+        auto& bone_map = skeleton.pose_backfill.poses.emplace_back();
+        skeleton.pose_backfill.ordering.push_back(new_name);
+        skeleton.pose_backfill.timings[new_name] = 0.0f;
+        for (auto& [bone_index, key_set] : pose) {
+            bone_map[node_index_to_bone[bone_index]->name] = key_set;
+        }
+    }
+    
+    model_cpu->skeleton = std::make_unique<SkeletonCPU>(instance_prefab(skeleton));
+    model_cpu->skeleton->save_pose(PoseSet::Type_Idle, "default", 1.0f);
     
     return true;
 }
