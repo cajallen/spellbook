@@ -21,12 +21,12 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", "consumer", i++));
 
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(consumer_prefab.model_path);
-    model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.model_path));
+    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
     scene->registry.emplace<ModelTransform>(entity);
-    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu.skeleton, PoseController::State_Invalid);
+    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton, PoseController::State_Invalid);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f));
     scene->registry.emplace<Consumer>(entity);
 

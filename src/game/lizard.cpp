@@ -35,14 +35,14 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", "lizard", i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(lizard_prefab.model_path);
-    model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(lizard_prefab.model_path));
+    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
     scene->registry.emplace<ModelTransform>(entity);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     auto& liz = scene->registry.emplace<Lizard>(entity, lizard_prefab.type);
-    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu.skeleton, PoseController::State_Invalid);
+    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton, PoseController::State_Invalid);
     scene->registry.emplace<Health>(entity, lizard_prefab.max_health, &scene->render_scene, lizard_prefab.hurt_path);
     scene->registry.emplace<Draggable>(entity);
 
@@ -59,7 +59,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 auto ability = id_ptr<Ability>((u64) payload);
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state(PoseController::State_Attacking, 0.1f, ability->pre_trigger_time.value() - 0.1f);
+                    poser->set_state(PoseController::State_Attacking, ability->pre_trigger_time.value());
                 }
             };
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
@@ -74,7 +74,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 }
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state(PoseController::State_Attacked, 0.1f, ability->post_trigger_time.value() - 0.1f);
+                    poser->set_state(PoseController::State_Attacked, ability->post_trigger_time.value());
                 }
             };
             liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
@@ -121,7 +121,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 auto ability = id_ptr<Ability>((u64) payload);
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state(PoseController::State_Attacking, 0.1f, ability->pre_trigger_time.value() - 0.1f);
+                    poser->set_state(PoseController::State_Attacking, ability->pre_trigger_time.value());
                 }
             };
             liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
@@ -136,7 +136,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 }
                 auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
                 if (poser) {
-                    poser->set_state(PoseController::State_Attacked, 0.1f, ability->post_trigger_time.value() - 0.1f);
+                    poser->set_state(PoseController::State_Attacked, ability->post_trigger_time.value());
                 }
             };
             liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
@@ -282,10 +282,10 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
                 auto ability = id_ptr<Ability>((u64) payload);
                 auto model = ability->scene->registry.try_get<Model>(ability->caster);
                 auto transform = ability->scene->registry.try_get<ModelTransform>(ability->caster);
-                auto& skeleton = model->model_cpu.skeleton;
+                auto& skeleton = model->model_cpu->skeleton;
                 for (auto& bone : skeleton->bones) {
                     if (bone->name == "crystal") {
-                        m44 t =  transform->get_transform() * model->model_cpu.root_node->cached_transform * bone->final_transform();
+                        m44 t =  transform->get_transform() * model->model_cpu->root_node->cached_transform * bone->final_transform();
                         v3 pos = math::apply_transform(t, v3(0.0f, 0.5f, 0.0f));
                         quick_emitter(ability->scene, "Warlock Crush", v3(pos), "emitters/warlock_crush.sbemt", 0.1f);
                     }

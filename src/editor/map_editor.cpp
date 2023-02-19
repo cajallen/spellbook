@@ -443,8 +443,8 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
         scene->visual_map_entities[pos] = entity;
 
         auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = load_asset<ModelCPU>(tile_entry.model_path);
-        model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
+        model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(tile_entry.model_path));
+        model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
                 
         scene->registry.emplace<ModelTransform>(entity,
             v3(pos) + v3(1.0f),

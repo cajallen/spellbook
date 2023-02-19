@@ -19,8 +19,8 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", "tile", i++));
 
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(tile_prefab.model_path);
-    model_comp.model_gpu = std::move(instance_model(scene->render_scene, model_comp.model_cpu));
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(tile_prefab.model_path));
+    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
     scene->registry.emplace<LogicTransform>(entity, v3(location), euler{.yaw = math::PI / 2.0f * rotation});
     scene->registry.emplace<ModelTransform>(entity, v3(location), euler{.yaw = math::PI / 2.0f * rotation});

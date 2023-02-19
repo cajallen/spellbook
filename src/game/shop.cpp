@@ -120,8 +120,8 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(bead_prefab.file_path).stem().string(), i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(bead_prefab.model_path);
-    model_comp.model_gpu = std::move(instance_model(scene->render_scene, model_comp.model_cpu));
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(bead_prefab.model_path));
+    model_comp.model_gpu = std::move(instance_model(scene->render_scene, *model_comp.model_cpu));
 
     scene->registry.emplace<LogicTransform>(entity, position);
     scene->registry.emplace<ModelTransform>(entity);

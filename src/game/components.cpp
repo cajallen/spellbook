@@ -21,10 +21,10 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::Text("Model");
         if (scene->registry.all_of<ModelTransform>(entity)) {
             auto transform = scene->registry.get<ModelTransform>(entity);
-            inspect(&component->model_cpu, transform.transform, &scene->render_scene);
+            inspect(&*component->model_cpu, transform.transform, &scene->render_scene);
         }
         else {
-            inspect(&component->model_cpu, m44::identity(), &scene->render_scene);
+            inspect(&*component->model_cpu, m44::identity(), &scene->render_scene);
         }
         ImGui::Separator();
     }

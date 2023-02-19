@@ -142,8 +142,8 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
 
     // Model
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemy_entries.front().prefab_path).model_path);
-    model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemy_entries.front().prefab_path).model_path));
+    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
     
     scene->registry.emplace<ModelTransform>(entity);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f));

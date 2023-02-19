@@ -127,8 +127,11 @@ bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
     }
 
     if (model->skeleton != nullptr) {
-        ImGui::Text("Skeleton");
-        inspect(model->skeleton->prefab);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if (ImGui::TreeNode("Skeleton")) {
+            inspect(&*model->skeleton);
+            ImGui::TreePop();
+        }
     }
     
     return changed;
@@ -555,16 +558,14 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
 
     for (auto& pose : key_sets) {
         string new_name = fmt_("pose_{}", key_sets.index(pose));
-        auto& bone_map = skeleton.pose_backfill.poses.emplace_back();
-        skeleton.pose_backfill.ordering.push_back(new_name);
-        skeleton.pose_backfill.timings[new_name] = 0.0f;
+        auto& entry = skeleton.pose_backfill.entries.emplace_back(new_name, 0.0f);
         for (auto& [bone_index, key_set] : pose) {
-            bone_map[node_index_to_bone[bone_index]->name] = key_set;
+            entry.pose[node_index_to_bone[bone_index]->name] = key_set;
         }
     }
     
     model_cpu->skeleton = std::make_unique<SkeletonCPU>(instance_prefab(skeleton));
-    model_cpu->skeleton->save_pose(PoseSet::Type_Idle, "default", 1.0f);
+    model_cpu->skeleton->store_pose("default");
     
     return true;
 }

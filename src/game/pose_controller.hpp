@@ -30,7 +30,8 @@ struct PoseController {
     float time_to_next_index = 0.0f;
     float fractional_state_total;
     
-    void set_state(State new_state, float time_to_target, float time_in_target = 0.0f);
+    void set_state(State new_state, float time_in_target = 0.0f);
+    void clear_state();
     void update(float delta_time);
     void progress_in_state();
 };

@@ -23,7 +23,7 @@ struct Name {
 };
 
 struct Model {
-    ModelCPU model_cpu = {};
+    std::unique_ptr<ModelCPU> model_cpu = nullptr;
     ModelGPU model_gpu = {};
 };
 

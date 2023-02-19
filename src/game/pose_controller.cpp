@@ -7,12 +7,12 @@
 
 namespace spellbook {
 
-void PoseController::set_state(State new_state, float time_to_target, float time_in_target) {
+void PoseController::set_state(State new_state, float time_in_target) {
     if (state != new_state) {
         state = new_state;
         target_index = -1;
-        time_to_next_index = time_to_target;
         fractional_state_total = time_in_target;
+        time_to_next_index = 0.0f;
 
         switch (new_state) {
             case State_Idle: {
@@ -25,32 +25,41 @@ void PoseController::set_state(State new_state, float time_to_target, float time
                 pose_set = &skeleton.prefab->poses[PoseSet::Type_Idle];
             } break;
         }
+        if (pose_set->entries.empty())
+            pose_set = nullptr;
     }
 }
 
+void PoseController::clear_state() {
+    state = State_Invalid;
+    pose_set = nullptr;
+}
+
 void PoseController::progress_in_state() {
+    if (pose_set == nullptr)
+        return;
+    
     target_index++;
-    if (target_index >= pose_set->ordering.size()) {
+    if (target_index >= pose_set->entries.size()) {
         target_index = 0;
     }
     
-    string new_name = pose_set->ordering[target_index];
+    auto& new_entry = pose_set->entries[target_index];
 
-    float used_timing = pose_set->timings[new_name];
+    float used_timing = new_entry.time_to;
     switch (state) {
         case State_Attacking:
         case State_Attacked:
-            used_timing = pose_set->timings[new_name] * fractional_state_total; 
+            used_timing = new_entry.time_to * fractional_state_total; 
     }
-    skeleton.load_pose(*pose_set, new_name, used_timing);
+    skeleton.load_pose(new_entry, used_timing);
     time_to_next_index = used_timing;
 }
 
 
 void PoseController::update(float delta_time) {
-    if (target_index == -1) {
-        skeleton.load_pose(*pose_set, pose_set->ordering.front(), time_to_next_index);
-    }
+    if (pose_set == nullptr)
+        return;
     
     time_to_next_index -= delta_time;
     if (time_to_next_index <= 0.0f) {
@@ -62,16 +71,16 @@ void PoseController::update(float delta_time) {
 void pose_system(Scene* scene) {
     ZoneScoped;
     for (auto [entity, model, poser] : scene->registry.view<Model, PoseController>().each()) {
-        auto& skeleton_cpu = *model.model_cpu.skeleton;
+        auto& skeleton_cpu = *model.model_cpu->skeleton;
         skeleton_cpu.time += scene->delta_time;
         poser.update(scene->delta_time);
     }
 
     for (auto [entity, model] : scene->registry.view<Model>().each()) {
-        if (model.model_cpu.skeleton)
-            model.model_cpu.skeleton->update();
+        if (model.model_cpu->skeleton)
+            model.model_cpu->skeleton->update();
         if (model.model_gpu.skeleton)
-            model.model_gpu.skeleton->update(*model.model_cpu.skeleton);
+            model.model_gpu.skeleton->update(*model.model_cpu->skeleton);
     }
 }
 

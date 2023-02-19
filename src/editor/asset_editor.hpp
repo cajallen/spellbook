@@ -33,8 +33,9 @@ struct AssetEditor : EditorScene {
         Tab_TileSet,
         Tab_Drop
     };
-    
-    ModelCPU model_cpu;
+
+    bool model_owner;
+    ModelCPU* model_cpu;
     
     MeshCPU mesh_cpu;
     Renderable* mesh_gpu;

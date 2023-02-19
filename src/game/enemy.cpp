@@ -17,8 +17,8 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& enemy_prefab, v3i 
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(enemy_prefab.file_path).stem().string(), i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = load_asset<ModelCPU>(enemy_prefab.model_path);
-    model_comp.model_gpu = instance_model(scene->render_scene, model_comp.model_cpu);
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(enemy_prefab.model_path));
+    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
     scene->registry.emplace<LogicTransform>(entity, v3(location));
     scene->registry.emplace<ModelTransform>(entity);

@@ -52,27 +52,21 @@ SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu) {
 }
 
 void SkeletonCPU::save_pose(PoseSet::Type set_type, string pose_name, float timing, int pose_index) {
-    if (!prefab->poses.contains(set_type)) {
-        prefab->poses[set_type] = {};
-    }
     PoseSet& pose_set = prefab->poses[set_type];
 
-    if (pose_set.timings.contains(pose_name)) {
-        int index = pose_set.ordering.find(pose_name);
-        pose_set.ordering.remove_index(index, false);
-        pose_set.poses.remove_index(index, false);
+    PoseSet::Entry* existing_entry = pose_set.get_entry(pose_name);
+    if (existing_entry) {
+        pose_set.entries.remove_index(pose_set.entries.index(*existing_entry));
     }
 
     umap<string, KeySet>* bone_map;
     if (pose_index == -1) {
-        pose_set.ordering.push_back(pose_name);
-        bone_map = &pose_set.poses.emplace_back();
+        auto& entry = pose_set.entries.emplace_back(pose_name, timing);
+        bone_map = &entry.pose;
     } else {
-        pose_set.ordering.insert(pose_index, pose_name);
-        bone_map = &pose_set.poses.emplace(pose_index);
+        auto& entry = pose_set.entries.emplace(pose_index, pose_name, timing);
+        bone_map = &entry.pose;
     }
-    pose_set.timings[pose_name] = timing;
-    
     for (std::unique_ptr<Bone>& bone : bones) {
         (*bone_map)[bone->name] = bone->start;
     }
@@ -81,27 +75,24 @@ void SkeletonCPU::save_pose(PoseSet::Type set_type, string pose_name, float timi
 void SkeletonCPU::store_pose(const string& pose_name) {
     PoseSet& pose_set = prefab->pose_backfill;
 
-    if (pose_set.timings.contains(pose_name)) {
-        u32 index = pose_set.ordering.find(pose_name);
-        pose_set.ordering.remove_index(index, false);
-        pose_set.poses.remove_index(index, false);
+    PoseSet::Entry* existing_entry = pose_set.get_entry(pose_name);
+    if (existing_entry) {
+        pose_set.entries.remove_index(pose_set.entries.index(*existing_entry));
     }
-
-    pose_set.ordering.push_back(pose_name);
-    umap<string, KeySet>* bone_map = &pose_set.poses.emplace_back();
-    pose_set.timings[pose_name] = 0.0f;
+    
+    auto& entry = pose_set.entries.emplace_back(pose_name, 0.0f);
+    auto bone_map = &entry.pose;
     
     for (std::unique_ptr<Bone>& bone : bones) {
         (*bone_map)[bone->name] = bone->start;
     }
 }
 
-void SkeletonCPU::load_pose(PoseSet& pose_set, string pose_name, float offset) {
-    current_pose = pose_name;
+void SkeletonCPU::load_pose(PoseSet::Entry& entry, float offset) {
+    current_pose = entry.name;
     for (std::unique_ptr<Bone>& bone : bones) {
         if (offset == 0.0f) {
-            int pose_index = pose_set.ordering.find(pose_name);
-            bone->start = pose_set.poses[pose_index][bone->name];
+            bone->start = entry.pose[bone->name];
             bone->target.position.time = -1.0f;
             bone->target.rotation.time = -1.0f;
             bone->target.scale.time = -1.0f;
@@ -117,10 +108,9 @@ void SkeletonCPU::load_pose(PoseSet& pose_set, string pose_name, float offset) {
         bone->start.position.time = time;
         bone->start.rotation.time = time;
         bone->start.scale.time = time;
-
-        int pose_index = pose_set.ordering.find(pose_name);
-        float used_offset = offset > 0.0f ? offset : pose_set.timings[pose_name];
-        bone->target = pose_set.poses[pose_index][bone->name];
+        
+        float used_offset = offset > 0.0f ? offset : entry.time_to;
+        bone->target = entry.pose[bone->name];
         bone->target.position.time = time + used_offset;
         bone->target.rotation.time = time + used_offset;
         bone->target.scale.time = time + used_offset;
@@ -164,7 +154,7 @@ m44 Bone::update_position() {
 }
 
 m44 Bone::update_rotation() {
-    if (time == -1.0f || target.position.time == -1.0f)
+    if (time == -1.0f || target.rotation.time == -1.0f)
         return math::rotation(start.rotation.value);
 
     float t = math::from_range(time, range(start.rotation.time, target.rotation.time));
@@ -175,7 +165,7 @@ m44 Bone::update_rotation() {
 }
 
 m44 Bone::update_scaling() {
-    if (time == -1.0f || target.position.time == -1.0f)
+    if (time == -1.0f || target.scale.time == -1.0f)
         return math::scale(start.scale.value);
 
     float t = math::from_range(time, range(start.scale.time, target.scale.time));
@@ -209,44 +199,106 @@ vuk::Unique<vuk::Buffer>* SkeletonGPU::empty_buffer() {
 }
 
 
-bool inspect(SkeletonPrefab* prefab) {
+bool inspect(SkeletonCPU* skeleton_cpu) {
+    SkeletonPrefab* prefab = skeleton_cpu->prefab;
+    
     bool changed = false;
     ImGui::Text("Poses");
-    for (int i = 0; i < magic_enum::enum_count<PoseSet::Type>(); i++) {
+    for (int i = 0; i < magic_enum::enum_count<PoseSet::Type>() - 1; i++) {
         auto type = PoseSet::Type(i);
-        if (prefab->poses.contains(type)) {
-            string enum_name = string(magic_enum::enum_name(PoseSet::Type(i)));
-            ImGui::Text("%s", enum_name.c_str());
-            ImGui::Indent();
-            changed |= inspect(&prefab->poses[type]);
-            ImGui::Unindent();
+
+        string enum_name = string(magic_enum::enum_name(PoseSet::Type(i)));
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if (ImGui::TreeNode(enum_name.c_str())) {
+            int load_pose;
+            changed |= inspect(&prefab->poses[type], &load_pose);
+            if (load_pose > 0) {
+                skeleton_cpu->load_pose(prefab->poses[type].entries[load_pose], 0.0f);
+            }
+            ImGui::TreePop();
         }
     }
+
+    struct PoseSetTakeState {
+        PoseSet::Type to_type;
+        vector<u8> selected;
+    };
+    static umap<SkeletonPrefab*, PoseSetTakeState> take_states;
+
+    if (!take_states.contains(prefab))
+        take_states[prefab] = {};
+    auto& take_state = take_states[prefab];
+    
+    ImGui::Separator();
+    ImGui::Text("Extras");
+    ImGui::EnumCombo("To Type", &take_state.to_type);
+    ImGui::SameLine();
+    if (ImGui::Button("Migrate")) {
+        auto& pose_set = prefab->poses[take_state.to_type];
+        for (int i = 0; i < prefab->pose_backfill.entries.size(); i++) {
+            if (take_state.selected[i]) {
+                pose_set.entries.push_back(prefab->pose_backfill.entries[i]);
+            }
+        }
+    }
+    if (take_state.selected.size() != prefab->pose_backfill.entries.size())
+        take_state.selected.resize(prefab->pose_backfill.entries.size());
+    for (int i = 0; i < prefab->pose_backfill.entries.size(); i++) {
+        ImGui::PushID(i);
+        if (ImGui::Button(skeleton_cpu->current_pose == prefab->pose_backfill.entries[i].name ? ICON_FA_REFRESH : ICON_FA_CAMERA))
+            skeleton_cpu->load_pose(prefab->pose_backfill.entries[i], 0.0f);
+        ImGui::SameLine();
+        ImGui::InputText("##Name", &prefab->pose_backfill.entries[i].name);
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2{ImGui::GetContentRegionAvail().x - 40.f, 0.f});
+        ImGui::SameLine();
+        ImGui::Checkbox("##Selected", (bool*) &take_state.selected[i]);
+        ImGui::PopID();
+    }
+
+    ImGui::Separator();
+    
     return changed;
 }
 
-bool inspect(PoseSet* pose_set) {
+bool inspect(PoseSet* pose_set, int* load_pose) {
     ImGui::PushID(pose_set);
     bool changed = false;
-    for (int i = 0; i < pose_set->ordering.size(); i++) {
-        changed |= ImGui::DragFloat("Time", &pose_set->timings[pose_set->ordering[i]], 0.01f);
+    for (int i = 0; i < pose_set->entries.size(); i++) {
+        ImGui::PushID(i);
+        if (load_pose) {
+            *load_pose = -1;
+            if (ImGui::Button(ICON_FA_CAMERA))
+                *load_pose = i;
+            ImGui::SameLine();
+        }
+        float width = ImGui::GetContentRegionAvail().x - 60.0f;
+        ImGui::SetNextItemWidth(width * 0.6f);
+        ImGui::InputText("##Name", &pose_set->entries[i].name);
         ImGui::SameLine();
-        ImGui::SetCursorPosX(-60.0f);
-        if (i > 0)
+        ImGui::SetNextItemWidth(width * 0.4f - 65.0f);
+        changed |= ImGui::DragFloat("Time To", &pose_set->entries[i].time_to, 0.01f);
+        ImGui::SameLine();
+        if (i > 0) {
             if (ImGui::Button(ICON_FA_ARROW_UP, {25.f, 0.f})) {
-                std::swap(pose_set->ordering[i-1], pose_set->ordering[i]);
-                std::swap(pose_set->poses[i-1], pose_set->poses[i]);
+                std::swap(pose_set->entries[i-1], pose_set->entries[i]);
                 changed = true;
+                ImGui::PopID();
                 break;
             }
-        ImGui::SameLine();
-        if (i + 1 < pose_set->ordering.size())
+        } else {
+            ImGui::Dummy(ImVec2{25.f, 0.f});
+        }
+        if (i + 1 < pose_set->entries.size()) {
+            ImGui::SameLine();
             if (ImGui::Button(ICON_FA_ARROW_DOWN, {25.f, 0.f})) {
-                std::swap(pose_set->ordering[i], pose_set->ordering[i+1]);
-                std::swap(pose_set->poses[i], pose_set->poses[i+1]);
+                std::swap(pose_set->entries[i], pose_set->entries[i+1]);
                 changed = true;
+                ImGui::PopID();
                 break;
             }
+        }
+        ImGui::PopID();
         ImGui::Separator();
     }
     ImGui::PopID();
