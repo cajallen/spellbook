@@ -78,6 +78,7 @@ void Scene::setup(const string& input_name) {
 	game.renderer.add_scene(&render_scene);
 
     round_info = new RoundInfo();
+    player.bank.beads[Bead_Quartz] = 100;
 }
 
 void Scene::update() {

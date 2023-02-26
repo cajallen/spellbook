@@ -18,7 +18,7 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
     model_comp.model_gpu = std::move(instance_model(scene->render_scene, *model_comp.model_cpu));
 
     scene->registry.emplace<LogicTransform>(entity, position);
-    scene->registry.emplace<ModelTransform>(entity);
+    scene->registry.emplace<ModelTransform>(entity, v3{}, euler{}, v3(bead_prefab.scale));
     scene->registry.emplace<TransformLink>(entity, v3(0.5));
 
     scene->registry.emplace<Pickup>(entity, bead_prefab.type);
@@ -31,6 +31,7 @@ bool inspect(BeadPrefab* bead_prefab) {
     ImGui::PathSelect("File", &bead_prefab->file_path, "resources/drops", FileType_Drop, true);
     changed |= ImGui::EnumCombo("Type", &bead_prefab->type);
     changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, "resources/models", FileType_Model, true);
+    changed |= ImGui::DragFloat("Scale", &bead_prefab->scale, 0.01f);
     return changed;
 }
 

@@ -10,14 +10,14 @@ struct VarBool {
     bool value;
     bool readonly = false;
 
-    constexpr bool operator == (const VarBool& rhs) { return value == rhs.value && readonly == rhs.readonly; }
+    constexpr bool operator == (const VarBool& rhs) const { return value == rhs.value && readonly == rhs.readonly; }
 };
 
 struct VarString {
     string value;
     bool readonly = false;
 
-    constexpr bool operator == (const VarString& rhs) { return value == rhs.value && readonly == rhs.readonly; }
+    constexpr bool operator == (const VarString& rhs) const { return value == rhs.value && readonly == rhs.readonly; }
 };
 
 struct VarFloat {
@@ -27,7 +27,7 @@ struct VarFloat {
     f32 speed = 0.01f;
     bool readonly = false;
 
-    constexpr bool operator == (const VarFloat& rhs) { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
+    constexpr bool operator == (const VarFloat& rhs) const { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
 };
 
 struct VarInt {
@@ -37,7 +37,7 @@ struct VarInt {
     f32 speed = 0.01f;
     bool readonly;
 
-    constexpr bool operator == (const VarInt& rhs) { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
+    constexpr bool operator == (const VarInt& rhs) const { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
 };
 
 struct VarV2 {
@@ -47,7 +47,7 @@ struct VarV2 {
     f32 speed = 0.01f;
     bool readonly = false;
 
-    constexpr bool operator == (const VarV2& rhs) { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
+    constexpr bool operator == (const VarV2& rhs) const { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
 };
 
 struct VarV3 {
@@ -57,7 +57,7 @@ f32 min = -FLT_MAX;
     f32 speed = 0.01f;
     bool readonly = false;
 
-    constexpr bool operator == (const VarV3& rhs) { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
+    constexpr bool operator == (const VarV3& rhs) const { return value == rhs.value && min == rhs.min && max == rhs.max && speed == rhs.speed && readonly == rhs.readonly; }
 };
 
 struct VarSystem {

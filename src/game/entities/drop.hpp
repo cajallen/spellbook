@@ -23,6 +23,7 @@ struct BeadPrefab {
     string file_path;
     string model_path;
     Bead type;
+    float scale = 1.0f;
 };
 
 struct DropChance {
@@ -47,6 +48,6 @@ bool inspect(DropChance* drop_chance);
 
 Color bead_color(Bead bead);
 
-JSON_IMPL(BeadPrefab, model_path, type);
+JSON_IMPL(BeadPrefab, model_path, type, scale);
 
 }
