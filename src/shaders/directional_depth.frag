@@ -8,7 +8,7 @@ layout (location = 0) in VS_OUT {
     vec3 color;
     vec2 uv;
     mat3 TBN;
-    int id;
+    uint id;
 } fin;
 
 //layout (location = 0) out vec4 fout_color;

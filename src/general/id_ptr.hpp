@@ -111,8 +111,10 @@ id_ptr<T> id_ptr<T>::emplace(Args&&...args) {
 
 template <typename T>
 void id_ptr<T>::remove() const {
+    if (!this->valid())
+        return;
     auto& arch = archive();
-    arch.ptrs.erase(arch.ptr.vals[id]);
+    arch.ptrs.erase(&**this);
     arch.vals.erase(id);
 }
 

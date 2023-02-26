@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include <entt/fwd.hpp>
+#include <entt/entity/fwd.hpp>
 
-#include "game/timer.hpp"
-#include "game/stat.hpp"
 #include "general/id_ptr.hpp"
+#include "game/timer.hpp"
+#include "game/entities/stat.hpp"
 
 namespace spellbook {
 
@@ -46,6 +46,7 @@ struct Ability {
 };
 
 id_ptr<Ability> make_ability(Scene* scene, const string& set_name);
+void destroy_ability(Scene* scene, id_ptr<Ability> ability);
 void inspect(Ability* ability);
 
 }

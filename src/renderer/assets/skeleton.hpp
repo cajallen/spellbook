@@ -3,12 +3,13 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
-#include "game/scene.hpp"
+#include "game/game_file.hpp"
 #include "general/geometry.hpp"
 #include "general/matrix.hpp"
 #include "general/quaternion.hpp"
 #include "general/id_ptr.hpp"
 
+#include "renderer/assets/animation_state.hpp"
 
 namespace spellbook {
 
@@ -27,18 +28,10 @@ struct KeySet {
 };
 
 struct PoseSet {
-    enum Type {
-        Type_Idle,
-        Type_Flail,
-        Type_Walking,
-        Type_Attacking,
-        Type_Attacked, // At point of attacking, pick if we're attacking again or not, pick attacked animation according
-        TypeCount
-    };
-
     struct Entry {
         string name;
         float time_to = 0.0f;
+        math::EaseMode ease_mode = math::EaseMode_Quad;
         umap<string, KeySet> pose;
     };
     
@@ -64,7 +57,7 @@ struct SkeletonPrefab {
     string file_path;
 
     vector<id_ptr<BonePrefab>> bones;
-    array<PoseSet, PoseSet::TypeCount> poses;
+    array<PoseSet, AnimationStateCount> poses;
 
     PoseSet pose_backfill;
 };
@@ -99,7 +92,7 @@ struct SkeletonCPU {
     float time = 0.0f;
 
     void update();
-    void save_pose(PoseSet::Type pose_set, string pose_name, float timing, int pose_index = -1);
+    void save_pose(AnimationState pose_set, string pose_name, float timing, int pose_index = -1);
     void load_pose(PoseSet::Entry& pose_entry, float offset = -1.0f);
     void store_pose(const string& pose_name);
 };
@@ -117,7 +110,7 @@ SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu);
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);
 JSON_IMPL(BonePrefab, name, parent, position, inverse_bind_matrix);
-JSON_IMPL(PoseSet::Entry, name, time_to, pose);
+JSON_IMPL(PoseSet::Entry, name, time_to, pose, ease_mode);
 JSON_IMPL(PoseSet, entries);
 
 template <>

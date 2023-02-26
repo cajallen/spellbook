@@ -5,9 +5,11 @@
 #include <vuk/Partials.hpp>
 
 #include "extension/fmt_renderer.hpp"
+#include "extension/imgui_extra.hpp"
 #include "general/file.hpp"
 #include "general/matrix_math.hpp"
 #include "game/game.hpp"
+#include "game/input.hpp"
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
 #include "renderer/samplers.hpp"
@@ -136,7 +138,8 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     renderables_built.clear();
     rigged_renderables_built.clear();
-    selection_ids.clear();
+
+    u32 count = 0;
     
     for (auto& renderable : renderables) {
         u64 mesh_hash = hash_data(renderable.mesh_asset_path.data(), renderable.mesh_asset_path.size());
@@ -146,35 +149,41 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
             continue;
         if (!game.renderer.mesh_cache.contains(mesh_hash))
             continue;
-
-        selection_ids.push_back(renderable.selection_id);
+        
         if (renderable.skeleton == nullptr) {
             auto& mat_map = renderables_built.try_emplace(mat_hash).first->second;
             auto& mesh_list = mat_map.try_emplace(mesh_hash).first->second;
-            mesh_list.push_back(&renderable.transform);
+            mesh_list.emplace_back(renderable.selection_id, &renderable.transform);
+            count++;
         } else {
             auto& mat_map = rigged_renderables_built.try_emplace(mat_hash).first->second;
             auto& mesh_list = mat_map.try_emplace(mesh_hash).first->second;
-            mesh_list.emplace_back(renderable.skeleton, &renderable.transform);
+            mesh_list.emplace_back(renderable.selection_id, renderable.skeleton, &renderable.transform);
+            count++;
         }
     }
 
-    u32 model_buffer_size = sizeof(m44GPU) * (selection_ids.size() + widget_renderables.size());
-    u32 id_buffer_size = sizeof(u32) * selection_ids.size();
+    u32 model_buffer_size = sizeof(m44GPU) * (count + widget_renderables.size());
+    u32 id_buffer_size = sizeof(u32) * count;
     
     buffer_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, model_buffer_size, 1});
+    buffer_ids = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, id_buffer_size, 1});
     int i = 0;
     for (const auto& [mat_hash, mat_map] : renderables_built) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
-            for (const m44GPU* transform : mesh_list) {
-                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i++, transform, sizeof(m44GPU));
+            for (auto& [id, transform] : mesh_list) {
+                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(m44GPU));
+                *((u32*) buffer_ids.mapped_ptr + i) = id;
+                i++;
             }
         }
     }
     for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
-            for (const auto& [skeleton, transform] : mesh_list) {
-                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i++, transform, sizeof(m44GPU));
+            for (const auto& [id, skeleton, transform] : mesh_list) {
+                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(m44GPU));
+                *((u32*) buffer_ids.mapped_ptr + i) = id;
+                i++;
             }
         }
     }
@@ -183,8 +192,6 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
         memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i++, &renderable.transform, sizeof(m44GPU));
     }
 
-    buffer_ids = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, id_buffer_size, 1});
-    memcpy(buffer_ids.mapped_ptr, selection_ids.data(), selection_ids.bsize());
 }
 
 
@@ -322,7 +329,7 @@ void RenderScene::add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     command_buffer
                         .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
                         .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [skeleton, transform] : mesh_list) {
+                    for (auto& [id, skeleton, transform] : mesh_list) {
                         command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
                         command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
                     }
@@ -363,7 +370,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
                 .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
                 .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
-            .bind_buffer(0, ID_BINDING, buffer_ids);
+                .bind_buffer(0, ID_BINDING, buffer_ids);
 
             int item_index = 0;
             for (const auto& [mat_hash, mat_map] : renderables_built) {
@@ -394,7 +401,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     command_buffer
                         .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
                         .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [skeleton, transform] : mesh_list) {
+                    for (auto& [id, skeleton, transform] : mesh_list) {
                         command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
                         command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
                     }

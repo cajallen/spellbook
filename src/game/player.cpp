@@ -1,6 +1,6 @@
 ﻿#include "player.hpp"
 
-#include "imgui.h"
+#include <imgui/imgui.h>
 
 namespace spellbook {
 

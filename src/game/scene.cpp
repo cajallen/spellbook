@@ -1,19 +1,23 @@
 #include "scene.hpp"
 
 #include <tracy/Tracy.hpp>
-#include <entt/entt.hpp>
+#include <entt/entity/entity.hpp>
+#include <entt/entity/registry.hpp>
 
-#include "editor/console.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/math.hpp"
 #include "general/bitmask_3d.hpp"
+#include "renderer/draw_functions.hpp"
+#include "editor/console.hpp"
 #include "game/game.hpp"
-#include "game/components.hpp"
-#include "game/spawner.hpp"
 #include "game/systems.hpp"
 #include "game/pose_controller.hpp"
-#include "renderer/draw_functions.hpp"
+#include "game/entities/components.hpp"
+#include "game/entities/spawner.hpp"
+#include "game/entities/consumer.hpp"
+#include "game/entities/tile.hpp"
+#include "game/entities/enemy.hpp"
 
 namespace spellbook {
 
@@ -26,21 +30,33 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     auto&    dragging = registry.get<Dragging>(entity);
     auto& l_transform = registry.get<LogicTransform>(entity);
     if (math::length(l_transform.position - math::round(dragging.potential_logic_position)) > 0.1f)
-        player.drags_available--;
+        player.bank.beads[Bead_Quartz]--;
     l_transform.position = math::round(dragging.potential_logic_position);
 
     auto poser = registry.try_get<PoseController>(entity);
     if (poser) {
-        poser->set_state(PoseController::State_Idle, 0.3f);
+        poser->set_state(AnimationState_Idle);
     }
 }
 
 void Scene::health_cleanup(entt::registry& registry, entt::entity entity) {
-    auto health = registry.try_get<Health>(entity);
-    if (health && health->hurt_emitter) {
-        deinstance_emitter(*health->hurt_emitter, true);
+    auto& health = registry.get<Health>(entity);
+    if (health.hurt_emitter) {
+        deinstance_emitter(*health.hurt_emitter, true);
     }
 }
+
+void Scene::lizard_cleanup(entt::registry& registry, entt::entity entity) {
+    auto& lizard = registry.get<Lizard>(entity);
+    destroy_ability(this, lizard.basic_ability);
+}
+
+
+void Scene::enemy_cleanup(entt::registry& registry, entt::entity entity) {
+    auto& enemy = registry.get<Enemy>(entity);
+    destroy_ability(this, enemy.ability);
+}
+
 
 void Scene::setup(const string& input_name) {
     name = input_name;
@@ -55,9 +71,13 @@ void Scene::setup(const string& input_name) {
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
     registry.on_destroy<Health>().connect<&Scene::health_cleanup>(*this);
+    registry.on_destroy<Lizard>().connect<&Scene::lizard_cleanup>(*this);
+    registry.on_destroy<Enemy>().connect<&Scene::enemy_cleanup>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
+
+    round_info = new RoundInfo();
 }
 
 void Scene::update() {
@@ -66,13 +86,7 @@ void Scene::update() {
     delta_time = Input::delta_time * time_scale;
     time += delta_time;
 
-    for (auto& timer : timers) {
-        timer.update(delta_time);
-    }
-    for (auto& timer_callback : timer_callbacks) {
-        timer_callback.callback(timer_callback.timer, timer_callback.payload);
-    }
-    timer_callbacks.clear();
+    update_timers(this);
     
 	controller.update();
 
@@ -81,7 +95,6 @@ void Scene::update() {
     dragging_system(this);
     spawner_system(this);
     travel_system(this);
-    lizard_system(this);
 
     lizard_targeting_system(this);
     lizard_casting_system(this);
@@ -112,6 +125,8 @@ void Scene::set_edit_mode(bool to) {
 }
 
 void Scene::cleanup() {
+    delete round_info;
+    
     controller.cleanup();
 	render_scene.cleanup(*game.renderer.global_allocator);
     game.scenes.remove_value(this);
@@ -247,7 +262,7 @@ entt::entity Scene::get_tile(v3i pos) {
 
 vector<entt::entity> Scene::get_enemies(v3i pos) {
     vector<entt::entity> entities;
-    auto view = registry.view<LogicTransform, Traveler>();
+    auto view = registry.view<LogicTransform, Enemy>();
     for (auto [entity, logic_pos, traveler] : view.each()) {
         v3i cell = math::round_cast(logic_pos.position);
         if (cell == pos) {
@@ -327,8 +342,7 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
             auto& emitter_component = payload->scene->registry.get<EmitterComponent>(payload->entity);
             deinstance_emitter(*emitter_component.emitter, true);
             payload->scene->registry.destroy(payload->entity);
-            delete payload;
-        }, payload)
+        }, payload, true, false)
     );
 
     emitter_comp.timer->start(duration);
@@ -343,28 +357,29 @@ void Scene::select_entity(entt::entity entity) {
     if (!transform)
         return;
 
-    if (registry.all_of<Draggable>(selected_entity) && player.drags_available > 0) {
+    if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {
         registry.emplace<Dragging>(selected_entity, time, transform->position, intersect);
     
         for (auto [entity, attach] : registry.view<LogicTransformAttach>().each()) {
-            if (attach.to == selected_entity) {
-                auto attachee_transform = registry.try_get<LogicTransform>(entity);
-                registry.emplace<Dragging>(entity, time, attachee_transform->position, intersect);
-            }
+            log_error("NYI");
         }
     }
 }
 
-bool Scene::get_object_placement(v3i& pos) {
+bool Scene::get_object_placement(v2i offset, v3i& pos) {
     auto slots     = registry.view<GridSlot, LogicTransform>();
     Bitmask3D bitmask;
     for (auto [entity, slot, logic_pos] : slots.each()) {
         bitmask.set(v3i(logic_pos.position));
     }
     
-    ray3 mouse_ray = render_scene.viewport.ray(math::round_cast(Input::mouse_pos));
+    ray3 mouse_ray = render_scene.viewport.ray(math::round_cast(Input::mouse_pos) + offset);
     v3 intersect;
     return bitmask.ray_intersection(mouse_ray, intersect, pos);
+}
+
+bool Scene::get_object_placement(v3i& pos) {
+    return get_object_placement(v2i{}, pos);
 }
 
 

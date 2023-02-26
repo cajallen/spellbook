@@ -14,7 +14,6 @@ struct Bank {
 
 struct Player {
     Scene* scene;
-    int drags_available = INT_MAX;
     Bank bank;
 };
 

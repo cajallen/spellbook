@@ -91,14 +91,14 @@ bool InspectFile(const fs::path& path, fs::path* p_selected, const std::function
     return changed;
 } 
 
-bool InspectDirectory(const fs::path& path, fs::path* p_selected, const std::function<bool(const fs::path&)>& filter, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+bool InspectDirectory(const fs::path& path, fs::path* p_selected, const std::function<bool(const fs::path&)>& filter, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     bool changed = false;
     string folder_name = path.string();
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     if (p_selected && folder_name == *p_selected)
         node_flags |= ImGuiTreeNodeFlags_Selected;
 
-    SetNextItemOpen(open_subdirectories, ImGuiCond_Appearing);
+    SetNextItemOpen(open_subdirectories > 0, ImGuiCond_Once);
 
     string dir_string = path.has_stem() ? path.stem().string() : folder_name;
     
@@ -118,7 +118,7 @@ bool InspectDirectory(const fs::path& path, fs::path* p_selected, const std::fun
                 continue;
 
             if (dir_entry.is_directory())
-                changed |= InspectDirectory(dir_entry.path(), p_selected, filter, open_subdirectories, context_callback);
+                changed |= InspectDirectory(dir_entry.path(), p_selected, filter, open_subdirectories - 1, context_callback);
         }
         for (auto& dir_entry : fs::directory_iterator(path)) {
             string dir_str = dir_entry.path().string();
@@ -162,14 +162,14 @@ void PathTarget(fs::path* out, const string& dnd_key) {
     }
 }
 
-bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType file_type, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType file_type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     fs::path out_input = fs::path(*out);
     bool changed = PathSelect(hint, &out_input, base_folder, file_type, open_subdirectories, context_callback);
     *out = out_input.string();
     return changed;
 }
 
-bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType file_type, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType file_type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     if (!fs::exists(base_folder))
         fs::create_directory(base_folder);
     
@@ -205,7 +205,7 @@ bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, 
     return changed;
 }
 
-bool PathSelectBody(fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, bool* close_popup, bool open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+bool PathSelectBody(fs::path* out, const fs::path& base_folder, const std::function<bool(const fs::path&)>& filter, bool* close_popup, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     spellbook::v2 size = close_popup == nullptr ?
         spellbook::v2(GetContentRegionAvail()) :
         spellbook::v2(GetContentRegionAvail()) - spellbook::v2(0, GetFrameHeightWithSpacing());

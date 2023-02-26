@@ -1,18 +1,23 @@
 #include "map_editor.hpp"
 
 #include <tracy/Tracy.hpp>
+#include <imgui/imgui.h>
+#include <imgui/misc/cpp/imgui_stdlib.h>
 
-#include "game_scene.hpp"
-#include "widget_system.hpp"
+#include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/file.hpp"
+#include "editor/game_scene.hpp"
+#include "editor/widget_system.hpp"
+#include "editor/asset_browser.hpp"
+#include "renderer/draw_functions.hpp"
 #include "game/game.hpp"
 #include "game/scene.hpp"
-#include "game/components.hpp"
 #include "game/input.hpp"
-#include "editor/asset_browser.hpp"
-#include "extension/fmt.hpp"
-#include "renderer/draw_functions.hpp"
+#include "game/entities/components.hpp"
+#include "game/entities/tile.hpp"
+#include "game/entities/spawner.hpp"
+#include "game/entities/consumer.hpp"
+#include "game/entities/lizard.hpp"
 
 namespace spellbook {
 
@@ -89,7 +94,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
     if (ImGui::BeginPopupModal("Add Button", &add_open)) {
         ImGui::InputText("Text", &add_map[name].text);
         ImGui::ColorEdit3("Color", add_map[name].color.data);
-        ImGui::PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), true);
+        ImGui::PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), 1);
         
         if (ImGui::Button("Add")) {
             fs::path as_path = add_map[name].item_path;
@@ -118,7 +123,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
     if (ImGui::BeginPopupModal("Edit Button", &edit_open)) {
         ImGui::InputText("Text", &buttons[edit_map[name]].text);
         ImGui::ColorEdit3("Color", buttons[edit_map[name]].color.data);
-        ImGui::PathSelect("Path", &buttons[edit_map[name]].item_path, "resources", from_typeinfo(typeid(T)), true);
+        ImGui::PathSelect("Path", &buttons[edit_map[name]].item_path, "resources", from_typeinfo(typeid(T)), 1);
 
         if (ImGui::Button("Close")) {
             ImGui::CloseCurrentPopup();
@@ -247,7 +252,7 @@ void MapEditor::update() {
         if ((selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) && p_scene->get_object_placement(cell)) {
             z_level = cell.z;
         } else {
-            if (eraser_selected) {
+            if (eraser_selected || selected_tile != -1) {
                 cell = math::floor_cast(math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, z_level));
                 cell.z -= 1;
             }
@@ -312,7 +317,7 @@ void MapEditor::window(bool* p_open) {
         }
         
         
-        ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, true);
+        ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, 1);
         ImGui::SameLine();
         if (ImGui::Button("Load##Map")) {
             p_scene->cleanup();
@@ -515,12 +520,12 @@ void MapEditor::draw_preview(v3i cell) {
         } else {
             auto line_mesh = generate_formatted_line(camera,
             {
-                {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, line_width},
-                {(v3) cell + v3(1.f, 0.f, 0.05f), palette::white, line_width},
-                {(v3) cell + v3(1.f, 1.f, 0.05f), palette::white, line_width},
-                {(v3) cell + v3(0.f, 1.f, 0.05f), palette::white, line_width},
-                {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, line_width},
-                {(v3) cell + v3(0.f, 0.f, 0.05f), palette::white, line_width}
+                {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
+                {(v3) cell + v3(1.f, 0.f, 1.05f), palette::white, line_width},
+                {(v3) cell + v3(1.f, 1.f, 1.05f), palette::white, line_width},
+                {(v3) cell + v3(0.f, 1.f, 1.05f), palette::white, line_width},
+                {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
+                {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width}
             });
             p_scene->render_scene.quick_mesh(line_mesh, true, true);
         }

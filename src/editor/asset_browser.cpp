@@ -9,6 +9,7 @@
 #include "general/umap.hpp"
 #include "general/file.hpp"
 #include "game/game.hpp"
+#include "renderer/assets/model.hpp"
 #include "renderer/assets/texture_asset.hpp"
 
 namespace spellbook {
@@ -63,7 +64,7 @@ void asset_browser(const string& window_name, bool* p_open, fs::path* out) {
     }
 
     // Body
-    ImGui::PathSelectBody(out, path_filter(FileType_Directory)(*out) ? *out : out->parent_path(), filter, nullptr, false, context_callback);
+    ImGui::PathSelectBody(out, path_filter(FileType_Directory)(*out) ? *out : out->parent_path(), filter, nullptr, 1, context_callback);
     
 
     // Popup

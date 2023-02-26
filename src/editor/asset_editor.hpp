@@ -1,12 +1,12 @@
 #pragma once
 
 #include "editor_scene.hpp"
-#include "game/consumer.hpp"
 #include "game/scene.hpp"
-#include "game/enemy.hpp"
-#include "game/spawner.hpp"
-#include "game/lizard.hpp"
-#include "game/tile.hpp"
+#include "game/entities/tile.hpp"
+#include "game/entities/enemy.hpp"
+#include "game/entities/lizard.hpp"
+#include "game/entities/consumer.hpp"
+#include "game/entities/spawner.hpp"
 #include "game/visual_tile.hpp"
 
 #include "renderer/assets/model.hpp"
@@ -34,17 +34,24 @@ struct AssetEditor : EditorScene {
         Tab_Drop
     };
 
-    bool model_owner;
-    ModelCPU* model_cpu;
+    // 3 modes, owned, cache, instanced
+    enum Ownership {
+        Ownership_Null,
+        Ownership_Owned,
+        Ownership_From_Cache,
+        Ownership_From_Instance
+    };
+    Ownership model_owner = Ownership_Null;
+    ModelCPU* model_cpu = nullptr;
     
     MeshCPU mesh_cpu;
-    Renderable* mesh_gpu;
+    Renderable* mesh_gpu = nullptr;
     
     MaterialCPU material_cpu;
-    Renderable* material_gpu;
+    Renderable* material_gpu = nullptr;
 
     EmitterCPU emitter_cpu;
-    EmitterGPU* emitter_gpu;
+    EmitterGPU* emitter_gpu = nullptr;
     
     LizardPrefab lizard_prefab;
     TilePrefab tile_prefab;
@@ -64,6 +71,8 @@ struct AssetEditor : EditorScene {
     void shutdown() override;
 
     void switch_tab(Tab tab);
+
+    void set_model(ModelCPU* model, Ownership ownership);
 };
 
 }

@@ -2,26 +2,14 @@
 
 #include "general/string.hpp"
 #include "general/vector.hpp"
-#include "game/lizard.hpp"
+#include "game/entities/drop.hpp"
+#include "game/entities/lizard.hpp"
 
 namespace spellbook {
 
 struct Scene;
 struct Player;
-
-enum Bead {
-    Bead_Oak,
-    Bead_Yew,
-    Bead_Amber,
-    Bead_Malachite,
-    Bead_Count
-};
-
-struct BeadPrefab {
-    string file_path;
-    string model_path;
-    Bead type;
-};
+struct RoundInfo;
 
 struct ShopEntry {
     Bead cost_type;
@@ -39,7 +27,9 @@ struct Warehouse {
 };
 
 struct ShopGenerator {
-    virtual void setup();
+    RoundInfo* round_info;
+    
+    virtual void setup(Scene* scene);
     virtual vector<ShopEntry*>* generate_shop();
     virtual void purchase(u32 index);
     virtual void reset();
@@ -51,7 +41,20 @@ struct SimpleShopGenerator : ShopGenerator {
     Warehouse warehouse;
     vector<ShopEntry*> out_shop;
     
-    void setup() override;
+    void setup(Scene* scene) override;
+    vector<ShopEntry*>* generate_shop() override;
+    void purchase(u32 index) override;
+    void reset() override;
+    void inspect() override;
+};
+
+struct FirstFreeShopGenerator : ShopGenerator {
+    int shop_size = 3;
+    Warehouse first_warehouse;
+    Warehouse warehouse;
+    vector<ShopEntry*> out_shop;
+    
+    void setup(Scene* scene) override;
     vector<ShopEntry*>* generate_shop() override;
     void purchase(u32 index) override;
     void reset() override;
@@ -66,15 +69,8 @@ struct Shop {
 bool button(ShopEntry* shop_entry);
 void show_shop(Shop* shop, Player* player);
 
-entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 position);
-
 void inspect(ShopEntry* shop_entry);
 void inspect(Warehouse* warehouse);
-bool inspect(BeadPrefab* bead_prefab);
 //void inspect(Shop* shop);
-
-Color bead_color(Bead bead);
-
-JSON_IMPL(BeadPrefab, model_path, type);
 
 }

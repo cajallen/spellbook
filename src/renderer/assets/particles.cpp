@@ -2,12 +2,16 @@
 
 #include <vuk/Partials.hpp>
 
-#include "mesh_asset.hpp"
-#include "editor/console.hpp"
 #include "extension/fmt.hpp"
+#include "extension/imgui_extra.hpp"
 #include "general/file.hpp"
-#include "game/game.hpp"
+#include "general/logger.hpp"
+#include "editor/console.hpp"
 #include "renderer/render_scene.hpp"
+#include "renderer/assets/mesh_asset.hpp"
+#include "game/game.hpp"
+#include "game/input.hpp"
+
 namespace spellbook {
 
 void setup_emitter() {

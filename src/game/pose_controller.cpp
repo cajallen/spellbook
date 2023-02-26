@@ -2,36 +2,30 @@
 
 #include <tracy/Tracy.hpp>
 
-#include "game/components.hpp"
+#include "renderer/assets/animation_state.hpp"
 #include "game/scene.hpp"
+#include "game/entities/components.hpp"
 
 namespace spellbook {
 
-void PoseController::set_state(State new_state, float time_in_target) {
-    if (state != new_state) {
+void PoseController::set_state(AnimationState new_state, float time_in_target) {
+    if (state != new_state || pose_set == nullptr) {
         state = new_state;
         target_index = -1;
         fractional_state_total = time_in_target;
         time_to_next_index = 0.0f;
 
-        switch (new_state) {
-            case State_Idle: {
-                pose_set = &skeleton.prefab->poses[PoseSet::Type_Idle];
-            } break;
-            case State_Flailing: {
-                pose_set = &skeleton.prefab->poses[PoseSet::Type_Flail];
-            } break;
-            default: {
-                pose_set = &skeleton.prefab->poses[PoseSet::Type_Idle];
-            } break;
-        }
+        pose_set = &skeleton.prefab->poses[new_state];
         if (pose_set->entries.empty())
             pose_set = nullptr;
     }
 }
 
+bool PoseController::is_active() const {
+    return pose_set != nullptr;
+}
+
 void PoseController::clear_state() {
-    state = State_Invalid;
     pose_set = nullptr;
 }
 
@@ -48,9 +42,10 @@ void PoseController::progress_in_state() {
 
     float used_timing = new_entry.time_to;
     switch (state) {
-        case State_Attacking:
-        case State_Attacked:
-            used_timing = new_entry.time_to * fractional_state_total; 
+        case AnimationState_AttackInto:
+        case AnimationState_AttackOut:
+        case AnimationState_AttackAgain:
+            used_timing = new_entry.time_to * (fractional_state_total == 0.0f ? 1.0f : fractional_state_total); 
     }
     skeleton.load_pose(new_entry, used_timing);
     time_to_next_index = used_timing;

@@ -1,31 +1,58 @@
 ﻿#include "timer.hpp"
 
 #include <imgui.h>
+
 #include "game/scene.hpp"
 
 namespace spellbook {
 
-Timer& add_timer(Scene* scene, string name, void(*callback)(Timer*, void*), void* payload, float time) {
+Timer& add_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*), void* payload, bool allocated_payload, bool permanent) {
     assert_else(!(callback != nullptr ^ payload != nullptr));
-    auto& timer = *scene->timers.emplace(name, time);
-    timer.callback = TimerCallback{callback, &timer, payload};
+    auto& timer = *scene->timers.emplace(name);
     timer.scene = scene;
+    timer.callback = TimerCallback{&timer, callback, payload, allocated_payload};
+    timer.trigger_every_tick = false;
+    timer.one_shot = !permanent;
     return timer;
 }
 
-Timer& add_tween_timer(Scene* scene, string name, void(*callback)(Timer*, void*), void* payload, float time) {
+Timer& add_tween_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*), void* payload, bool allocated_payload, bool permanent) {
     assert_else(!(callback != nullptr ^ payload != nullptr));
-    auto& timer = *scene->timers.emplace(name, time);
-    timer.callback = TimerCallback{callback, &timer, payload};
+    auto& timer = *scene->timers.emplace(name);
+    timer.scene = scene;
+    timer.callback = TimerCallback{&timer, callback, payload, allocated_payload};
     timer.trigger_every_tick = true;
-    timer.scene = scene;
+    timer.one_shot = !permanent;
     return timer;
 }
 
-void remove_timer(Scene* scene, string name) {
-    scene->timers.erase(std::remove_if(scene->timers.begin(), scene->timers.end(),
-        [&name](const Timer& timer) { return timer.name == name; }
-    ));
+void destroy_timer(Timer* timer) {
+    timer->stop();
+    if (timer->callback.allocated_payload)
+        free(timer->callback.payload);
+}
+
+
+void remove_timer(Scene* scene, const string& name) {
+    for (auto it = scene->timers.begin(); it != scene->timers.end();) {
+        if (it->name == name) {
+            destroy_timer(&*it);
+            it = scene->timers.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void remove_timer(Scene* scene, Timer* timer) {
+    for (auto it = scene->timers.begin(); it != scene->timers.end();) {
+        if (&*it == timer) {
+            destroy_timer(timer);
+            it = scene->timers.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void Timer::start(float new_time) {
@@ -48,9 +75,9 @@ void Timer::update(float delta) {
 }
 
 void Timer::timeout() {
-    stop();
     if (!trigger_every_tick && callback.callback)
         scene->timer_callbacks.push_back(callback);
+    stop();
 }
 
 void Timer::stop() {
@@ -63,6 +90,24 @@ void inspect(Timer* timer) {
         ImGui::SliderFloat("Timer", &timer->remaining_time, 0.0f, timer->total_time, "%.2f", ImGuiSliderFlags_NoInput);
     else
         ImGui::Text("Not ticking");
+}
+
+void update_timers(Scene* scene) {
+    for (auto& timer : scene->timers) {
+        timer.update(scene->delta_time);
+    }
+    for (auto& timer_callback : scene->timer_callbacks) {
+        timer_callback.callback(timer_callback.timer, timer_callback.payload);
+    }
+    scene->timer_callbacks.clear();
+    for (auto it = scene->timers.begin(); it != scene->timers.end();) {
+        if (!it->ticking && it->one_shot) {
+            destroy_timer(&*it);
+            it = scene->timers.erase(it);
+        }
+        else
+            ++it;
+    }
 }
 
 }

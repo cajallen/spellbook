@@ -1,17 +1,12 @@
 ﻿#pragma once
 
-#include <entt/fwd.hpp>
-
 #include "general/umap.hpp"
 #include "general/geometry.hpp"
-#include "game/spawner.hpp"
-#include "game/lizard.hpp"
-#include "game/tile.hpp"
-#include "game/enemy.hpp"
-#include "game/consumer.hpp"
 #include "game/game_file.hpp"
 
 namespace spellbook {
+
+struct Scene;
 
 struct MapPrefab {
     string file_path;

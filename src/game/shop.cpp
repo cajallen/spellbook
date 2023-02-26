@@ -2,10 +2,13 @@
 
 #include <imgui.h>
 
-#include "components.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "game/player.hpp"
+#include "game/scene.hpp"
+#include "game/entities/drop.hpp"
+#include "game/entities/components.hpp"
+#include "game/entities/spawner.hpp"
 
 namespace spellbook {
 
@@ -40,7 +43,7 @@ void Warehouse::add_entry(ShopEntry&& shop_entry, float probability) {
 
 
 
-void ShopGenerator::setup() {
+void ShopGenerator::setup(Scene* scene) {
     log_warning("Attempted to use unenforced virtual ShopGenerator");
 }
 vector<ShopEntry*>* ShopGenerator::generate_shop() {
@@ -57,8 +60,55 @@ void ShopGenerator::inspect() {
     log_warning("Attempted to use unenforced virtual ShopGenerator");
 }
 
+void FirstFreeShopGenerator::setup(Scene* scene) {
+    round_info = scene->round_info;
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
+    
+    warehouse.add_entry({Bead_Oak, 3, "lizards/champion.sbliz"}, 1.0f);
 
-void SimpleShopGenerator::setup() {
+    warehouse.add_entry({Bead_Malachite, 3, "lizards/champion.sbliz"}, 1.0f);
+}
+vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
+    assert_else(out_shop.empty())
+        return &out_shop;
+
+    for (u32 i = 0; i < shop_size; i++) {
+        auto entry = round_info->round_number > 0 ? warehouse.get_entry() : first_warehouse.get_entry();
+        if (entry == nullptr)
+            break;
+        out_shop.push_back(entry);
+    }
+    return &out_shop;
+}
+void FirstFreeShopGenerator::purchase(u32 index) {
+    if (round_info->round_number == 0) {
+        reset();
+        round_info->advance_round();
+    } else {
+        out_shop.remove_index(index);
+    }
+}
+
+void FirstFreeShopGenerator::reset() {
+    if (round_info->round_number > 0) {
+        for (u32 i = 0; i < out_shop.size(); i++) {
+            u32 j = warehouse.entries.index(*out_shop[i]);
+            warehouse.stock[j]++;
+        }
+    }
+    out_shop.clear();
+}
+void FirstFreeShopGenerator::inspect() {
+    ImGui::InputInt("Shop Size", &shop_size);
+    ImGui::Text("Warehouse");
+    ImGui::Indent();
+    spellbook::inspect(&warehouse);
+    ImGui::Unindent();
+}
+
+
+void SimpleShopGenerator::setup(Scene* scene) {
+    round_info = scene->round_info;
     warehouse.add_entry({Bead_Oak, 4, "lizards/zord.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 6, "lizards/rokko.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 6, "lizards/merque.sbliz"}, 1.0f);
@@ -104,40 +154,13 @@ void SimpleShopGenerator::inspect() {
 }
 
 bool button(ShopEntry* shop_entry) {
-    string button_text = fmt_("{}\n{} {}{}",
+    string button_text = shop_entry->cost_amount > 0 ? fmt_("{}\n{} {}{}",
         shop_entry->lizard_prefab_path,
         shop_entry->cost_amount,
         magic_enum::enum_name(shop_entry->cost_type),
         shop_entry->cost_amount > 1 ? "s" : ""
-    );
-    return ImGui::Button(button_text.c_str());
-}
-
-
-entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 position) {
-    static int i      = 0;
-    auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(bead_prefab.file_path).stem().string(), i++));
-    
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(bead_prefab.model_path));
-    model_comp.model_gpu = std::move(instance_model(scene->render_scene, *model_comp.model_cpu));
-
-    scene->registry.emplace<LogicTransform>(entity, position);
-    scene->registry.emplace<ModelTransform>(entity);
-    scene->registry.emplace<TransformLink>(entity, v3(0.5));
-
-    scene->registry.emplace<Pickup>(entity, bead_prefab.type);
-    
-    return entity;  
-}
-
-bool inspect(BeadPrefab* bead_prefab) {
-    bool changed = false;
-    ImGui::PathSelect("File", &bead_prefab->file_path, "resources/drops", FileType_Drop, true);
-    changed |= ImGui::EnumCombo("Type", &bead_prefab->type);
-    changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, "resources/models", FileType_Model, true);
-    return changed;
+    ) : fmt_("{}\n{}", shop_entry->lizard_prefab_path, "Free");
+    return ImGui::Button(button_text.c_str(), {200, 80});
 }
 
 void inspect(ShopEntry* shop_entry) {
@@ -188,11 +211,13 @@ void show_shop(Shop* shop, Player* player) {
         for (u32 i = 0; i < shop->entries->size(); i++) {
             if (i > 0)
                 ImGui::SameLine();
-            auto bead_type = shop->entries->at(i)->cost_type;
+            Bead bead_type = shop->entries->at(i)->cost_type;
+            Color color = shop->entries->at(i)->cost_amount > 0 ? bead_color(bead_type) : palette::gray_7;
+            
             ImGui::BeginDisabled(player->bank.beads[bead_type] < shop->entries->at(i)->cost_amount);
-            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) Color(bead_color(bead_type), 0.4f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) Color(bead_color(bead_type), 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) Color(bead_color(bead_type).rgb * 0.8f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) Color(color, 0.4f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) Color(color, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) Color(color.rgb * 0.8f, 1.0f));
             if (button(shop->entries->at(i))) {
             }
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
@@ -215,26 +240,12 @@ void show_shop(Shop* shop, Player* player) {
             ImGui::EndDisabled();
         }
     }
-    ImGui::EndGroup();
-}
-
-Color bead_color(Bead bead) {
-    switch (bead) {
-        case (Bead_Oak): {
-            return Color(0.82f, 0.66f, 0.37f);
-        } break;
-        case (Bead_Yew): {
-            return Color(0.65f, 0.15f, 0.20f);
-        } break;
-        case (Bead_Amber): {
-            return Color(0.87f, 0.37f, 0.02f);
-        } break;
-        case (Bead_Malachite): {
-            return Color(0.24f, 0.80f, 0.60f);
-        } break;
+    ImGui::SameLine();
+    if (ImGui::Button("Close")) {
+        shop->shop_generator->reset();
+        shop->shop_generator->round_info->advance_round();
     }
-    log_warning("Missing bead color");
-    return palette::black;
+    ImGui::EndGroup();
 }
 
 

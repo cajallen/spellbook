@@ -4,14 +4,16 @@
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 
-#include "widget_system.hpp"
 #include "general/var_system.hpp"
 #include "general/file.hpp"
-#include "game/input.hpp"
-#include "game/game.hpp"
 #include "editor/console.hpp"
 #include "editor/asset_browser.hpp"
-#include "renderer/camera.hpp"
+#include "editor/editor_scene.hpp"
+#include "editor/widget_system.hpp"
+#include "game/input.hpp"
+#include "game/game.hpp"
+#include "game/scene.hpp"
+#include "game/game_file.hpp"
 
 namespace fs = std::filesystem;
 

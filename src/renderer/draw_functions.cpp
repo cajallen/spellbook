@@ -249,4 +249,15 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
     return mesh_cpu;
 }
 
+void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_1, v3 axis_2, Color color, float width) {
+    vertices.emplace_back(center - axis_2, color, width);
+    vertices.emplace_back(center + axis_1 - axis_2, color, width);
+    vertices.emplace_back(center + axis_1 + axis_2, color, width);
+    vertices.emplace_back(center - axis_1 + axis_2, color, width);
+    vertices.emplace_back(center - axis_1 - axis_2, color, width);
+    vertices.emplace_back(center - axis_2, color, width);
+    vertices.emplace_back(center - axis_2, palette::clear);
+}
+
+
 }

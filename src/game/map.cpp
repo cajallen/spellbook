@@ -1,12 +1,15 @@
 ﻿#include "map.hpp"
 
-#include <entt/entt.hpp>
-#include <imgui.h>
+#include <imgui/imgui.h>
 
-#include "general/logger.hpp"
-#include "game/components.hpp"
-#include "game/game_file.hpp"
 #include "extension/imgui_extra.hpp"
+#include "general/logger.hpp"
+#include "game/game_file.hpp"
+#include "game/scene.hpp"
+#include "game/entities/components.hpp"
+#include "game/entities/tile.hpp"
+#include "game/entities/spawner.hpp"
+#include "game/entities/consumer.hpp"
 
 namespace fs = std::filesystem;
 

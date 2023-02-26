@@ -1,6 +1,7 @@
 #include "camera_controller.hpp"
 
 #include <imgui.h>
+
 #include "extension/glfw.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"

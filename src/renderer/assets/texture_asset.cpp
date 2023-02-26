@@ -8,6 +8,7 @@
 #include "general/file.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"
+#include "game/game_file.hpp"
 
 namespace fs = std::filesystem;
 

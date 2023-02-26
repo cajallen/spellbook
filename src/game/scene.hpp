@@ -1,22 +1,24 @@
 #pragma once
 
-#include <entt/entt.hpp>
+#include <entt/entity/fwd.hpp>
+#include <entt/entity/registry.hpp>
 
-#include "general/vector.hpp"
 #include "general/string.hpp"
-
+#include "general/vector.hpp"
+#include "renderer/render_scene.hpp"
 #include "game/camera_controller.hpp"
-#include "game/consumer.hpp"
-#include "game/spawner.hpp"
-#include "game/tile.hpp"
-#include "game/lizard.hpp"
 #include "game/timer.hpp"
 #include "game/shop.hpp"
 #include "game/player.hpp"
 
-#include "renderer/render_scene.hpp"
 
 namespace spellbook {
+
+struct LizardPrefab;
+struct TilePrefab;
+struct SpawnerPrefab;
+struct ConsumerPrefab;
+struct RoundInfo;
 
 struct Scene {
     string           name;
@@ -27,6 +29,7 @@ struct Scene {
     entt::entity     selected_entity;
     Shop shop;
     Player player;
+    RoundInfo* round_info;
     
     bool edit_mode = true; // disables certain features
     float time = 0.0f;
@@ -51,6 +54,8 @@ struct Scene {
     void model_cleanup(entt::registry&, entt::entity);
     void dragging_cleanup(entt::registry&, entt::entity);
     void health_cleanup(entt::registry&, entt::entity);
+    void lizard_cleanup(entt::registry&, entt::entity);
+    void enemy_cleanup(entt::registry&, entt::entity);
 
     void select_entity(entt::entity entity);
 
@@ -69,6 +74,7 @@ struct Scene {
     entt::entity get(v3i, ConsumerPrefab* t);
 
     bool get_object_placement(v3i& pos);
+    bool get_object_placement(v2i pixel_offset, v3i& pos);
 
     void set_edit_mode(bool to);
 };

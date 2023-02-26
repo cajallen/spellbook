@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <imgui/imgui.h>
-
 #include "general/geometry.hpp"
 #include "general/quaternion.hpp"
 #include "general/matrix.hpp"

@@ -8,22 +8,23 @@ struct Scene;
 struct Timer;
 
 struct TimerCallback {
-    void(*callback)(Timer*, void*) = {};
     Timer* timer;
+    void(*callback)(Timer*, void*) = {};
     void* payload = nullptr;
+    bool allocated_payload = false;
 };
 
 struct Timer {
     string name;
-    float total_time;
+    Scene* scene;
     TimerCallback callback;
     bool trigger_every_tick = false;
+    float total_time;
 
-    Scene* scene;
     float remaining_time;
     float time_scale = 1.0f;
     bool ticking = false;
-
+    bool one_shot = true;
 
     void start(float time = -1.0f);
     void update(float delta);
@@ -31,9 +32,13 @@ struct Timer {
     void stop();
 };
 
-Timer& add_timer(Scene* scene, string name, void(*callback)(Timer*, void*) = {}, void* payload = nullptr, float time = -1.0f);
-Timer& add_tween_timer(Scene* scene, string name, void(*callback)(Timer*, void*) = {}, void* payload = nullptr, float time = -1.0f);
-void remove_timer(Scene* scene, string name);
+void update_timers(Scene* scene);
+
+Timer& add_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*) = {}, void* payload = nullptr, bool allocated = false, bool permanent = false);
+Timer& add_tween_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*) = {}, void* payload = nullptr, bool allocated = false, bool permanent = false);
+void destroy_timer(Timer* timer);
+void remove_timer(Scene* scene, Timer* timer);
+void remove_timer(Scene* scene, const string& name);
 void inspect(Timer* timer);
 
 }

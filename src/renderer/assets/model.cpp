@@ -2,6 +2,8 @@
 
 #include <tiny_gltf.h>
 #include <tracy/Tracy.hpp>
+#include <imgui/imgui.h>
+#include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
@@ -22,7 +24,6 @@
 namespace spellbook {
 
 ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
-    console({.str = fmt_("Model Copy")});
     file_path = oth.file_path;
     umap<u64, u64> old_to_new;
     for (id_ptr<Node> old_node : oth.nodes) {
@@ -46,7 +47,9 @@ ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
         for (id_ptr<Node>& child : node->children)
             child.id = old_to_new[child.id];
     }
-
+    if (!root_node.valid())
+        return *this;
+    
     root_node->cache_transform();
     
     if (oth.skeleton != nullptr)
@@ -193,9 +196,9 @@ template<>
 ModelCPU& load_asset(const string& input_path, bool assert_exists) {
     fs::path absolute_path = to_resource_path(input_path);
     if (asset_cache<ModelCPU>().contains(absolute_path.string()))
-        return asset_cache<ModelCPU>()[absolute_path.string()];
+        return *asset_cache<ModelCPU>()[absolute_path.string()];
 
-    ModelCPU& model = asset_cache<ModelCPU>().emplace(absolute_path.string(), ModelCPU()).first->second;
+    ModelCPU& model = *asset_cache<ModelCPU>().emplace(absolute_path.string(), std::make_unique<ModelCPU>()).first->second;
 
     string ext = absolute_path.extension().string();
     bool exists = fs::exists(absolute_path.string());
@@ -457,14 +460,18 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
 bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
     ZoneScoped;
     umap<u32, id_ptr<BonePrefab>> node_index_to_bone;
-    assert_else(model.skins.size() == 1);
+    assert_else(model.skins.size() <= 1);
+
+    if (model.skins.size() == 0)
+        return true;
     
     auto model_path = fs::path(model_cpu->file_path);
     auto skeleton_path = model_path;
     string skeleton_path_string = skeleton_path.replace_extension(extension(FileType_Skeleton)).string();
-    SkeletonPrefab& skeleton = asset_cache<SkeletonPrefab>().contains(skeleton_path_string) ?
-        asset_cache<SkeletonPrefab>()[skeleton_path_string] :
-        asset_cache<SkeletonPrefab>().emplace(skeleton_path_string, SkeletonPrefab()).first->second;
+    // SkeletonPrefab& skeleton = asset_cache<SkeletonPrefab>().contains(skeleton_path_string) ?
+    //     asset_cache<SkeletonPrefab>()[skeleton_path_string] :
+    //     asset_cache<SkeletonPrefab>().emplace(skeleton_path_string, SkeletonPrefab()).first->second;
+    SkeletonPrefab& skeleton = load_asset<SkeletonPrefab>(skeleton_path_string, false);
     skeleton.file_path = skeleton_path_string;
     
     for (u32 i_bone = 0; i_bone < model.skins[0].joints.size(); i_bone++) {

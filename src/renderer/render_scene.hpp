@@ -107,9 +107,8 @@ struct RenderScene {
 
     vuk::Buffer buffer_model_mats;
     vuk::Buffer buffer_ids;
-    umap<mat_id, umap<mesh_id, vector<m44GPU*>>> renderables_built;
-    umap<mat_id, umap<mesh_id, vector<std::pair<SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
-    vector<u32> selection_ids;
+    umap<mat_id, umap<mesh_id, vector<std::tuple<u32, m44GPU*>>>> renderables_built;
+    umap<mat_id, umap<mesh_id, vector<std::tuple<u32, SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
     void setup_renderables_for_passes(vuk::Allocator& allocator);
 };
 

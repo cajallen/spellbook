@@ -5,6 +5,7 @@
 #include <array>
 
 #include <vuk/resources/DeviceFrameResource.hpp>
+#include <vuk/Context.hpp>
 #include <VkBootstrap.h>
 
 #include "extension/vuk_imgui.hpp"

@@ -8,7 +8,7 @@ layout (location = 0) in VS_OUT {
     vec3 color;
     vec2 uv;
     mat3 TBN;
-    int id;
+    uint id;
 } fin;
 
 layout (location = 0) out vec4 fout_color;
@@ -40,5 +40,5 @@ void main() {
 
     vec4 emissive_input = texture(s_emissive, uv);
     fout_emissive = vec4(emissive_input.rgb * emissive_input.a * emissive_tint.rgb * emissive_tint.a + fin.color, 1.0);
-    fout_id = uvec4(fin.id, 0.0, 0.0, 0.0);
+    fout_id = uvec4(fin.id, fin.id, fin.id, fin.id);
 }

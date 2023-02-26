@@ -1,7 +1,8 @@
 ﻿#include "game_scene.hpp"
 
-#include "game/game.hpp"
 #include "renderer/draw_functions.hpp"
+#include "game/game.hpp"
+#include "game/entities/components.hpp"
 
 namespace spellbook {
 
@@ -65,8 +66,8 @@ void GameScene::shutdown() {
 
 void GameScene::setup_player_stuff() {
     p_scene->player.scene = p_scene;
-    p_scene->shop.shop_generator = std::make_unique<SimpleShopGenerator>();
-    p_scene->shop.shop_generator->setup();
+    p_scene->shop.shop_generator = std::make_unique<FirstFreeShopGenerator>();
+    p_scene->shop.shop_generator->setup(p_scene);
 }
 
 

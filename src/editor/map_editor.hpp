@@ -1,21 +1,15 @@
 #pragma once
 
-#include <imgui.h>
-#include <imgui/misc/cpp/imgui_stdlib.h>
-
-#include "editor_scene.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/color.hpp"
 #include "general/vector.hpp"
-#include "general/file.hpp"
+#include "editor/editor_scene.hpp"
 #include "game/scene.hpp"
-#include "game/consumer.hpp"
 #include "game/map.hpp"
-#include "game/spawner.hpp"
-#include "game/lizard.hpp"
-#include "game/tile.hpp"
-#include "game/enemy.hpp"
-#include "game/components.hpp"
+#include "game/entities/consumer.hpp"
+#include "game/entities/spawner.hpp"
+#include "game/entities/lizard.hpp"
+#include "game/entities/tile.hpp"
 #include "game/visual_tile.hpp"
 
 namespace spellbook {

@@ -1,6 +1,7 @@
 ﻿#include "visual_tile.hpp"
 
 #include <Tracy/Tracy.hpp>
+#include <entt/entity/registry.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"

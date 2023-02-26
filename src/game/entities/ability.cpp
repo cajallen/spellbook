@@ -14,28 +14,42 @@ id_ptr<Ability> make_ability(Scene* set_scene, const string& set_name) {
     ability->pre_trigger_timer = &add_timer(set_scene, fmt_("{}::pre", set_name),
         [](Timer* timer, void* payload) {
             auto ability = id_ptr<Ability>((u64) payload);
+            if (!ability.valid())
+                return;
             if (ability->trigger_callback != NULL)
                 ability->trigger_callback(ability->trigger_payload);
             ability->post_trigger_timer->start(ability->post_trigger_time.value());
             ability->cooldown_timer->start(ability->cooldown_time.value());
-        }, (void*) ability.id
+        }, (void*) ability.id, false, true
     );
     ability->post_trigger_timer = &add_timer(set_scene, fmt_("{}::post", set_name),
     [](Timer* timer, void* payload) {
             auto ability = id_ptr<Ability>((u64) payload);
+            if (!ability.valid())
+                return;
             if (ability->end_callback != nullptr)
                 ability->end_callback(ability->end_payload);
-        }, (void*) ability.id
+        }, (void*) ability.id, false, true
     );
     ability->cooldown_timer = &add_timer(set_scene, fmt_("{}::cd", set_name),
         [](Timer* timer, void* payload) {
             auto ability = id_ptr<Ability>((u64) payload);
+            if (!ability.valid())
+                return;
             if (ability->ready_callback != nullptr)
                 ability->ready_callback(ability->ready_payload);
-        }, (void*) ability.id
+        }, (void*) ability.id, false, true
     );
     return ability;
 }
+
+void destroy_ability(Scene* scene, id_ptr<Ability> ability) {
+    remove_timer(scene, ability->pre_trigger_timer);
+    remove_timer(scene, ability->post_trigger_timer);
+    remove_timer(scene, ability->cooldown_timer);
+    ability.remove();
+}
+
 
 void Ability::request_cast() {
     if (start_callback != nullptr)

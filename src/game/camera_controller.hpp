@@ -1,10 +1,10 @@
 #pragma once
 
-#include "input.hpp"
 #include "general/string.hpp"
 #include "general/geometry.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/viewport.hpp"
+#include "game/input.hpp"
 
 struct GLFWwindow;
 

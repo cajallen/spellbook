@@ -7,15 +7,16 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <magic_enum.hpp>
 
+#include "extension/fmt.hpp"
+#include "extension/icons/font_awesome4.h"
+#include "extension/imgui_extra.hpp"
+#include "general/matrix_math.hpp"
+#include "renderer/render_scene.hpp"
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
 #include "editor/skeleton_widget.hpp"
-#include "extension/fmt.hpp"
-#include "extension/icons/font_awesome4.h"
-#include "general/matrix_math.hpp"
 #include "game/input.hpp"
 #include "game/game.hpp"
-#include "renderer/render_scene.hpp"
 
 namespace spellbook {
 
@@ -51,7 +52,7 @@ SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu) {
     return skeleton_gpu;
 }
 
-void SkeletonCPU::save_pose(PoseSet::Type set_type, string pose_name, float timing, int pose_index) {
+void SkeletonCPU::save_pose(AnimationState set_type, string pose_name, float timing, int pose_index) {
     PoseSet& pose_set = prefab->poses[set_type];
 
     PoseSet::Entry* existing_entry = pose_set.get_entry(pose_name);
@@ -91,6 +92,7 @@ void SkeletonCPU::store_pose(const string& pose_name) {
 void SkeletonCPU::load_pose(PoseSet::Entry& entry, float offset) {
     current_pose = entry.name;
     for (std::unique_ptr<Bone>& bone : bones) {
+        bone->ease_mode = entry.ease_mode;
         if (offset == 0.0f) {
             bone->start = entry.pose[bone->name];
             bone->target.position.time = -1.0f;
@@ -204,10 +206,10 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
     
     bool changed = false;
     ImGui::Text("Poses");
-    for (int i = 0; i < magic_enum::enum_count<PoseSet::Type>() - 1; i++) {
-        auto type = PoseSet::Type(i);
+    for (int i = 0; i < magic_enum::enum_count<AnimationState>() - 1; i++) {
+        auto type = AnimationState(i);
 
-        string enum_name = string(magic_enum::enum_name(PoseSet::Type(i)));
+        string enum_name = string(magic_enum::enum_name(AnimationState(i)));
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(enum_name.c_str())) {
             int load_pose;
@@ -220,7 +222,7 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
     }
 
     struct PoseSetTakeState {
-        PoseSet::Type to_type;
+        AnimationState to_type;
         vector<u8> selected;
     };
     static umap<SkeletonPrefab*, PoseSetTakeState> take_states;
@@ -248,11 +250,16 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
         if (ImGui::Button(skeleton_cpu->current_pose == prefab->pose_backfill.entries[i].name ? ICON_FA_REFRESH : ICON_FA_CAMERA))
             skeleton_cpu->load_pose(prefab->pose_backfill.entries[i], 0.0f);
         ImGui::SameLine();
-        ImGui::InputText("##Name", &prefab->pose_backfill.entries[i].name);
+        ImGui::InputText("Name", &prefab->pose_backfill.entries[i].name);
         ImGui::SameLine();
-        ImGui::Dummy(ImVec2{ImGui::GetContentRegionAvail().x - 40.f, 0.f});
+        ImGui::Dummy(ImVec2{ImGui::GetContentRegionAvail().x - 60.f, 0.f});
         ImGui::SameLine();
         ImGui::Checkbox("##Selected", (bool*) &take_state.selected[i]);
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_TIMES, {25.f, 0.f})) {
+            prefab->pose_backfill.entries.remove_index(i, false);
+            i--;
+        }
         ImGui::PopID();
     }
 
@@ -272,12 +279,15 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
                 *load_pose = i;
             ImGui::SameLine();
         }
-        float width = ImGui::GetContentRegionAvail().x - 60.0f;
-        ImGui::SetNextItemWidth(width * 0.6f);
+        float width = ImGui::GetContentRegionAvail().x;
+        ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
         ImGui::InputText("##Name", &pose_set->entries[i].name);
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(width * 0.4f - 65.0f);
+        ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
         changed |= ImGui::DragFloat("Time To", &pose_set->entries[i].time_to, 0.01f);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
+        changed |= ImGui::EnumCombo("##EaseMode", &pose_set->entries[i].ease_mode);
         ImGui::SameLine();
         if (i > 0) {
             if (ImGui::Button(ICON_FA_ARROW_UP, {25.f, 0.f})) {
@@ -289,14 +299,23 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
         } else {
             ImGui::Dummy(ImVec2{25.f, 0.f});
         }
+        ImGui::SameLine();
         if (i + 1 < pose_set->entries.size()) {
-            ImGui::SameLine();
             if (ImGui::Button(ICON_FA_ARROW_DOWN, {25.f, 0.f})) {
                 std::swap(pose_set->entries[i], pose_set->entries[i+1]);
                 changed = true;
                 ImGui::PopID();
                 break;
             }
+        } else {
+            ImGui::Dummy(ImVec2{25.f, 0.f}); 
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_TIMES, {25.f, 0.f})) {
+            pose_set->entries.remove_index(i, false);
+            changed = true;
+            ImGui::PopID();
+            break;
         }
         ImGui::PopID();
         ImGui::Separator();
@@ -328,9 +347,9 @@ template <>
 SkeletonPrefab& load_asset(const string& input_path, bool assert_exists) {
     fs::path absolute_path = to_resource_path(input_path);
     if (asset_cache<SkeletonPrefab>().contains(absolute_path.string()))
-        return asset_cache<SkeletonPrefab>()[absolute_path.string()];
+        return *asset_cache<SkeletonPrefab>()[absolute_path.string()];
 
-    SkeletonPrefab& value = asset_cache<SkeletonPrefab>().emplace(absolute_path.string(), SkeletonPrefab()).first->second;
+    SkeletonPrefab& value = *asset_cache<SkeletonPrefab>().emplace(absolute_path.string(), std::make_unique<SkeletonPrefab>()).first->second;
 
     string ext = absolute_path.extension().string();
     bool exists = fs::exists(absolute_path.string());

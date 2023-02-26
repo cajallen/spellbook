@@ -2,14 +2,12 @@
 
 #include "general/string.hpp"
 #include "general/vector.hpp"
-#include "game/scene.hpp"
 #include "editor/gui.hpp"
-#include "editor/asset_editor.hpp"
-#include "editor/map_editor.hpp"
-#include "editor/test_scene.hpp"
 #include "renderer/renderer.hpp"
 
 namespace spellbook {
+
+struct Scene;
 
 struct Game {
     vector<Scene*> scenes;

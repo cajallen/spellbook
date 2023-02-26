@@ -65,9 +65,6 @@ void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int
     material->bind_parameters(command_buffer);
     material->bind_textures(command_buffer);
 
-    // Set ID for selection
-    command_buffer.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, renderable.selection_id);
-
     // Draw call
     command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index ? (*item_index)++ : 0);
 }

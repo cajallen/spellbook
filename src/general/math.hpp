@@ -296,7 +296,13 @@ template <typename T> constexpr T mix(T a, T b, f32 x) {
 enum EaseMode {
     EaseMode_Linear,
     EaseMode_Quad,
+    EaseMode_QuadOut,
+    EaseMode_QuadIn,
     EaseMode_Cubic,
+    EaseMode_CubicOut,
+    EaseMode_CubicIn,
+    EaseMode_ElasticOut,
+    EaseMode_ElasticIn,
     EaseMode_Elastic
 };
 constexpr float ease(float x, EaseMode mode) {
@@ -307,8 +313,20 @@ constexpr float ease(float x, EaseMode mode) {
         case (EaseMode_Quad): {
             return x < 0.5f ? 2.0f * math::pow(x, 2.0f) : 1.0f - math::pow(-2.0f * x + 2.0f, 2.0f) / 2.0f;
         } break;
+        case (EaseMode_QuadOut): {
+            return math::pow(x, 2.0f);
+        } break;
+        case (EaseMode_QuadIn): {
+            return 1.0f - math::pow(1.0f - x, 2.0f);
+        } break;
         case (EaseMode_Cubic): {
             return x < 0.5f ? 4.0f * math::pow(x, 3.0f) : 1.0f - math::pow(-2.0f * x + 2.0f, 3.0f) / 2.0f;
+        } break;
+        case (EaseMode_CubicOut): {
+            return math::pow(x, 3.0f);
+        } break;
+        case (EaseMode_CubicIn): {
+            return 1.0f - math::pow(1.0f - x, 3.0f);
         } break;
         case (EaseMode_Elastic): {
             const float c5 = (2.0f * math::PI) / 4.5f;
@@ -360,6 +378,10 @@ inline f32 lerp_angle(f32 t, range r) {
     diff -= math::PI;
 
     return r.start + (diff * t);
+}
+
+inline float angle_difference(float a, float b) {
+    return atan2(sin(b-a), cos(b-a));
 }
 
 inline float wrap_angle (float angle) {

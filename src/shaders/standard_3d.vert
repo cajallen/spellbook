@@ -37,7 +37,7 @@ layout(location = 0) out VS_OUT {
     vec3 color;
     vec2 uv;
     mat3 TBN;
-	int id;
+	uint id;
 } vout;
 
 

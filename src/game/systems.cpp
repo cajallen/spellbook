@@ -1,75 +1,28 @@
 #include "systems.hpp"
 
 #include <tracy/Tracy.hpp>
-#include <entt/entt.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <entt/entity/entity.hpp>
+#include <entt/entity/registry.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/astar.hpp"
 #include "general/matrix_math.hpp"
 #include "general/logger.hpp"
-#include "game/game.hpp"
-#include "game/scene.hpp"
-#include "game/components.hpp"
-#include "game/input.hpp"
-#include "game/pose_controller.hpp"
-#include "editor/console.hpp"
-#include "editor/widget_system.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
+#include "editor/console.hpp"
+#include "editor/widget_system.hpp"
+#include "game/game.hpp"
+#include "game/input.hpp"
+#include "game/scene.hpp"
+#include "game/pose_controller.hpp"
+#include "game/entities/components.hpp"
+#include "game/entities/enemy.hpp"
+#include "game/entities/spawner.hpp"
+#include "game/entities/consumer.hpp"
 
 namespace spellbook {
-
-void travel_system(Scene* scene) {
-    ZoneScoped;
-    // construct grid to use for pathfinding
-    auto slots     = scene->registry.view<GridSlot, LogicTransform>();
-    auto entities  = scene->registry.view<Traveler, LogicTransform>();
-    auto consumers = scene->registry.view<Consumer>();
-
-    astar::Navigation nav;
-    for (auto [entity, slot, logic_pos] : slots.each()) {
-        if (slot.ramp) {
-            nav.ramps[v3i(logic_pos.position)] = slot.direction;
-            continue;
-        }
-        if (slot.path)
-            nav.solids.set(v3i(logic_pos.position));
-    }
-    
-    // handle actual traveling
-    for (auto [entity, traveler, transform] : entities.each()) {
-        bool has_path = !traveler.targets.empty();
-
-        if (!has_path && !consumers.empty()) {
-            int       random_consumer = math::random_s32() % s32(consumers.size());
-            auto      consumer_entity = consumers[random_consumer];
-            LogicTransform* consumer_position          = scene->registry.try_get<LogicTransform>(consumer_entity);
-            assert_else(consumer_position);
-
-            auto path = nav.find_path(math::round_cast(transform.position), v3i(consumer_position->position));
-            for (auto it = path.begin(); it != path.end(); ++it) {
-                traveler.targets.push_back(*it);
-            }
-        }
-        assert_else(!math::is_nan(transform.position.x)) {
-            transform.position = v3(0, 0, 0);
-        }
-
-        v3i  target_position = has_path ? traveler.targets.back() : math::round_cast(transform.position);
-        v3   velocity        = v3(target_position) - transform.position;
-        bool at_target       = math::length(velocity) < 0.01f;
-        if (at_target && has_path) {
-            traveler.targets.remove_back();
-            velocity = v3(0);
-        }
-        f32 max_velocity = traveler.max_speed.value() * scene->delta_time;
-        f32 min_velocity = 0.0f;
-        if (!at_target)
-            transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
-    }
-}
 
 // Creates the frame renderable for health bars
 void health_draw_system(Scene* scene) {
@@ -130,7 +83,7 @@ void health_draw_system(Scene* scene) {
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
 
         float width = friendly ? 0.7f : 0.6f;
-        float vertical_offset = friendly ? 1.2f : 0.5f;
+        float vertical_offset = friendly ? 1.5f : 0.6f;
         float thickness = friendly ? 0.05f : 0.035f;
         
         m44 inner_matrix = math::translate(position) * 
@@ -176,6 +129,12 @@ void transform_system(Scene* scene) {
         // We disable links for dragging
         if (registry.any_of<Dragging>(entity))
             continue;
+
+        float diff = math::abs(math::angle_difference(m_transform.rotation.yaw, l_transform.rotation.yaw));
+        if (diff > 0.01f) {
+            float real_diff = math::min(diff, link.rotate_speed * scene->delta_time);
+            m_transform.set_rotation(euler{.yaw = math::lerp_angle(real_diff / diff, {m_transform.rotation.yaw, l_transform.rotation.yaw})});
+        }
         
         m_transform.set_translation(l_transform.position + link.offset);
     }
@@ -190,7 +149,7 @@ void transform_system(Scene* scene) {
 void consumer_system(Scene* scene) {
     ZoneScoped;
     auto consumers = scene->registry.view<Consumer, LogicTransform>();
-    auto consumees = scene->registry.view<Traveler, LogicTransform>();
+    auto consumees = scene->registry.view<Enemy, LogicTransform>();
 
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
         for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
@@ -198,7 +157,7 @@ void consumer_system(Scene* scene) {
                 continue;
             f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_transform.position.xy);
             if (dist < consumer.consume_distance && !scene->edit_mode) {
-                scene->registry.emplace<Killed>(e_consumee, scene->time);
+                scene->registry.emplace<Killed>(e_consumee, false, scene->time);
             }
         }
     }
@@ -210,8 +169,15 @@ void disposal_system(Scene* scene) {
         return;
     
     for (auto [entity, transform, drop_chance, killed] : scene->registry.view<LogicTransform, DropChance, Killed>().each()) {
-        if (math::random_f32(1.0f) < drop_chance.drop_chance) {
-            instance_prefab(scene, load_asset<BeadPrefab>(drop_chance.bead_prefab_path), transform.position);
+        if (killed.drop) {
+            for (auto& entry : drop_chance.entries) {
+                if (math::random_f32(1.0f) < entry.drop_chance) {
+                    float phase = math::random_f32(math::TAU);
+                    float radius = math::random_f32(0.2f);
+                    v3 offset = radius * v3(math::cos(phase), math::sin(phase), 0.0f);
+                    instance_prefab(scene, load_asset<BeadPrefab>(entry.bead_prefab_path), transform.position + offset);
+                }
+            }
         }
     }
     auto killed = scene->registry.view<Killed>();
@@ -236,10 +202,16 @@ void health_system(Scene* scene) {
                 health.hurt_emitter->update_from_cpu(health.hurt_emitter->emitter_cpu);
             }
         }
+
+        if (scene->registry.any_of<Killed>(entity))
+            continue;
         
         if (health.value <= 0.001f) {
-            scene->registry.emplace<Killed>(entity, scene->time);
+            scene->registry.emplace<Killed>(entity, true, scene->time);
         }
+
+        health.value += health.regen.value() * scene->delta_time;
+        health.value = math::min(health.value, health.max_health.value());
     }
 }
 
@@ -248,9 +220,6 @@ void selection_id_system(Scene* scene) {
     auto model_view = scene->registry.view<Model>();
     for (auto [entity, model] : model_view.each()) {
         u32 id = (u32) entity;
-        auto attach = scene->registry.try_get<LogicTransformAttach>(entity);
-        if (attach != nullptr)
-            id = (u32) attach->to;
         for (auto [_, r] : model.model_gpu.renderables) {
             r->selection_id = id;
         }
@@ -277,22 +246,28 @@ void dragging_update_system(Scene* scene) {
 void dragging_system(Scene* scene) {
     ZoneScoped;
     Viewport& viewport = scene->render_scene.viewport;
-    v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+    // v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+
+    v3i cell;
+    bool has_new_cell = scene->get_object_placement(cell);
+
 
     constexpr f32 raise_speed = 0.10f;
     auto drags = scene->registry.view<LogicTransform, Dragging, Draggable>();
     for (auto [entity, transform, drag, draggable] : drags.each()) {
-        v3 logic_offset = intersect - drag.start_intersect;
-        drag.target_position = drag.start_logic_position + logic_offset;
-
-        entt::entity potential_entity = scene->get_tile(math::round_cast(drag.target_position.xy));
-        auto potential_transform = scene->registry.try_get<LogicTransform>(potential_entity);
-        if (potential_transform) {
-            v3 new_potential_pos = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
-            if (math::max(math::abs(new_potential_pos.x - transform.position.x), math::abs(new_potential_pos.x - transform.position.x)) <= draggable.drag_distance)
-                drag.potential_logic_position = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
+        if (has_new_cell) {
+            drag.target_position = v3(cell);
+            drag.potential_logic_position = v3(cell);
         }
-        drag.target_position.z = drag.potential_logic_position.z;
+        //
+        // entt::entity potential_entity = scene->get_tile(math::round_cast(drag.target_position.xy));
+        // auto potential_transform = scene->registry.try_get<LogicTransform>(potential_entity);
+        // if (potential_transform) {
+        //     v3 new_potential_pos = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
+        //     if (math::max(math::abs(new_potential_pos.x - transform.position.x), math::abs(new_potential_pos.x - transform.position.x)) <= draggable.drag_distance)
+        //         drag.potential_logic_position = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
+        // }
+        // drag.target_position.z = drag.potential_logic_position.z;
     }
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();
@@ -305,9 +280,13 @@ void dragging_system(Scene* scene) {
         transform.set_translation(pos);
     }
 
+    for (auto [entity, lizard, drag] : scene->registry.view<Lizard, Dragging>().each()) {
+        draw_lizard_dragging_preview(scene, entity);
+    }
+    
     auto posers = scene->registry.view<Dragging, PoseController>();
     for (auto [entity, _, poser] : posers.each()) {
-        poser.set_state(PoseController::State_Flailing, 0.2f);
+        poser.set_state(AnimationState_Flail, 0.2f);
     }
 }
 
@@ -347,7 +326,7 @@ void collision_update_system(Scene* scene) {
 
 void lizard_targeting_system(Scene* scene) {
     for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
-        if (!lizard.basic_ability->post_trigger_timer->ticking && lizard.basic_ability->targeting_callback)
+        if (!lizard.basic_ability->post_trigger_timer->ticking && !lizard.basic_ability->pre_trigger_timer->ticking && lizard.basic_ability->targeting_callback)
             lizard.basic_ability->targeting_callback(lizard.basic_ability->targeting_payload);
     }
 }

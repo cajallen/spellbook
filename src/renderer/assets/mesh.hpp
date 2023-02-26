@@ -7,8 +7,6 @@
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "renderer/vertex.hpp"
-#include "renderer/assets/skeleton.hpp"
-
 
 namespace spellbook {
 

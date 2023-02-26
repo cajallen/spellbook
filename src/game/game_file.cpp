@@ -1,17 +1,19 @@
 ﻿#include "game_file.hpp"
 
 #include "general/logger.hpp"
-#include "game/game.hpp"
-#include "game/consumer.hpp"
-#include "game/lizard.hpp"
-#include "game/tile.hpp"
-#include "game/enemy.hpp"
-#include "game/spawner.hpp"
 #include "renderer/assets/model.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/texture.hpp"
-
+#include "renderer/assets/particles.hpp"
+#include "game/game.hpp"
+#include "game/map.hpp"
+#include "game/visual_tile.hpp"
+#include "game/entities/consumer.hpp"
+#include "game/entities/lizard.hpp"
+#include "game/entities/tile.hpp"
+#include "game/entities/enemy.hpp"
+#include "game/entities/spawner.hpp"
 
 namespace spellbook {
 

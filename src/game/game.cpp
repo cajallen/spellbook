@@ -3,9 +3,11 @@
 #include <filesystem>
 #include <tracy/Tracy.hpp>
 
-#include "editor/console.hpp"
-#include "game/input.hpp"
 #include "renderer/render_scene.hpp"
+#include "editor/console.hpp"
+#include "editor/editor_scene.hpp"
+#include "game/input.hpp"
+#include "game/scene.hpp"
 
 namespace fs = std::filesystem;
 

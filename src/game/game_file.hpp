@@ -41,8 +41,8 @@ fs::path to_resource_path(const fs::path& path);
 fs::path from_resource_path(const fs::path& path);
 
 template <typename T>
-umap<string, T>& asset_cache() {
-    static umap<string, T> t_cache;
+umap<string, std::unique_ptr<T>>& asset_cache() {
+    static umap<string, std::unique_ptr<T>> t_cache;
     return t_cache;
 }
 
@@ -64,21 +64,21 @@ T& load_asset(const string& file_path, bool assert_exists = false) {
     fs::path absolute_path = to_resource_path(file_path);
     string absolute_path_string = absolute_path.string();
     if (asset_cache<T>().contains(absolute_path_string))
-        return asset_cache<T>()[absolute_path_string];
+        return *asset_cache<T>()[absolute_path_string];
     
     bool exists = fs::exists(absolute_path_string);
     string ext = absolute_path.extension().string();
     bool corrext = ext == extension(from_typeinfo(typeid(T)));
     if (assert_exists) {
         assert_else(exists && corrext)
-            return asset_cache<T>().emplace(absolute_path_string, T()).first->second;
+            return *asset_cache<T>().emplace(absolute_path_string, std::make_unique<T>()).first->second;
     } else {
         check_else(exists && corrext)
-            return asset_cache<T>().emplace(absolute_path_string, T()).first->second;
+            return *asset_cache<T>().emplace(absolute_path_string, std::make_unique<T>()).first->second;
     }
 
     json j = parse_file(absolute_path.string());
-    T& t = asset_cache<T>().emplace(absolute_path_string, from_jv<T>(to_jv(j))).first->second;
+    T& t = *asset_cache<T>().emplace(absolute_path_string, std::make_unique<T>(from_jv<T>(to_jv(j)))).first->second;
     t.file_path = absolute_path.string();
     return t;
 }

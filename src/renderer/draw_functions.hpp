@@ -20,5 +20,7 @@ MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color = palette::black
 MeshCPU generate_icosphere(int subdivisions);
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices);
 
+void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_1, v3 axis_2, Color color, float width);
+
 }
 
