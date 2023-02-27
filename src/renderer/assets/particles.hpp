@@ -62,6 +62,8 @@ struct EmitterSettings {
 };
 
 struct EmitterGPU {
+    static constexpr std::string_view cube_mesh = "emitter_cube";
+    static constexpr std::string_view sphere_mesh = "emitter_sphere";
     // For editing purposes
     EmitterCPU emitter_cpu;
     

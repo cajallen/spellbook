@@ -63,10 +63,13 @@ void ShopGenerator::inspect() {
 void FirstFreeShopGenerator::setup(Scene* scene) {
     round_info = scene->round_info;
     first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
-    
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbliz"}, 1.0f);
+
     warehouse.add_entry({Bead_Oak, 3, "lizards/champion.sbliz"}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 5, "lizards/warlock.sbliz"}, 1.0f);
 
     warehouse.add_entry({Bead_Malachite, 3, "lizards/champion.sbliz"}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 1, "lizards/warlock.sbliz"}, 1.0f);
 }
 vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -195,7 +198,7 @@ void show_shop(Shop* shop, Player* player) {
     ImGui::BeginGroup();
     for (u32 i = 0; i < player->bank.beads.size(); i++) {
         auto bead_name = string(magic_enum::enum_name((Bead) i));
-        ImGui::SetNextItemWidth(65.0f);
+        ImGui::SetNextItemWidth(70.0f);
         ImGui::InputInt(bead_name.c_str(), &player->bank.beads[i]);
     }
     ImGui::EndGroup();
@@ -206,6 +209,11 @@ void show_shop(Shop* shop, Player* player) {
     if (ImGui::Button("Get Shop")) {
         shop->shop_generator->reset();
         shop->entries = shop->shop_generator->generate_shop();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Close")) {
+        shop->shop_generator->reset();
+        shop->shop_generator->round_info->advance_round();
     }
     if (shop->entries != nullptr) {
         for (u32 i = 0; i < shop->entries->size(); i++) {
@@ -239,11 +247,6 @@ void show_shop(Shop* shop, Player* player) {
             ImGui::PopStyleColor(3);
             ImGui::EndDisabled();
         }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Close")) {
-        shop->shop_generator->reset();
-        shop->shop_generator->round_info->advance_round();
     }
     ImGui::EndGroup();
 }

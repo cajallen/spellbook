@@ -7,62 +7,82 @@
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
+#include "game/entities/enemy.hpp"
+#include "game/entities/impair.hpp"
 #include "game/entities/lizard.hpp"
 
 namespace spellbook {
 
 void champion_attack_start(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-
-    v3i caster_pos = math::round_cast(ability->scene->registry.get<LogicTransform>(ability->caster).position);
+    id_ptr<Ability> ability_ptr = id_ptr<Ability>((u64) payload);
+    Ability& ability = *ability_ptr;
     
-    auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
+    v3i caster_pos = math::round_cast(ability.scene->registry.get<LogicTransform>(ability.caster).position);
+    
+    auto poser = ability.scene->registry.try_get<PoseController>(ability.caster);
     if (poser) {
-        poser->set_state(AnimationState_AttackInto, ability->pre_trigger_time.value());
+        poser->set_state(AnimationState_AttackInto, ability.pre_trigger_time.value());
     }
-    auto lizard = ability->scene->registry.try_get<Lizard>(ability->caster);
+    auto lizard = ability.scene->registry.try_get<Lizard>(ability.caster);
     if (lizard) {
-        v3 dir_to = math::normalize(v3(ability->target) - v3(caster_pos));
+        v3 dir_to = math::normalize(v3(ability.target) - v3(caster_pos));
         float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
-        ability->scene->registry.get<LogicTransform>(ability->caster).rotation.yaw = ang;
+        ability.scene->registry.get<LogicTransform>(ability.caster).rotation.yaw = ang;
     }
 }
 
 void champion_attack_trigger(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
+    id_ptr<Ability> ability_ptr = id_ptr<Ability>((u64) payload);
+    Ability& ability = *ability_ptr;
     
     uset<entt::entity> enemies;
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
-            for (entt::entity enemy : ability->scene->get_enemies(ability->target + v3i(x, y, 0)))
+            for (entt::entity enemy : ability.scene->get_enemies(ability.target + v3i(x, y, 0)))
                 enemies.insert(enemy);
         }
     }
     
     for (auto& enemy : enemies) {
-        auto& health = ability->scene->registry.get<Health>(enemy);
-        auto& this_lt = ability->scene->registry.get<LogicTransform>(ability->caster);
-        auto& enemy_lt = ability->scene->registry.get<LogicTransform>(enemy);
+        auto& health = ability.scene->registry.get<Health>(enemy);
+        auto& enemy_comp = ability.scene->registry.get<Enemy>(enemy);
+        auto& this_lt = ability.scene->registry.get<LogicTransform>(ability.caster);
+        auto& enemy_lt = ability.scene->registry.get<LogicTransform>(enemy);
         health.damage(2.0f, enemy_lt.position - this_lt.position);
+        enemy_comp.taunt = {ability_ptr.id, ability.caster};
+
+        struct TauntTimerPayload {
+            Scene* scene;
+            entt::entity enemy;
+            u64 ability_id;
+        };
+        add_timer(ability.scene, "taunt", [](Timer* timer, void* data) {
+            TauntTimerPayload* payload = (TauntTimerPayload*) data;
+            if (!payload->scene->registry.valid(payload->enemy))
+                return;
+            auto& enemy_comp = payload->scene->registry.get<Enemy>(payload->enemy);
+            if (enemy_comp.taunt.first == payload->ability_id)
+                enemy_comp.taunt = {0, entt::null};
+        }, new TauntTimerPayload{ability.scene, enemy, ability_ptr.id}, true, false).start(2.0f);
     }
-    auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
+    auto poser = ability.scene->registry.try_get<PoseController>(ability.caster);
     if (poser) {
-        poser->set_state(AnimationState_AttackOut, ability->post_trigger_time.value());
+        poser->set_state(AnimationState_AttackOut, ability.post_trigger_time.value());
     }
 
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
-            entt::entity tile = ability->scene->get_tile(ability->target + v3i(x, y, -1));
+            entt::entity tile = ability.scene->get_tile(ability.target + v3i(x, y, -1));
             if (tile == entt::null) {
-                quick_emitter(ability->scene, "Champion Basic", v3(ability->target + v3i(x, y, 0)), "emitters/champion_basic_fizzle.sbemt", 0.20f);
+                quick_emitter(ability.scene, "Champion Basic", v3(ability.target + v3i(x, y, 0)), "emitters/champion_basic_fizzle.sbemt", 0.20f);
                 continue;
             }
 
-            auto& grid_slot = ability->scene->registry.get<GridSlot>(tile);
+            auto& grid_slot = ability.scene->registry.get<GridSlot>(tile);
             if ((grid_slot.path || grid_slot.ramp) && x == 0 && y == 0) {
-                quick_emitter(ability->scene, "Champion Basic", v3(ability->target + v3i(x, y, 0)), "emitters/champion_basic_hit.sbemt", 0.20f);
+                quick_emitter(ability.scene, "Champion Basic", v3(ability.target + v3i(x, y, 0)), "emitters/champion_basic_hit.sbemt", 0.20f);
             } else {
-                quick_emitter(ability->scene, "Champion Basic", v3(ability->target + v3i(x, y, 0)), "emitters/champion_basic_miss.sbemt", 0.20f);
+                quick_emitter(ability.scene, "Champion Basic", v3(ability.target + v3i(x, y, 0)), "emitters/champion_basic_miss.sbemt", 0.20f);
             }
         }
     }

@@ -344,15 +344,18 @@ bool     save_asset(const SkeletonPrefab& value) {
 }
 
 template <>
-SkeletonPrefab& load_asset(const string& input_path, bool assert_exists) {
+SkeletonPrefab& load_asset(const string& input_path, bool assert_exists, bool clear_cache) {
     fs::path absolute_path = to_resource_path(input_path);
-    if (asset_cache<SkeletonPrefab>().contains(absolute_path.string()))
-        return *asset_cache<SkeletonPrefab>()[absolute_path.string()];
+    string absolute_path_string = absolute_path.string();
+    if (clear_cache && asset_cache<SkeletonPrefab>().contains(absolute_path_string))
+        asset_cache<SkeletonPrefab>().erase(absolute_path_string);
+    if (asset_cache<SkeletonPrefab>().contains(absolute_path_string))
+        return *asset_cache<SkeletonPrefab>()[absolute_path_string];
 
-    SkeletonPrefab& value = *asset_cache<SkeletonPrefab>().emplace(absolute_path.string(), std::make_unique<SkeletonPrefab>()).first->second;
+    SkeletonPrefab& value = *asset_cache<SkeletonPrefab>().emplace(absolute_path_string, std::make_unique<SkeletonPrefab>()).first->second;
 
     string ext = absolute_path.extension().string();
-    bool exists = fs::exists(absolute_path.string());
+    bool exists = fs::exists(absolute_path_string);
     bool corrext = ext == extension(from_typeinfo(typeid(SkeletonPrefab)));
     if (assert_exists) {
         assert_else(exists && corrext)
@@ -362,7 +365,7 @@ SkeletonPrefab& load_asset(const string& input_path, bool assert_exists) {
             return value;
     }
     
-    json      j = parse_file(absolute_path.string());
+    json      j = parse_file(absolute_path_string);
     value.file_path = input_path;
 
     if (j.contains("bones")) {

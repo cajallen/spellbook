@@ -46,7 +46,7 @@ void enemy_attack_trigger(void* payload) {
                 auto* liz_lt = payload->scene->registry.try_get<LogicTransform>(payload->liz);
                 if (this_lt && liz_lt) {
                     vector<FormattedVertex> vertices;
-                    float width = (timer->remaining_time / timer->total_time) * 0.15f + 0.1f;
+                    float width = (timer->remaining_time / timer->total_time) * 0.10f + 0.05f;
                     vertices.emplace_back(this_lt->position + v3(0.5f), palette::light_pink, width + 0.05f);
                     vertices.emplace_back(liz_lt->position + v3(0.5f), palette::red, width);
                     payload->scene->render_scene.quick_mesh(generate_formatted_line(&payload->scene->camera, vertices), true, false);
@@ -133,23 +133,33 @@ void travel_system(Scene* scene) {
         if (enemy.ability->casting())
             continue;
 
-        
+        bool has_aggro = false;
+        v3 aggro;
         if (enemy.ability->ready_to_cast()) {
             if (enemy.taunt.first != 0) {
-                v3i pos = math::round_cast(scene->registry.get<LogicTransform>(enemy.taunt.second).position);
-                enemy.ability->target = pos;
-                enemy.ability->request_cast();
-                continue;
+                has_aggro = true;
+                auto l_transform = scene->registry.try_get<LogicTransform>(enemy.taunt.second);
+                if (l_transform)
+                    aggro = l_transform->position;
+                else {
+                    enemy.taunt = {0, entt::null};
+                    has_aggro = false;
+                }
             }
             if (enemy.position_target.first) {
                 entt::entity lizard_at_target = scene->get_lizard(enemy.position_target.second);
                 if (lizard_at_target != entt::null) {
-                    enemy.ability->target = enemy.position_target.second;
-                    enemy.ability->request_cast();
-                    continue;
+                    has_aggro = true;
+                    aggro = v3(enemy.position_target.second);
                 } else {
                     enemy.position_target = {false, v3i{}};
                 }
+            }
+            
+            if (has_aggro && math::distance(aggro, transform.position) < 1.5f) {
+                enemy.ability->target = math::round_cast(aggro);
+                enemy.ability->request_cast();
+                continue;
             }
         }
 
@@ -171,10 +181,16 @@ void travel_system(Scene* scene) {
         }
 
         v3i  target_position = has_path ? enemy.pathing.back() : math::round_cast(transform.position);
-        entt::entity lizard_at_target = scene->get_lizard(target_position);
-        if (lizard_at_target != entt::null) {
-            enemy.position_target = {true, target_position};
-            continue;
+        if (has_aggro) {
+            // If we have aggro, set it as target
+            target_position = math::round_cast(aggro);
+        } else {
+            // If we don't, check if we should
+            entt::entity lizard_at_target = scene->get_lizard(target_position);
+            if (lizard_at_target != entt::null) {
+                enemy.position_target = {true, target_position};
+                continue;
+            }
         }
 
         v3   velocity        = v3(target_position) - transform.position;

@@ -46,11 +46,6 @@ struct TransformLink {
     float rotate_speed = 2.0f;
 };
 
-struct LogicTransformAttach {
-    entt::entity to = entt::null;
-    v3 offset = v3(0.0f);
-};
-
 struct GridSlot {
     bool path = false;
     bool ramp = false;
@@ -83,6 +78,7 @@ struct Draggable {
     int drag_cost = 1;
 };
 struct Dragging {
+    static constexpr u32 magic_number = 0xd2a90000;
     f32 start_time = 0.0f;
     v3  start_logic_position = v3(0.0f);
     v3  start_intersect = v3(0.0f);

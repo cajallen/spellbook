@@ -218,8 +218,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, T*
         }
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
-            asset_cache<T>().erase(asset_value->file_path);
-            *asset_value = load_asset<T>(asset_value->file_path);
+            *asset_value = load_asset<T>(asset_value->file_path, false, true);
             asset_editor.switch_tab(type);
         }
         if (callback)
@@ -241,8 +240,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Mo
         }
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
-            asset_cache<ModelCPU>().erase((*asset_value)->file_path);
-            asset_editor.set_model(&load_asset<ModelCPU>((*asset_value)->file_path), AssetEditor::Ownership_From_Cache);
+            asset_editor.set_model(&load_asset<ModelCPU>((*asset_value)->file_path, false, true), AssetEditor::Ownership_From_Cache);
             asset_editor.switch_tab(type);
         }
         ImGui::SameLine();
@@ -275,9 +273,8 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Em
         }
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
-            asset_cache<EmitterCPU>().erase(asset_value->file_path);
             string old_mat = asset_value->material;
-            *asset_value = load_asset<EmitterCPU>(asset_value->file_path);
+            *asset_value = load_asset<EmitterCPU>(asset_value->file_path, false, true);
             asset_value->material = old_mat;
             asset_editor.switch_tab(type);
         }
@@ -300,8 +297,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Vi
         }
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
-            asset_cache<VisualTileSet>().erase(asset_value->file_path);
-            *asset_value = load_asset<VisualTileSet>(asset_value->file_path);
+            *asset_value = load_asset<VisualTileSet>(asset_value->file_path, false, true);
             asset_editor.switch_tab(type);
         }
         if (callback)

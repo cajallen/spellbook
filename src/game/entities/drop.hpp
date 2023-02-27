@@ -49,5 +49,7 @@ bool inspect(DropChance* drop_chance);
 Color bead_color(Bead bead);
 
 JSON_IMPL(BeadPrefab, model_path, type, scale);
+JSON_IMPL(DropChance::Entry, bead_prefab_path, drop_chance);
+JSON_IMPL(DropChance, entries);
 
 }

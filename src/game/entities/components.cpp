@@ -48,11 +48,6 @@ void          inspect_components(Scene* scene, entt::entity entity) {
         ImGui::DragFloat3("Offset", component->offset.data, 0.01f);
         ImGui::Separator();
     }
-    if (auto* component = scene->registry.try_get<LogicTransformAttach>(entity)) {
-        ImGui::Text("LogicTransformAttach");
-        ImGui::DragFloat3("Offset", component->offset.data, 0.01f);
-        ImGui::Separator();
-    }
     if (auto* component = scene->registry.try_get<GridSlot>(entity)) {
         ImGui::Text("GridSlot");
         ImGui::Checkbox("Path", &component->path);

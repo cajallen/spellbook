@@ -193,15 +193,18 @@ fs::path _convert_to_relative(const fs::path& path) {
 }
 
 template<>
-ModelCPU& load_asset(const string& input_path, bool assert_exists) {
+ModelCPU& load_asset(const string& input_path, bool assert_exists, bool clear_cache) {
     fs::path absolute_path = to_resource_path(input_path);
-    if (asset_cache<ModelCPU>().contains(absolute_path.string()))
-        return *asset_cache<ModelCPU>()[absolute_path.string()];
+    string absolute_path_string = absolute_path.string();
+    if (clear_cache && asset_cache<ModelCPU>().contains(absolute_path_string))
+        asset_cache<ModelCPU>().erase(absolute_path_string);
+    if (asset_cache<ModelCPU>().contains(absolute_path_string))
+        return *asset_cache<ModelCPU>()[absolute_path_string];
 
-    ModelCPU& model = *asset_cache<ModelCPU>().emplace(absolute_path.string(), std::make_unique<ModelCPU>()).first->second;
+    ModelCPU& model = *asset_cache<ModelCPU>().emplace(absolute_path_string, std::make_unique<ModelCPU>()).first->second;
 
     string ext = absolute_path.extension().string();
-    bool exists = fs::exists(absolute_path.string());
+    bool exists = fs::exists(absolute_path_string);
     bool corrext = ext == extension(from_typeinfo(typeid(ModelCPU)));
     if (assert_exists) {
         assert_else(exists && corrext)

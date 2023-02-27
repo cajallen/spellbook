@@ -40,8 +40,6 @@ struct Enemy {
     id_ptr<Ability> ability;
 };
 
-JSON_IMPL(DropChance::Entry, bead_prefab_path);
-JSON_IMPL(DropChance, entries);
 JSON_IMPL(EnemyPrefab, type, model_path, hurt_path, max_health, max_speed, scale, drops);
 
 entt::entity instance_prefab(Scene*, const EnemyPrefab&, v3i location);

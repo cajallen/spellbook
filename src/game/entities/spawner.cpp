@@ -14,19 +14,23 @@
 
 namespace spellbook {
 
-std::function<EnemySpawnInfo(Spawner*, int)> simple_select_enemy(Spawner* spawner, EnemySpawnInfo enemy) {
+std::function<EnemySpawnInfo(Spawner*, int)> simple_select_enemy(EnemySpawnInfo enemy) {
     return [enemy](Spawner* spawner, int id) -> EnemySpawnInfo {
         return enemy;
     };
 }
 
-std::function<bool(Spawner*, float)> simple_wave(Spawner* spawner, float input_threshold, int wave_count) {
-    return [input_threshold, wave_count](Spawner* spawner, float cost_total) -> bool {
+std::function<bool(Spawner*, float&)> simple_wave(float input_threshold, int wave_count) {
+    return [input_threshold, wave_count](Spawner* spawner, float& cost_total) -> bool {
         if (spawner->round_info->round_number == 0)
             return false;
         if (spawner->round_info->wave_number >= wave_count)
             return false;
-        return cost_total >= input_threshold;
+        if (cost_total < input_threshold)
+            return false;
+
+        cost_total = input_threshold;
+        return true;
     };
 }
 
@@ -35,14 +39,36 @@ void spawner_system(Scene* scene) {
         return;
     
     for (auto [entity, spawner, logic_transform] : scene->registry.view<Spawner, LogicTransform>().each()) {
-        spawner.cost_total += spawner.delta_cost.value() * Input::delta_time;
-        spawner.cooldown -= Input::delta_time;
+        // Advance Rounds
+        if (spawner.round_ack < spawner.round_info->round_number) {
+            spawner.round_ack = spawner.round_info->round_number;
+            spawner.wave_happening = false;
+            spawner.cost_total = 0.0f;
+        }
         
+        // Advance Waves
+        if (!spawner.wave_happening) {
+            spawner.cost_total += spawner.delta_cost.value() * scene->delta_time;
+
+            bool start_wave = spawner.wave_start(&spawner, spawner.cost_total);
+            if (start_wave) {
+                spawner.wave_happening = true;
+                spawner.round_info->wave_number++;
+                spawner.selected_enemy = spawner.select_enemy(&spawner, spawner.round_info->enemy_number);
+                spawner.round_info->enemy_number = 1;
+                spawner.cooldown = 0.0f;
+            }
+        }
+
+        // Advance Enemy
         if (spawner.wave_happening) {
             if (spawner.cost_total < 0.0f) {
                 spawner.wave_happening = false;
                 continue;
             }
+
+            spawner.cooldown -= scene->delta_time;
+            
             if (spawner.cooldown > -spawner.selected_enemy.spawn_pre_delay)
                 continue;
             
@@ -51,20 +77,6 @@ void spawner_system(Scene* scene) {
             spawner.cooldown += spawner.selected_enemy.spawn_pre_delay + spawner.selected_enemy.spawn_post_delay;
             spawner.selected_enemy = spawner.select_enemy(&spawner, spawner.round_info->enemy_number);
             spawner.round_info->enemy_number++;
-        }
-        
-        
-        if (!spawner.wave_happening) {
-            // We don't want burst at start of next wave
-            spawner.cooldown = math::max(spawner.cooldown, 0.0f);
-
-            bool start_wave = spawner.wave_start(&spawner, spawner.cost_total);
-            if (start_wave) {
-                spawner.wave_happening = true;
-                spawner.round_info->wave_number++;
-                spawner.selected_enemy = spawner.select_enemy(&spawner, spawner.round_info->enemy_number);
-                spawner.round_info->enemy_number = 1;
-            }
         }
     }
 }
@@ -143,12 +155,12 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     switch (spawner_prefab.enemy_selection) {
         case (SpawnerPrefab::EnemySelection_Simple):
             auto entry = !spawner_prefab.enemy_entries.empty() ? spawner_prefab.enemy_entries.front() : EnemySpawnInfo{};
-            spawner.select_enemy = simple_select_enemy(&spawner, entry);
+            spawner.select_enemy = simple_select_enemy(entry);
             break;
     }
     switch (spawner_prefab.wave_selection) {
         case (SpawnerPrefab::WaveSelection_Simple):
-            spawner.wave_start = simple_wave(&spawner, spawner_prefab.wave_cost, spawner_prefab.wave_count);
+            spawner.wave_start = simple_wave(spawner_prefab.wave_cost, spawner_prefab.wave_count);
             break;
     }
     spawner.cost_total = spawner_prefab.wave_cost - 1.f;

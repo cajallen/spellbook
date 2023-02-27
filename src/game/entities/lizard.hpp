@@ -54,6 +54,8 @@ struct Scene;
 entt::entity instance_prefab(Scene*, const LizardPrefab&, v3i location);
 bool inspect(LizardPrefab*);
 
+void lizard_targeting_system(Scene* scene);
+void lizard_casting_system(Scene* scene);
 void draw_lizard_dragging_preview(Scene* scene, entt::entity);
 
 }

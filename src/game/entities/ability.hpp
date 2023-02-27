@@ -41,8 +41,9 @@ struct Ability {
     Ability() {}
 
     void request_cast();
-    bool casting() { return pre_trigger_timer->ticking || post_trigger_timer->ticking; }
-    bool ready_to_cast() { return !cooldown_timer->ticking && !casting(); }
+    bool casting();
+    bool ready_to_cast();
+    void stop_casting();
 };
 
 id_ptr<Ability> make_ability(Scene* scene, const string& set_name);

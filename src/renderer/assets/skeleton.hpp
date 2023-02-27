@@ -116,7 +116,7 @@ JSON_IMPL(PoseSet, entries);
 template <>
 bool     save_asset(const SkeletonPrefab& asset_file);
 template <>
-SkeletonPrefab& load_asset(const string& input_path, bool assert_exist);
+SkeletonPrefab& load_asset(const string& input_path, bool assert_exist, bool clear_cache);
 
 bool inspect(SkeletonCPU* skeleton_cpu);
 bool inspect(PoseSet* pose_set, int* load_pose = nullptr);

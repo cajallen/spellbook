@@ -21,10 +21,6 @@ struct RoundInfo {
         wave_number = 0;
         enemy_number = 0;
     }
-    void advance_wave() {
-        wave_number++;
-        enemy_number = 0;
-    }
 };
 
 struct EnemySpawnInfo {
@@ -55,13 +51,14 @@ struct SpawnerPrefab {
 
 struct Spawner {
     Stat delta_cost;
-    std::function<bool(Spawner* spawner, f32 cost_total)> wave_start;
+    std::function<bool(Spawner* spawner, float& cost_total)> wave_start;
     std::function<EnemySpawnInfo(Spawner* spawner, int)> select_enemy;
     EnemySpawnInfo selected_enemy;
-    
+
+    int round_ack = 0;
     bool wave_happening = false;
-    f32 cost_total = 0.0f;
-    f32 cooldown = 0.0f;
+    float cost_total = 0.0f;
+    float cooldown = 0.0f;
     
     RoundInfo* round_info;
 };

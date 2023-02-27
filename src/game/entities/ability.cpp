@@ -57,6 +57,19 @@ void Ability::request_cast() {
     pre_trigger_timer->start(pre_trigger_time.value());
 }
 
+bool Ability::casting() {
+    return pre_trigger_timer->ticking || post_trigger_timer->ticking;
+}
+
+bool Ability::ready_to_cast() {
+    return !cooldown_timer->ticking && !casting();
+}
+
+void Ability::stop_casting() {
+    pre_trigger_timer->stop();
+    post_trigger_timer->stop();
+}
+
 void inspect(Ability* ability) {
     ImGui::PushID(ability);
     

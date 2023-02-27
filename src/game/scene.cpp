@@ -18,12 +18,31 @@
 #include "game/entities/consumer.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
+#include "game/entities/impair.hpp"
+#include "game/entities/projectile.hpp"
 
 namespace spellbook {
 
 void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
     Model& model = registry.get<Model>(entity);
     deinstance_model(render_scene, model.model_gpu);
+}
+
+void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
+    auto impairs = registry.try_get<Impairs>(entity);
+    if (impairs) {
+        impairs->boolean_impairs[Dragging::magic_number | u32(entity)] = ImpairType_NoCast;
+    }
+
+    auto liz = registry.try_get<Lizard>(entity);
+    if (liz) {
+        liz->basic_ability->stop_casting();
+    }
+
+    auto enemy = registry.try_get<Enemy>(entity);
+    if (enemy) {
+        enemy->ability->stop_casting();
+    }
 }
 
 void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
@@ -36,6 +55,11 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     auto poser = registry.try_get<PoseController>(entity);
     if (poser) {
         poser->set_state(AnimationState_Idle);
+    }
+
+    auto impairs = registry.try_get<Impairs>(entity);
+    if (impairs) {
+        impairs->boolean_impairs.erase(Dragging::magic_number | u32(entity));
     }
 }
 
@@ -57,6 +81,11 @@ void Scene::enemy_cleanup(entt::registry& registry, entt::entity entity) {
     destroy_ability(this, enemy.ability);
 }
 
+void Scene::emitter_cleanup(entt::registry& registry, entt::entity entity) {
+    auto& emitter = registry.get<EmitterComponent>(entity);
+    deinstance_emitter(*emitter.emitter, true);
+}
+
 
 void Scene::setup(const string& input_name) {
     name = input_name;
@@ -68,17 +97,19 @@ void Scene::setup(const string& input_name) {
 	controller.name = name + "::controller";
 	controller.setup(&render_scene.viewport, &camera);
 
+    registry.on_construct<Dragging>().connect<&Scene::dragging_setup>(*this);
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
     registry.on_destroy<Health>().connect<&Scene::health_cleanup>(*this);
     registry.on_destroy<Lizard>().connect<&Scene::lizard_cleanup>(*this);
     registry.on_destroy<Enemy>().connect<&Scene::enemy_cleanup>(*this);
+    registry.on_destroy<EmitterComponent>().connect<&Scene::emitter_cleanup>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
 
     round_info = new RoundInfo();
-    player.bank.beads[Bead_Quartz] = 100;
+    player.bank.beads[Bead_Quartz] = 10;
 }
 
 void Scene::update() {
@@ -99,6 +130,7 @@ void Scene::update() {
 
     lizard_targeting_system(this);
     lizard_casting_system(this);
+    projectile_system(this);
 
     pickup_system(this);
     
@@ -189,6 +221,7 @@ void Scene::settings_window(bool* p_open) {
     
     if (!edit_mode) {
         if (ImGui::Begin((name + " Shop").c_str())) {
+            ImGui::Text("Round: %d,  Wave: %d,  Enemy: %d", round_info->round_number, round_info->wave_number, round_info->enemy_number);
             if (ImGui::BeginTabBar("ShopTabBar")) {
                 if (ImGui::BeginTabItem("Shop")) {
                     show_shop(&shop, &player);
@@ -340,8 +373,6 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
         &instance_emitter(scene->render_scene, emitter_cpu),
         &add_timer(scene, fmt_("{}_timer", name), [](Timer* timer, void* data) {
             auto payload = (EmitterTimerTimeoutPayload*) data;
-            auto& emitter_component = payload->scene->registry.get<EmitterComponent>(payload->entity);
-            deinstance_emitter(*emitter_component.emitter, true);
             payload->scene->registry.destroy(payload->entity);
         }, payload, true, false)
     );
@@ -358,12 +389,13 @@ void Scene::select_entity(entt::entity entity) {
     if (!transform)
         return;
 
+    Impairs* impairs = registry.try_get<Impairs>(selected_entity);
+    if (impairs)
+        if (impairs->is_impaired(ImpairType_NoMove))
+            return;
+    
     if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {
         registry.emplace<Dragging>(selected_entity, time, transform->position, intersect);
-    
-        for (auto [entity, attach] : registry.view<LogicTransformAttach>().each()) {
-            log_error("NYI");
-        }
     }
 }
 

@@ -510,6 +510,7 @@
     <ClCompile Include="src\game\entities\lizards\ranger.cpp" />
     <ClCompile Include="src\game\entities\lizards\warlock.cpp" />
     <ClCompile Include="src\game\entities\lizards\water_mage.cpp" />
+    <ClCompile Include="src\game\entities\projectile.cpp" />
     <ClCompile Include="src\game\entities\spawner.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -946,6 +947,7 @@
     <ClInclude Include="src\game\entities\impair.hpp" />
     <ClInclude Include="src\game\entities\lizard.hpp" />
     <ClInclude Include="src\game\entities\lizards\lizard_builder.hpp" />
+    <ClInclude Include="src\game\entities\projectile.hpp" />
     <ClInclude Include="src\game\entities\spawner.hpp" />
     <ClInclude Include="src\game\entities\stat.hpp" />
     <ClInclude Include="src\game\entities\tile.hpp" />

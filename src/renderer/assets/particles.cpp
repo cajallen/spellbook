@@ -7,6 +7,7 @@
 #include "general/file.hpp"
 #include "general/logger.hpp"
 #include "editor/console.hpp"
+#include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/assets/mesh_asset.hpp"
 #include "game/game.hpp"
@@ -29,6 +30,13 @@ void setup_emitter() {
             pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "src/shaders/textured_3d.frag");
             game.renderer.context->create_named_pipeline("particle", pci);
         }
+
+        auto cube_mesh = generate_cube(v3(0.0f), v3(1.0f));
+        cube_mesh.file_path = EmitterGPU::cube_mesh;
+        auto sphere_mesh = generate_icosphere(2);
+        sphere_mesh.file_path = EmitterGPU::sphere_mesh;
+        upload_mesh(cube_mesh);
+        upload_mesh(sphere_mesh);
         setup = true;
     }
 }
@@ -193,7 +201,6 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
     MaterialGPU* material = game.renderer.get_material(emitter.material);
 
     if (mesh == nullptr || material == nullptr) {
-        log_error("Particles has missing mesh or material");
         return;
     }
     

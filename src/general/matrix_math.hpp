@@ -21,7 +21,7 @@ quat  to_quat(m44 rot);
 m33           inverse(const m33& A);
 m44           inverse(const m44& A);
 constexpr m44 transpose(const m44& A);
-ray3            transformed_ray(const m44& transform, v2 viewport_UV);
+ray3          transformed_ray(const m44& transform, v2 viewport_UV);
 
 void extract_tsr(m44 m, v3* translation, v3* scale = nullptr, quat* rotation = nullptr);
 

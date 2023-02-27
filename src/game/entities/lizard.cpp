@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <entt/entity/entity.hpp>
 
+#include "impair.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
@@ -20,6 +21,8 @@ void draw_lizard_dragging_preview(Scene* scene, entt::entity entity) {
     switch (lizard.type) {
         case LizardType_Champion:
             draw_champion_dragging_preview(scene, entity);
+        case LizardType_Warlock:
+            draw_warlock_dragging_preview(scene, entity);
         break;
         default:
             console_error(fmt_("Unknown lizard type: {}", magic_enum::enum_name(lizard.type)), "game.lizard", ErrorType_Warning);
@@ -41,6 +44,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<Draggable>(entity);
     auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton);
     auto& health = scene->registry.emplace<Health>(entity, lizard_prefab.max_health, &scene->render_scene, lizard_prefab.hurt_path);
+    scene->registry.emplace<Impairs>(entity);
 
     poser.set_state(AnimationState_Idle, 0.0f);
     health.regen = Stat(lizard_prefab.health_regen);
@@ -92,6 +96,25 @@ bool inspect(LizardPrefab* lizard_prefab) {
     changed |= ImGui::DragFloat("Health", &lizard_prefab->max_health, 0.5f, 0.5f, 0.0f, "%.1f");
     changed |= ImGui::DragFloat("Health Regen", &lizard_prefab->health_regen, 0.025f);
     return changed;
+}
+
+void lizard_targeting_system(Scene* scene) {
+    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
+        if (!lizard.basic_ability->post_trigger_timer->ticking && !lizard.basic_ability->pre_trigger_timer->ticking && lizard.basic_ability->targeting_callback)
+            lizard.basic_ability->targeting_callback(lizard.basic_ability->targeting_payload);
+    }
+}
+
+void lizard_casting_system(Scene* scene) {
+    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
+        Impairs* impairs = scene->registry.try_get<Impairs>(entity);
+        if (impairs)
+            if (impairs->is_impaired(ImpairType_NoCast))
+                continue;
+        
+        if (lizard.basic_ability->has_target && lizard.basic_ability->ready_to_cast())
+            lizard.basic_ability->request_cast();
+    }
 }
 
 }

@@ -60,10 +60,12 @@ bool save_asset(const T& asset_value) {
 
 // Usually the ref will want to be copied
 template <typename T>
-T& load_asset(const string& file_path, bool assert_exists = false) {
+T& load_asset(const string& file_path, bool assert_exists = false, bool clear_cache = false) {
     fs::path absolute_path = to_resource_path(file_path);
     string absolute_path_string = absolute_path.string();
-    if (asset_cache<T>().contains(absolute_path_string))
+    if (clear_cache && asset_cache<T>().contains(absolute_path_string))
+        asset_cache<T>().erase(absolute_path_string);
+    else if (asset_cache<T>().contains(absolute_path_string))
         return *asset_cache<T>()[absolute_path_string];
     
     bool exists = fs::exists(absolute_path_string);

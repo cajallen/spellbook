@@ -111,19 +111,6 @@ void health_draw_system(Scene* scene) {
 void transform_system(Scene* scene) {
     auto& registry = scene->registry;
     ZoneScoped;
-    // Logic Transform Attach
-    for (auto [entity, attach, transform] : registry.view<LogicTransformAttach, LogicTransform>().each()) {
-        // We disable attachments for dragging
-        if (registry.any_of<Dragging>(entity))
-            continue;
-        
-        if (registry.valid(attach.to)) {
-            transform = registry.get<LogicTransform>(attach.to);
-        } else {
-            console_error("Invalid attachment", "components.transform", ErrorType_Warning);
-            registry.erase<LogicTransformAttach>(entity);
-        }
-    }
     // Transform Link
     for (auto [entity, link, l_transform, m_transform] : registry.view<TransformLink, LogicTransform, ModelTransform>().each()) {
         // We disable links for dragging
@@ -321,20 +308,6 @@ void collision_update_system(Scene* scene) {
                     collision2.with.erase(entity1);
             }
         }
-    }
-}
-
-void lizard_targeting_system(Scene* scene) {
-    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
-        if (!lizard.basic_ability->post_trigger_timer->ticking && !lizard.basic_ability->pre_trigger_timer->ticking && lizard.basic_ability->targeting_callback)
-            lizard.basic_ability->targeting_callback(lizard.basic_ability->targeting_payload);
-    }
-}
-
-void lizard_casting_system(Scene* scene) {
-    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
-        if (lizard.basic_ability->has_target && lizard.basic_ability->ready_to_cast())
-            lizard.basic_ability->request_cast();
     }
 }
 
