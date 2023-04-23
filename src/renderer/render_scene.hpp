@@ -25,12 +25,16 @@ struct MaterialCPU;
 struct SkeletonGPU;
 
 struct SceneData {
-    Color ambient             = Color(palette::white, 0.15);
-    Color fog_color           = palette::black;
-    f32 fog_depth             = -1.0f;
-    v3  rim_alpha_width_start = v3(0.1f, 0.1f, 0.75f);
-    quat sun_direction        = quat(0.2432103, 0.3503661, 0.0885213, 0.9076734);
-    f32 sun_intensity         = 1.0f;
+    Color ambient;
+    Color fog_color;
+    f32 fog_depth;
+    v3  rim_alpha_width_start;
+    quat sun_direction;
+    f32 sun_intensity;
+    v3 water_color1;
+    v3 water_color2;
+    float water_intensity;
+    float water_level;
 };
 
 enum DebugDrawMode {
@@ -46,6 +50,7 @@ enum DebugDrawMode {
 struct PostProcessData {
     v4 outline = v4(0.10f, 0.50f, 0.1f, 1.0f);
     DebugDrawMode debug_mode = DebugDrawMode_Lit;
+    float time;
 };
 
 struct RenderScene {
@@ -58,12 +63,7 @@ struct RenderScene {
 
     SceneData       scene_data;
     PostProcessData post_process_data;
-
-    vuk::Buffer buffer_camera_data;
-    vuk::Buffer buffer_sun_camera_data;
     
-    vuk::Buffer buffer_composite_data;
-
     v2i         query = v2i(-1, -1);
     vuk::Future fut_query_result;
 
@@ -71,8 +71,13 @@ struct RenderScene {
     bool cull_pause = false;
     vuk::Texture render_target;
 
-    bool render_grid = true;
+    bool render_grid = false;
     bool render_widgets = true;
+
+    vuk::Buffer buffer_camera_data;
+    vuk::Buffer buffer_sun_camera_data;
+    vuk::Buffer buffer_top_camera_data;
+    vuk::Buffer buffer_composite_data;
     
     void update_size(v2i new_size);
     
@@ -84,10 +89,13 @@ struct RenderScene {
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
 
     void add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_topdepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_emitter_update_pass(std::shared_ptr<vuk::RenderGraph> rg);
 
     void prune_emitters();
 

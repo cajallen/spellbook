@@ -1,3 +1,4 @@
+
 #include "map_editor.hpp"
 
 #include <tracy/Tracy.hpp>
@@ -6,6 +7,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
+#include "general/matrix_math.hpp"
 #include "editor/game_scene.hpp"
 #include "editor/widget_system.hpp"
 #include "editor/asset_browser.hpp"
@@ -13,6 +15,7 @@
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/input.hpp"
+#include "game/tile_set_generator.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/spawner.hpp"
@@ -197,6 +200,7 @@ bool map_editor_scroll(ScrollCallbackArgs args) {
 
 void MapEditor::setup() {
     ZoneScoped;
+    // generate_example_set();
     
     fs::path map_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
 
@@ -232,11 +236,6 @@ void MapEditor::setup_scene(Scene* scene, bool scene_setup) {
     p_scene->set_edit_mode(true);
     if (!map_prefab.file_path.empty() && !vts_path.empty())
         build_visuals(scene, nullptr);
-    
-    auto cube = generate_cube(v3(0.0f, 0.0f, -1.0f), v3(100.0f, 100.0f, 0.5f));
-    auto cube_name = upload_mesh(cube);
-    auto water_name = upload_material(MaterialCPU{.file_path = "water_mat", .color_tint = palette::dodger_blue});
-    p_scene->render_scene.quick_mesh(cube_name, water_name, false);
 }
 
 
@@ -249,7 +248,12 @@ void MapEditor::update() {
     Viewport& viewport = p_scene->render_scene.viewport;
     if (viewport.hovered) {
         v3i cell;
-        if ((selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) && p_scene->get_object_placement(cell)) {
+        bool auto_adjust = (selected_lizard != ~0u || selected_spawner != ~0u || selected_consumer != ~0u);
+        if (selected_tile != ~0u)
+            auto_adjust = load_asset<TilePrefab>(tile_buttons[selected_tile].item_path).type == TileType_Scenery;
+        if (auto_adjust && p_scene->get_object_placement(cell)) {
+            if (selected_tile != ~0u)
+                cell.z--;
             z_level = cell.z;
         } else {
             if (eraser_selected || selected_tile != -1) {
@@ -301,6 +305,13 @@ void MapEditor::update() {
 void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
+        static m33 m;
+        static euler e;
+        ImGui::DragEuler3("Euler", &e);
+        ImGui::DragMat3("Rotation", &m, 0.02f, "%.2f");
+        if (ImGui::Button("Rot to Euler"))
+            e = math::to_euler(m);
+        
         if (ImGui::Button("Play")) {
             ADD_EDITOR_SCENE(GameScene);
             auto game_scene = (GameScene*) EditorScenes::values().back();
@@ -392,7 +403,7 @@ void MapEditor::instance_and_write_spawner(const string& path, v3i pos) {
 }
 
 void MapEditor::instance_and_write_lizard(const string& path, v3i pos) {
-    entt::entity old_tile = p_scene->get_lizard(pos);
+    entt::entity old_tile = p_scene->targeting->select_lizard(pos);
     if (old_tile != entt::null) {
         p_scene->registry.destroy(old_tile);
     }
@@ -444,7 +455,6 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
             continue;
         
         auto entity = scene->registry.create();
-        scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
         scene->visual_map_entities[pos] = entity;
 
         auto& model_comp = scene->registry.emplace<Model>(entity);

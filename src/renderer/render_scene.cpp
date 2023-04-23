@@ -41,6 +41,16 @@ static Texture allocate_texture(Allocator& allocator, Format format, Extent3D ex
 namespace spellbook {
 
 void RenderScene::setup(vuk::Allocator& allocator) {
+    scene_data.ambient               = Color(palette::white, 0.15f);
+    scene_data.fog_color             = palette::black;
+    scene_data.fog_depth             = -1.0f;
+    scene_data.rim_alpha_width_start = v3(0.1f, 0.1f, 0.75f);
+    scene_data.sun_direction         = quat(0.2432103f, 0.3503661f, 0.0885213f, 0.9076734f);
+    scene_data.sun_intensity         = 1.0f;
+    scene_data.water_color1          = Color::hsv(175.0f, 0.8f, 0.70f).rgb;
+    scene_data.water_color2          = Color::hsv(195.0f, 0.9f, 0.70f).rgb;
+    scene_data.water_intensity       = 3.0f;
+    scene_data.water_level           = -0.5f;
 }
 
 void RenderScene::image(v2i size) {
@@ -56,6 +66,10 @@ void RenderScene::settings_gui() {
     if (ImGui::TreeNode("Lighting")) {
         ImGui::ColorEdit4("Ambient", scene_data.ambient.data);
         ImGui::DragFloat3("rim_alpha_width_start", scene_data.rim_alpha_width_start.data, 0.01f);
+        ImGui::ColorEdit3("water_color1", scene_data.water_color1.data);
+        ImGui::ColorEdit3("water_color2", scene_data.water_color2.data);
+        ImGui::DragFloat("water_intensity", &scene_data.water_intensity);
+        ImGui::DragFloat("water_level", &scene_data.water_intensity);
 
         u32 id = ImGui::GetID("Sun Direction");
         PoseWidgetSettings settings {.render_scene = *this, .disabled = 0b1 << Operation_RotateZ};
@@ -105,6 +119,8 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     CameraData sun_cam_data;
     v3 sun_vec = math::normalize(math::rotate(scene_data.sun_direction, v3::Z));
     sun_cam_data.vp     = (m44GPU) (math::orthographic(v3(12.0f, 12.0f, 20.0f)) * math::look(sun_vec * 10.0f, -sun_vec, v3::Z));
+    CameraData top_cam_data;
+    top_cam_data.vp     = (m44GPU) (math::orthographic(v3(10.0f, 10.0f, 0.2f)) * math::look(v3(0.0f, 0.0f, 0.1f + scene_data.water_level), -v3::Z + v3(0.01f, 0.005f, 0.0f), v3::Y));
 
     auto [pubo_camera, fubo_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&cam_data, 1));
     buffer_camera_data              = *pubo_camera;
@@ -112,24 +128,35 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     auto [pubo_sun_camera, fubo_sun_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&sun_cam_data, 1));
     buffer_sun_camera_data              = *pubo_sun_camera;
 
+    auto [pubo_top_camera, fubo_top_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&top_cam_data, 1));
+    buffer_top_camera_data              = *pubo_top_camera;
+
     struct CompositeData {
         m44GPU inverse_vp;
         v4 camera_position;
         
         m44GPU light_vp;
+        m44GPU top_vp;
         v4 sun_data;
         v4 ambient;
         v4 rim_alpha_width_start;
-        
-        v2 clip_planes;
+
+        v4 water_color1;
+        v4 water_color2;
+        float water_intensity;
+        float water_level;
     } composite_data;
     composite_data.inverse_vp = (m44GPU) math::inverse(viewport.camera->vp);
     composite_data.camera_position = v4(viewport.camera->position, 1.0f);
-    composite_data.clip_planes = v2(0.0f, 20.0f);
     composite_data.light_vp = sun_cam_data.vp;
+    composite_data.top_vp = top_cam_data.vp;
     composite_data.sun_data = v4(sun_vec, scene_data.sun_intensity);
     composite_data.ambient = v4(scene_data.ambient);
     composite_data.rim_alpha_width_start = v4(scene_data.rim_alpha_width_start, 0.0f);
+    composite_data.water_color1 = v4(srgb2linear(scene_data.water_color1), 1.0);
+    composite_data.water_color2 = v4(srgb2linear(scene_data.water_color2), 1.0);
+    composite_data.water_intensity = scene_data.water_intensity;
+    composite_data.water_level = scene_data.water_level;
 
     auto [pubo_composite, fubo_composite] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&composite_data, 1));
     buffer_composite_data             = *pubo_composite;
@@ -237,36 +264,17 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     
     auto rg = make_shared<vuk::RenderGraph>("graph");
     rg->attach_in("target_input", std::move(target));
-    rg->add_pass({
-        .name = "emitter_update",
-        .resources = {},
-        .execute = [this](vuk::CommandBuffer& command_buffer) {
-            for (auto& emitter : emitters) {
-                update_emitter(emitter, command_buffer);
-            }
-        }
-    });
+
+    post_process_data.time = Input::time;
+    
+    add_emitter_update_pass(rg);
     add_sundepth_pass(rg);
+    add_topdepth_pass(rg);
+    add_topdepth_blur_pass(rg);
     add_forward_pass(rg);
     add_widget_pass(rg);
     add_postprocess_pass(rg);
     add_info_read_pass(rg);
-
-    auto clear_color       = vuk::ClearColor(scene_data.fog_color);
-    auto clear_transparent = vuk::ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    auto info_clear_color  = vuk::ClearColor {-1u, -1u, -1u, -1u};
-    auto depth_clear_value = vuk::ClearDepthStencil{0.0f, 0};
-    rg->attach_and_clear_image("base_color_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_color);
-    rg->attach_and_clear_image("emissive_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
-    rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, clear_color);
-    rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
-    rg->attach_and_clear_image("widget_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, clear_transparent);
-    rg->attach_and_clear_image("widget_depth_input", {.format = vuk::Format::eD32Sfloat}, depth_clear_value);
-    rg->attach_and_clear_image("sun_depth_input", {.extent = {.extent = {4096, 4096, 1}}, .format = vuk::Format::eD16Unorm, .sample_count = vuk::Samples::e1}, depth_clear_value);
-    rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, info_clear_color);
-
-    rg->inference_rule("base_color_input", vuk::same_extent_as("target_input"));
-    rg->inference_rule("widget_input", vuk::same_extent_as("target_input"));
     
     return vuk::Future {rg, "target_output"};
 }
@@ -296,9 +304,9 @@ void RenderScene::add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 .set_viewport(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {4096, 4096}})
                 .set_scissor(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {4096, 4096}})
                 .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                          .depthTestEnable  = true,
-                          .depthWriteEnable = true,
-                          .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                    .depthTestEnable  = true,
+                    .depthWriteEnable = true,
+                    .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
                 })
                 .broadcast_color_blend({vuk::BlendPreset::eOff});
                 
@@ -337,9 +345,146 @@ void RenderScene::add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             }
         }
     });
+
+    rg->attach_and_clear_image("sun_depth_input", {.extent = {.extent = {4096, 4096, 1}}, .format = vuk::Format::eD16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearDepthStencil{0.0f, 0});
+}
+
+void RenderScene::add_topdepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    rg->add_pass({
+        .name = "top_depth",
+        .resources = {
+            "top_depth_input"_image   >> vuk::eDepthStencilRW >> "top_depth_output"
+        },
+        .execute = [this](vuk::CommandBuffer& command_buffer) {
+            ZoneScoped;
+            // Prepare render
+            command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+                .set_viewport(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {1024, 1024}})
+                .set_scissor(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {1024, 1024}})
+                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                          .depthTestEnable  = true,
+                          .depthWriteEnable = true,
+                          .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+                })
+                .broadcast_color_blend({vuk::BlendPreset::eOff});
+                
+            command_buffer
+                .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
+                .bind_buffer(0, CAMERA_BINDING, buffer_top_camera_data)
+                .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
+                .bind_buffer(0, ID_BINDING, buffer_ids);
+
+            command_buffer
+                .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+                .set_conservative({.mode = vuk::ConservativeRasterizationMode::eOverestimate, .overestimationAmount = 0.75f})
+                .bind_graphics_pipeline("directional_depth");
+            
+            int item_index = 0;
+            for (const auto& [mat_hash, mat_map] : renderables_built) {
+                for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                    MeshGPU* mesh = game.renderer.mesh_cache.contains(mesh_hash) ? &game.renderer.mesh_cache[mesh_hash] : nullptr;
+                    command_buffer
+                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                    command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
+                    item_index += mesh_list.size();
+                }
+            }
+            for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
+                for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                    MeshGPU* mesh = game.renderer.mesh_cache.contains(mesh_hash) ? &game.renderer.mesh_cache[mesh_hash] : nullptr;
+                    command_buffer
+                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                    for (auto& [id, skeleton, transform] : mesh_list) {
+                        command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
+                        command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
+                    }
+                }
+            }
+        }
+    });
+    rg->attach_and_clear_image("top_depth_input", {.extent = {.extent = {1024, 1024, 1}}, .format = vuk::Format::eD16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearDepthStencil{0.0f, 0});
+}
+
+void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    rg->add_pass({
+        .name = "top_depth_transfer1",
+        .resources = {
+            "top_depth_output"_image >> vuk::eTransferRead,
+            "top_blurred_temp0_input"_buffer >> vuk::eTransferWrite >> "top_blurred_temp0_output"
+        },
+        .execute = [this](vuk::CommandBuffer& cmd) {
+            cmd.copy_image_to_buffer("top_depth_output", "top_blurred_temp0_output", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eDepth}, .imageExtent = {1024, 1024, 1}});
+        }
+    });
+    rg->add_pass({
+        .name = "top_depth_transfer2",
+        .resources = {
+            "top_blurred_temp0_output"_buffer >> vuk::eTransferRead,
+            "top_blurred_temp1_input"_image >> vuk::eTransferWrite >> "top_blurred_temp1_output"
+        },
+        .execute = [this](vuk::CommandBuffer& cmd) {
+            cmd.copy_buffer_to_image("top_blurred_temp0_output", "top_blurred_temp1_output", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor}, .imageExtent = {1024, 1024, 1}});
+        }
+    });
+    // Blur x
+    rg->add_pass({
+        .name = "top_depth_blurx",
+        .resources = {
+            "top_blurred_temp1_output"_image   >> vuk::eComputeRead,
+            "top_blurred_temp2_input"_image >> vuk::eComputeWrite >> "top_blurred_temp2_output"
+        },
+        .execute = [this](vuk::CommandBuffer& cmd) {
+            ZoneScoped;
+            cmd.bind_compute_pipeline("blur");
+
+            cmd.bind_image(0, 0, "top_blurred_temp1_output");
+            cmd.bind_image(0, 1, "top_blurred_temp2_output");
+
+            auto target      = *cmd.get_resource_image_attachment("top_blurred_temp1_output");
+            auto target_size = target.extent.extent;
+            cmd.specialize_constants(0, target_size.width);
+            cmd.specialize_constants(1, target_size.height);
+
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, 0);
+            cmd.dispatch_invocations(target_size.width, target_size.height);
+        }
+    });
+    rg->add_pass({
+        .name = "top_depth_blury",
+        .resources = {
+            "top_blurred_temp2_output"_image   >> vuk::eComputeRead,
+            "top_blurred_temp3_input"_image   >> vuk::eComputeWrite >> "top_blurred",
+        },
+        .execute = [this](vuk::CommandBuffer& cmd) {
+            ZoneScoped;
+            cmd.bind_compute_pipeline("blur");
+
+            cmd.bind_image(0, 0, "top_blurred_temp2_output");
+            cmd.bind_image(0, 1, "top_blurred");
+
+            auto target      = *cmd.get_resource_image_attachment("top_blurred_temp2_output");
+            auto target_size = target.extent.extent;
+            cmd.specialize_constants(0, target_size.width);
+            cmd.specialize_constants(1, target_size.height);
+                
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, 1);
+            cmd.dispatch_invocations(target_size.width, target_size.height);
+        }
+    });
+
+    rg->attach_buffer("top_blurred_temp0_input", **vuk::allocate_buffer(*game.renderer.frame_allocator, {.mem_usage = vuk::MemoryUsage::eGPUonly, .size = sizeof(u16) * 1024 * 1024}), vuk::Access::eNone, vuk::Access::eNone);
+    rg->attach_and_clear_image("top_blurred_temp1_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
+    rg->attach_and_clear_image("top_blurred_temp2_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
+    rg->attach_and_clear_image("top_blurred_temp3_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
+    rg->inference_rule("top_blurred_temp1_input", vuk::same_shape_as("top_depth_input"));
+    rg->inference_rule("top_blurred_temp2_input", vuk::same_shape_as("top_depth_input"));
+    rg->inference_rule("top_blurred_temp3_input", vuk::same_shape_as("top_depth_input"));
 }
 
 void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    ZoneScoped;
     rg->add_pass({
         .name = "forward",
         .resources = {
@@ -428,9 +573,17 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             }
         }
     });
+
+    rg->attach_and_clear_image("base_color_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, vuk::ClearColor(scene_data.fog_color));
+    rg->attach_and_clear_image("emissive_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, vuk::ClearColor {0.0f, 0.0f, 0.0f, 0.0f});
+    rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, vuk::ClearColor {0.0f, 0.0f, 0.0f, 0.0f});
+    rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, vuk::ClearDepthStencil{0.0f, 0});
+    rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, vuk::ClearColor {-1u, -1u, -1u, -1u});
+    rg->inference_rule("base_color_input", vuk::same_extent_as("target_input"));
 }
 
 void RenderScene::add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    ZoneScoped;
     rg->add_pass({
     .name = "widget",
     .resources = {
@@ -461,10 +614,15 @@ void RenderScene::add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             }
         }
     }});
+
+    rg->attach_and_clear_image("widget_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
+    rg->attach_and_clear_image("widget_depth_input", {.format = vuk::Format::eD32Sfloat}, vuk::ClearDepthStencil{0.0f, 0});
+    rg->inference_rule("widget_input", vuk::same_extent_as("target_input"));
 }
 
 
 void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    ZoneScoped;
     rg->add_pass(vuk::Pass {
     .name = "postprocess_apply",
     .resources = {
@@ -475,14 +633,17 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
         "widget_output"_image >> vuk::eComputeSampled,
         "widget_depth_output"_image >> vuk::eComputeSampled,
         "sun_depth_output"_image >> vuk::eComputeSampled,
+        "top_blurred"_image >> vuk::eComputeSampled,
         "target_input"_image   >> vuk::eComputeWrite >> "target_output",
     },
     .execute =
         [this](vuk::CommandBuffer& cmd) {
+            ZoneScoped;
             cmd.bind_compute_pipeline("postprocess");
 
-            auto sampler = Sampler().filter(Filter_Nearest).get();
+            auto sampler = Sampler().filter(Filter_Linear).get();
             auto sun_sampler = Sampler().filter(Filter_Nearest).address(Address_Border).get();
+            sun_sampler.borderColor = vuk::BorderColor::eFloatTransparentBlack;
             cmd.bind_image(0, 0, "base_color_output").bind_sampler(0, 0, sampler);
             cmd.bind_image(0, 1, "emissive_output").bind_sampler(0, 1, sampler);
             cmd.bind_image(0, 2, "normal_output").bind_sampler(0, 2, sampler);
@@ -490,9 +651,10 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             cmd.bind_image(0, 4, "widget_output").bind_sampler(0, 4, sampler);
             cmd.bind_image(0, 5, "widget_depth_output").bind_sampler(0, 5, sampler);
             cmd.bind_image(0, 6, "sun_depth_output").bind_sampler(0, 6, sun_sampler);
-            cmd.bind_image(0, 7, "target_input");
+            cmd.bind_image(0, 7, "top_blurred").bind_sampler(0, 7, Sampler().filter(Filter_Linear).address(Address_Clamp).get());
+            cmd.bind_image(0, 8, "target_input");
 
-            cmd.bind_buffer(0, 8, buffer_composite_data);
+            cmd.bind_buffer(0, 9, buffer_composite_data);
             
             auto target      = *cmd.get_resource_image_attachment("target_input");
             auto target_size = target.extent.extent;
@@ -528,6 +690,17 @@ void RenderScene::add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg) {
     }
 }
 
+void RenderScene::add_emitter_update_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    rg->add_pass({
+        .name = "emitter_update",
+        .resources = {},
+        .execute = [this](vuk::CommandBuffer& command_buffer) {
+            for (auto& emitter : emitters) {
+                update_emitter(emitter, command_buffer);
+            }
+        }
+    });
+}
 
 void RenderScene::cleanup(vuk::Allocator& allocator) {
     game.renderer.scenes.remove_value(this);

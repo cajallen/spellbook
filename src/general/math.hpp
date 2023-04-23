@@ -91,6 +91,8 @@ v3    euler2vector(euler e);
 euler vector2euler(v3 v);
 
 s32 ffsb(s32 input);
+s32 csb(u8 input);
+s32 csb(u32 input);
 s32 csb(s32 input);
 
 v2 project_point_onto_line(v2 point, line2 line);
@@ -250,7 +252,7 @@ template <typename T> bool is_equal(v4_<T> a, v4_<T> b, T e) {
 }
 
 template <typename T> T normalize(T t) {
-    return t / length(t);
+    return t / math::length(t);
 }
 
 template <typename T> T distance_to_segment(v2_<T> pos32, line_<v2_<T>> line) {
@@ -430,6 +432,9 @@ inline f32 map_range(f32 input, range input_range, range output_range) {
 constexpr f32 lerp(f32 x, range r) {
     return r.start*(1.0f-x)+r.end*x;
 }
+constexpr v3 lerp(f32 x, range3 r) {
+    return r.start*(1.0f-x)+r.end*x;
+}
 
 #define d_(a,b,c,d) (a.x-b.x)*(c.x-d.x)+(a.y-b.y)*(c.y-d.y)+(a.z-b.z)*(c.z-d.z);
 inline f32 line_intersection_3d(const ray3& a, const ray3& b) {
@@ -444,5 +449,7 @@ inline f32 line_intersection_3d(const ray3& a, const ray3& b) {
     f32 d4343 = d_(e2, o2, e2, o2);
     return (d1343*d4321-d1321*d4343)/(d2121*d4343-d4321*d4321);
 }
+
+v3 rotate(v3 v, u32 cardinal_rotation);
 
 }

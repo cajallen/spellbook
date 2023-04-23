@@ -5,69 +5,83 @@
 
 #include "general/vector.hpp"
 #include "game/entities/stat.hpp"
+#include "general/id_ptr.hpp"
 
 namespace spellbook {
 
 struct Scene;
 struct Spawner;
 
-struct RoundInfo {
-    int round_number = 0;
-    int wave_number = 0;
-    int enemy_number = 0;
+struct SpawnStateInfo {
+    int round_number = -1;
+    int wave_number = -1;
+    int enemy_number = -1;
 
     void advance_round() {
         round_number++;
-        wave_number = 0;
-        enemy_number = 0;
+        wave_number = -1;
+        enemy_number = -1;
     }
 };
 
 struct EnemySpawnInfo {
-    string prefab_path;
-    float cost;
-    float spawn_pre_delay;
-    float spawn_post_delay;
+    string enemy_prefab_path;
+    float pre_delay;
+    float post_delay;
+};
+
+struct WaveSpawnInfo {
+    string name;
+    vector<id_ptr<EnemySpawnInfo>> enemies;
+    float pre_delay;
+    float post_delay;
+};
+
+struct RoundSpawnInfo {
+    string name;
+    vector<id_ptr<WaveSpawnInfo>> waves;
+};
+
+struct LevelSpawnInfo {
+    string name;
+    vector<id_ptr<RoundSpawnInfo>> rounds;
 };
 
 struct SpawnerPrefab {
     string file_path;
-    
-    enum EnemySelection {
-        EnemySelection_Simple
-    };
-    enum WaveSelection {
-        WaveSelection_Simple
-    };
 
-    EnemySelection enemy_selection;
-    vector<EnemySpawnInfo> enemy_entries;
-
-    WaveSelection wave_selection;
-    f32 wave_cost;
-    f32 delta_cost;
-    int wave_count = 1;
+    LevelSpawnInfo level_spawn_info;
+    vector<id_ptr<RoundSpawnInfo>> rounds;
+    vector<id_ptr<WaveSpawnInfo>> waves;
+    vector<id_ptr<EnemySpawnInfo>> enemies;
 };
 
 struct Spawner {
-    Stat delta_cost;
-    std::function<bool(Spawner* spawner, float& cost_total)> wave_start;
-    std::function<EnemySpawnInfo(Spawner* spawner, int)> select_enemy;
-    EnemySpawnInfo selected_enemy;
-
-    int round_ack = 0;
-    bool wave_happening = false;
-    float cost_total = 0.0f;
+    LevelSpawnInfo spawn_info;
+    SpawnStateInfo state;
+    SpawnStateInfo* level_state;
     float cooldown = 0.0f;
-    
-    RoundInfo* round_info;
+
+    bool wave_spawning = false;
+    bool enemy_spawning = false;
+    bool spawn_wave = false;
+    bool spawn_enemy = false;
 };
 
-JSON_IMPL(EnemySpawnInfo, prefab_path, cost, spawn_pre_delay, spawn_post_delay);
-JSON_IMPL(SpawnerPrefab, enemy_selection, enemy_entries, wave_selection, wave_cost, delta_cost, wave_count);
+JSON_IMPL(EnemySpawnInfo, enemy_prefab_path, pre_delay, post_delay);
+JSON_IMPL(WaveSpawnInfo, name, enemies, pre_delay, post_delay);
+JSON_IMPL(RoundSpawnInfo, name, waves);
+JSON_IMPL(LevelSpawnInfo, name, rounds);
+SpawnerPrefab from_jv_impl(const json_value& jv, SpawnerPrefab* _);
+json_value to_jv(const SpawnerPrefab& value);
 
-bool inspect(EnemySpawnInfo* enemy_entry);
+bool inspect(EnemySpawnInfo* enemy_spawn_info);
+bool inspect(WaveSpawnInfo* wave_info);
+bool inspect(RoundSpawnInfo* round_info);
+bool inspect(LevelSpawnInfo* level_spawn_info);
 bool inspect(SpawnerPrefab* spawner_prefab);
+bool inspect(Spawner* spawner);
+bool inspect(SpawnStateInfo* spawn_state_info);
 entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, v3i location);
 
 void spawner_system(Scene* scene);

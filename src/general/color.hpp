@@ -74,6 +74,8 @@ struct Color {
     }
     explicit operator vuk::ClearColor() const;
 
+
+    static Color hsl_oklab(float hue, float chroma, float lum);
     static Color hsv(float h, float s, float v, float a = 1.0f) {
         v3 rgb = math::clamp(
             math::abs((v3(h/360.f*6.f)+v3(0.f,4.f,2.f)) % 6.f - 3.f)-v3(1.f), 
@@ -101,6 +103,8 @@ Color mix(Color c1, Color c2, f32 amt);
 void color_window(bool* p_open);
 float srgb2linear(float x);
 float linear2srgb(float x);
+v3 srgb2linear(v3 x);
+v3 linear2srgb(v3 x);
 
 namespace palette {
 

@@ -4,78 +4,124 @@
 
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
+#include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/lizard.hpp"
+#include "game/entities/targeting.hpp"
+#include "renderer/draw_functions.hpp"
 
 namespace spellbook {
 
-void assassin_attack_start(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-    auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
+constexpr int poison_max_stacks = 4;
+constexpr float poison_dps = 0.3f;
+constexpr float poison_duration = 4.0f;
+
+struct AssassinAttack : Ability {
+    int phase = 0;
+    void targeting() override;
+    void start() override;
+    void trigger() override;
+    void end() override;
+};
+
+void AssassinAttack::start() {
+    auto poser = scene->registry.try_get<PoseController>(caster);
     if (poser) {
-        poser->set_state(AnimationState_AttackInto, ability->pre_trigger_time.value());
+        if (phase == 0) {
+            poser->set_state(AnimationState_AttackInto, pre_trigger_time.value());
+        } else {
+            poser->set_state(AnimationState_Attack2Into, pre_trigger_time.value());
+        }
+    }
+
+    v3i caster_pos = math::round_cast(scene->registry.get<LogicTransform>(caster).position);
+    
+    auto lizard = scene->registry.try_get<Lizard>(caster);
+    if (lizard) {
+        v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
+        float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
+        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
     }
 }
 
-void assassin_attack_trigger(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-    auto enemies = ability->scene->get_enemies(ability->target);
+void AssassinAttack::trigger() {
+    auto& this_lt = scene->registry.get<LogicTransform>(caster);
+    v3 hit_vec = v3(target) - this_lt.position;
+    
+    uset<entt::entity> enemies = entry_gather_function(*this, target, 0.0f);
     for (auto& enemy : enemies) {
-        auto& health = ability->scene->registry.get<Health>(enemy);
-        auto& this_lt = ability->scene->registry.get<LogicTransform>(ability->caster);
-        auto& enemy_lt = ability->scene->registry.get<LogicTransform>(enemy);
-        health.damage(3.5f, enemy_lt.position - this_lt.position);
+        auto& health = scene->registry.get<Health>(enemy);
+        auto& enemy_lt = scene->registry.get<LogicTransform>(enemy);
+        damage(scene, caster, enemy, 3.0f / enemies.size(), enemy_lt.position - this_lt.position);
+
+        if (!health.dots.contains(caster))
+            health.dots[caster] = Stat(scene, 0.0f);
+        health.dots[caster].add_effect(0, StatEffect{StatEffect::Type_Add, poison_dps, poison_max_stacks, poison_duration});
     }
-    auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
+
+    EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/assassin/basic_hit.sbemt");
+    emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
+    quick_emitter(scene, "Assassin hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
+
+    auto poser = scene->registry.try_get<PoseController>(caster);
     if (poser) {
-        poser->set_state(AnimationState_AttackOut, ability->post_trigger_time.value());
+        if (phase == 0) {
+            poser->set_state(AnimationState_AttackOut, post_trigger_time.value());
+        } else {
+            poser->set_state(AnimationState_Attack2Out, post_trigger_time.value());
+        }
+    }
+    if (phase == 0) {
+        phase = 1;
+    } else {
+        phase = 0;
     }
 }
 
-void assassin_attack_targeting(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-    v3i caster_pos = math::round_cast(ability->scene->registry.get<LogicTransform>(ability->caster).position);
-    struct Entry {
-        v3i offset = {};
-        int count;
-    };
-    vector<Entry> entries;
-    auto add_entry = [&ability, &entries, &caster_pos](v3i offset) {
-        entries.emplace_back(offset, ability->scene->get_enemies(caster_pos + offset).size());
-    };
-    add_entry(v3i( 1, 0,0));
-    add_entry(v3i( 0, 1,0));
-    add_entry(v3i(-1, 0,0));
-    add_entry(v3i( 0,-1,0));
-    vector closest_entries = {entries.front()};
-    for (auto& entry : entries) {
-        if (entry.count > closest_entries.begin()->count)
-            closest_entries = {entry};
-        else if (entry.count == closest_entries.begin()->count)
-            closest_entries.push_back(entry);
-    }
-    if (closest_entries.front().count > 0) {
-        ability->target = caster_pos + closest_entries[math::random_s32(closest_entries.size())].offset;
-        ability->has_target = true;
+void AssassinAttack::end() {
+    if (phase == 0) {
+        post_trigger_timer->stop();
+        request_cast();
     } else {
-        ability->has_target = false;
+        auto poser = scene->registry.try_get<PoseController>(caster);
+        if (poser) {
+            poser->set_state(AnimationState_Idle, post_trigger_time.value());
+        }
     }
+    
+}
+
+void AssassinAttack::targeting() {
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+
+    if (taunted(*this, caster_comp))
+        return;
+    
+    plus_targeting(1, *this, entry_gather_function);
 }
 
 void build_assassin(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {
-    auto& liz = scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
-    
-    liz.basic_ability = make_ability(scene, "Assassin Basic");
-    liz.basic_ability->caster = entity;
-    liz.basic_ability->pre_trigger_time = Stat(0.3f);
-    liz.basic_ability->post_trigger_time = Stat(0.5f);
-    liz.basic_ability->cooldown_time = Stat(0.6f);
-    liz.basic_ability->start_callback = assassin_attack_start;
-    liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
-    liz.basic_ability->trigger_callback = assassin_attack_trigger;
-    liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
-    liz.basic_ability->targeting_callback = assassin_attack_targeting;
-    liz.basic_ability->targeting_payload = (void*) liz.basic_ability.id;
+    scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
+    Caster& caster = scene->registry.get<Caster>(entity);
+
+    caster.attack = std::make_unique<AssassinAttack>();
+    caster.attack->setup(scene, entity, 0.4f, 0.5f, Ability::Type_Attack);
+    caster.attack->entry_gather_function = lizard_entry_gather();
 }
+
+void draw_assassin_dragging_preview(Scene* scene, entt::entity entity) {
+    v3 logic_pos = scene->registry.get<Dragging>(entity).potential_logic_position;
+    
+    vector<FormattedVertex> vertices;
+    v3 pos = logic_pos + v3(0.5f, 0.5f, 0.02f);
+    add_formatted_square(vertices, pos + v3(1.0f, 0.0f, 0.0f), v3(0.5f, 0.f, 0.f), v3(0.f, 0.5f, 0.f), palette::green_yellow, 0.05f);
+    add_formatted_square(vertices, pos + v3(0.0f, 1.0f, 0.0f), v3(0.5f, 0.f, 0.f), v3(0.f, 0.5f, 0.f), palette::green_yellow, 0.05f);
+    add_formatted_square(vertices, pos + v3(-1.0f, 0.0f, 0.0f), v3(0.5f, 0.f, 0.f), v3(0.f, 0.5f, 0.f), palette::green_yellow, 0.05f);
+    add_formatted_square(vertices, pos + v3(0.0f, -1.0f, 0.0f), v3(0.5f, 0.f, 0.f), v3(0.f, 0.5f, 0.f), palette::green_yellow, 0.05f);
+    if (vertices.empty())
+        return;
+    scene->render_scene.quick_mesh(generate_formatted_line(&scene->camera, vertices), true, false);
+}
+
 
 }

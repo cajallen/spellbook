@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <functional>
 #include "general/string.hpp"
 
 namespace spellbook {
@@ -9,9 +10,7 @@ struct Timer;
 
 struct TimerCallback {
     Timer* timer;
-    void(*callback)(Timer*, void*) = {};
-    void* payload = nullptr;
-    bool allocated_payload = false;
+    std::function<void(Timer*)> callback = {};
 };
 
 struct Timer {
@@ -34,8 +33,8 @@ struct Timer {
 
 void update_timers(Scene* scene);
 
-Timer& add_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*) = {}, void* payload = nullptr, bool allocated = false, bool permanent = false);
-Timer& add_tween_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*) = {}, void* payload = nullptr, bool allocated = false, bool permanent = false);
+Timer& add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool permanent = false);
+Timer& add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool permanent = false);
 void destroy_timer(Timer* timer);
 void remove_timer(Scene* scene, Timer* timer);
 void remove_timer(Scene* scene, const string& name);

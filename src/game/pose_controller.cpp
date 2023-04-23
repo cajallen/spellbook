@@ -8,12 +8,13 @@
 
 namespace spellbook {
 
-void PoseController::set_state(AnimationState new_state, float time_in_target) {
+void PoseController::set_state(AnimationState new_state, float time_in_target, float new_time_to_override) {
     if (state != new_state || pose_set == nullptr) {
         state = new_state;
         target_index = -1;
         fractional_state_total = time_in_target;
         time_to_next_index = 0.0f;
+        time_to_override = new_time_to_override;
 
         pose_set = &skeleton.prefab->poses[new_state];
         if (pose_set->entries.empty())
@@ -44,9 +45,16 @@ void PoseController::progress_in_state() {
     switch (state) {
         case AnimationState_AttackInto:
         case AnimationState_AttackOut:
-        case AnimationState_AttackAgain:
+        case AnimationState_Attack2Into:
+        case AnimationState_Attack2Out:
             used_timing = new_entry.time_to * (fractional_state_total == 0.0f ? 1.0f : fractional_state_total); 
     }
+    if (time_to_override != -1.0f) {
+        used_timing = time_to_override;
+        time_to_override = -1.0f;
+    }
+    if (used_timing < 0.005f)
+        used_timing = -1.0f;
     skeleton.load_pose(new_entry, used_timing);
     time_to_next_index = used_timing;
 }

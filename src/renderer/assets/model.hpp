@@ -73,10 +73,10 @@ ModelCPU& load_asset(const string& input_path, bool assert_exist, bool clear_cac
 
 ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
 void     deinstance_model(RenderScene&, const ModelGPU&);
-ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up = true);
+ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up = true, bool replace_existing_poses = false);
 
 ModelCPU quick_model(const string& name, const string& mesh, const string& material);
 
-bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene = nullptr);
+bool inspect(ModelCPU* model, RenderScene* render_scene = nullptr);
 
 }

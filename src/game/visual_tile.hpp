@@ -84,13 +84,18 @@ JSON_IMPL(VisualTilePrefab, corners, model_path);
 JSON_IMPL(VisualTileSet, tiles);
 
 VisualTileCorners apply_rotation(VisualTileCorners corners, VisualTileRotation rotation);
-bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, u32 seed);
+bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, u32 seed, bool flip_z = true);
 umap<VisualTileCorners, vector<string>> convert_to_entry_pool(const VisualTileSet& tile_set);
 umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, u8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile = nullptr);
 
 bool inspect(VisualTileSet* tile_set);
 
 void visual_tile_widget_system(Scene* scene);
+
+v3 to_vec(DirectionBits direction);
+DirectionBits to_direction_bits(v3 v);
+DirectionBits rotate_bits(u32 direction, u32 rotation);
+DirectionBits rotate_bits(DirectionBits direction, u32 rotation);
 
 }
 

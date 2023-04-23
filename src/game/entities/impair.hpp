@@ -9,6 +9,7 @@ enum StaticImpairSources : u64 {
 };
 
 enum ImpairType : u8 {
+    ImpairType_None,
     ImpairType_NoMove,
     ImpairType_NoCast
 };

@@ -10,8 +10,9 @@
 #include "general/file.hpp"
 #include "general/matrix.hpp"
 #include "general/string.hpp"
+#include "general/vector.hpp"
 #include "game/game_file.hpp"
-
+#include "icons/font_awesome4.h"
 
 
 namespace fs = std::filesystem;
@@ -61,10 +62,72 @@ bool EnumCombo(const string& label, T* value, ImGuiComboFlags flags = 0) {
     return ret;
 }
 
-void StyleColorsSpellbook(ImGuiStyle* dst = NULL);
+void StyleColorsSpellbook(ImGuiStyle* dst = nullptr);
 
-bool DragEuler2(const char* label, spellbook::euler* e, bool input_is_radians = true, float v_speed = 0.5f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = ImGuiSliderFlags_NoRoundToFormat);
-bool DragEuler3(const char* label, spellbook::euler* e, bool input_is_radians = true, float v_speed = 0.5f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.1f", ImGuiSliderFlags flags = ImGuiSliderFlags_NoRoundToFormat);
+bool DragEuler2(const char* label, spellbook::euler* e, bool input_is_radians = true, float v_speed = 0.5f, ImGuiSliderFlags flags = ImGuiSliderFlags_NoRoundToFormat);
+bool DragEuler3(const char* label, spellbook::euler* e, bool input_is_radians = true, float v_speed = 0.5f, ImGuiSliderFlags flags = ImGuiSliderFlags_NoRoundToFormat);
+
+template<typename T, typename InspectFunc, typename InsertFunc>
+bool OrderedVector(spellbook::vector<T>& values, InspectFunc callback, InsertFunc insert_callback, bool show_indices) {
+    bool changed = false;
+
+    bool pressed = false;
+    if (ImGui::Button("  " ICON_FA_PLUS "  Add  ")) {
+        pressed = true;
+        changed = true;
+    }
+    insert_callback(values, pressed);
+    
+    if (ImGui::BeginTable("vector_table", show_indices ? 5 : 4)) {
+        if (show_indices)
+            ImGui::TableSetupColumn("indices", ImGuiTableColumnFlags_WidthFixed, 16.0f);
+        ImGui::TableSetupColumn("inspect");
+        ImGui::TableSetupColumn("up", ImGuiTableColumnFlags_WidthFixed, 28.0f);
+        ImGui::TableSetupColumn("down", ImGuiTableColumnFlags_WidthFixed, 28.0f);
+        ImGui::TableSetupColumn("remove", ImGuiTableColumnFlags_WidthFixed, 28.0f);
+        for (int i = 0; i < values.size(); i++) {
+            ImGui::PushID(i);
+            
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+
+            if (show_indices) {
+                ImGui::Text("%d", i);
+                ImGui::TableNextColumn();
+            }
+
+            changed |= callback(values[i]);
+            ImGui::TableNextColumn();
+
+            if (i > 0) {
+                if (ImGui::Button(ICON_FA_ARROW_UP, {24.f, 0.f})) {
+                    std::swap(values[i-1], values[i]);
+                    changed = true;
+                }
+            }
+            ImGui::TableNextColumn();
+
+            if (i + 1 < values.size()) {
+                if (ImGui::Button(ICON_FA_ARROW_DOWN, {24.f, 0.f})) {
+                    std::swap(values[i], values[i+1]);
+                    changed = true;
+                }
+            }
+            ImGui::TableNextColumn();
+
+            if (ImGui::Button(ICON_FA_TIMES, {24.f, 0.f})) {
+                values.remove_index(i, false);
+                changed = true;
+                i--;
+            }
+            
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    return changed;
+}
+
 
 }
 

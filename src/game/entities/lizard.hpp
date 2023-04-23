@@ -39,12 +39,8 @@ struct LizardPrefab {
 };
 
 struct Lizard { // Component
-    LizardType type;
-
+    LizardType type = LizardType_Empty;
     v3 default_direction = v3(0,1,0);
-    id_ptr<Ability> basic_ability;
-
-    Stat damage_multiplier = Stat(1.0f);
 };
 
 
@@ -54,8 +50,6 @@ struct Scene;
 entt::entity instance_prefab(Scene*, const LizardPrefab&, v3i location);
 bool inspect(LizardPrefab*);
 
-void lizard_targeting_system(Scene* scene);
-void lizard_casting_system(Scene* scene);
 void draw_lizard_dragging_preview(Scene* scene, entt::entity);
 
 }

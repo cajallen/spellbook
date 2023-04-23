@@ -14,6 +14,7 @@
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/game_file.hpp"
+#include "renderer/draw_functions.hpp"
 
 namespace fs = std::filesystem;
 
@@ -101,7 +102,7 @@ void GUI::update() {
     ImGui::End();
 
     _main_menu_bar();
-
+    
     bool* p_open;
 
     if (*(p_open = window_open("demo")))

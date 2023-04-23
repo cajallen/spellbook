@@ -282,30 +282,78 @@ void StyleColorsSpellbook(ImGuiStyle* dst)
     colors[ImGuiCol_TabUnfocusedActive]     = ImLerp(colors[ImGuiCol_TabActive],    colors[ImGuiCol_TitleBg], 0.40f);
 }
 
-bool DragEuler2(const char* label, spellbook::euler* e, bool input_is_radians, float v_speed, float v_min, float v_max, const char* format, ImGuiSliderFlags flags) {
+bool DragEuler2(const char* label, spellbook::euler* e, bool input_is_radians, float v_speed, ImGuiSliderFlags flags) {
     if (input_is_radians) {
         spellbook::euler e_deg = input_is_radians ? spellbook::math::r2d(*e) : *e;
-        bool changed = ImGui::DragFloat2(label, &e_deg.yaw, v_speed, v_min, v_max, format, flags);
+        PushMultiItemsWidths(2, CalcItemWidth());
+        ImGui::PushID(label);
+        ImGui::PushID(0);
+        bool changed = ImGui::DragFloat("", &e_deg.yaw, v_speed, -FLT_MAX, FLT_MAX, "yaw: %.1fd", flags);
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::PushID(1);
+        changed |= ImGui::DragFloat("", &e_deg.pitch, v_speed, -FLT_MAX, FLT_MAX, "pitch: %.1fd", flags);
+        ImGui::PopID();
+        ImGui::PopID();
         if (changed) {
             *e = spellbook::math::d2r(e_deg);
             return true;
         }
         return false;
     }
-    return ImGui::DragFloat2(label, &e->yaw, v_speed, v_min, v_max, format, flags);
+
+    PushMultiItemsWidths(2, CalcItemWidth());
+    ImGui::PushID(label);
+    ImGui::PushID(0);
+    bool changed = ImGui::DragFloat("", &e->yaw, v_speed, -FLT_MAX, FLT_MAX, "yaw: %.1fd", flags);
+    ImGui::PopID();
+    ImGui::SameLine();
+    ImGui::PushID(1);
+    changed |= ImGui::DragFloat("", &e->pitch, v_speed, -FLT_MAX, FLT_MAX, "pitch: %.1fd", flags);
+    ImGui::PopID();
+    ImGui::PopID();
+    return changed;
 }
 
-bool DragEuler3(const char* label, spellbook::euler* e, bool input_is_radians, float v_speed, float v_min, float v_max, const char* format, ImGuiSliderFlags flags) {
+bool DragEuler3(const char* label, spellbook::euler* e, bool input_is_radians, float v_speed, ImGuiSliderFlags flags) {
     if (input_is_radians) {
         spellbook::euler e_deg = input_is_radians ? spellbook::math::r2d(*e) : *e;
-        bool changed = ImGui::DragFloat3(label, &e_deg.yaw, v_speed, v_min, v_max, format, flags);
+        PushMultiItemsWidths(3, CalcItemWidth());
+        ImGui::PushID(label);
+        ImGui::PushID(0);
+        bool changed = ImGui::DragFloat("", &e_deg.yaw, v_speed, -FLT_MAX, FLT_MAX, "yaw: %.1fd", flags);
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::PushID(1);
+        changed |= ImGui::DragFloat("", &e_deg.pitch, v_speed, -FLT_MAX, FLT_MAX, "pitch: %.1fd", flags);
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::PushID(2);
+        changed |= ImGui::DragFloat("", &e_deg.roll, v_speed, -FLT_MAX, FLT_MAX, "roll: %.1fd", flags);
+        ImGui::PopID();
+        ImGui::PopID();
         if (changed) {
             *e = spellbook::math::d2r(e_deg);
             return true;
         }
         return false;
     }
-    return ImGui::DragFloat3(label, &e->yaw, v_speed, v_min, v_max, format, flags);
+
+    PushMultiItemsWidths(3, CalcItemWidth());
+    ImGui::PushID(label);
+    ImGui::PushID(0);
+    bool changed = ImGui::DragFloat("", &e->yaw, v_speed, -FLT_MAX, FLT_MAX, "yaw: %.1fd", flags);
+    ImGui::PopID();
+    ImGui::SameLine();
+    ImGui::PushID(1);
+    changed |= ImGui::DragFloat("", &e->pitch, v_speed, -FLT_MAX, FLT_MAX, "pitch: %.1fd", flags);
+    ImGui::PopID();
+    ImGui::SameLine();
+    ImGui::PushID(2);
+    changed |= ImGui::DragFloat("", &e->roll, v_speed, -FLT_MAX, FLT_MAX, "roll: %.1fd", flags);
+    ImGui::PopID();
+    ImGui::PopID();
+    return changed;
 }
 
 }

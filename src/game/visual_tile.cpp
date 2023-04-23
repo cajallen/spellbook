@@ -46,10 +46,10 @@ VisualTileCorners apply_rotation(VisualTileCorners corners, VisualTileRotation r
     return corners;
 }
 
-bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, u32 seed) {
+bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, u32 seed, bool flip_z) {
     vector<VisualTileRotation> candidate_rotations = {};
 
-    for (u8 i = 0; i <= 0b1111; i++) {
+    for (u8 i = 0; i <= (flip_z ? 0b1111 : 0b111); i++) {
         VisualTileRotation rotation {
             .yaw = u8(i & 0b11),
             .flip_x = bool(i & 0b0100),
@@ -307,6 +307,33 @@ void visual_tile_widget_system(Scene* scene) {
             
         }
     }
+}
+
+v3 to_vec(DirectionBits direction) {
+    v3 v;
+    v.x = direction & 4 ? 1.0f : -1.0f;
+    v.y = direction & 2 ? 1.0f : -1.0f;
+    v.z = direction & 1 ? 1.0f : -1.0f;
+    return v;
+}
+DirectionBits to_direction_bits(v3 v) {
+    u32 value = NNN;
+    if (v.x > 0)
+        value += 4;
+    if (v.y > 0)
+        value += 2;
+    if (v.z > 0)
+        value += 1;
+    return DirectionBits(value);
+}
+
+DirectionBits rotate_bits(u32 direction, u32 rotation) {
+    return rotate_bits(DirectionBits(direction), rotation);
+}
+DirectionBits rotate_bits(DirectionBits direction, u32 rotation) {
+    if (rotation % 4 == 0)
+        return direction;
+    return to_direction_bits(math::rotate(to_vec(direction), rotation));
 }
 
 }

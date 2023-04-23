@@ -134,16 +134,46 @@ m44 rotation(quat q) {
 }
 
 euler to_euler(m44 rot) {
-    return to_euler(to_quat(rot));
+    euler e = to_euler(to_quat(rot));
+    e.pitch = -e.pitch;
+    e.yaw = -e.yaw;
+    return e;
 }
 
 quat to_quat(m33 mat) {
     // Does this work?
-    quat q;
-    q.w = sqrt(1.0f + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2)) / 2.0f;
-    q.x = (mat.rc(2,1) - mat.rc(1,2)) / (4.0f * q.w);
-    q.y = (mat.rc(0,2) - mat.rc(2,0)) / (4.0f * q.w);
-    q.z = (mat.rc(1,0) - mat.rc(0,1)) / (4.0f * q.w);
+    // quat q;
+    // q.w = sqrt(1.0f + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2)) / 2.0f;
+    // q.x = (mat.rc(2,1) - mat.rc(1,2)) / (4.0f * q.w);
+    // q.y = (mat.rc(0,2) - mat.rc(2,0)) / (4.0f * q.w);
+    // q.z = (mat.rc(1,0) - mat.rc(0,1)) / (4.0f * q.w);
+    // return q;
+
+    float T    = mat.rc(1-1, 1-1) + mat.rc(2-1, 2-1) + mat.rc(3-1, 3-1);
+    float M    = math::max(mat.rc(1-1, 1-1), mat.rc(2-1, 2-1), mat.rc(3-1, 3-1), T);
+    float qmax = 0.5f * math::sqrt(1.0f - T + 2.0f * M);
+    quat  q;
+    if (M == mat.rc(1-1, 1-1)) {
+        q.x = qmax;
+        q.y = (mat.rc(1-1, 2-1) + mat.rc(2-1, 1-1)) / (4 * qmax);
+        q.z = (mat.rc(1-1, 3-1) + mat.rc(3-1, 1-1)) / (4 * qmax);
+        q.w = (mat.rc(3-1, 2-1) - mat.rc(2-1, 3-1)) / (4 * qmax);
+    } else if (M == mat.rc(2-1, 2-1)) {
+        q.x = (mat.rc(1-1, 2-1) + mat.rc(2-1, 1-1)) / (4 * qmax);
+        q.y = qmax;
+        q.z = (mat.rc(2-1, 3-1) + mat.rc(3-1, 2-1)) / (4 * qmax);
+        q.w = (mat.rc(1-1, 3-1) - mat.rc(3-1, 1-1)) / (4 * qmax);
+    } else if (M == mat.rc(3-1, 3-1)) {
+        q.x = (mat.rc(1-1, 3-1) + mat.rc(3-1, 1-1)) / (4 * qmax);
+        q.y = (mat.rc(2-1, 3-1) + mat.rc(3-1, 2-1)) / (4 * qmax);
+        q.z = qmax;
+        q.w = (mat.rc(1-1, 3-1) - mat.rc(3-1, 1-1)) / (4 * qmax);
+    } else {
+        q.x = (mat.rc(3-1, 2-1) - mat.rc(2-1, 3-1)) / (4 * qmax);
+        q.y = (mat.rc(1-1, 3-1) - mat.rc(3-1, 1-1)) / (4 * qmax);
+        q.z = (mat.rc(2-1, 1-1) - mat.rc(1-1, 2-1)) / (4 * qmax);
+        q.w = qmax;
+    }
     return q;
 }
 
@@ -223,7 +253,7 @@ m33 inverse(const m33& A) {
         (A[0] * A[4] - A[1] * A[3]) * det_inv);
 }
 
-constexpr m44 transpose(const m44& A) {
+m44 transpose(const m44& A) {
     return m44(A.rc(0, 0),
         A.rc(1, 0),
         A.rc(2, 0),

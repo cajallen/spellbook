@@ -6,157 +6,82 @@
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
+#include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
 #include "game/entities/impair.hpp"
 #include "game/entities/lizard.hpp"
+#include "game/entities/targeting.hpp"
 
 namespace spellbook {
 
-void champion_attack_start(void* payload) {
-    id_ptr<Ability> ability_ptr = id_ptr<Ability>((u64) payload);
-    Ability& ability = *ability_ptr;
-    
-    v3i caster_pos = math::round_cast(ability.scene->registry.get<LogicTransform>(ability.caster).position);
-    
-    auto poser = ability.scene->registry.try_get<PoseController>(ability.caster);
-    if (poser) {
-        poser->set_state(AnimationState_AttackInto, ability.pre_trigger_time.value());
-    }
-    auto lizard = ability.scene->registry.try_get<Lizard>(ability.caster);
+struct ChampionAttack : Ability {
+    void targeting() override;
+    void start() override;
+    void trigger() override;
+};
+
+void ChampionAttack::start() {
+    v3i caster_pos = math::round_cast(scene->registry.get<LogicTransform>(caster).position);
+    auto lizard = scene->registry.try_get<Lizard>(caster);
     if (lizard) {
-        v3 dir_to = math::normalize(v3(ability.target) - v3(caster_pos));
+        v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
         float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
-        ability.scene->registry.get<LogicTransform>(ability.caster).rotation.yaw = ang;
+        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
     }
 }
 
-void champion_attack_trigger(void* payload) {
-    id_ptr<Ability> ability_ptr = id_ptr<Ability>((u64) payload);
-    Ability& ability = *ability_ptr;
-    
-    uset<entt::entity> enemies;
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            for (entt::entity enemy : ability.scene->get_enemies(ability.target + v3i(x, y, 0)))
-                enemies.insert(enemy);
-        }
-    }
-    
-    for (auto& enemy : enemies) {
-        auto& health = ability.scene->registry.get<Health>(enemy);
-        auto& enemy_comp = ability.scene->registry.get<Enemy>(enemy);
-        auto& this_lt = ability.scene->registry.get<LogicTransform>(ability.caster);
-        auto& enemy_lt = ability.scene->registry.get<LogicTransform>(enemy);
-        health.damage(2.0f, enemy_lt.position - this_lt.position);
-        enemy_comp.taunt = {ability_ptr.id, ability.caster};
-
-        struct TauntTimerPayload {
-            Scene* scene;
-            entt::entity enemy;
-            u64 ability_id;
-        };
-        add_timer(ability.scene, "taunt", [](Timer* timer, void* data) {
-            TauntTimerPayload* payload = (TauntTimerPayload*) data;
-            if (!payload->scene->registry.valid(payload->enemy))
+void ChampionAttack::trigger() {
+    for (auto& enemy : entry_gather_function(*this, target, 0.0f)) {
+        auto& enemy_caster = scene->registry.get<Caster>(enemy);
+        auto& this_lt = scene->registry.get<LogicTransform>(caster);
+        auto& enemy_lt = scene->registry.get<LogicTransform>(enemy);
+        damage(scene, caster, enemy, 2.0f, enemy_lt.position - this_lt.position);
+        enemy_caster.taunt.set(u64(this), caster);
+        
+        add_timer(scene, "taunt", [enemy, this](Timer* timer) {
+            if (!scene->registry.valid(enemy))
                 return;
-            auto& enemy_comp = payload->scene->registry.get<Enemy>(payload->enemy);
-            if (enemy_comp.taunt.first == payload->ability_id)
-                enemy_comp.taunt = {0, entt::null};
-        }, new TauntTimerPayload{ability.scene, enemy, ability_ptr.id}, true, false).start(2.0f);
-    }
-    auto poser = ability.scene->registry.try_get<PoseController>(ability.caster);
-    if (poser) {
-        poser->set_state(AnimationState_AttackOut, ability.post_trigger_time.value());
+            auto& enemy_caster = scene->registry.get<Caster>(enemy);
+            enemy_caster.taunt.reset(u64(this));
+        }, false).start(2.0f);
     }
 
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
-            entt::entity tile = ability.scene->get_tile(ability.target + v3i(x, y, -1));
+            entt::entity tile = scene->get_tile(target + v3i(x, y, -1));
             if (tile == entt::null) {
-                quick_emitter(ability.scene, "Champion Basic", v3(ability.target + v3i(x, y, 0)), "emitters/champion_basic_fizzle.sbemt", 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion_basic_fizzle.sbemt", 0.20f);
                 continue;
             }
 
-            auto& grid_slot = ability.scene->registry.get<GridSlot>(tile);
+            auto& grid_slot = scene->registry.get<GridSlot>(tile);
             if ((grid_slot.path || grid_slot.ramp) && x == 0 && y == 0) {
-                quick_emitter(ability.scene, "Champion Basic", v3(ability.target + v3i(x, y, 0)), "emitters/champion_basic_hit.sbemt", 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion_basic_hit.sbemt", 0.20f);
             } else {
-                quick_emitter(ability.scene, "Champion Basic", v3(ability.target + v3i(x, y, 0)), "emitters/champion_basic_miss.sbemt", 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion_basic_miss.sbemt", 0.20f);
             }
         }
     }
 }
 
-void champion_attack_end(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-    auto poser = ability->scene->registry.try_get<PoseController>(ability->caster);
-    if (poser) {
-        poser->set_state(AnimationState_Idle);
-    }
-}
-
-void champion_attack_targeting(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-    v3i caster_pos = math::round_cast(ability->scene->registry.get<LogicTransform>(ability->caster).position);
-    struct Entry {
-        v3i offset = {};
-        int count;
-    };
-    vector<Entry> entries;
-    auto add_entry = [&ability, &entries, &caster_pos](v3i offset) {
-        uset<entt::entity> enemies;
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (entt::entity enemy : ability->scene->get_enemies(caster_pos + offset + v3i(x, y, 0)))
-                    enemies.insert(enemy);
-            }
-        }
-        entries.emplace_back(offset, int(enemies.size()));
-    };
-
-    for (const v2i& offset : {v2i{-2, 0}, v2i{0, -2}, v2i{2, 0}, v2i{0, 2}}) {
-        if (ability->scene->get_tile(caster_pos + v3i(offset.x, offset.y, -1)) == entt::null)
-            continue;
-        add_entry(v3i(offset.x, offset.y, 0)); 
-    }
-
-    if (entries.empty()) {
-        ability->has_target = false;
-        return;
-    }
+void ChampionAttack::targeting() {
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
     
-    vector closest_entries = {entries.front()};
-    for (auto& entry : entries) {
-        if (entry.count > closest_entries.begin()->count)
-            closest_entries = {entry};
-        else if (entry.count == closest_entries.begin()->count)
-            closest_entries.push_back(entry);
-    }
-    if (closest_entries.front().count > 0) {
-        ability->target = caster_pos + closest_entries[math::random_s32(closest_entries.size())].offset;
-        ability->has_target = true;
-    } else {
-        ability->has_target = false;
-    }
+    if (taunted(*this, caster_comp))
+        return;
+
+    if (plus_targeting(2, *this, entry_gather_function))
+        return;
 }
 
 void build_champion(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {
-    auto& liz = scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
-    
-    liz.basic_ability = make_ability(scene, "Champion Basic");
-    liz.basic_ability->caster = entity;
-    liz.basic_ability->pre_trigger_time = Stat(1.2f);
-    liz.basic_ability->post_trigger_time = Stat(1.0f);
-    liz.basic_ability->cooldown_time = Stat(1.2f);
-    liz.basic_ability->start_callback = champion_attack_start;
-    liz.basic_ability->start_payload = (void*) liz.basic_ability.id;
-    liz.basic_ability->trigger_callback = champion_attack_trigger;
-    liz.basic_ability->trigger_payload = (void*) liz.basic_ability.id;
-    liz.basic_ability->end_callback = champion_attack_end;
-    liz.basic_ability->end_payload = (void*) liz.basic_ability.id;
-    liz.basic_ability->targeting_callback = champion_attack_targeting;
-    liz.basic_ability->targeting_payload = (void*) liz.basic_ability.id;
+    scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
+    Caster& caster = scene->registry.get<Caster>(entity);
+
+    caster.attack = std::make_unique<ChampionAttack>();
+    caster.attack->setup(scene, entity, 1.3f, 1.1f, Ability::Type_Attack);
+    caster.attack->entry_gather_function = square_aoe_entry_gather(1);
 }
 
 void draw_champion_dragging_preview(Scene* scene, entt::entity entity) {

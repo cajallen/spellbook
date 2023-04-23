@@ -19,8 +19,10 @@ struct PoseController {
     float time_to_next_index = 0.0f;
     float fractional_state_total;
 
+    float time_to_override = -1.0f;
+
     bool is_active() const;
-    void set_state(AnimationState new_state, float time_in_target = 0.0f);
+    void set_state(AnimationState new_state, float time_in_target = 0.0f, float time_to_override = -1.0f);
     void clear_state();
     void update(float delta_time);
     void progress_in_state();

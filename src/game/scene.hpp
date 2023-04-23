@@ -10,6 +10,7 @@
 #include "game/timer.hpp"
 #include "game/shop.hpp"
 #include "game/player.hpp"
+#include "game/map_targeting.hpp"
 
 
 namespace spellbook {
@@ -18,7 +19,7 @@ struct LizardPrefab;
 struct TilePrefab;
 struct SpawnerPrefab;
 struct ConsumerPrefab;
-struct RoundInfo;
+struct SpawnStateInfo;
 
 struct Scene {
     string           name;
@@ -29,9 +30,10 @@ struct Scene {
     entt::entity     selected_entity;
     Shop shop;
     Player player;
-    RoundInfo* round_info;
+    SpawnStateInfo* spawn_state_info;
     
     bool edit_mode = true; // disables certain features
+    u32 frame = 0;
     float time = 0.0f;
     float delta_time = 0.0f;
     float time_scale = 1.0f;
@@ -42,6 +44,8 @@ struct Scene {
     vector<TimerCallback> timer_callbacks;
 
     umap<v3i, entt::entity> visual_map_entities;
+
+    std::unique_ptr<MapTargeting> targeting;
     
     void setup(const string& name);
     void update();
@@ -55,25 +59,17 @@ struct Scene {
     void model_cleanup(entt::registry&, entt::entity);
     void dragging_cleanup(entt::registry&, entt::entity);
     void health_cleanup(entt::registry&, entt::entity);
-    void lizard_cleanup(entt::registry&, entt::entity);
-    void enemy_cleanup(entt::registry&, entt::entity);
+    void caster_cleanup(entt::registry&, entt::entity);
     void emitter_cleanup(entt::registry&, entt::entity);
 
     void select_entity(entt::entity entity);
 
     // Helper query functions
-    entt::entity get_lizard(v3i);
-    entt::entity get_tile(v2i);
+    bool is_casting_platform(v3i);
     entt::entity get_tile(v3i);
     entt::entity get_spawner(v3i);
     entt::entity get_consumer(v3i);
-    vector<entt::entity> get_enemies(v3i);
     vector<entt::entity> get_any(v3i);
-
-    entt::entity get(v3i, LizardPrefab* t);
-    entt::entity get(v3i, TilePrefab* t);
-    entt::entity get(v3i, SpawnerPrefab* t);
-    entt::entity get(v3i, ConsumerPrefab* t);
 
     bool get_object_placement(v3i& pos);
     bool get_object_placement(v2i pixel_offset, v3i& pos);

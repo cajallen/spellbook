@@ -112,23 +112,33 @@ void transform_system(Scene* scene) {
     auto& registry = scene->registry;
     ZoneScoped;
     // Transform Link
-    for (auto [entity, link, l_transform, m_transform] : registry.view<TransformLink, LogicTransform, ModelTransform>().each()) {
-        // We disable links for dragging
-        if (registry.any_of<Dragging>(entity))
-            continue;
+    {
+        ZoneScopedN("Transform Link");
+        for (auto [entity, link, l_transform, m_transform] : registry.view<TransformLink, LogicTransform, ModelTransform>().each()) {
+            // We disable links for dragging
+            if (registry.any_of<Dragging>(entity))
+                continue;
 
-        float diff = math::abs(math::angle_difference(m_transform.rotation.yaw, l_transform.rotation.yaw));
-        if (diff > 0.01f) {
-            float real_diff = math::min(diff, link.rotate_speed * scene->delta_time);
-            m_transform.set_rotation(euler{.yaw = math::lerp_angle(real_diff / diff, {m_transform.rotation.yaw, l_transform.rotation.yaw})});
+            float diff = math::abs(math::angle_difference(m_transform.rotation.yaw, l_transform.rotation.yaw));
+            if (diff > 0.01f) {
+                float real_diff = math::min(diff, link.rotate_speed * scene->delta_time);
+                m_transform.set_rotation(euler{.yaw = math::lerp_angle(real_diff / diff, {m_transform.rotation.yaw, l_transform.rotation.yaw})});
+            }
+            m_transform.set_translation(l_transform.position + link.offset);
         }
-        
-        m_transform.set_translation(l_transform.position + link.offset);
     }
-    // Apply transforms to renderables
-    for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
-        for (auto& [node, renderable] : model.model_gpu.renderables) {
-            renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
+    {
+        ZoneScopedN("Apply Transform");
+        // Apply transforms to renderables
+        for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
+            // Note, this isn't correct, if the transform is accessed early the dirty flag will clear,
+            // but it's just for investigating optimization options
+            if (!transform.dirty)
+                continue;
+            for (auto& [node, renderable] : model.model_gpu.renderables) {
+                ZoneScoped;
+                renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
+            }
         }
     }
 }
@@ -139,22 +149,38 @@ void consumer_system(Scene* scene) {
     auto consumees = scene->registry.view<Enemy, LogicTransform>();
 
     for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
-        for (auto [e_consumee, consumee, consumee_transform] : consumees.each()) {
+        Model* model = scene->registry.try_get<Model>(e_consumer);
+        ModelTransform* model_transform = scene->registry.try_get<ModelTransform>(e_consumer);
+
+        if (model && model_transform) {
+            id_ptr<ModelCPU::Node> obelisk_node = {};
+            auto& nodes = model->model_cpu->nodes;
+            for (auto node : nodes) {
+                if (node->name == "Obelisk") {
+                    obelisk_node = node;
+                    break;
+                }
+            }
+            float yaw = scene->time; 
+            float z = 0.1f * (1.0f + math::sin(0.5f * scene->time));
+            obelisk_node->transform = math::translate(v3(0.0f, 0.0f, z)) * math::rotation(euler{.yaw = yaw});
+            obelisk_node->cache_transform();
+        }
+        
+        for (auto [e_consumee, consumee_transform] : consumees.each()) {
             if (scene->registry.any_of<Killed>(e_consumee))
                 continue;
             f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_transform.position.xy);
             if (dist < consumer.consume_distance && !scene->edit_mode) {
                 scene->registry.emplace<Killed>(e_consumee, false, scene->time);
             }
+
         }
     }
 }
 
 void disposal_system(Scene* scene) {
     ZoneScoped;
-    if (scene->edit_mode)
-        return;
-    
     for (auto [entity, transform, drop_chance, killed] : scene->registry.view<LogicTransform, DropChance, Killed>().each()) {
         if (killed.drop) {
             for (auto& entry : drop_chance.entries) {
@@ -169,26 +195,20 @@ void disposal_system(Scene* scene) {
     }
     auto killed = scene->registry.view<Killed>();
     scene->registry.destroy(killed.begin(), killed.end());
+
+    if (scene->edit_mode)
+        return;
 }
 
 void health_system(Scene* scene) {
     ZoneScoped;
     auto healths = scene->registry.view<Health>();
     for (auto [entity, health] : healths.each()) {
-        float dh = 2.0f * (health.buffer_value - health.value) + 0.2f;
-        health.buffer_value = math::max(health.buffer_value - dh * scene->delta_time, health.value);
-
-        auto pos = scene->registry.get<LogicTransform>(entity);
-        
-        if (health.hurt_emitter) {
-            health.hurt_emitter->emitting = health.hurt_until > Input::time;
-            if (health.hurt_emitter->emitting) {
-                float length = math::length(health.hurt_emitter->emitter_cpu.velocity);
-                health.hurt_emitter->emitter_cpu.velocity = length * health.hurt_direction;
-                health.hurt_emitter->emitter_cpu.position = pos.position + v3(0.5f);
-                health.hurt_emitter->update_from_cpu(health.hurt_emitter->emitter_cpu);
-            }
+        for (auto& [dotter, dot] : health.dots) {
+            damage(scene, dotter, entity, dot.value() * scene->delta_time, v3(0.0f));
         }
+        float dh = 6.0f * (health.buffer_value - health.value) + 0.3f;
+        health.buffer_value = math::max(health.buffer_value - dh * scene->delta_time, health.value);
 
         if (scene->registry.any_of<Killed>(entity))
             continue;
@@ -234,13 +254,16 @@ void dragging_system(Scene* scene) {
     ZoneScoped;
     Viewport& viewport = scene->render_scene.viewport;
     // v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-
-    v3i cell;
-    bool has_new_cell = scene->get_object_placement(cell);
-
-
+    
     constexpr f32 raise_speed = 0.10f;
     auto drags = scene->registry.view<LogicTransform, Dragging, Draggable>();
+    
+    v3i cell;
+    bool has_new_cell = false;
+    if (drags.size_hint() > 0) {
+        has_new_cell = scene->get_object_placement(cell);
+    }
+    
     for (auto [entity, transform, drag, draggable] : drags.each()) {
         if (has_new_cell) {
             drag.target_position = v3(cell);
@@ -273,7 +296,7 @@ void dragging_system(Scene* scene) {
     
     auto posers = scene->registry.view<Dragging, PoseController>();
     for (auto [entity, _, poser] : posers.each()) {
-        poser.set_state(AnimationState_Flail, 0.2f);
+        poser.set_state(AnimationState_Flail);
     }
 }
 
@@ -283,20 +306,20 @@ void collision_update_system(Scene* scene) {
     if (scene->edit_mode)
         return;
     
-    auto view = scene->registry.view<ModelTransform, Collision>();
+    auto view = scene->registry.view<LogicTransform, Collision>();
     for (auto it1 = view.begin(); it1 != view.end(); it1++) {
         auto  entity1    = *it1;
-        auto& transform1 = view.get<ModelTransform>(entity1);
+        auto& transform1 = view.get<LogicTransform>(entity1);
         auto& collision1 = view.get<Collision>(entity1);
 
         auto begin2 = it1;
         begin2++;
         for (auto it2 = begin2; it2 != view.end(); it2++) {
             auto entity2 = *it2;
-            auto& transform2 = view.get<ModelTransform>(entity2);
+            auto& transform2 = view.get<LogicTransform>(entity2);
             auto& collision2 = view.get<Collision>(entity2);
 
-            if (math::length(transform1.translation - transform2.translation) < (collision1.radius + collision2.radius)) {
+            if (math::length(transform1.position - transform2.position) < (collision1.radius + collision2.radius)) {
                 if (!collision1.with.contains(entity2))
                     collision1.with.insert(entity2);
                 if (!collision2.with.contains(entity1))
@@ -325,9 +348,11 @@ void spawner_draw_system(Scene* scene) {
 
 void emitter_system(Scene* scene) {
     for (auto [entity, emitter_comp, logic_transform] : scene->registry.view<EmitterComponent, LogicTransform>().each()) {
-        if (emitter_comp.emitter->emitter_cpu.position != logic_transform.position) {
-            emitter_comp.emitter->emitter_cpu.position = logic_transform.position;
-            emitter_comp.emitter->update_from_cpu(emitter_comp.emitter->emitter_cpu);
+        for (auto& [id, emitter_gpu] : emitter_comp.emitters) {
+            if (emitter_gpu->emitter_cpu.position != logic_transform.position) {
+                emitter_gpu->emitter_cpu.position = logic_transform.position;
+                emitter_gpu->update_from_cpu(emitter_gpu->emitter_cpu);
+            }
         }
     }
 }
@@ -364,8 +389,10 @@ void pickup_system(Scene* scene) {
         
         bead_transform.rotation.yaw = pickup.cycle_point * math::TAU;
         bead_transform.rotation.pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f;
-        scene->registry.get<ModelTransform>(entity).rotation.yaw = pickup.cycle_point * math::TAU;
-        scene->registry.get<ModelTransform>(entity).rotation.pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f;
+        scene->registry.get<ModelTransform>(entity).set_rotation(euler{
+            .yaw = pickup.cycle_point * math::TAU,
+            .pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f
+        });
         scene->registry.get<TransformLink>(entity).offset.z = 0.1f * math::sin(pickup.cycle_point * math::TAU) + 0.3f;
     }
 }

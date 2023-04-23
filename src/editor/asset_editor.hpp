@@ -54,6 +54,7 @@ struct AssetEditor : EditorScene {
     EmitterGPU* emitter_gpu = nullptr;
     
     LizardPrefab lizard_prefab;
+    bool force_target = false;
     TilePrefab tile_prefab;
     EnemyPrefab enemy_prefab;
     SpawnerPrefab spawner_prefab;
@@ -64,6 +65,9 @@ struct AssetEditor : EditorScene {
     BeadPrefab bead_prefab;
 
     Tab tab;
+    Tab external_tab_selection;
+
+    Renderable* background_renderable = nullptr;
     
     void setup() override;
     void update() override;

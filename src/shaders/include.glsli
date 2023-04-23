@@ -53,6 +53,26 @@ float srgb_to_linear(float sRGB) {
     return mix(higher, lower, cutoff);
 }
 
+uint to_uint_seed(ivec2 i)
+{
+    return i.x + i.y * 49213191;
+}
+
+uint to_uint_seed(ivec3 i)
+{
+    return i.x + i.y * 496211 + i.z * 49213191;
+}
+
+uint to_uint_seed(float i)
+{
+    return int(i * 4096.f);
+}
+
+uint to_uint_seed(vec2 i)
+{
+    return to_uint_seed(ivec2(i * 4096.f));
+}
+
 uint uint_noise(uint i, uint seed) {
     uint mangled = i;
     mangled *= 0xB5297A4Du;
@@ -69,8 +89,39 @@ float float_noise(uint i, uint seed) {
     return float(uint_noise(i, seed) & 0xffffffu) / 16777215.0;
 }
 
-float map(float value, float min_in, float max_in, float min_out, float max_out) {
-    return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in);
+vec2 vec2_noise_unsigned(uint i, uint seed) {
+    return vec2(float_noise(i+1, seed), float_noise(i+2, seed));
+}
+
+vec2 vec2_noise_signed(uint i, uint seed) {
+    return -1.0 + 2.0 * vec2_noise_unsigned(i, seed);
+}
+
+vec2 vec2_noise_signed(ivec2 i, uint seed) {
+    return vec2_noise_signed(to_uint_seed(i), seed);
+}
+
+float perlin_noise(vec2 pos, uint seed) {
+    ivec2 cell = ivec2(floor(pos));
+    vec2 cell_pos = fract(pos);
+
+    float val = mix(
+        mix(dot(vec2_noise_signed(cell + ivec2(0,0), seed), cell_pos - vec2(0.0,0.0)),
+            dot(vec2_noise_signed(cell + ivec2(1,0), seed), cell_pos - vec2(1.0,0.0)),
+            smoothstep(0.0, 1.0, cell_pos.x)
+        ),
+        mix(dot(vec2_noise_signed(cell + ivec2(0,1), seed), cell_pos - vec2(0.0,1.0)),
+            dot(vec2_noise_signed(cell + ivec2(1,1), seed), cell_pos - vec2(1.0,1.0)),
+            smoothstep(0.0, 1.0, cell_pos.x)
+        ),
+        smoothstep(0.0, 1.0, cell_pos.y)
+    );
+    return val * 0.5 + 0.5;
+}
+
+
+float map_range(float value, float min_in, float max_in, float min_out, float max_out) {
+    return clamp(min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in), min_out, max_out);
 }
 
 #define TAU 6.2831853071

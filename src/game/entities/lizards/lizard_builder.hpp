@@ -18,5 +18,7 @@ void build_water_mage(Scene* scene, entt::entity entity, const LizardPrefab& liz
 
 void draw_champion_dragging_preview(Scene* scene, entt::entity entity);
 void draw_warlock_dragging_preview(Scene* scene, entt::entity entity);
+void draw_assassin_dragging_preview(Scene* scene, entt::entity entity);
+void draw_ranger_dragging_preview(Scene* scene, entt::entity entity);
 
 }

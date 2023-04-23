@@ -7,9 +7,9 @@
 namespace spellbook {
 
 struct Camera {
-    float fov         = 30.0f;
-    v2    clip_planes = {0.5f, 30.0f};
-    float aspect_xy   = 1920.0f / 1080.0f;
+    float fov        = 30.0f;
+    float clip_plane = 0.5f;
+    float aspect_xy  = 1920.0f / 1080.0f;
 
     v3    position;
     euler heading; // euler_rad

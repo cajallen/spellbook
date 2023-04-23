@@ -18,13 +18,12 @@ entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const strin
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
         scene->registry.emplace<ModelTransform>(entity, v3{}, euler{}, v3(scale));
-        scene->registry.emplace<TransformLink>(entity, v3(0.5));
+        scene->registry.emplace<TransformLink>(entity, v3(0.5), 10.0f);
     }
 
-    scene->registry.emplace<EmitterComponent>(entity, 
-        &instance_emitter(scene->render_scene, load_asset<EmitterCPU>(particles_path)), nullptr
-    );
-
+    auto& emitter_comp = scene->registry.emplace<EmitterComponent>(entity, scene);
+    emitter_comp.add_emitter(0, load_asset<EmitterCPU>(particles_path));
+    
     scene->registry.emplace<Projectile>(entity, proj);
     
     return entity;
@@ -40,26 +39,25 @@ void projectile_system(Scene* scene) {
         l_transform.position += velocity;
 
         // Alignment
-        auto m_transform = scene->registry.try_get<ModelTransform>(entity);
-        if (m_transform && math::length(projectile.alignment) > 0.0f) {
-            v3 vr = velocity_dir - math::dot(projectile.alignment, velocity_dir) * projectile.alignment;
-            v3 basis_2 = math::normalize(vr);
-            v3 basis_3 = math::normalize(math::cross(velocity_dir, projectile.alignment));
-            v3 basis_1 = math::normalize(math::cross(basis_2, basis_3));
-            m44 rotation = m44(basis_1.x, basis_2.x, basis_3.x, basis_1.y, basis_2.y, basis_3.y, basis_1.z, basis_2.z, basis_3.z);
+        if (math::length(projectile.alignment) > 0.0f) {
+            float yaw = math::angle_difference(projectile.alignment.xy, velocity_dir.xy);
             
-            m_transform->set_rotation(math::to_euler(rotation));
+            l_transform.rotation = euler{.yaw = yaw};
+            if (projectile.first_frame) {
+                auto m_transform = scene->registry.try_get<ModelTransform>(entity);
+                if (m_transform)
+                    m_transform->set_rotation(l_transform.rotation);
+            }
         }
 
         // Trigger
         float dist = math::distance(v3(projectile.target), l_transform.position);
         if (dist < 0.1f) {
-            projectile.callback(entity, projectile.payload);
-            if (projectile.payload_owned)
-                free(projectile.payload);
+            projectile.callback(entity);
             
             scene->registry.emplace<Killed>(entity);
         }
+        projectile.first_frame = false;
     }
 }
 

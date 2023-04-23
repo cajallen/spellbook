@@ -6,21 +6,19 @@
 
 namespace spellbook {
 
-Timer& add_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*), void* payload, bool allocated_payload, bool permanent) {
-    assert_else(!(callback != nullptr ^ payload != nullptr));
+Timer& add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback, bool permanent) {
     auto& timer = *scene->timers.emplace(name);
     timer.scene = scene;
-    timer.callback = TimerCallback{&timer, callback, payload, allocated_payload};
+    timer.callback = TimerCallback{&timer, callback};
     timer.trigger_every_tick = false;
     timer.one_shot = !permanent;
     return timer;
 }
 
-Timer& add_tween_timer(Scene* scene, const string& name, void(*callback)(Timer*, void*), void* payload, bool allocated_payload, bool permanent) {
-    assert_else(!(callback != nullptr ^ payload != nullptr));
+Timer& add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback, bool permanent) {
     auto& timer = *scene->timers.emplace(name);
     timer.scene = scene;
-    timer.callback = TimerCallback{&timer, callback, payload, allocated_payload};
+    timer.callback = TimerCallback{&timer, callback};
     timer.trigger_every_tick = true;
     timer.one_shot = !permanent;
     return timer;
@@ -28,8 +26,6 @@ Timer& add_tween_timer(Scene* scene, const string& name, void(*callback)(Timer*,
 
 void destroy_timer(Timer* timer) {
     timer->stop();
-    if (timer->callback.allocated_payload)
-        free(timer->callback.payload);
 }
 
 
@@ -97,7 +93,7 @@ void update_timers(Scene* scene) {
         timer.update(scene->delta_time);
     }
     for (auto& timer_callback : scene->timer_callbacks) {
-        timer_callback.callback(timer_callback.timer, timer_callback.payload);
+        timer_callback.callback(timer_callback.timer);
     }
     scene->timer_callbacks.clear();
     for (auto it = scene->timers.begin(); it != scene->timers.end();) {

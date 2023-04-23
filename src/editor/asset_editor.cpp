@@ -13,6 +13,8 @@
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
 
+#include "game/entities/caster.hpp"
+
 namespace spellbook {
 
 ADD_EDITOR_SCENE(AssetEditor);
@@ -31,14 +33,15 @@ void AssetEditor::setup() {
     p_scene->setup("Asset Editor");
     p_scene->set_edit_mode(true);
 
-    p_scene->render_scene.scene_data.ambient = Color(palette::white, 0.20);
+    p_scene->render_scene.scene_data.ambient = Color(palette::white, 0.20f);
     
     fs::path asset_editor_file = fs::path(game.user_folder) / ("asset_editor" + extension(FileType_General));
 
     set_model(new ModelCPU(), Ownership_Owned);
     
     json j = fs::exists(asset_editor_file) ? parse_file(asset_editor_file.string()) : json{};
-    FROM_JSON_MEMBER(tab)
+    if (j.contains("tab"))
+        external_tab_selection = from_jv<Tab>(*j.at("tab"));
     FROM_JSON_MEMBER(model_cpu->file_path)
     else
         model_cpu->file_path = "none";
@@ -57,6 +60,9 @@ void AssetEditor::setup() {
     FROM_JSON_MEMBER(bead_prefab.file_path)
     else
         bead_prefab.file_path = "none";
+    FROM_JSON_MEMBER(lizard_prefab.file_path)
+    else
+        lizard_prefab.file_path = "none";
     
     
     emitter_cpu.mesh = upload_mesh(generate_cube(v3(0.0f), v3(1.0f)));
@@ -75,6 +81,7 @@ void AssetEditor::shutdown() {
     TO_JSON_MEMBER(emitter_cpu.file_path);
     TO_JSON_MEMBER(tile_set.file_path);
     TO_JSON_MEMBER(bead_prefab.file_path);
+    TO_JSON_MEMBER(lizard_prefab.file_path);
     file_dump(j, asset_editor_file.string());
 }
 
@@ -102,17 +109,18 @@ void AssetEditor::switch_tab(Tab new_tab) {
         case (Tab_Model): {
         } break;
         case (Tab_Mesh): {
-            if (mesh_gpu != nullptr);
+            if (mesh_gpu != nullptr)
                 render_scene.delete_renderable(mesh_gpu);
             mesh_gpu = nullptr;
         } break;
         case (Tab_Material): {
-            if (material_gpu != nullptr);
+            if (material_gpu != nullptr)
                 render_scene.delete_renderable(material_gpu);
             material_gpu = nullptr;
         } break;
         case (Tab_Lizard): {
-        
+            if (background_renderable != nullptr)
+                render_scene.delete_renderable(background_renderable);    
         } break;
         case (Tab_Tile): {
         
@@ -132,7 +140,7 @@ void AssetEditor::switch_tab(Tab new_tab) {
             emitter_gpu = nullptr;
         } break;
         case (Tab_TileSet): {
-            p_scene->render_scene.render_grid = true;
+            p_scene->render_scene.render_grid = false;
         } break;
         case (Tab_Drop): {
         } break;
@@ -158,7 +166,12 @@ void AssetEditor::switch_tab(Tab new_tab) {
             material_gpu = &render_scene.quick_material(material_cpu, false);
         } break;
         case (Tab_Lizard): {
-            if (!lizard_prefab.file_path.empty())
+            auto cube = generate_cube(v3(0.5f, 0.5f, -0.5f), v3(3.0f, 3.0f, 0.5f));
+            auto cube_name = upload_mesh(cube);
+            auto background_mat_name = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            background_renderable = &p_scene->render_scene.quick_mesh(cube_name, background_mat_name, false);
+            
+            if (!lizard_prefab.file_path.empty() && lizard_prefab.file_path != "none")
                 instance_prefab(p_scene, lizard_prefab, v3i(0));
         } break;
         case (Tab_Tile): {
@@ -207,12 +220,7 @@ void AssetEditor::switch_tab(Tab new_tab) {
 
 template<typename T>
 void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, T* asset_value, const std::function<void(bool)>& callback = {}) {
-    if (ImGui::BeginTabItem(name.c_str())) {
-        if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
-            asset_editor.switch_tab(type);
-                    
-        bool changed = inspect(asset_value);
-                    
+    if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Save##AssetTab")) {
             save_asset(*asset_value);
         }
@@ -221,6 +229,11 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, T*
             *asset_value = load_asset<T>(asset_value->file_path, false, true);
             asset_editor.switch_tab(type);
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
+            asset_editor.switch_tab(type);
+        bool changed = inspect(asset_value);
+                    
         if (callback)
             callback(changed);
         ImGui::EndTabItem();
@@ -229,12 +242,12 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, T*
 
 template<>
 void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, ModelCPU** asset_value, const std::function<void(bool)>& callback) {
-    if (ImGui::BeginTabItem(name.c_str())) {
+    if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type) {
             asset_editor.switch_tab(type);
         }
         
-        bool changed = inspect(*asset_value, m44::identity(), &asset_editor.p_scene->render_scene);
+        bool changed = inspect(*asset_value, &asset_editor.p_scene->render_scene);
         if (ImGui::Button("Save##AssetTab")) {
             save_asset(**asset_value);
         }
@@ -262,11 +275,11 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Mo
 
 template<>
 void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, EmitterCPU* asset_value, const std::function<void(bool)>& callback) {
-    if (ImGui::BeginTabItem(name.c_str())) {
+    if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
             asset_editor.switch_tab(type);
         
-        bool changed = inspect(asset_value);
+        bool changed = inspect(asset_editor.p_scene, asset_value);
                     
         if (ImGui::Button("Save##AssetTab")) {
             save_asset(*asset_value);
@@ -286,7 +299,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Em
 
 template<>
 void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, VisualTileSet* asset_value, const std::function<void(bool)>& callback) {
-    if (ImGui::BeginTabItem(name.c_str())) {
+    if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Reload##AssetTab") || asset_editor.tab != type)
             asset_editor.switch_tab(type);
         
@@ -308,7 +321,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Vi
 
 void AssetEditor::window(bool* p_open) {
     ZoneScoped;
-
+    
     if (ImGui::Begin("Asset Editor", p_open)) {
         if (ImGui::BeginTabBar("Asset Types")) {
             asset_tab(*this, ICON_FA_SITEMAP " Model", Tab_Model, &model_cpu, [this](bool changed) {
@@ -336,12 +349,31 @@ void AssetEditor::window(bool* p_open) {
                     game.renderer.material_cache[hash_string(material_gpu->material_asset_path)].update_from_cpu(material_cpu);
             });
             asset_tab(*this, ICON_FA_USER " Lizard", Tab_Lizard, &lizard_prefab, [this](bool changed) {
+                if (ImGui::Checkbox("Force Target", &force_target)) {
+                    if (force_target) {
+                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
+                            caster.taunt.set(0, v3i(3,0,0));
+                        }
+                    } else {
+                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
+                            caster.taunt.reset(0);
+                        }
+                    }
+                }
+                if (!force_target) {
+                    if (ImGui::Button("Cast")) {
+                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
+                            caster.ability->request_cast();
+                        }
+                    }
+                }
                 auto camera = p_scene->render_scene.viewport.camera;
                 auto line_mesh = generate_formatted_line(camera,
                 {
                     {v3(0.f, 0.f, 0.f), palette::gray_4, 0.03f},
                     {lizard_prefab.default_direction, palette::gray_4, 0.03f}
                 });
+
                 
                 p_scene->render_scene.quick_mesh(line_mesh, true, true);
             });
@@ -360,6 +392,7 @@ void AssetEditor::window(bool* p_open) {
         }
     }
     ImGui::End();
+    external_tab_selection = Tab_None;
 }
 
 

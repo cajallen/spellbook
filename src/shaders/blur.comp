@@ -1,0 +1,72 @@
+#version 450
+#pragma shader_stage(compute)
+
+#include "include.glsli"
+
+layout(binding = 0, rgba16f) uniform image2D u_source;
+layout(binding = 1, rgba16f) uniform writeonly image2D u_target;
+
+layout(constant_id = 0) const int target_width	= 0;
+layout(constant_id = 1) const int target_height = 0;
+
+layout(push_constant) uniform uPushConstant {
+    int axis;
+} pc;
+
+const int NUM_TAPS = 31;
+const float samples[NUM_TAPS] = float[](
+  0.035689323939414236,
+  0.03554853681064839,
+  0.03512994200575232,
+  0.034443315845370026,
+  0.0335045170464862,
+  0.032334957412872165,
+  0.030960765359302846,
+  0.029411801661012135,
+  0.02772057560924729,
+  0.02592111373669681,
+  0.024047833847970823,
+  0.02213447436176482,
+  0.02021312330293506,
+  0.01831338323962931,
+  0.016461698753504728,
+  0.014680862446761173,
+  0.012989704819836446,
+  0.01140296332872424,
+  0.009931317165346901,
+  0.008581567257375865,
+  0.00735693593758302,
+  0.006257457789310416,
+  0.005280432268775135,
+  0.0044209096303739785,
+  0.003672184125691222,
+  0.003026272031996736,
+  0.002474356386670846,
+  0.0020071849648901534,
+  0.0016154126831578056,
+  0.0012898839458764099,
+  0.0010218542547294266
+);
+
+layout (local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+
+    float weight_sum = 0.0;
+    float value_sum = 0.0;
+    
+    ivec2 axis = pc.axis == 0 ? ivec2(1, 0) : ivec2(0, 1);
+    
+    for (int i = -NUM_TAPS; i < NUM_TAPS; i++) {
+        ivec2 sample_coord = coord + axis * i;
+        if (sample_coord.x < 0 || sample_coord.x >= target_width)
+            continue;
+        if (sample_coord.y < 0 || sample_coord.y >= target_height)
+            continue;
+        
+        float weight = samples[abs(i)];
+        weight_sum += weight;
+        value_sum += weight * imageLoad(u_source, sample_coord).r;
+    }
+    imageStore(u_target, coord, vec4(vec3(value_sum / weight_sum), 1.0)); 
+}

@@ -7,11 +7,14 @@
 #include "general/color.hpp"
 #include "general/string.hpp"
 #include "general/json.hpp"
+#include "general/matrix.hpp"
+#include "general/quaternion.hpp"
 #include "renderer/vertex.hpp"
 #include "renderer/image.hpp"
 
 
 namespace spellbook {
+struct Scene;
 struct RenderScene;
 
 struct EmitterCPU {
@@ -20,6 +23,7 @@ struct EmitterCPU {
     v3 offset = v3(0.0f);
     v3 position = v3(0.0f);
     v3 velocity = v3(0.0f);
+    quat rotation = quat();
     float damping = 1.0f;
     float scale = 1.0f;
     float duration = 1.0f;
@@ -36,17 +40,22 @@ struct EmitterCPU {
     v3 position_random = v3(0.0f);
     float scale_random = 0.0f;
     float duration_random = 0.0f;
+    float damping_random = 0.0f;
 
     v3 alignment_vector = v3(0.0f);
     v3 alignment_random = v3(0.0f);
 
     string mesh;
     string material;
+
+    void set_velocity_direction(v3 dir);
 };
 
 struct EmitterSettings {
-    v4 position_scale;
+    m44GPU pose_matrix = (m44GPU) m44::identity();
     v4 velocity_damping;
+
+    v4 scale_unused;
 
     v4 position_scale_random;
     v4 velocity_damping_random;
@@ -92,7 +101,7 @@ struct EmitterGPU {
 EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu);
 void deinstance_emitter(EmitterGPU& emitter, bool wait_despawn = true);
 
-bool inspect(EmitterCPU* emitter);
+bool inspect(Scene* scene, EmitterCPU* emitter);
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);

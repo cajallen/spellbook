@@ -11,6 +11,7 @@
 namespace spellbook {
 
 struct Scene;
+struct EmitterCPU;
 struct EmitterGPU;
 struct Timer;
 
@@ -29,12 +30,14 @@ struct LogicTransform {
 };
 
 struct ModelTransform {
-    v3    translation = v3(0.0f);
-    euler rotation    = euler();
-    v3    scale       = v3(1.0f);
-
+        v3    translation = v3(0.0f);
+        euler rotation    = euler();
+        v3    scale       = v3(1.0f);
+        m44 transform;
     bool dirty = true;
-    m44 transform;
+
+    // ModelTransform();
+    // ModelTransform(v3 translation, euler rotation = {}, v3 scale = {});
     void set_translation(const v3& v);
     void set_rotation(const euler& e);
     void set_scale(const v3& v);
@@ -53,20 +56,20 @@ struct GridSlot {
 };
 
 struct Health {
+    Scene* scene;
     float value = 0.0f;
     float buffer_value = 0.0f;
     
-    Stat max_health = {};
-    EmitterGPU* hurt_emitter = nullptr;
-    v3 hurt_direction = {};
-    float hurt_until = 0.0f;
+    string emitter_cpu_path;
 
-    Stat burn = {};
-    Stat regen = {};
+    Stat max_health;
+    Stat damage_taken_multiplier;
+    Stat regen;
+    umap<entt::entity, Stat> dots;
 
-    Health(float health_value, RenderScene* render_scene, const string& hurt_emitter_path = "");
-    void damage(float amount, v3 direction);
+    Health(float health_value, Scene* scene, const string& hurt_emitter_path = "");
 };
+void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction);
 
 struct Killed {
     bool drop = false;
@@ -93,11 +96,25 @@ struct Collision {
 };
 
 struct EmitterComponent {
-    EmitterGPU* emitter;
-    Timer* timer;
+    Scene* scene;
+    umap<u64, EmitterGPU*> emitters;
+
+    void add_emitter(u64 id, const EmitterCPU& emitter_cpu);
+    void remove_emitter(u64 id);
 };
+
+struct CastingPlatform {
+    bool charged = true;
+};
+
+struct AddToInspect {};
 
 void inspect_components(Scene* scene, entt::entity entity);
 void preview_3d_components(Scene* scene, entt::entity entity);
+
+void remove_dragging_impair(Scene* scene, entt::entity entity);
+void remove_dragging_impair(entt::registry& reg, entt::entity entity);
+
+entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 location, float health_value, const string& hurt_path);
 
 }

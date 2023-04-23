@@ -8,10 +8,12 @@ enum AnimationState {
     AnimationState_Walking,
     AnimationState_AttackInto,
     AnimationState_AttackOut,
-    AnimationState_AttackAgain,
+    AnimationState_Attack2Into,
+    AnimationState_Attack2Out,
     AnimationState_CastInto,
     AnimationState_CastOut,
     AnimationState_CastAgain,
+    AnimationState_Dying,
     AnimationStateCount
 };
 

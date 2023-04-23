@@ -61,22 +61,26 @@ void ShopGenerator::inspect() {
 }
 
 void FirstFreeShopGenerator::setup(Scene* scene) {
-    round_info = scene->round_info;
-    first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
-    first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbliz"}, 1.0f);
+    round_info = scene->spawn_state_info;
+    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
+    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbliz"}, 1.0f);
+    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/assassin.sbliz"}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/ranger.sbliz"}, 1.0f);
 
     warehouse.add_entry({Bead_Oak, 3, "lizards/champion.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 5, "lizards/warlock.sbliz"}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 4, "lizards/assassin.sbliz"}, 1.0f);
 
     warehouse.add_entry({Bead_Malachite, 3, "lizards/champion.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Malachite, 1, "lizards/warlock.sbliz"}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 2, "lizards/assassin.sbliz"}, 1.0f);
 }
 vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
         return &out_shop;
 
     for (u32 i = 0; i < shop_size; i++) {
-        auto entry = round_info->round_number > 0 ? warehouse.get_entry() : first_warehouse.get_entry();
+        auto entry = round_info->round_number >= 0 ? warehouse.get_entry() : first_warehouse.get_entry();
         if (entry == nullptr)
             break;
         out_shop.push_back(entry);
@@ -84,7 +88,7 @@ vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     return &out_shop;
 }
 void FirstFreeShopGenerator::purchase(u32 index) {
-    if (round_info->round_number == 0) {
+    if (round_info->round_number == -1) {
         reset();
         round_info->advance_round();
     } else {
@@ -93,7 +97,7 @@ void FirstFreeShopGenerator::purchase(u32 index) {
 }
 
 void FirstFreeShopGenerator::reset() {
-    if (round_info->round_number > 0) {
+    if (round_info->round_number >= 0) {
         for (u32 i = 0; i < out_shop.size(); i++) {
             u32 j = warehouse.entries.index(*out_shop[i]);
             warehouse.stock[j]++;
@@ -111,7 +115,7 @@ void FirstFreeShopGenerator::inspect() {
 
 
 void SimpleShopGenerator::setup(Scene* scene) {
-    round_info = scene->round_info;
+    round_info = scene->spawn_state_info;
     warehouse.add_entry({Bead_Oak, 4, "lizards/zord.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 6, "lizards/rokko.sbliz"}, 1.0f);
     warehouse.add_entry({Bead_Oak, 6, "lizards/merque.sbliz"}, 1.0f);

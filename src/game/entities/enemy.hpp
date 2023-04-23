@@ -31,13 +31,14 @@ struct EnemyPrefab {
     DropChance drops;
 };
 
-struct Enemy {
-    vector<v3i> pathing = {};
-    Stat max_speed = {};
+struct Traveler {
+    vector<v3i> pathing;
+    
+    Stat max_speed;
+    Stat range;
+};
 
-    std::pair<bool, v3i> position_target;
-    std::pair<u64, entt::entity> taunt;
-    id_ptr<Ability> ability;
+struct Enemy {
 };
 
 JSON_IMPL(EnemyPrefab, type, model_path, hurt_path, max_health, max_speed, scale, drops);
@@ -46,5 +47,6 @@ entt::entity instance_prefab(Scene*, const EnemyPrefab&, v3i location);
 bool inspect(EnemyPrefab*);
 void travel_system(Scene* scene);
 
+v3 predict_pos(Traveler& traveler, v3 pos, float time);
 
 }

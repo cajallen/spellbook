@@ -22,5 +22,19 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
 void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_1, v3 axis_2, Color color, float width);
 
+struct PaletteCreateInfo {
+    range saturation_range = {0.1f, 0.8f};
+    int saturation_shifts = 60;
+    
+    range value_range = {0.0f, 0.7f};
+    int value_shifts = 120;
+
+    int palettes = 1;
+    int hue_shifts = 400;
+    float hue_shift_per_y = 1.0f;
+};
+
+void generate_palette(const PaletteCreateInfo& info);
+
 }
 

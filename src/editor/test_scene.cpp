@@ -1,5 +1,7 @@
 ﻿#include "test_scene.hpp"
 
+#include <tracy/Tracy.hpp>
+
 #include "pose_widget.hpp"
 #include "game/game.hpp"
 #include "general/matrix_math.hpp"
@@ -17,6 +19,7 @@ void TestScene::update() {
 }
 
 void TestScene::window(bool* p_open) {
+    ZoneScoped;
     if (ImGui::Begin("Test Scene", p_open)) {
         
         static v3 position;

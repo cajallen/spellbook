@@ -93,7 +93,7 @@ void SkeletonCPU::load_pose(PoseSet::Entry& entry, float offset) {
     current_pose = entry.name;
     for (std::unique_ptr<Bone>& bone : bones) {
         bone->ease_mode = entry.ease_mode;
-        if (offset == 0.0f) {
+        if (offset <= 0.0f) {
             bone->start = entry.pose[bone->name];
             bone->target.position.time = -1.0f;
             bone->target.rotation.time = -1.0f;
@@ -212,10 +212,12 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
         string enum_name = string(magic_enum::enum_name(AnimationState(i)));
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(enum_name.c_str())) {
-            int load_pose;
+            int load_pose = INT_MAX;
             changed |= inspect(&prefab->poses[type], &load_pose);
-            if (load_pose > 0) {
+            if (load_pose < prefab->poses[type].entries.size()) {
                 skeleton_cpu->load_pose(prefab->poses[type].entries[load_pose], 0.0f);
+            } else {
+                assert_else(load_pose == INT_MAX);
             }
             ImGui::TreePop();
         }
@@ -274,7 +276,7 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
     for (int i = 0; i < pose_set->entries.size(); i++) {
         ImGui::PushID(i);
         if (load_pose) {
-            *load_pose = -1;
+            *load_pose = INT_MAX;
             if (ImGui::Button(ICON_FA_CAMERA))
                 *load_pose = i;
             ImGui::SameLine();

@@ -7,11 +7,14 @@
 #include "general/file.hpp"
 #include "general/logger.hpp"
 #include "editor/console.hpp"
+#include "editor/pose_widget.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/assets/mesh_asset.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
+#include "general/matrix_math.hpp"
+#include "game/scene.hpp"
 
 namespace spellbook {
 
@@ -64,8 +67,12 @@ void deinstance_emitter(EmitterGPU& emitter, bool wait_despawn) {
 }
 
 void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
-    settings.position_scale.xyz = new_emitter.position + new_emitter.offset - 0.5f * new_emitter.position_random;
-    settings.position_scale.w = new_emitter.scale - 0.5f * new_emitter.scale_random;
+    settings.pose_matrix = m44GPU(
+        math::translate(new_emitter.position) *
+        math::rotation(new_emitter.rotation) *
+        math::translate(new_emitter.offset - 0.5f * new_emitter.position_random)
+    );
+    settings.scale_unused.x = new_emitter.scale - 0.5f * new_emitter.scale_random;
     settings.velocity_damping.xyz = new_emitter.velocity - 0.5f * new_emitter.velocity_random;
     settings.velocity_damping.w = new_emitter.damping;
     settings.life = new_emitter.duration - 0.5f * new_emitter.duration_random;
@@ -147,15 +154,17 @@ void EmitterGPU::update_size() {
     game.renderer.enqueue_setup(std::move(fut));
 }
 
-bool inspect(EmitterCPU* emitter) {
+bool inspect(Scene* scene, EmitterCPU* emitter) {
     bool changed = false;
     ImGui::PathSelect("File", &emitter->file_path, "resources", FileType_Emitter);
-    changed |= ImGui::DragFloat3("Position", emitter->position.data, 0.01f);
+    PoseWidgetSettings settings {scene->render_scene};
+    changed |= pose_widget((u64) emitter, &emitter->position, &emitter->rotation, settings);
     changed |= ImGui::DragFloat3("Offset", emitter->offset.data, 0.01f);
     changed |= ImGui::DragFloat3("Offset Random", emitter->position_random.data, 0.01f);
     changed |= ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
     changed |= ImGui::DragFloat3("Velocity Random", emitter->velocity_random.data, 0.01f);
     changed |= ImGui::DragFloat("Damping", &emitter->damping, 0.01f);
+    changed |= ImGui::DragFloat("Damping Random", &emitter->damping_random, 0.01f);
 
     changed |= ImGui::DragFloat3("Alignment", emitter->alignment_vector.data, 0.01f);
     changed |= ImGui::DragFloat3("Alignment Random", emitter->alignment_random.data, 0.01f);
@@ -241,5 +250,10 @@ void upload_dependencies(EmitterGPU& renderable) {
         }
     }
 }
+
+void EmitterCPU::set_velocity_direction(v3 dir) {
+    velocity = math::length(velocity) * math::normalize(dir);
+}
+
 
 }

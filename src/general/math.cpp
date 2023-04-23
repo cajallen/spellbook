@@ -247,6 +247,14 @@ s32 ffsb(s32 input) {
     return -1;
 }
 
+s32 csb(u8 input) {
+    return std::popcount(input);
+}
+
+s32 csb(u32 input) {
+    return std::popcount(input);
+}
+
 s32 csb(s32 input) {
     s32 n = 0;
     for (s32 i = 0; i < sizeof(s32) * 8; i++) {
@@ -321,6 +329,18 @@ bool ray_intersects_aabb(v2 rstart, v2 rdir, v2 bstart, v2 bend, float* out_dist
     if (out_dist != nullptr)
         *out_dist = math::max(0.0f, tmin);
     return tmax >= math::max(0.0f, tmin) && tmin < FLT_MAX;
+}
+
+v3 rotate(v3 v, u32 cardinal_rotation) {
+    if (cardinal_rotation % 4 == 0)
+        return v;
+    if (cardinal_rotation % 4 == 1)
+        return v3{-v.y, v.x, v.z};
+    if (cardinal_rotation % 4 == 2)
+        return v3{-v.x, -v.y, v.z};
+    if (cardinal_rotation % 4 == 3)
+        return v3{v.y, -v.x, v.z};
+    return v;
 }
 
 } // namespace math

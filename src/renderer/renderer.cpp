@@ -30,7 +30,7 @@ namespace spellbook {
 Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
-        .request_validation_layers(true)
+        .request_validation_layers(false)
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,
@@ -66,7 +66,8 @@ Renderer::Renderer() : imgui_data() {
     selector.set_surface(surface)
             .set_minimum_version(1, 0)
             .set_required_features(vkfeatures)
-            .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+            .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+            .add_required_extension(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
     auto phys_ret = selector.select();
     assert_else(phys_ret.has_value());
     vkb::PhysicalDevice vkbphysical_device = phys_ret.value();
@@ -89,6 +90,7 @@ Renderer::Renderer() : imgui_data() {
     vk11features.shaderDrawParameters = true;
     VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR, .synchronization2 = true};
+    
     device_builder = device_builder.add_pNext(&vk12features).add_pNext(&vk11features).add_pNext(&sync_feat);
     auto dev_ret   = device_builder.build();
     assert_else(dev_ret.has_value());
@@ -146,6 +148,11 @@ void Renderer::setup() {
         vuk::PipelineBaseCreateInfo pci;
         pci.add_glsl(get_contents("src/shaders/depth_outline.comp"), "src/shaders/depth_outline.comp");
         game.renderer.context->create_named_pipeline("postprocess", pci);
+    }
+    {
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("src/shaders/blur.comp"), "src/shaders/blur.comp");
+        game.renderer.context->create_named_pipeline("blur", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
@@ -391,6 +398,7 @@ TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
 
 
 void Renderer::debug_window(bool* p_open) {
+    ZoneScoped;
     if (ImGui::Begin("Renderer", p_open)) {
         ImGui::Text(fmt_("Window Size: {}", window_size).c_str());
 
@@ -460,7 +468,7 @@ void FrameTimer::inspect() {
     for (int n = 0; n < filled; n++)
         average += delta_times[n];
     average /= (f32) filled;
-    string overlay = fmt_("FPS: {}", 1.0f / average);
+    string overlay = fmt_("FPS: {:.1f}", 1.0f / average);
     ImGui::PlotLines("DT", delta_times.data(), filled, ptr, overlay.c_str(), 0.0f, 0.1f, ImVec2(0, 80.0f));
 }
 

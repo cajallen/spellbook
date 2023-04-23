@@ -80,4 +80,21 @@ quat slerp(quat x, quat y, float t) {
     return (sin((1.0f - t) * angle) * x + sin(t * angle) * z) / sin(angle);
 }
 
+f32 length(quat v) {
+    return sqrt(math::dot(v, v));
+}
+
+quat normalize(quat q) {
+    return q / math::length(q);
+}
+
+quat quat_between(v3 from, v3 to) {
+    quat q;
+    v3 a = math::cross(from, to);
+    q.xyz = a;
+    q.w = math::sqrt(math::pow(math::length(from), 2.0f) * math::pow(math::length(to), 2.0f) + math::dot(from, to));
+    return math::normalize(q);
+}
+
+
 }

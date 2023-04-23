@@ -13,7 +13,8 @@ enum TileType {
     TileType_TowerSlot,
     TileType_Path,
     TileType_Scenery,
-    TileType_Ramp
+    TileType_Ramp,
+    TileType_CastingPlatform
 };
 
 struct TilePrefab {

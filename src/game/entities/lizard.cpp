@@ -21,8 +21,15 @@ void draw_lizard_dragging_preview(Scene* scene, entt::entity entity) {
     switch (lizard.type) {
         case LizardType_Champion:
             draw_champion_dragging_preview(scene, entity);
+            break;
         case LizardType_Warlock:
             draw_warlock_dragging_preview(scene, entity);
+            break;
+        case LizardType_Assassin:
+            draw_assassin_dragging_preview(scene, entity);
+            break;
+        case LizardType_Ranger:
+            draw_ranger_dragging_preview(scene, entity);
         break;
         default:
             console_error(fmt_("Unknown lizard type: {}", magic_enum::enum_name(lizard.type)), "game.lizard", ErrorType_Warning);
@@ -31,43 +38,29 @@ void draw_lizard_dragging_preview(Scene* scene, entt::entity entity) {
 
 entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3i location) {
     static int i      = 0;
-    auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", "lizard", i++));
-    
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(lizard_prefab.model_path));
-    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
-    
-    scene->registry.emplace<LogicTransform>(entity, v3(location));
-    scene->registry.emplace<ModelTransform>(entity);
-    scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
+    auto       entity = setup_basic_unit(scene, lizard_prefab.model_path, v3(location), lizard_prefab.max_health, lizard_prefab.hurt_path);
     scene->registry.emplace<Draggable>(entity);
-    auto& poser = scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton);
-    auto& health = scene->registry.emplace<Health>(entity, lizard_prefab.max_health, &scene->render_scene, lizard_prefab.hurt_path);
-    scene->registry.emplace<Impairs>(entity);
 
-    poser.set_state(AnimationState_Idle, 0.0f);
-    health.regen = Stat(lizard_prefab.health_regen);
+    
+    PoseController* poser = scene->registry.try_get<PoseController>(entity);
+    if (poser)
+        poser->set_state(AnimationState_Idle, 0.0f);
+    Health& health = scene->registry.get<Health>(entity);
+    health.regen = Stat(scene, lizard_prefab.health_regen);
     
     switch (lizard_prefab.type) {
-        // case LizardType_Bulwark:
-        //     build_bulwark(scene, entity, lizard_prefab);
         case LizardType_Barbarian:
             build_barbarian(scene, entity, lizard_prefab);
             break;
         case LizardType_Champion:
             build_champion(scene, entity, lizard_prefab);
             break;
-        // case LizardType_Thief:
-        //     build_thief(scene, entity, lizard_prefab);
         case LizardType_Assassin:
             build_assassin(scene, entity, lizard_prefab);
             break;
         case LizardType_Ranger:
             build_ranger(scene, entity, lizard_prefab);
             break;
-        // case LizardType_SacrificeSupport:
-        //     build_sacrifice_support(scene, entity, lizard_prefab);
         case LizardType_IllusionMage:
             build_illusion_mage(scene, entity, lizard_prefab);
             break;
@@ -98,23 +91,5 @@ bool inspect(LizardPrefab* lizard_prefab) {
     return changed;
 }
 
-void lizard_targeting_system(Scene* scene) {
-    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
-        if (!lizard.basic_ability->post_trigger_timer->ticking && !lizard.basic_ability->pre_trigger_timer->ticking && lizard.basic_ability->targeting_callback)
-            lizard.basic_ability->targeting_callback(lizard.basic_ability->targeting_payload);
-    }
-}
-
-void lizard_casting_system(Scene* scene) {
-    for (auto [entity, lizard] : scene->registry.view<Lizard>().each()) {
-        Impairs* impairs = scene->registry.try_get<Impairs>(entity);
-        if (impairs)
-            if (impairs->is_impaired(ImpairType_NoCast))
-                continue;
-        
-        if (lizard.basic_ability->has_target && lizard.basic_ability->ready_to_cast())
-            lizard.basic_ability->request_cast();
-    }
-}
 
 }

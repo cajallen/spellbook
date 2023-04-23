@@ -30,6 +30,7 @@ struct vector {
     template <typename S>
     void append_data(const S& s); 
 
+    T* remove(T* it, bool unordered = true);
     template <typename Predicate>
     void remove_if(Predicate pr, bool unordered = true);
     void remove_index(u32 i, bool unordered = true);
@@ -160,6 +161,18 @@ void vector<T>::remove_if(Predicate predicate, bool unordered) {
             else
                 i++;
         }
+    }
+}
+
+template <typename T>
+T* vector<T>::remove(T* it, bool unordered) {
+    if (unordered) {
+        if (it + 1 < end())
+            std::swap(*it, this->back());
+        this->remove_back();
+        return it;
+    } else {
+        return internal.erase(it);
     }
 }
 

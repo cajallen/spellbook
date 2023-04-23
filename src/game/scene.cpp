@@ -10,6 +10,7 @@
 #include "general/bitmask_3d.hpp"
 #include "renderer/draw_functions.hpp"
 #include "editor/console.hpp"
+#include "entities/caster.hpp"
 #include "game/game.hpp"
 #include "game/systems.hpp"
 #include "game/pose_controller.hpp"
@@ -34,14 +35,10 @@ void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
         impairs->boolean_impairs[Dragging::magic_number | u32(entity)] = ImpairType_NoCast;
     }
 
-    auto liz = registry.try_get<Lizard>(entity);
-    if (liz) {
-        liz->basic_ability->stop_casting();
-    }
-
-    auto enemy = registry.try_get<Enemy>(entity);
-    if (enemy) {
-        enemy->ability->stop_casting();
+    auto caster = registry.try_get<Caster>(entity);
+    if (caster->casting()) {
+        caster->attack->stop_casting();
+        caster->ability->stop_casting();
     }
 }
 
@@ -50,40 +47,51 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     auto& l_transform = registry.get<LogicTransform>(entity);
     if (math::length(l_transform.position - math::round(dragging.potential_logic_position)) > 0.1f)
         player.bank.beads[Bead_Quartz]--;
+    
     l_transform.position = math::round(dragging.potential_logic_position);
 
+    constexpr float drag_fade_duration = 0.15f;
+    
     auto poser = registry.try_get<PoseController>(entity);
     if (poser) {
-        poser->set_state(AnimationState_Idle);
+        poser->set_state(AnimationState_Idle, 0.0f, drag_fade_duration);
     }
 
-    auto impairs = registry.try_get<Impairs>(entity);
-    if (impairs) {
-        impairs->boolean_impairs.erase(Dragging::magic_number | u32(entity));
+    bool remain_impaired = false;
+    if (is_casting_platform(math::round_cast(dragging.potential_logic_position))) {
+        l_transform.position += v3(0.0f, 0.0, 0.1f);
+
+        auto caster = registry.try_get<Caster>(entity);
+        if (caster) {
+            Ability* ability = &*caster->ability;
+            add_timer(caster->ability->scene, "drag_cast_delay",
+                [ability](Timer* timer) {
+                    ability->request_cast();
+                }, true
+            ).start(drag_fade_duration);
+            caster->ability->request_cast();
+            remain_impaired = true;
+        }
+    }
+
+    if (!remain_impaired) {
+        remove_dragging_impair(registry, entity);
     }
 }
 
 void Scene::health_cleanup(entt::registry& registry, entt::entity entity) {
     auto& health = registry.get<Health>(entity);
-    if (health.hurt_emitter) {
-        deinstance_emitter(*health.hurt_emitter, true);
-    }
 }
 
-void Scene::lizard_cleanup(entt::registry& registry, entt::entity entity) {
-    auto& lizard = registry.get<Lizard>(entity);
-    destroy_ability(this, lizard.basic_ability);
+void Scene::caster_cleanup(entt::registry& registry, entt::entity entity) {
+    auto& caster = registry.get<Caster>(entity);
 }
 
-
-void Scene::enemy_cleanup(entt::registry& registry, entt::entity entity) {
-    auto& enemy = registry.get<Enemy>(entity);
-    destroy_ability(this, enemy.ability);
-}
 
 void Scene::emitter_cleanup(entt::registry& registry, entt::entity entity) {
     auto& emitter = registry.get<EmitterComponent>(entity);
-    deinstance_emitter(*emitter.emitter, true);
+    for (auto& [id, emitter_gpu] : emitter.emitters)
+        deinstance_emitter(*emitter_gpu, true);
 }
 
 
@@ -101,21 +109,24 @@ void Scene::setup(const string& input_name) {
     registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
     registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
     registry.on_destroy<Health>().connect<&Scene::health_cleanup>(*this);
-    registry.on_destroy<Lizard>().connect<&Scene::lizard_cleanup>(*this);
-    registry.on_destroy<Enemy>().connect<&Scene::enemy_cleanup>(*this);
+    registry.on_destroy<Caster>().connect<&Scene::caster_cleanup>(*this);
     registry.on_destroy<EmitterComponent>().connect<&Scene::emitter_cleanup>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
 
-    round_info = new RoundInfo();
-    player.bank.beads[Bead_Quartz] = 10;
+    spawn_state_info = new SpawnStateInfo();
+    player.bank.beads[Bead_Quartz] = 2;
+
+    targeting = std::make_unique<MapTargeting>();
+    targeting->scene = this;
 }
 
 void Scene::update() {
 	ZoneScoped;
     
     delta_time = Input::delta_time * time_scale;
+    frame++;
     time += delta_time;
 
     update_timers(this);
@@ -128,8 +139,7 @@ void Scene::update() {
     spawner_system(this);
     travel_system(this);
 
-    lizard_targeting_system(this);
-    lizard_casting_system(this);
+    caster_system(this);
     projectile_system(this);
 
     pickup_system(this);
@@ -152,13 +162,13 @@ void Scene::update() {
 }
 
 void Scene::set_edit_mode(bool to) {
-    render_scene.render_grid = to;
+    render_scene.render_grid = false;
     render_scene.render_widgets = to;
     edit_mode = to;
 }
 
 void Scene::cleanup() {
-    delete round_info;
+    delete spawn_state_info;
     
     controller.cleanup();
 	render_scene.cleanup(*game.renderer.global_allocator);
@@ -191,12 +201,15 @@ void Scene::inspect_entity(entt::entity entity) {
 void Scene::settings_window(bool* p_open) {
     ZoneScoped;
 	if (ImGui::Begin((name + " Info").c_str(), p_open)) {
+        ImGui::SliderFloat("Time Scale", &time_scale, 0.01f, 20.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+	    
 		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
 		if (ImGui::BeginTabBar("SceneTabs", tab_bar_flags)) {
 			if (ImGui::BeginTabItem("Entities")) {
 			    auto named_entities = registry.view<Name>();
 				for (auto it = named_entities.rbegin(), last = named_entities.rend(); it != last; ++it)
-					inspect_entity(*it);
+				    if (!registry.any_of<AddToInspect>(*it))
+                        inspect_entity(*it);
 
 			    ImGui::Dummy(ImVec2{1.0f, 400.0f});
 				ImGui::EndTabItem();
@@ -221,7 +234,7 @@ void Scene::settings_window(bool* p_open) {
     
     if (!edit_mode) {
         if (ImGui::Begin((name + " Shop").c_str())) {
-            ImGui::Text("Round: %d,  Wave: %d,  Enemy: %d", round_info->round_number, round_info->wave_number, round_info->enemy_number);
+            inspect(spawn_state_info);
             if (ImGui::BeginTabBar("ShopTabBar")) {
                 if (ImGui::BeginTabItem("Shop")) {
                     show_shop(&shop, &player);
@@ -261,27 +274,15 @@ void Scene::output_window(bool* p_open) {
     ImGui::PopStyleVar();
 }
 
-entt::entity Scene::get_lizard(v3i pos) {
-    auto view = registry.view<LogicTransform, Lizard>();
-    for (auto [entity, logic_pos, lizard] : view.each()) {
-        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
-            return entity;
-        }
-    }
-    return entt::null;
-}
 
-entt::entity Scene::get_tile(v2i pos) {
-    auto view = registry.view<LogicTransform, GridSlot>();
-    f32 height = -FLT_MAX;
-    entt::entity highest = entt::null;
-    for (auto [entity, logic_pos, tile] : view.each()) {
-        if (math::length(logic_pos.position.xy - v2(pos)) < 0.1f && logic_pos.position.z > height) {
-            height = logic_pos.position.z;
-            highest = entity;
+bool Scene::is_casting_platform(v3i pos) {
+    auto view = registry.view<LogicTransform, CastingPlatform>();
+    for (auto [entity, logic_pos, platform] : view.each()) {
+        if (math::length(logic_pos.position - v3(pos)) < 0.5f) {
+            return true;
         }
     }
-    return highest;
+    return false;
 }
 
 entt::entity Scene::get_tile(v3i pos) {
@@ -292,18 +293,6 @@ entt::entity Scene::get_tile(v3i pos) {
         }
     }
     return entt::null;
-}
-
-vector<entt::entity> Scene::get_enemies(v3i pos) {
-    vector<entt::entity> entities;
-    auto view = registry.view<LogicTransform, Enemy>();
-    for (auto [entity, logic_pos, traveler] : view.each()) {
-        v3i cell = math::round_cast(logic_pos.position);
-        if (cell == pos) {
-            entities.push_back(entity);
-        }
-    }
-    return entities;
 }
 
 entt::entity Scene::get_spawner(v3i pos) {
@@ -337,22 +326,6 @@ vector<entt::entity> Scene::get_any(v3i pos) {
     return entities;
 }
 
-entt::entity Scene::get(v3i pos, LizardPrefab* t) {
-    return get_lizard(pos);
-}
-
-entt::entity Scene::get(v3i pos, TilePrefab* t) {
-    return get_tile(pos);
-}
-
-entt::entity Scene::get(v3i pos, SpawnerPrefab* t) {
-    return get_spawner(pos);
-}
-
-entt::entity Scene::get(v3i pos, ConsumerPrefab* t) {
-    return get_consumer(pos);
-}
-
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const string& emitter_path, float duration) {
     return quick_emitter(scene, name, position, load_asset<EmitterCPU>(emitter_path), duration);
 }
@@ -369,15 +342,14 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
     auto payload = new EmitterTimerTimeoutPayload(scene, e);
     scene->registry.emplace<Name>(e, name);
     scene->registry.emplace<LogicTransform>(e, position);
-    auto& emitter_comp = scene->registry.emplace<EmitterComponent>(e, 
-        &instance_emitter(scene->render_scene, emitter_cpu),
-        &add_timer(scene, fmt_("{}_timer", name), [](Timer* timer, void* data) {
-            auto payload = (EmitterTimerTimeoutPayload*) data;
-            payload->scene->registry.destroy(payload->entity);
-        }, payload, true, false)
-    );
-
-    emitter_comp.timer->start(duration);
+    
+    auto& emitter_comp = scene->registry.emplace<EmitterComponent>(e, scene);
+    // we destroy all emitters on death, so we don't need ids
+    emitter_comp.add_emitter(0, emitter_cpu);
+    
+    add_timer(scene, fmt_("{}_timer", name), [scene, e](Timer* timer) {
+        scene->registry.destroy(e);
+    }, false).start(duration);
     
     return e;
 }

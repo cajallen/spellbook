@@ -9,7 +9,7 @@ namespace spellbook {
 
 struct Scene;
 struct Player;
-struct RoundInfo;
+struct SpawnStateInfo;
 
 struct ShopEntry {
     Bead cost_type;
@@ -27,7 +27,7 @@ struct Warehouse {
 };
 
 struct ShopGenerator {
-    RoundInfo* round_info;
+    SpawnStateInfo* round_info;
     
     virtual void setup(Scene* scene);
     virtual vector<ShopEntry*>* generate_shop();

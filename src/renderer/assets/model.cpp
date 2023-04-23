@@ -84,7 +84,7 @@ vector<ModelCPU> ModelCPU::split() {
     return models;
 }
 
-bool inspect(ModelCPU* model, m44 matrix, RenderScene* render_scene) {
+bool inspect(ModelCPU* model, RenderScene* render_scene) {
     ImGui::PathSelect("File", &model->file_path, "resources/models", FileType_Model, false);
 
     bool changed = false;
@@ -269,12 +269,12 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
 void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices);
 string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index);
 string _calculate_gltf_material_name(tinygltf::Model& model, int material_index);
-bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu);
+bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool replace_existing_pose);
 bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder);
 bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_folder);
 m44 _calculate_matrix(tinygltf::Node& node);
 
-ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up) {
+ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up, bool replace_existing_poses) {
     ZoneScoped;
     // TODO: gltf can't support null materials
     fs::create_directory(game.resource_folder);
@@ -304,7 +304,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     scene_path.replace_extension(extension(FileType_Model));
     model_cpu.file_path = scene_path.string();
     
-    _convert_gltf_skeletons(gltf_model, &model_cpu);
+    _convert_gltf_skeletons(gltf_model, &model_cpu, replace_existing_poses);
     _convert_gltf_meshes(gltf_model, output_folder);
     _convert_gltf_materials(gltf_model, output_folder);
     
@@ -427,7 +427,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
                 traverse(child, children_uses, traverse);
             }
             
-            if (node->material_asset_path != "" && node->mesh_asset_path != "")
+            if (!node->material_asset_path.empty() && !node->mesh_asset_path.empty())
                 this_uses = true;
             if (children_uses)
                 this_uses = true;
@@ -460,12 +460,12 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     return model_cpu;
 }
 
-bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
+bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool replace_existing_pose) {
     ZoneScoped;
     umap<u32, id_ptr<BonePrefab>> node_index_to_bone;
     assert_else(model.skins.size() <= 1);
 
-    if (model.skins.size() == 0)
+    if (model.skins.empty())
         return true;
     
     auto model_path = fs::path(model_cpu->file_path);
@@ -478,9 +478,10 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
     skeleton.file_path = skeleton_path_string;
     
     for (u32 i_bone = 0; i_bone < model.skins[0].joints.size(); i_bone++) {
-        skeleton.bones.push_back(id_ptr<BonePrefab>::emplace());
+        if (skeleton.bones.size() <= i_bone)
+            skeleton.bones.push_back(id_ptr<BonePrefab>::emplace());
         u32 bone_node_index = model.skins[0].joints[i_bone];
-        node_index_to_bone[bone_node_index] = skeleton.bones.back();
+        node_index_to_bone[bone_node_index] = skeleton.bones[i_bone];
     }
     u32 ibm_index = model.skins[0].inverseBindMatrices;
     tinygltf::Accessor& ibm_accessor = model.accessors[ibm_index];
@@ -566,11 +567,46 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu) {
         }
     }
 
-    for (auto& pose : key_sets) {
-        string new_name = fmt_("pose_{}", key_sets.index(pose));
-        auto& entry = skeleton.pose_backfill.entries.emplace_back(new_name, 0.0f);
-        for (auto& [bone_index, key_set] : pose) {
-            entry.pose[node_index_to_bone[bone_index]->name] = key_set;
+    if (replace_existing_pose) {
+        umap<string, u32> name_to_index;
+        for (auto& entry : skeleton.pose_backfill.entries) {
+            name_to_index[entry.name] = skeleton.pose_backfill.entries.index(entry);
+        }
+
+        for (auto& pose : key_sets) {
+            // Replace existing
+            if (key_sets.index(pose) < skeleton.pose_backfill.entries.size()) {
+                // Update backfill
+                for (auto& [bone_index, key_set] : pose) {
+                    skeleton.pose_backfill.entries[key_sets.index(pose)].pose[node_index_to_bone[bone_index]->name] = key_set;
+                }
+            } else {
+                string new_name = fmt_("pose_{}", key_sets.index(pose));
+                auto& entry = skeleton.pose_backfill.entries.emplace_back(new_name, 0.1f);
+                for (auto& [bone_index, key_set] : pose) {
+                    entry.pose[node_index_to_bone[bone_index]->name] = key_set;
+                }
+            }
+        }
+
+
+        // Update existing poses
+        for (PoseSet& existing_pose_set : skeleton.poses) {
+            for (PoseSet::Entry& existing_entry : existing_pose_set.entries) {
+                if (name_to_index.contains(existing_entry.name)) {
+                    PoseSet::Entry& new_entry = skeleton.pose_backfill.entries[name_to_index[existing_entry.name]];
+                    existing_entry.pose = new_entry.pose;
+                }
+            }
+        }
+        
+    } else {
+        for (auto& pose : key_sets) {
+            string new_name = fmt_("pose_{}", key_sets.index(pose));
+            auto& entry = skeleton.pose_backfill.entries.emplace_back(new_name, 0.1f);
+            for (auto& [bone_index, key_set] : pose) {
+                entry.pose[node_index_to_bone[bone_index]->name] = key_set;
+            }
         }
     }
     

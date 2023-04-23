@@ -1,5 +1,6 @@
 #include "draw_functions.hpp"
 
+#include <stb_image_write.h>
 #include <tracy/Tracy.hpp>
 
 #include "extension/fmt.hpp"
@@ -259,5 +260,42 @@ void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_
     vertices.emplace_back(center - axis_2, palette::clear);
 }
 
+
+Color palette_color(int palette, int x, int y, const PaletteCreateInfo& info) {
+    float hue = palette / float(info.palettes) * 360.0f + y * info.hue_shift_per_y;
+    float sat_x = math::clamp(float(x) / float(info.saturation_shifts), {0.0f, 1.0f});
+    float saturation = math::lerp(math::ease(sat_x, math::EaseMode_Quad), info.saturation_range);
+    float val_x = 1.0f - math::clamp(float(x - info.saturation_shifts) / float(info.value_shifts), {0.0f, 1.0f});
+    float value = math::lerp(math::ease(val_x, math::EaseMode_Quad), info.value_range);
+    return Color::hsl_oklab(hue / 360.f, saturation, value);
+}
+
+void generate_palette(const PaletteCreateInfo& info) {
+    TextureCPU out_texture;
+    int palettes_per_row = math::ceil_cast(math::sqrt(f32(info.palettes)));
+    int palette_width = info.saturation_shifts + info.value_shifts + 1;
+
+    out_texture.size = {palettes_per_row * (palette_width + 1), palettes_per_row * (info.hue_shifts + 1)};
+    out_texture.pixels.internal.resize(out_texture.size.x * out_texture.size.y * 4, 0);
+    
+    for (int palette = 0; palette < info.palettes; palette++) {
+        int palette_x = palette % palettes_per_row;
+        int palette_y = palette / palettes_per_row;
+        
+        for (int x = 0; x < palette_width; x++) {
+            for (int y = 0; y < info.hue_shifts; y++) {
+                int pixel_x = palette_x * (palette_width + 1) + x;
+                int pixel_y = palette_y * (info.hue_shifts + 1) + y;
+                Color pixel_color = palette_color(palette, x, y, info);
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 0] = u8(math::clamp(pixel_color.r * 255.0f, 0.0f, 255.0f));
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 1] = u8(math::clamp(pixel_color.g * 255.0f, 0.0f, 255.0f));
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 2] = u8(math::clamp(pixel_color.b * 255.0f, 0.0f, 255.0f));
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 3] = 255;
+            }
+        }
+    }
+    stbi_write_png_compression_level = 0;
+    stbi_write_png("resources/palette.png", out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
+}
 
 }

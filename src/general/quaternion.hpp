@@ -14,8 +14,6 @@ template <typename T> struct quat_ {
         T      data[4];
     };
 
-    JSON_IMPL(quat_<T>, x, y, z, w)
-
     constexpr quat_() : x(0), y(0), z(0), w(1) {}
     template <typename R> constexpr quat_(quat_<R> q) : x(T(q.x)), y(T(q.y)), z(T(q.z)), w(T(q.w)) {}
     constexpr explicit quat_(v3_<T> axis, T ang)
@@ -23,7 +21,7 @@ template <typename T> struct quat_ {
     constexpr explicit quat_(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
     constexpr explicit quat_(v3_<T> vector) {
         f32 angle = math::length(vector);
-        if (angle < 0.000001) {
+        if (angle < 0.00001f) {
             x = 0;
             y = 0;
             z = 0;
@@ -171,8 +169,11 @@ v3   rotate(quat q, v3 v);
 quat rotate(quat q, quat p);
 quat rotate_inv(quat q, quat p);
 f32 dot(quat q1, quat q2);
-
+f32 length(quat q);
+quat normalize(quat q);
 quat slerp(quat q1, quat q2, float t);
+
+quat quat_between(v3 from, v3 to);
 
 }
 

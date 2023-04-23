@@ -9,9 +9,11 @@ layout(binding = 0) buffer Particles {
 };
 
 layout(binding = 1) uniform EmitterSettings {
-    vec4 position_scale;
+    mat4 pose_matrix;
     vec4 velocity_damping;
 
+    vec4 scale_unused;
+    
     vec4 position_scale_random;
     vec4 velocity_damping_random;
     
@@ -59,9 +61,15 @@ void main() {
 
 
     if (spawn1 || spawn2) {
+        vec4 position_hpos = pose_matrix * vec4(vec3(pr0, pr1, pr2) * position_scale_random.xyz, 1.0);
+        vec3 velocity_input = velocity_damping.xyz + vec3(vr4, vr5, vr6) * velocity_damping_random.xyz;
+        vec4 velocity_end_hpos = pose_matrix * vec4(velocity_damping.xyz + vec3(vr4, vr5, vr6) * velocity_damping_random.xyz, 1.0);
+        vec4 velocity_origin_hpos = pose_matrix * vec4(vec3(0.0), 1.0);
+        vec3 velocity = velocity_end_hpos.xyz / velocity_end_hpos.w - velocity_origin_hpos.xyz / velocity_origin_hpos.w;
+        
         particles[index] = Particle(
-            position_scale + vec4(pr0, pr1, pr2, pr3) * position_scale_random,
-            velocity_damping + vec4(vr4, vr5, vr6, vr7) * velocity_damping_random,
+            vec4(position_hpos.xyz / position_hpos.w, scale_unused.x + pr3 * position_scale_random.w),
+            vec4(velocity, velocity_damping.w + vr7 * velocity_damping_random.w),
             vec4(normalize(alignment_vector.xyz + vec3(ar10, ar11, ar12) * alignment_random.xyz), alignment_vector.w),
             cr9,
             life + lr8 * life_random,

@@ -2,58 +2,33 @@
 
 #include <imgui/imgui.h>
 
+#include "components.hpp"
 #include "extension/fmt.hpp"
+#include "game/pose_controller.hpp"
 #include "game/scene.hpp"
+#include "game/entities/caster.hpp"
 
 namespace spellbook {
 
-id_ptr<Ability> make_ability(Scene* set_scene, const string& set_name) {
-    auto ability = id_ptr<Ability>::emplace();
-    ability->scene = set_scene;
-    ability->name = set_name;
-    ability->pre_trigger_timer = &add_timer(set_scene, fmt_("{}::pre", set_name),
-        [](Timer* timer, void* payload) {
-            auto ability = id_ptr<Ability>((u64) payload);
-            if (!ability.valid())
-                return;
-            if (ability->trigger_callback != NULL)
-                ability->trigger_callback(ability->trigger_payload);
-            ability->post_trigger_timer->start(ability->post_trigger_time.value());
-            ability->cooldown_timer->start(ability->cooldown_time.value());
-        }, (void*) ability.id, false, true
-    );
-    ability->post_trigger_timer = &add_timer(set_scene, fmt_("{}::post", set_name),
-    [](Timer* timer, void* payload) {
-            auto ability = id_ptr<Ability>((u64) payload);
-            if (!ability.valid())
-                return;
-            if (ability->end_callback != nullptr)
-                ability->end_callback(ability->end_payload);
-        }, (void*) ability.id, false, true
-    );
-    ability->cooldown_timer = &add_timer(set_scene, fmt_("{}::cd", set_name),
-        [](Timer* timer, void* payload) {
-            auto ability = id_ptr<Ability>((u64) payload);
-            if (!ability.valid())
-                return;
-            if (ability->ready_callback != nullptr)
-                ability->ready_callback(ability->ready_payload);
-        }, (void*) ability.id, false, true
-    );
-    return ability;
-}
-
-void destroy_ability(Scene* scene, id_ptr<Ability> ability) {
-    remove_timer(scene, ability->pre_trigger_timer);
-    remove_timer(scene, ability->post_trigger_timer);
-    remove_timer(scene, ability->cooldown_timer);
-    ability.remove();
+Ability::~Ability() {
+    if (pre_trigger_timer)
+        remove_timer(scene, pre_trigger_timer);
+    if (post_trigger_timer)
+        remove_timer(scene, post_trigger_timer);
 }
 
 
 void Ability::request_cast() {
-    if (start_callback != nullptr)
-        start_callback(start_payload);
+    if (auto_remove_dragging_impair)
+        remove_dragging_impair(scene, caster);
+    if (set_attack_anims || set_cast_anims) {
+        auto poser = scene->registry.try_get<PoseController>(caster);
+        if (poser) {
+            poser->set_state(set_cast_anims ? AnimationState_CastInto : AnimationState_AttackInto, pre_trigger_time.value());
+        }
+    }
+    
+    start();
     pre_trigger_timer->start(pre_trigger_time.value());
 }
 
@@ -62,7 +37,7 @@ bool Ability::casting() {
 }
 
 bool Ability::ready_to_cast() {
-    return !cooldown_timer->ticking && !casting();
+    return !casting();
 }
 
 void Ability::stop_casting() {
@@ -81,20 +56,69 @@ void inspect(Ability* ability) {
     
     if (ImGui::TreeNode("Pre Trigger Time")) {
         inspect(ability->pre_trigger_timer);
-        inspect(&ability->pre_trigger_time);
         ImGui::TreePop();
     }
     if (ImGui::TreeNode("Post Trigger Time")) {
         inspect(ability->post_trigger_timer);
-        inspect(&ability->post_trigger_time);
-        ImGui::TreePop();
-    }
-    if (ImGui::TreeNode("Cooldown Time")) {
-        inspect(ability->cooldown_timer);
-        inspect(&ability->cooldown_time);
         ImGui::TreePop();
     }
     ImGui::PopID();
 }
+
+void Ability::setup(Scene* init_scene, entt::entity init_caster, float pre, float post, Type type) {
+    scene = init_scene;
+    caster = init_caster;
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+    auto_remove_dragging_impair = true;
+    set_attack_anims = type == Type_Attack;
+    set_cast_anims = type == Type_Ability;
+    pre_trigger_time = {&*caster_comp.attack_speed, pre};
+    post_trigger_time = {&*caster_comp.attack_speed, post};
+    pre_trigger_timer = &add_timer(scene, fmt_("{}::pre", name),
+        [this](Timer* timer) {
+            post_trigger_timer->start(post_trigger_time.value());
+            if (set_cast_anims || set_attack_anims) {
+                auto poser = scene->registry.try_get<PoseController>(caster);
+                if (poser) {
+                    poser->set_state(set_cast_anims ? AnimationState_CastOut : AnimationState_AttackOut, post_trigger_time.value());
+                }
+            }
+            trigger();
+        }, true
+    );
+    post_trigger_timer = &add_timer(scene, fmt_("{}::post", name),
+    [this](Timer* timer) {
+            end();
+            if (set_cast_anims || set_attack_anims) {
+                auto poser = scene->registry.try_get<PoseController>(caster);
+                if (poser) {
+                    poser->set_state(AnimationState_Idle);
+                }
+            }
+        }, true
+    );
+}
+
+void Ability::targeting() {
+
+}
+
+void Ability::start() {
+
+}
+
+void Ability::trigger() {
+
+}
+
+void Ability::end() {
+
+}
+
+float Ability::time_to_hit(v3i pos) {
+    return pre_trigger_time.value();
+}
+
+
 
 }

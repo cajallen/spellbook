@@ -4,6 +4,9 @@
 #include <entt/entity/registry.hpp>
 #include <imgui.h>
 
+#include "caster.hpp"
+#include "impair.hpp"
+#include "targeting.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/astar.hpp"
@@ -15,85 +18,85 @@
 
 namespace spellbook {
 
-void enemy_attack_start(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
+struct EnemyLaserAttack : Ability {
+    void targeting() override;
+    void trigger() override;
+};
+
+void enemy_fallback_targeting(Ability& ability) {
+    auto consumers = ability.scene->registry.view<Consumer>();
+    if (consumers.empty())
+        return;
+    entt::entity consumer_entity = consumers[math::random_s32(consumers.size())];
+    LogicTransform& consumer_transform = ability.scene->registry.get<LogicTransform>(consumer_entity);
+    ability.target = math::round_cast(consumer_transform.position);
+    ability.has_target = true;
 }
 
-void enemy_attack_trigger(void* payload) {
-    auto ability = id_ptr<Ability>((u64) payload);
-
-    uset<entt::entity> lizards;
-    entt::entity lizard = ability->scene->get_lizard(ability->target);
-    if (lizard != entt::null) {
-        auto& this_lt = ability->scene->registry.get<LogicTransform>(ability->caster);
-        auto& liz_lt = ability->scene->registry.get<LogicTransform>(lizard);
+void EnemyLaserAttack::trigger() {
+    uset<entt::entity> lizards = entry_gather_function(*this, target, 0.0f);
+    for (entt::entity lizard : lizards) {
+        auto& this_lt = scene->registry.get<LogicTransform>(caster);
+        auto& liz_lt = scene->registry.get<LogicTransform>(lizard);
         
-        Health& health = ability->scene->registry.get<Health>(lizard);
-        health.damage(1.0f, liz_lt.position - this_lt.position);
-
-        struct EnemyLaserPayload {
-            Scene* scene;
-            entt::entity enemy;
-            entt::entity liz;
-        };
+        Health& health = scene->registry.get<Health>(lizard);
+        damage(scene, caster, lizard, 1.0f, liz_lt.position - this_lt.position);
 
         constexpr float duration = 0.15f;
-        add_tween_timer(ability->scene, "Enemy laser tick", [](Timer* timer, void* data) {
-            auto payload = (EnemyLaserPayload*) data;
-
-            if (timer->ticking && payload->scene->registry.valid(payload->enemy) && payload->scene->registry.valid(payload->liz)) {
-                auto* this_lt = payload->scene->registry.try_get<LogicTransform>(payload->enemy);
-                auto* liz_lt = payload->scene->registry.try_get<LogicTransform>(payload->liz);
+        entt::entity caster_v = caster;
+        add_tween_timer(scene, "Enemy laser tick", [this, lizard, caster_v](Timer* timer) {
+            if (timer->ticking && timer->scene->registry.valid(lizard) && timer->scene->registry.valid(caster_v)) {
+                auto* this_lt = scene->registry.try_get<LogicTransform>(caster);
+                auto* liz_lt = scene->registry.try_get<LogicTransform>(lizard);
                 if (this_lt && liz_lt) {
                     vector<FormattedVertex> vertices;
                     float width = (timer->remaining_time / timer->total_time) * 0.10f + 0.05f;
                     vertices.emplace_back(this_lt->position + v3(0.5f), palette::light_pink, width + 0.05f);
                     vertices.emplace_back(liz_lt->position + v3(0.5f), palette::red, width);
-                    payload->scene->render_scene.quick_mesh(generate_formatted_line(&payload->scene->camera, vertices), true, false);
+                    scene->render_scene.quick_mesh(generate_formatted_line(&scene->camera, vertices), true, false);
                 }
             }
-        }, new EnemyLaserPayload{ability->scene, ability->caster, lizard}, true, false).start(duration);
+        }, false).start(duration);
     }
 }
 
-void enemy_attack_end(void* payload) {
-}
 
-void enemy_attack_targeting(void* payload) {
+void EnemyLaserAttack::targeting() {
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+
+    if (taunted(*this, caster_comp))
+        return;
+
+    if (square_targeting(1, *this, entry_gather_function))
+        return;
+
+    enemy_fallback_targeting(*this);
 }
 
 entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i location) {
-    static int i      = 0;
-    auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(prefab.file_path).stem().string(), i++));
-    
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(prefab.model_path));
-    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+    auto entity = setup_basic_unit(scene, prefab.model_path, v3(location), prefab.max_health, prefab.hurt_path);
 
-    scene->registry.emplace<LogicTransform>(entity, v3(location));
-    scene->registry.emplace<ModelTransform>(entity, v3{}, euler{}, v3(prefab.scale));
-    scene->registry.emplace<TransformLink>(entity, v3(0.5));
+    scene->registry.emplace<Enemy>(entity);
+    auto& traveler = scene->registry.emplace<Traveler>(entity, vector<v3i>{});
+    traveler.max_speed = Stat(scene, prefab.max_speed);
+    traveler.range = Stat(scene, 1.01f);
 
-    auto& enemy = scene->registry.emplace<Enemy>(entity, vector<v3i>{}, prefab.max_speed);
-    scene->registry.emplace<Health>(entity, prefab.max_health, &scene->render_scene, prefab.hurt_path);
+    scene->registry.get<ModelTransform>(entity).scale = v3(prefab.scale);
+    scene->registry.get<TransformLink>(entity).offset.z = 0.5f;
+
     if (!prefab.drops.entries.empty())
         scene->registry.emplace<DropChance>(entity, prefab.drops);
+    
+    Caster& caster = scene->registry.get<Caster>(entity);
 
-
-    enemy.ability = make_ability(scene, "Enemy Attack");
-    enemy.ability->caster = entity;
-    enemy.ability->pre_trigger_time = Stat(0.5f);
-    enemy.ability->post_trigger_time = Stat(0.5f);
-    enemy.ability->cooldown_time = Stat(1.0f);
-    enemy.ability->start_callback = enemy_attack_start;
-    enemy.ability->start_payload = (void*) enemy.ability.id;
-    enemy.ability->trigger_callback = enemy_attack_trigger;
-    enemy.ability->trigger_payload = (void*) enemy.ability.id;
-    enemy.ability->end_callback = enemy_attack_end;
-    enemy.ability->end_payload = (void*) enemy.ability.id;
-    enemy.ability->targeting_callback = enemy_attack_targeting;
-    enemy.ability->targeting_payload = (void*) enemy.ability.id;
+    switch (prefab.type) {
+        default: {
+            //  TODO: need cooldown to avoid constant movement... aggro immunity maybe?
+            caster.attack = std::make_unique<EnemyLaserAttack>();
+            caster.attack->setup(scene, entity, 0.5f, 1.0f, Ability::Type_Attack);
+            caster.attack->entry_gather_function = enemy_entry_gather();
+        } break;
+    }
     
     return entity;  
 }
@@ -114,98 +117,76 @@ bool inspect(EnemyPrefab* enemy_prefab) {
 
 void travel_system(Scene* scene) {
     // construct grid to use for pathfinding
-    auto slots     = scene->registry.view<GridSlot, LogicTransform>();
-    auto entities  = scene->registry.view<Enemy, LogicTransform>();
-    auto consumers = scene->registry.view<Consumer>();
-
     astar::Navigation nav;
-    for (auto [entity, slot, logic_pos] : slots.each()) {
+    for (auto [entity, slot, logic_pos] : scene->registry.view<GridSlot, LogicTransform>().each()) {
         if (slot.ramp) {
             nav.ramps[v3i(logic_pos.position)] = slot.direction;
             continue;
         }
         if (slot.path)
-            nav.solids.set(v3i(logic_pos.position));
+            nav.path_solids.set(v3i(logic_pos.position));
+        else
+            nav.off_road_solids.set(v3i(logic_pos.position));
     }
-    
-    // handle actual traveling
-    for (auto [entity, enemy, transform] : entities.each()) {
-        if (enemy.ability->casting())
+
+    for (auto [entity, transform, traveler, caster, impair] : scene->registry.view<LogicTransform, Traveler, Caster, Impairs>().each()) {
+        if (!caster.attack->has_target)
             continue;
+        
+        float d = math::distance(v3(caster.attack->target), transform.position);
+        // Update target
+        if (traveler.pathing.empty() || traveler.pathing.front() != caster.attack->target) {
+            if (d > traveler.range.value()) {
+                if (caster.attack->casting())
+                    caster.attack->stop_casting();
 
-        bool has_aggro = false;
-        v3 aggro;
-        if (enemy.ability->ready_to_cast()) {
-            if (enemy.taunt.first != 0) {
-                has_aggro = true;
-                auto l_transform = scene->registry.try_get<LogicTransform>(enemy.taunt.second);
-                if (l_transform)
-                    aggro = l_transform->position;
-                else {
-                    enemy.taunt = {0, entt::null};
-                    has_aggro = false;
-                }
-            }
-            if (enemy.position_target.first) {
-                entt::entity lizard_at_target = scene->get_lizard(enemy.position_target.second);
-                if (lizard_at_target != entt::null) {
-                    has_aggro = true;
-                    aggro = v3(enemy.position_target.second);
-                } else {
-                    enemy.position_target = {false, v3i{}};
-                }
-            }
-            
-            if (has_aggro && math::distance(aggro, transform.position) < 1.5f) {
-                enemy.ability->target = math::round_cast(aggro);
-                enemy.ability->request_cast();
-                continue;
+                traveler.pathing = nav.find_path(math::round_cast(transform.position), caster.attack->target);
+                if (traveler.pathing.empty())
+                    continue;
             }
         }
 
-        bool has_path = !enemy.pathing.empty();
-
-        if (!has_path && !consumers.empty()) {
-            int       random_consumer = math::random_s32() % s32(consumers.size());
-            auto      consumer_entity = consumers[random_consumer];
-            LogicTransform* consumer_position          = scene->registry.try_get<LogicTransform>(consumer_entity);
-            assert_else(consumer_position);
-
-            auto path = nav.find_path(math::round_cast(transform.position), v3i(consumer_position->position));
-            for (auto it = path.begin(); it != path.end(); ++it) {
-                enemy.pathing.push_back(*it);
-            }
-        }
-        assert_else(!math::is_nan(transform.position.x)) {
-            transform.position = v3(0, 0, 0);
-        }
-
-        v3i  target_position = has_path ? enemy.pathing.back() : math::round_cast(transform.position);
-        if (has_aggro) {
-            // If we have aggro, set it as target
-            target_position = math::round_cast(aggro);
+        if (d < traveler.range.value()) {
+            impair.boolean_impairs[0x724f3132] = ImpairType_None;
         } else {
-            // If we don't, check if we should
-            entt::entity lizard_at_target = scene->get_lizard(target_position);
-            if (lizard_at_target != entt::null) {
-                enemy.position_target = {true, target_position};
-                continue;
-            }
+            impair.boolean_impairs[0x724f3132] = ImpairType_NoCast;
         }
 
-        v3   velocity        = v3(target_position) - transform.position;
-        bool at_target       = math::length(velocity) < 0.01f;
-        if (at_target && has_path) {
-            enemy.pathing.remove_back();
-            velocity = v3(0);
+        if (!caster.attack->casting() && !traveler.pathing.empty() && d > traveler.range.value()) {
+            v3   velocity        = v3(traveler.pathing.back()) - transform.position;
+            bool at_target       = math::length(velocity) < 0.01f;
+            if (at_target) {
+                traveler.pathing.remove_back();
+                velocity = v3(0);
+            }
+            f32 max_velocity = traveler.max_speed.value() * scene->delta_time;
+            f32 min_velocity = 0.0f;
+            if (!at_target)
+                transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
         }
-        f32 max_velocity = enemy.max_speed.value() * scene->delta_time;
-        f32 min_velocity = 0.0f;
-        if (!at_target)
-            transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
     }
 }
 
+v3 predict_pos(Traveler& traveler, v3 pos, float time) {
+    v3 expected_pos = pos;
+    if (time == 0.0f)
+        return expected_pos;
+    for (int i = traveler.pathing.size(); i > 0; i--) {
+        if (math::distance(v3(traveler.pathing[0]), expected_pos) < traveler.range.value()) {
+            return expected_pos;
+        }
+        v3 pos1 = i == traveler.pathing.size() ? pos : v3(traveler.pathing[i]);
+        v3 pos2 = v3(traveler.pathing[i-1]);
+        float time_delta = math::distance(v3(pos1), v3(pos2)) / traveler.max_speed.value();
+        if (time_delta > time) {
+            expected_pos = math::lerp(time / time_delta, range3{v3(pos1), v3(pos2)});
+            break;
+        }
+        time -= time_delta;
+        expected_pos = pos2;
+    }
+    return expected_pos;
+}
 
 
 }

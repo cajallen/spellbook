@@ -15,7 +15,6 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     static int i      = 0;
     
     auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", "tile", i++));
 
     auto& model_comp = scene->registry.emplace<Model>(entity);
     model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(tile_prefab.model_path));
@@ -32,6 +31,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
             scene->registry.emplace<GridSlot>(entity, true, false);
         } break;
         case (TileType_Ramp): {
+            scene->registry.emplace<Name>(entity, fmt_("{}_{}", "tile", i++));
             switch (rotation) {
                 case 0: {
                     scene->registry.emplace<GridSlot>(entity, true, true, Direction_PosX);
@@ -49,6 +49,11 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
         } break;
         case (TileType_Scenery): {
             link.offset.z = 0.0f;
+        } break;
+        case (TileType_CastingPlatform): {
+            link.offset.z = 0.0f;
+            scene->registry.emplace<Name>(entity, fmt_("{}_{}", "tile", i++));
+            scene->registry.emplace<CastingPlatform>(entity);
         } break;
     }
 
