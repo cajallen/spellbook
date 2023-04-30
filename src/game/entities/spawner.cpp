@@ -320,7 +320,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, scene->spawn_state_info);
 
     // Model
-    if (spawner_prefab.enemies.empty()) {
+    if (!spawner_prefab.enemies.empty()) {
         auto& model_comp     = scene->registry.emplace<Model>(entity);
         model_comp.model_cpu = std::make_unique<ModelCPU>(
             load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemies.front()->enemy_prefab_path).model_path));
