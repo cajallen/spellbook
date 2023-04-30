@@ -99,6 +99,7 @@
     <ClCompile Include="libs\vuk\ext\SPIRV-Cross\spirv_parser.cpp" />
     <ClCompile Include="libs\vuk\ext\SPIRV-Cross\spirv_reflect.cpp" />
     <ClCompile Include="libs\vuk\src\Allocator.cpp" />
+    <ClCompile Include="libs\vuk\src\BufferAllocator.cpp" />
     <ClCompile Include="libs\vuk\src\Cache.cpp" />
     <ClCompile Include="libs\vuk\src\CommandBuffer.cpp" />
     <ClCompile Include="libs\vuk\src\Context.cpp" />
@@ -126,6 +127,7 @@
     <ClCompile Include="src\editor\widget_system.cpp" />
     <ClCompile Include="src\game\camera_controller.cpp" />
     <ClCompile Include="src\game\entities\ability.cpp" />
+    <ClCompile Include="src\game\entities\area_trigger.cpp" />
     <ClCompile Include="src\game\entities\caster.cpp" />
     <ClCompile Include="src\game\entities\components.cpp" />
     <ClCompile Include="src\game\entities\consumer.cpp" />
@@ -328,14 +330,13 @@
     <ClInclude Include="libs\vuk\include\vuk\Swapchain.hpp" />
     <ClInclude Include="libs\vuk\include\vuk\Types.hpp" />
     <ClInclude Include="libs\vuk\include\vuk\vuk_fwd.hpp" />
+    <ClInclude Include="libs\vuk\src\BufferAllocator.hpp" />
     <ClInclude Include="libs\vuk\src\Cache.hpp" />
     <ClInclude Include="libs\vuk\src\ContextImpl.hpp" />
     <ClInclude Include="libs\vuk\src\CreateInfo.hpp" />
-    <ClInclude Include="libs\vuk\src\LegacyGPUAllocator.hpp" />
     <ClInclude Include="libs\vuk\src\RenderGraphImpl.hpp" />
     <ClInclude Include="libs\vuk\src\RenderGraphUtil.hpp" />
     <ClInclude Include="libs\vuk\src\RenderPass.hpp" />
-    <ClInclude Include="libs\vuk\src\RGImage.hpp" />
     <ClInclude Include="libs\vuk\src\ShadercIncluder.hpp" />
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp" />
     <ClInclude Include="src\editor\asset_browser.hpp" />
@@ -352,6 +353,7 @@
     <ClInclude Include="src\extension\fmt.hpp" />
     <ClInclude Include="src\game\camera_controller.hpp" />
     <ClInclude Include="src\game\entities\ability.hpp" />
+    <ClInclude Include="src\game\entities\area_trigger.hpp" />
     <ClInclude Include="src\game\entities\caster.hpp" />
     <ClInclude Include="src\game\entities\components.hpp" />
     <ClInclude Include="src\game\entities\component_shared.hpp" />

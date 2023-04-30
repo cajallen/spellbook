@@ -40,7 +40,7 @@ void caster_system(Scene* scene) {
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
         Impairs* impairs = scene->registry.try_get<Impairs>(entity);
         if (impairs)
-            if (impairs->is_impaired(ImpairType_NoCast))
+            if (impairs->is_impaired(scene, ImpairType_NoCast))
                 continue;
 
         if (caster.casting())

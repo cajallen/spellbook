@@ -378,6 +378,12 @@
     <ClCompile Include="src\renderer\light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\entities\area_trigger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\vuk\src\BufferAllocator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\global.hpp">
@@ -638,9 +644,6 @@
     <ClInclude Include="libs\vuk\src\CreateInfo.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\vuk\src\LegacyGPUAllocator.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="libs\vuk\src\RenderGraphImpl.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -648,9 +651,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="libs\vuk\src\RenderPass.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\vuk\src\RGImage.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp">
@@ -1068,6 +1068,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\renderer\light.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\entities\area_trigger.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\vuk\src\BufferAllocator.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

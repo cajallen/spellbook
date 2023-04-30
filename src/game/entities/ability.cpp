@@ -120,5 +120,16 @@ float Ability::time_to_hit(v3i pos) {
 }
 
 
+void Ability::lizard_turn_to_target() {
+    v3i caster_pos = math::round_cast(scene->registry.get<LogicTransform>(caster).position);
+    auto lizard = scene->registry.try_get<Lizard>(caster);
+    if (lizard) {
+        v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
+        float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
+        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
+    }
+}
+
+
 
 }

@@ -28,7 +28,7 @@ void remove_dragging_impair(Scene* scene, entt::entity entity) {
 void remove_dragging_impair(entt::registry& reg, entt::entity entity) {
     auto impairs = reg.try_get<Impairs>(entity);
     if (impairs) {
-        impairs->boolean_impairs.erase(Dragging::magic_number | u32(entity));
+        impairs->untimed_impairs.erase(Dragging::magic_number | u32(entity));
     }
 }
 

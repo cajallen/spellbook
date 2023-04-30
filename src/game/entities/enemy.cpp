@@ -116,19 +116,6 @@ bool inspect(EnemyPrefab* enemy_prefab) {
 }
 
 void travel_system(Scene* scene) {
-    // construct grid to use for pathfinding
-    astar::Navigation nav;
-    for (auto [entity, slot, logic_pos] : scene->registry.view<GridSlot, LogicTransform>().each()) {
-        if (slot.ramp) {
-            nav.ramps[v3i(logic_pos.position)] = slot.direction;
-            continue;
-        }
-        if (slot.path)
-            nav.path_solids.set(v3i(logic_pos.position));
-        else
-            nav.off_road_solids.set(v3i(logic_pos.position));
-    }
-
     for (auto [entity, transform, traveler, caster, impair] : scene->registry.view<LogicTransform, Traveler, Caster, Impairs>().each()) {
         if (!caster.attack->has_target)
             continue;
@@ -140,16 +127,16 @@ void travel_system(Scene* scene) {
                 if (caster.attack->casting())
                     caster.attack->stop_casting();
 
-                traveler.pathing = nav.find_path(math::round_cast(transform.position), caster.attack->target);
+                traveler.pathing = scene->navigation->find_path(math::round_cast(transform.position), caster.attack->target);
                 if (traveler.pathing.empty())
                     continue;
             }
         }
 
         if (d < traveler.range.value()) {
-            impair.boolean_impairs[0x724f3132] = ImpairType_None;
+            apply_untimed_impair(impair, 0x724f3132, ImpairType_None);
         } else {
-            impair.boolean_impairs[0x724f3132] = ImpairType_NoCast;
+            apply_untimed_impair(impair, 0x724f3132, ImpairType_NoCast);
         }
 
         if (!caster.attack->casting() && !traveler.pathing.empty() && d > traveler.range.value()) {
@@ -171,7 +158,7 @@ v3 predict_pos(Traveler& traveler, v3 pos, float time) {
     v3 expected_pos = pos;
     if (time == 0.0f)
         return expected_pos;
-    for (int i = traveler.pathing.size(); i > 0; i--) {
+    for (u32 i = traveler.pathing.size(); i > 0; i--) {
         if (math::distance(v3(traveler.pathing[0]), expected_pos) < traveler.range.value()) {
             return expected_pos;
         }

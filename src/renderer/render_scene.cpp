@@ -474,7 +474,7 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
         }
     });
 
-    rg->attach_buffer("top_blurred_temp0_input", **vuk::allocate_buffer(*game.renderer.frame_allocator, {.mem_usage = vuk::MemoryUsage::eGPUonly, .size = sizeof(u16) * 1024 * 1024}), vuk::Access::eNone, vuk::Access::eNone);
+    rg->attach_buffer("top_blurred_temp0_input", **vuk::allocate_buffer(*game.renderer.frame_allocator, {.mem_usage = vuk::MemoryUsage::eGPUonly, .size = sizeof(u16) * 1024 * 1024}), vuk::Access::eNone);
     rg->attach_and_clear_image("top_blurred_temp1_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
     rg->attach_and_clear_image("top_blurred_temp2_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
     rg->attach_and_clear_image("top_blurred_temp3_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});

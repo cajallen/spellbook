@@ -1,5 +1,6 @@
 ﻿#include "targeting.hpp"
 
+#include "spawner.hpp"
 #include "game/scene.hpp"
 #include "game/entities/ability.hpp"
 #include "game/entities/components.hpp"
@@ -93,6 +94,16 @@ bool plus_targeting(int range, Ability& ability, EntryGatherFunction entry_gathe
     }
     return ability.has_target;
 }
+
+bool end_targeting(Ability& ability) {
+    // astar::Navigation& nav = *ability.scene->navigation;
+    // entt::registry& registry = ability.scene->registry;
+    // for (auto [entity, spawner, spawner_transform] : registry.view<Spawner, LogicTransform>().each()) {
+    //     
+    // }
+    return false;
+}
+
 
 EntryGatherFunction square_aoe_entry_gather(int range) {
     return [range](Ability& ability, v3i pos, float time_to) -> uset<entt::entity> {

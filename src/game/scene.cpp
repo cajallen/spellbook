@@ -21,8 +21,13 @@
 #include "game/entities/enemy.hpp"
 #include "game/entities/impair.hpp"
 #include "game/entities/projectile.hpp"
+#include "general/astar.hpp"
 
 namespace spellbook {
+
+Scene::Scene() {}
+Scene::~Scene() {}
+
 
 void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
     Model& model = registry.get<Model>(entity);
@@ -32,7 +37,7 @@ void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
 void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
     auto impairs = registry.try_get<Impairs>(entity);
     if (impairs) {
-        impairs->boolean_impairs[Dragging::magic_number | u32(entity)] = ImpairType_NoCast;
+        apply_untimed_impair(*impairs, Dragging::magic_number | u32(entity), ImpairType_NoCast);
     }
 
     auto caster = registry.try_get<Caster>(entity);
@@ -120,6 +125,8 @@ void Scene::setup(const string& input_name) {
 
     targeting = std::make_unique<MapTargeting>();
     targeting->scene = this;
+
+    navigation = std::make_unique<astar::Navigation>();
 }
 
 void Scene::update() {
@@ -128,7 +135,18 @@ void Scene::update() {
     delta_time = Input::delta_time * time_scale;
     frame++;
     time += delta_time;
-
+    
+    for (auto [entity, slot, logic_pos] : registry.view<GridSlot, LogicTransform>().each()) {
+        if (slot.ramp) {
+            navigation->ramps[v3i(logic_pos.position)] = slot.direction;
+            continue;
+        }
+        if (slot.path)
+            navigation->path_solids.set(v3i(logic_pos.position));
+        else
+            navigation->off_road_solids.set(v3i(logic_pos.position));
+    }
+    
     update_timers(this);
     
 	controller.update();
@@ -363,7 +381,7 @@ void Scene::select_entity(entt::entity entity) {
 
     Impairs* impairs = registry.try_get<Impairs>(selected_entity);
     if (impairs)
-        if (impairs->is_impaired(ImpairType_NoMove))
+        if (impairs->is_impaired(this, ImpairType_NoMove))
             return;
     
     if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {

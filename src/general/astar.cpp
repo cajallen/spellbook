@@ -10,15 +10,22 @@ namespace spellbook {
 
 const vector<v3i> astar::Navigation::directions = {{0, 1,0}, {1, 0, 0}, {0, -1, 0}, {-1, 0, 0}, {-1, -1, 0}, {1, 1, 0}, {-1, 1, 0}, {1, -1, 0}};
 
-astar::Node::Node(v3i init_position, shared_ptr<Node> init_parent) {
+astar::Node::Node(v3i init_position, const shared_ptr<Node>& init_parent) {
     parent   = init_parent;
     position = init_position;
     G = H = 0;
 }
 
-u32 astar::Node::get_score() {
+u32 astar::Node::get_score() const {
     return G + H;
 }
+
+void astar::Navigation::clear() {
+    path_solids.clear();
+    off_road_solids.clear();
+    ramps.clear();
+}
+
 
 vector<v3i> astar::Navigation::find_path(v3i source, v3i target, float tolerance) {
     shared_ptr<Node>         current = nullptr;

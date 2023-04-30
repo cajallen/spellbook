@@ -14,6 +14,7 @@ struct Bitmask3D {
     v3i rough_min();
     v3i rough_max();
     bool ray_intersection(ray3 ray, v3& pos, v3i& cube);
+    void clear();
 };
 
 }

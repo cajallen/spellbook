@@ -113,8 +113,7 @@ vuk::Future ImGui_ImplVuk_Render(vuk::Allocator& allocator, vuk::Future target, 
     resources.emplace_back(vuk::Resource{"target", vuk::Resource::Type::eImage, vuk::eColorRW, "target+"});
     for (auto& si : sampled_images) {
         if (!si.is_global) {
-            resources.emplace_back(
-                vuk::Resource{si.rg_attachment.attachment_name, vuk::Resource::Type::eImage, vuk::Access::eFragmentSampled});
+            resources.emplace_back(vuk::Resource{ si.rg_attachment.reference.rg, si.rg_attachment.reference.name, vuk::Resource::Type::eImage, vuk::Access::eFragmentSampled });
         }
     }
     vuk::Pass pass{.name = "imgui",
@@ -177,14 +176,13 @@ vuk::Future ImGui_ImplVuk_Render(vuk::Allocator& allocator, vuk::Future target, 
                                                command_buffer.bind_image(0, 0, si.global.iv).bind_sampler(0, 0, si.global.sci);
                                            } else {
                                                if (si.rg_attachment.ivci) {
-                                                   auto ivci    = *si.rg_attachment.ivci;
-                                                   auto res_img = command_buffer.get_resource_image(si.rg_attachment.attachment_name);
-                                                   ivci.image   = *res_img;
-                                                   auto iv      = vuk::allocate_image_view(allocator, ivci);
+                                                   auto ivci = *si.rg_attachment.ivci;
+                                                   auto res_img = command_buffer.get_resource_image(si.rg_attachment.reference.name.name);
+                                                   ivci.image = res_img->image;
+                                                   auto iv = vuk::allocate_image_view(allocator, ivci);
                                                    command_buffer.bind_image(0, 0, **iv).bind_sampler(0, 0, si.rg_attachment.sci);
                                                } else {
-                                                   command_buffer.bind_image(0, 0, si.rg_attachment.attachment_name)
-                                                                 .bind_sampler(0, 0, si.rg_attachment.sci);
+                                                   command_buffer.bind_image(0, 0, si.rg_attachment.reference.name.name).bind_sampler(0, 0, si.rg_attachment.sci);
                                                }
                                            }
                                        }

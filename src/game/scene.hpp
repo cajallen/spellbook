@@ -20,6 +20,9 @@ struct TilePrefab;
 struct SpawnerPrefab;
 struct ConsumerPrefab;
 struct SpawnStateInfo;
+namespace astar {
+struct Navigation;
+}
 
 struct Scene {
     string           name;
@@ -46,7 +49,10 @@ struct Scene {
     umap<v3i, entt::entity> visual_map_entities;
 
     std::unique_ptr<MapTargeting> targeting;
-    
+    std::unique_ptr<astar::Navigation> navigation;
+
+    Scene();
+    ~Scene();
     void setup(const string& name);
     void update();
     void cleanup();

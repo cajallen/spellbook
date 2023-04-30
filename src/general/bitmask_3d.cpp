@@ -28,6 +28,11 @@ bool Bitmask3D::get(v3i pos) {
     return chunks[chunk_index] & (0b1ull << bit_index);
 }
 
+void Bitmask3D::clear() {
+    chunks.clear();
+}
+
+
 v3i Bitmask3D::rough_min() {
     v3i min_id = v3i(INT_MAX);
     for (auto& [chunk_id, _] : chunks) {

@@ -6,9 +6,11 @@
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
+#include "game/entities/area_trigger.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
+#include "game/entities/impair.hpp"
 #include "game/entities/lizard.hpp"
 #include "game/entities/projectile.hpp"
 #include "game/entities/targeting.hpp"
@@ -26,13 +28,7 @@ struct RangerAttack : Ability {
 };
 
 void RangerAttack::start() {
-    v3i caster_pos = math::round_cast(scene->registry.get<LogicTransform>(caster).position);
-    auto lizard = scene->registry.try_get<Lizard>(caster);
-    if (lizard) {
-        v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
-        float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
-        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
-    }
+    lizard_turn_to_target();
 }
 
 void RangerAttack::trigger() {
@@ -142,8 +138,100 @@ float RangerAttack::time_to_hit(v3i pos) {
     return pre_trigger_time.value() + travel_time;
 }
 
+
 struct RangerAbility : Ability {
+    void start() override;
+    void trigger() override;
+    void targeting() override;
 };
+
+void RangerAbility::start() {
+    lizard_turn_to_target();
+}
+
+void RangerAbility::targeting() {
+    
+}
+
+
+
+void RangerAbility::trigger() {
+    auto& ranger_logic_transform = scene->registry.get<LogicTransform>(caster);
+    auto model = scene->registry.try_get<Model>(caster);
+    auto ranger_model_transform = scene->registry.try_get<ModelTransform>(caster);
+    auto& skeleton = model->model_cpu->skeleton;
+    
+    v3 trap_pos = ranger_logic_transform.position;
+    for (auto& bone : skeleton->bones) {
+        if (bone->name == "Trap") {
+            m44 t =  ranger_model_transform->get_transform() * model->model_cpu->root_node->cached_transform * bone->transform();
+            trap_pos = math::apply_transform(t, v3(0.0f, 0.0f, 0.0f));
+            trap_pos -= v3(0.5f);
+        }
+    }
+    
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+    
+    Scene* scene_ptr = scene;
+    entt::entity caster_entity = caster;
+    Projectile projectile = {
+        .target = target,
+        .speed = StatInstance{&*caster_comp.projectile_speed, base_projectile_speed},
+        .alignment = v3(0.0f, 0.0f, 1.0f),
+        .callback = [scene_ptr, caster_entity](entt::entity proj_entity) {
+            auto projectile = scene_ptr->registry.try_get<Projectile>(proj_entity);
+            if (!projectile)
+                return;
+            entt::registry& registry = scene_ptr->registry;
+            entt::entity trap_entity = registry.create();
+
+            static int i = 0;
+            scene_ptr->registry.emplace<Name>(trap_entity, fmt_("trap_{}", i++));
+
+            auto& model_comp = scene_ptr->registry.emplace<Model>(trap_entity);
+            model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>("models/hanther/hanther_trap.sbmod"));
+            model_comp.model_gpu = instance_model(scene_ptr->render_scene, *model_comp.model_cpu);
+            PoseController& poser = scene_ptr->registry.emplace<PoseController>(trap_entity, *model_comp.model_cpu->skeleton);
+            
+            scene_ptr->registry.emplace<LogicTransform>(trap_entity, v3(projectile->target));
+            scene_ptr->registry.emplace<ModelTransform>(trap_entity);
+            scene_ptr->registry.emplace<TransformLink>(trap_entity, v3(0.5f, 0.5f, 0.0f));
+    
+            scene_ptr->registry.emplace<EmitterComponent>(trap_entity, scene_ptr);
+            
+            AreaTrigger& trigger = registry.emplace<AreaTrigger>(trap_entity, scene_ptr);
+            trigger.entity = trap_entity;
+            trigger.caster_entity = caster_entity;
+            trigger.entry_gather = area_trigger_gather_enemies();
+            trigger.targeting = area_trigger_simple_targeting;
+        
+            trigger.trigger = [scene_ptr, trap_entity, caster_entity](AreaTrigger& area_trigger) {
+                PoseController& poser = scene_ptr->registry.get<PoseController>(trap_entity);
+                poser.set_state(AnimationState_AttackInto, 0.2f);
+                
+                add_timer(area_trigger.scene, "Ranger Trap Trigger Timer", [trap_entity, caster_entity](Timer* timer) {
+                    AreaTrigger& area_trigger = timer->scene->registry.get<AreaTrigger>(trap_entity); 
+                    u64 root_id = hash_string("Ranger Trap Root");
+                    u64 silence_id = hash_string("Ranger Trap Silence");
+        
+                    LogicTransform& l_transform = timer->scene->registry.get<LogicTransform>(area_trigger.entity);
+
+                    uset<entt::entity> enemies = area_trigger.entry_gather(area_trigger, math::round_cast(l_transform.position));
+                    for (entt::entity enemy : enemies) {
+                        damage(timer->scene, caster_entity, enemy, 2.0f, v3(0, 0, 1));
+        
+                        apply_timed_impair(timer->scene, enemy, root_id, ImpairType_NoMove, 2.0f);
+                        apply_timed_impair(timer->scene, enemy, silence_id, ImpairType_NoCast, 2.0f);
+                    }
+                }, false).start(0.2f);
+            };
+
+        }
+    };
+    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt", "models/hanther/hanther_trap.sbmod");
+ 
+}
+
 
 
 

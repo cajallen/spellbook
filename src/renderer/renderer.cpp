@@ -102,11 +102,9 @@ Renderer::Renderer() : imgui_data() {
     device                           = vkbdevice.device;
 
     vuk::ContextCreateParameters::FunctionPointers fps;
-#define VUK_EX_LOAD_FP(name) fps.name = (PFN_##name)vkGetDeviceProcAddr(device, #name);
-    VUK_EX_LOAD_FP(vkSetDebugUtilsObjectNameEXT);
-    VUK_EX_LOAD_FP(vkCmdBeginDebugUtilsLabelEXT);
-    VUK_EX_LOAD_FP(vkCmdEndDebugUtilsLabelEXT);
-
+    fps.vkGetInstanceProcAddr = vkbinstance.fp_vkGetInstanceProcAddr;
+    fps.vkGetDeviceProcAddr = vkbinstance.fp_vkGetDeviceProcAddr;
+    
     context.emplace(vuk::ContextCreateParameters{instance,
          device,
          physical_device,

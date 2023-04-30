@@ -15,8 +15,8 @@ struct Node {
     v3i   position;
     shared_ptr<Node> parent;
 
-    Node(v3i coord_, shared_ptr<Node> parent_ = nullptr);
-    u32 get_score();
+    Node(v3i coord_, const shared_ptr<Node>& parent_ = nullptr);
+    u32 get_score() const;
 };
 
 struct Navigation {
@@ -32,6 +32,7 @@ struct Navigation {
     
     // includes start/end, reverse order (target first)
     vector<v3i> find_path(v3i source, v3i target, float tolerance = 0.1f);
+    void clear();
 
     HeuristicFunction heuristic = [](v3i start, v3i end) {
         v3i delta = end - start;
