@@ -11,6 +11,7 @@
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
+#include "game/entities/caster.hpp"
 #include "game/entities/lizards/lizard_builder.hpp"
 
 
@@ -39,8 +40,8 @@ void draw_lizard_dragging_preview(Scene* scene, entt::entity entity) {
 entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3i location) {
     static int i      = 0;
     auto       entity = setup_basic_unit(scene, lizard_prefab.model_path, v3(location), lizard_prefab.max_health, lizard_prefab.hurt_path);
+    scene->registry.emplace<Caster>(entity, scene);
     scene->registry.emplace<Draggable>(entity);
-
     
     PoseController* poser = scene->registry.try_get<PoseController>(entity);
     if (poser)
@@ -87,9 +88,8 @@ bool inspect(LizardPrefab* lizard_prefab) {
     changed |= ImGui::PathSelect("Model", &lizard_prefab->model_path, "resources/models", FileType_Model);
     changed |= ImGui::DragFloat3("Default Direction", lizard_prefab->default_direction.data, 0.1f);
     changed |= ImGui::DragFloat("Health", &lizard_prefab->max_health, 0.5f, 0.5f, 0.0f, "%.1f");
-    changed |= ImGui::DragFloat("Health Regen", &lizard_prefab->health_regen, 0.025f);
+    changed |= ImGui::DragFloat("Health Regen", &lizard_prefab->health_regen, 0.02);
     return changed;
 }
-
 
 }

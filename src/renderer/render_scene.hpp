@@ -48,7 +48,7 @@ enum DebugDrawMode {
 };
 
 struct PostProcessData {
-    v4 outline = v4(0.10f, 0.50f, 0.1f, 1.0f);
+    v4 outline = v4(0.01f, 0.20f, 0.01f, 0.10f);
     DebugDrawMode debug_mode = DebugDrawMode_Lit;
     float time;
 };

@@ -384,6 +384,9 @@
     <ClCompile Include="libs\vuk\src\BufferAllocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\entities\enemy_ik.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\global.hpp">
@@ -1074,6 +1077,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="libs\vuk\src\BufferAllocator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\entities\enemy_ik.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

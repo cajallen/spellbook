@@ -1,8 +1,8 @@
 ﻿#include "caster.hpp"
 
-#include "components.hpp"
 #include "extension/fmt.hpp"
 #include "game/scene.hpp"
+#include "game/entities/components.hpp"
 #include "game/entities/impair.hpp"
 
 namespace spellbook {
@@ -33,7 +33,7 @@ void caster_system(Scene* scene) {
             caster.attack->has_target = true;
             continue;
         }
-        if (!caster.casting())
+        if (caster.attack && !caster.casting() )
             caster.attack->targeting();
     }
 
@@ -46,11 +46,8 @@ void caster_system(Scene* scene) {
         if (caster.casting())
             continue;
 
-        // TODO: need range check on here
-        if (caster.attack->ready_to_cast()) {
-            if (caster.attack->has_target) {
-                caster.attack->request_cast();
-            }
+        if (caster.attack && caster.attack->can_cast()) {
+            caster.attack->request_cast();
         }
     }
 }

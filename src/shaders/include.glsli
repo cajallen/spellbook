@@ -73,6 +73,11 @@ uint to_uint_seed(vec2 i)
     return to_uint_seed(ivec2(i * 4096.f));
 }
 
+uint to_uint_seed(vec3 i)
+{
+    return to_uint_seed(ivec3(i * 4096.f));
+}
+
 uint uint_noise(uint i, uint seed) {
     uint mangled = i;
     mangled *= 0xB5297A4Du;
@@ -101,6 +106,19 @@ vec2 vec2_noise_signed(ivec2 i, uint seed) {
     return vec2_noise_signed(to_uint_seed(i), seed);
 }
 
+vec3 vec3_noise_unsigned(uint i, uint seed) {
+    return vec3(float_noise(i+1, seed), float_noise(i+2, seed), float_noise(i+3, seed));
+}
+
+vec3 vec3_noise_signed(uint i, uint seed) {
+    return -1.0 + 2.0 * vec3_noise_unsigned(i, seed);
+}
+
+vec3 vec3_noise_signed(ivec3 i, uint seed) {
+    return vec3_noise_signed(to_uint_seed(i), seed);
+}
+
+
 float perlin_noise(vec2 pos, uint seed) {
     ivec2 cell = ivec2(floor(pos));
     vec2 cell_pos = fract(pos);
@@ -116,6 +134,37 @@ float perlin_noise(vec2 pos, uint seed) {
         ),
         smoothstep(0.0, 1.0, cell_pos.y)
     );
+    return val * 0.5 + 0.5;
+}
+
+float perlin_noise(vec3 pos, uint seed) {
+    ivec3 cell = ivec3(floor(pos));
+    vec3 cell_pos = fract(pos);
+
+    float val = mix(
+        mix(
+            mix(dot(vec3_noise_signed(cell + ivec3(0,0,0), seed), cell_pos - vec3(0.0,0.0,0.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,0,0), seed), cell_pos - vec3(1.0,0.0,0.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            mix(dot(vec3_noise_signed(cell + ivec3(0,1,0), seed), cell_pos - vec3(0.0,1.0,0.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,1,0), seed), cell_pos - vec3(1.0,1.0,0.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            smoothstep(0.0, 1.0, cell_pos.y)
+        ),
+        mix(
+            mix(dot(vec3_noise_signed(cell + ivec3(0,0,1), seed), cell_pos - vec3(0.0,0.0,1.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,0,1), seed), cell_pos - vec3(1.0,0.0,1.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            mix(dot(vec3_noise_signed(cell + ivec3(0,1,1), seed), cell_pos - vec3(0.0,1.0,1.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,1,1), seed), cell_pos - vec3(1.0,1.0,1.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            smoothstep(0.0, 1.0, cell_pos.y)
+        ),
+    smoothstep(0.0, 1.0, cell_pos.z));
     return val * 0.5 + 0.5;
 }
 

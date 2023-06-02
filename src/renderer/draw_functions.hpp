@@ -6,6 +6,8 @@
 
 namespace spellbook {
 
+struct Bitmask3D;
+
 struct FormattedVertex {
     v3 position;
     Color color;
@@ -19,6 +21,8 @@ struct FormattedVertex {
 MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color = palette::black);
 MeshCPU generate_icosphere(int subdivisions);
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices);
+MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex);
+MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask);
 
 void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_1, v3 axis_2, Color color, float width);
 

@@ -62,6 +62,7 @@ struct PoseWidgetSettings {
     float color_axis = 1.0f;
 
     u32 disabled = 0;
+    bool widget = true;
 };
 
 bool pose_widget(u64 id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);

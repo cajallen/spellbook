@@ -20,14 +20,7 @@ u32 astar::Node::get_score() const {
     return G + H;
 }
 
-void astar::Navigation::clear() {
-    path_solids.clear();
-    off_road_solids.clear();
-    ramps.clear();
-}
-
-
-vector<v3i> astar::Navigation::find_path(v3i source, v3i target, float tolerance) {
+vector<v3> astar::Navigation::find_path(v3i source, v3i target, float tolerance) {
     shared_ptr<Node>         current = nullptr;
     vector<shared_ptr<Node>> open_set, closed_set;
     open_set.reserve(100);
@@ -84,11 +77,37 @@ vector<v3i> astar::Navigation::find_path(v3i source, v3i target, float tolerance
         }
     }
     
-    vector<v3i> path;
+    vector<v3> raw_path;
     while (current != nullptr) {
-        path.push_back(current->position);
+        if (ramps->contains(current->position))
+            raw_path.push_back(v3(current->position + v3i(0,0,1)));
+        else
+            raw_path.push_back(v3(current->position));
         current = current->parent;
     }
+    
+    vector<v3> path;
+    bool next = false;
+    for (int i = 0; i + 1 < raw_path.size(); i++) {
+        v3& p1 = raw_path[i];
+        v3& p2 = raw_path[i+1];
+        if (p1.z - p2.z > 0.1f) {
+            path.push_back(p1 + v3(0.0f, 0.0f, -0.5f));
+            path.push_back((p1 + p2) / 2.0f + v3(0.0f, 0.0f, -0.5f));
+            next = false;
+            continue;
+        }
+        if (p1.z - p2.z < -0.1f) {
+            path.push_back(p1 + (next ? v3(0.0f, 0.0f, -0.5f) : v3(0.0f)));
+            path.push_back((p1 + p2) / 2.0f + v3(0.0f, 0.0f, -0.5f));
+            next = true;
+            continue;
+        }
+        path.push_back(p1 + (next ? v3(0.0f, 0.0f, -0.5f) : v3(0.0f)));
+        path.push_back((p1 + p2) / 2.0f);
+        next = false;
+    }
+    path.push_back(raw_path.back());
     
     return path;
 }
@@ -103,12 +122,14 @@ shared_ptr<astar::Node> astar::Navigation::_find_node_on_list(vector<shared_ptr<
 }
 
 astar::Navigation::TileType astar::Navigation::_position_viable(v3i position) {
-    bool occupied = path_solids.get(position) || off_road_solids.get(position);
+    bool occupied = unstandable_solids->get(position) || path_solids->get(position) || off_road_solids->get(position);
     if (occupied)
         return TileType_Empty;
-    if (path_solids.get(position + v3i(0,0,-1)))
+    if (unstandable_solids->get(position + v3i(0,0,-1)))
+        return TileType_Empty;
+    if (path_solids->get(position + v3i(0,0,-1)))
         return TileType_Path;
-    if (off_road_solids.get(position + v3i(0,0,-1)))
+    if (off_road_solids->get(position + v3i(0,0,-1)))
         return TileType_OffRoad;
     return TileType_Empty;
 }
@@ -127,12 +148,12 @@ vector<std::pair<v3i, u32>> astar::Navigation::_get_neighbors(v3i position) {
     for (Direction neighbor : {Direction_PosX, Direction_PosY, Direction_NegX, Direction_NegY}) {
         v3i neighbor_pos = position + direction_to_vec(neighbor);
         TileType neighbor_tile = _position_viable(neighbor_pos);
-        if (ramps.contains(neighbor_pos)) {
-            if (ramps[neighbor_pos] == neighbor)
+        if (ramps->contains(neighbor_pos)) {
+            if (ramps->at(neighbor_pos) == neighbor)
                 neighbors.push_back({neighbor_pos + v3i(0, 0, 1), 11});
         }
-        else if (ramps.contains(neighbor_pos + v3i(0,0,-1))) {
-            if (ramps[neighbor_pos + v3i(0,0,-1)] == flip_direction(neighbor))
+        else if (ramps->contains(neighbor_pos + v3i(0,0,-1))) {
+            if (ramps->at(neighbor_pos + v3i(0,0,-1)) == flip_direction(neighbor))
                 neighbors.push_back({neighbor_pos + v3i(0,0,-1), 11});
         }
         else if (neighbor_tile != TileType_Empty)

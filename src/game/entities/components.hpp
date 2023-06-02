@@ -30,16 +30,17 @@ struct LogicTransform {
 };
 
 struct ModelTransform {
-        v3    translation = v3(0.0f);
-        euler rotation    = euler();
-        v3    scale       = v3(1.0f);
-        m44 transform;
+    v3    translation = v3(0.0f);
+    quat  rotation    = quat();
+    v3    scale       = v3(1.0f);
+    m44 transform;
     bool dirty = true;
 
     // ModelTransform();
     // ModelTransform(v3 translation, euler rotation = {}, v3 scale = {});
     void set_translation(const v3& v);
     void set_rotation(const euler& e);
+    void set_rotation(const quat& q);
     void set_scale(const v3& v);
     const m44& get_transform();
 };
@@ -52,7 +53,12 @@ struct TransformLink {
 struct GridSlot {
     bool path = false;
     bool ramp = false;
+    bool standable = false;
     Direction direction = Direction_Up;
+    uset<entt::entity> linked;
+};
+
+struct FloorOccupier {
 };
 
 struct Health {
@@ -66,6 +72,8 @@ struct Health {
     Stat damage_taken_multiplier;
     Stat regen;
     umap<entt::entity, Stat> dots;
+
+    std::shared_ptr<Timer> hurt_emitter_timer;
 
     Health(float health_value, Scene* scene, const string& hurt_emitter_path = "");
 };
@@ -116,5 +124,13 @@ void remove_dragging_impair(Scene* scene, entt::entity entity);
 void remove_dragging_impair(entt::registry& reg, entt::entity entity);
 
 entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 location, float health_value, const string& hurt_path);
+
+void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_health_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+
 
 }

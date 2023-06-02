@@ -39,7 +39,7 @@ void Stat::remove_effect(u64 id) {
 }
 
 
-f32 Stat::value() {
+float Stat::value() {
     f32 base = 0.0f;
     f32 mult = 1.0f;
     f32 add  = 0.0f;
@@ -73,7 +73,7 @@ f32 Stat::value() {
     return base * mult + add;
 }
 
-f32 StatInstance::value() {
+f32 StatInstance::value() const {
     if (stat == nullptr)
         return 0.0f;
     

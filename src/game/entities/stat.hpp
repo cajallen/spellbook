@@ -23,7 +23,7 @@ struct Stat {
     Scene* scene = nullptr;
     umap<u64, StatEffect> effects;
 
-    f32 value();
+    float value();
     void add_effect(u64 id, const StatEffect& effect);
     void remove_effect(u64 id);
 
@@ -37,7 +37,7 @@ struct Stat {
 struct StatInstance {
     Stat* stat = nullptr;
     float instance_base = 0.0f;
-    float value();
+    float value() const;
 };
 
 float stat_instance_value(Stat* stat, float instance_base);

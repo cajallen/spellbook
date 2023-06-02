@@ -17,7 +17,7 @@ entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const strin
         model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(model_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
-        scene->registry.emplace<ModelTransform>(entity, v3{}, euler{}, v3(scale));
+        scene->registry.emplace<ModelTransform>(entity, v3{}, quat{}, v3(scale));
         scene->registry.emplace<TransformLink>(entity, v3(0.5), 10.0f);
     }
 

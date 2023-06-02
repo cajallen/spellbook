@@ -2,6 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 
+#include "editor/console.hpp"
 #include "extension/fmt.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
@@ -18,13 +19,18 @@
 
 namespace spellbook {
 
-const float base_projectile_speed = 6.0f;
+const float attack_projectile_speed = 6.0f;
+const float attack_damage = 0.5f;
+const float attack_vuln_amount = 1.0f;
 
-struct RangerAttack : Ability {
+struct RangerAttack : Attack {
+    using Attack::Attack;
     void targeting() override;
     void start() override;
     void trigger() override;
     float time_to_hit(v3i pos) override;
+
+    string get_name() const override { return "Ranger Attack"; }
 };
 
 void RangerAttack::start() {
@@ -38,19 +44,18 @@ void RangerAttack::trigger() {
     auto& skeleton = model->model_cpu->skeleton;
 
     v3 arrow_pos = ranger_logic_transform.position;
-    for (auto& bone : skeleton->bones) {
-        if (bone->name == "Arrow") {
-            m44 t =  ranger_model_transform->get_transform() * model->model_cpu->root_node->cached_transform * bone->transform();
-            arrow_pos = math::apply_transform(t, v3(0.0f, 0.0f, 0.0f));
-            arrow_pos -= v3(0.5f);
-        }
+    Bone* arrow_bone = skeleton->find_bone("Arrow");
+    if (arrow_bone) {
+        m44 t =  ranger_model_transform->get_transform() * model->model_cpu->root_node->cached_transform * arrow_bone->transform();
+        arrow_pos = math::apply_transform(t, v3(0.0f, 0.0f, 0.0f));
+        arrow_pos -= v3(0.5f);
     }
 
     Caster& caster_comp = scene->registry.get<Caster>(caster);
     
     Projectile projectile = {
         .target = target,
-        .speed = StatInstance{&*caster_comp.projectile_speed, base_projectile_speed},
+        .speed = StatInstance{&*caster_comp.projectile_speed, attack_projectile_speed},
         .alignment = v3(1.0f, 0.0f, 0.0f),
         .callback = [this](entt::entity proj_entity) {
             auto projectile = scene->registry.try_get<Projectile>(proj_entity);
@@ -64,6 +69,9 @@ void RangerAttack::trigger() {
                 
                 auto hit_enemies = entry_gather_function(*this, projectile->target, 0.0f);
 
+                if (hit_enemies.size() == 0)
+                    console({.str=fmt_("No enemies hit!")});
+                
                 // Apply damage
                 for (entt::entity enemy : hit_enemies) {
                     auto health = scene->registry.try_get<Health>(enemy);
@@ -73,7 +81,7 @@ void RangerAttack::trigger() {
                     v3 damage_dir = v3(0.0f);
                     if (this_lt && enemy_lt)
                         damage_dir = enemy_lt->position - this_lt->position;
-                    damage(scene, caster, enemy, 3.0f, damage_dir);
+                    damage(scene, caster, enemy, attack_damage, damage_dir);
                 }
 
                 v3 pos = v3(projectile->target) + v3(0.5f, 0.5f, 0.05f);
@@ -85,11 +93,11 @@ void RangerAttack::trigger() {
                     if (vertices.empty())
                         return;
                     scene->render_scene.quick_mesh(generate_formatted_line(&scene->camera, vertices), true, false);         
-                }, false).start(0.2f);
+                }, true)->start(0.2f);
                 
                 // Vulnerability
                 // Remove existing vulns
-                for (auto [entity, health] : scene->registry.view<Enemy, Health>().each()) {
+                for (auto [entity, enemy, health] : scene->registry.view<Enemy, Health>().each()) {
                     health.damage_taken_multiplier.remove_effect(vuln_id);
                     auto& emitters = scene->registry.get<EmitterComponent>(entity);
                     emitters.remove_emitter(vuln_id);
@@ -109,7 +117,7 @@ void RangerAttack::trigger() {
                     Health& health = scene->registry.get<Health>(select_enemy);
                     health.damage_taken_multiplier.add_effect(vuln_id, StatEffect{
                         .type = StatEffect::Type_Multiply,
-                        .value = 1.0f
+                        .value = attack_vuln_amount
                     });
                     auto& emitters = scene->registry.get<EmitterComponent>(select_enemy);
                     emitters.add_emitter(vuln_id, load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"));
@@ -134,28 +142,36 @@ void RangerAttack::targeting() {
 float RangerAttack::time_to_hit(v3i pos) {
     auto& l_transform = scene->registry.get<LogicTransform>(caster);
     Caster& caster_comp = scene->registry.get<Caster>(caster);
-    float travel_time = math::distance(l_transform.position, v3(pos)) / stat_instance_value(&*caster_comp.projectile_speed, base_projectile_speed);
+    float travel_time = math::distance(l_transform.position, v3(pos)) / stat_instance_value(&*caster_comp.projectile_speed, attack_projectile_speed);
     return pre_trigger_time.value() + travel_time;
 }
 
 
-struct RangerAbility : Ability {
+struct RangerSpell : Spell {
+    using Spell::Spell;
     void start() override;
     void trigger() override;
     void targeting() override;
+
+    string get_name() const override { return "Ranger Spell"; }
 };
 
-void RangerAbility::start() {
+void RangerSpell::start() {
     lizard_turn_to_target();
 }
 
-void RangerAbility::targeting() {
-    
+void RangerSpell::targeting() {
+    // Ignore taunt
+    // Caster& caster_comp = scene->registry.get<Caster>(caster);
+    // if (taunted(*this, caster_comp))
+    //     return;
+
+    trap_targeting(*this);
 }
 
 
 
-void RangerAbility::trigger() {
+void RangerSpell::trigger() {
     auto& ranger_logic_transform = scene->registry.get<LogicTransform>(caster);
     auto model = scene->registry.try_get<Model>(caster);
     auto ranger_model_transform = scene->registry.try_get<ModelTransform>(caster);
@@ -176,9 +192,9 @@ void RangerAbility::trigger() {
     entt::entity caster_entity = caster;
     Projectile projectile = {
         .target = target,
-        .speed = StatInstance{&*caster_comp.projectile_speed, base_projectile_speed},
+        .speed = StatInstance{&*caster_comp.projectile_speed, attack_projectile_speed},
         .alignment = v3(0.0f, 0.0f, 1.0f),
-        .callback = [scene_ptr, caster_entity](entt::entity proj_entity) {
+        .callback = [this, scene_ptr, caster_entity](entt::entity proj_entity) {
             auto projectile = scene_ptr->registry.try_get<Projectile>(proj_entity);
             if (!projectile)
                 return;
@@ -188,17 +204,18 @@ void RangerAbility::trigger() {
             static int i = 0;
             scene_ptr->registry.emplace<Name>(trap_entity, fmt_("trap_{}", i++));
 
-            auto& model_comp = scene_ptr->registry.emplace<Model>(trap_entity);
+            auto& model_comp = registry.emplace<Model>(trap_entity);
             model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>("models/hanther/hanther_trap.sbmod"));
             model_comp.model_gpu = instance_model(scene_ptr->render_scene, *model_comp.model_cpu);
-            PoseController& poser = scene_ptr->registry.emplace<PoseController>(trap_entity, *model_comp.model_cpu->skeleton);
+            PoseController& poser = registry.emplace<PoseController>(trap_entity, *model_comp.model_cpu->skeleton);
             
-            scene_ptr->registry.emplace<LogicTransform>(trap_entity, v3(projectile->target));
-            scene_ptr->registry.emplace<ModelTransform>(trap_entity);
-            scene_ptr->registry.emplace<TransformLink>(trap_entity, v3(0.5f, 0.5f, 0.0f));
+            registry.emplace<LogicTransform>(trap_entity, v3(projectile->target));
+            registry.emplace<ModelTransform>(trap_entity);
+            registry.emplace<TransformLink>(trap_entity, v3(1.0f, 0.0f, 0.0f));
     
-            scene_ptr->registry.emplace<EmitterComponent>(trap_entity, scene_ptr);
+            registry.emplace<EmitterComponent>(trap_entity, scene_ptr);
             
+            registry.emplace<FloorOccupier>(trap_entity);
             AreaTrigger& trigger = registry.emplace<AreaTrigger>(trap_entity, scene_ptr);
             trigger.entity = trap_entity;
             trigger.caster_entity = caster_entity;
@@ -207,9 +224,9 @@ void RangerAbility::trigger() {
         
             trigger.trigger = [scene_ptr, trap_entity, caster_entity](AreaTrigger& area_trigger) {
                 PoseController& poser = scene_ptr->registry.get<PoseController>(trap_entity);
-                poser.set_state(AnimationState_AttackInto, 0.2f);
+                poser.set_state(AnimationState_AttackInto, 0.1f);
                 
-                add_timer(area_trigger.scene, "Ranger Trap Trigger Timer", [trap_entity, caster_entity](Timer* timer) {
+                add_timer(area_trigger.scene, "Ranger Trap Arm Timer", [trap_entity, caster_entity](Timer* timer) {
                     AreaTrigger& area_trigger = timer->scene->registry.get<AreaTrigger>(trap_entity); 
                     u64 root_id = hash_string("Ranger Trap Root");
                     u64 silence_id = hash_string("Ranger Trap Silence");
@@ -223,28 +240,22 @@ void RangerAbility::trigger() {
                         apply_timed_impair(timer->scene, enemy, root_id, ImpairType_NoMove, 2.0f);
                         apply_timed_impair(timer->scene, enemy, silence_id, ImpairType_NoCast, 2.0f);
                     }
-                }, false).start(0.2f);
+                }, true)->start(0.5f);
             };
 
         }
     };
     quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt", "models/hanther/hanther_trap.sbmod");
- 
 }
-
-
-
 
 void build_ranger(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {
     scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
     Caster& caster = scene->registry.get<Caster>(entity);
 
-    caster.attack = std::make_unique<RangerAttack>();
-    caster.attack->setup(scene, entity, 0.8f, 1.3f, Ability::Type_Attack);
+    caster.attack = std::make_unique<RangerAttack>(scene, entity, 0.8f, 1.3f, 1.0f, 4.0f);
     caster.attack->entry_gather_function = lizard_entry_gather();
 
-    caster.ability = std::make_unique<RangerAbility>();
-    caster.ability->setup(scene, entity, 1.0f, 1.0f, Ability::Type_Ability);
+    caster.ability = std::make_unique<RangerSpell>(scene, entity, 1.0f, 1.0f);
     caster.ability->entry_gather_function = lizard_entry_gather();
 }
 

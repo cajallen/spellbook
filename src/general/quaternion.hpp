@@ -16,8 +16,13 @@ template <typename T> struct quat_ {
 
     constexpr quat_() : x(0), y(0), z(0), w(1) {}
     template <typename R> constexpr quat_(quat_<R> q) : x(T(q.x)), y(T(q.y)), z(T(q.z)), w(T(q.w)) {}
-    constexpr explicit quat_(v3_<T> axis, T ang)
-        : x(axis.x * math::sin(ang / 2)), y(axis.y * math::sin(ang / 2)), z(axis.z * math::sin(ang / 2)), w(math::cos(ang / 2)) {}
+    constexpr explicit quat_(v3_<T> axis, T ang) : x(axis.x * math::sin(ang / 2)), y(axis.y * math::sin(ang / 2)), z(axis.z * math::sin(ang / 2)), w(math::cos(ang / 2)) {
+        float len = sqrt(x * x + y * y + z * z + w * w);
+        x /= len;
+        y /= len;
+        z /= len;
+        w /= len;
+    }
     constexpr explicit quat_(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
     constexpr explicit quat_(v3_<T> vector) {
         f32 angle = math::length(vector);
@@ -56,6 +61,13 @@ template <typename T> struct quat_ {
         return quat_(x - q.x, y - q.y, z - q.z, w - q.w);
     }
     quat_ operator*(quat_ q) const {
+        float x2 = w * q.x + x * q.w + y * q.z - z * q.y;
+        float y2 = w * q.y - x * q.z + y * q.w + z * q.x;
+        float z2 = w * q.z + x * q.y - y * q.x + z * q.w;
+        float w2 = w * q.w - x * q.x - y * q.y - z * q.z;
+
+        return quat_(x2,y2,z2,w2);
+        
         return quat_(x * q.x, y * q.y, z * q.z, w * q.w);
     }
     quat_ operator/(quat_ q) const {
@@ -160,21 +172,23 @@ JSON_IMPL(quat, x, y, z, w);
 
 namespace math {
 
-quat to_quat(v3 v);
-quat  to_quat(euler e);
-euler to_euler(quat q);
+quat to_quat(const v3& v);
+quat  to_quat(const euler& e);
+euler to_euler(const quat& q);
 
-quat invert(quat q);
-v3   rotate(quat q, v3 v);
-quat rotate(quat q, quat p);
-quat rotate_inv(quat q, quat p);
-f32 dot(quat q1, quat q2);
-f32 length(quat q);
-quat normalize(quat q);
-quat slerp(quat q1, quat q2, float t);
+quat invert(const quat& q);
+v3   rotate(const quat& q, const v3& v);
+quat rotate(const quat& q, const quat& p);
+quat rotate_inv(const quat& q, const quat& p);
+f32 dot(const quat& q1, const quat& q2);
+f32 length(const quat& q);
+quat normalize(const quat& q);
+quat slerp(const quat& q1, const quat& q2, float t);
 
-quat quat_between(v3 from, v3 to);
+quat quat_between(const v3& from, const v3& to);
 
 }
+
+euler string2quat(const string& word);
 
 }

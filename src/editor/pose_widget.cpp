@@ -61,21 +61,22 @@ void _translation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState
         }
     
         auto line_mesh = generate_formatted_line(viewport.camera, std::move(vertices));
-        settings.render_scene.quick_mesh(line_mesh, true, true);
+        settings.render_scene.quick_mesh(line_mesh, true, settings.widget);
     }
 
     // Planes
     for (int axis = 0; axis < 3; axis++) {
-        int axis1 = (axis + 1) % 3;
-        int axis2 = (axis + 2) % 3;
+        int axis1 = (axis + 0) % 3;
+        int axis2 = (axis + 1) % 3;
+        int axis3 = (axis + 2) % 3;
         u32 operation_index = Operation_TranslateXY + axis;
         if (!(state->enabled & (0b1 << operation_index)))
             continue;
 
-        auto info = mouse_to_3d_plane(mouse, axis);
+        auto info = mouse_to_3d_plane(mouse, axis3);
         
         v3 plane_normal = {};
-        plane_normal[axis] = 1.0f;
+        plane_normal[axis3] = 1.0f;
         if (math::abs(math::dot(plane_normal, mouse.os_center_ray.dir)) < settings.transform2d_dot_cutoff) {
             state->hidden |= 0b1 << operation_index;
             continue;
@@ -121,7 +122,7 @@ void _translation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState
         vertices.emplace_back(math::apply_transform(state->model, p4), color, settings.line_radius);
         vertices.emplace_back(math::apply_transform(state->model, p1), color, settings.line_radius);
         auto line_mesh = generate_formatted_line(viewport.camera, std::move(vertices));
-        settings.render_scene.quick_mesh(line_mesh, true, true);
+        settings.render_scene.quick_mesh(line_mesh, true, settings.widget);
     }
 }
 void _rotation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState* state, const PoseWidgetSettings& settings) {
@@ -173,7 +174,7 @@ void _rotation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState* s
         }
     
         auto line_mesh = generate_formatted_line(viewport.camera, std::move(vertices));
-        settings.render_scene.quick_mesh(line_mesh, true, true);
+        settings.render_scene.quick_mesh(line_mesh, true, settings.widget);
     }
 
     if (state->enabled & (0b1 << Operation_RotateCamera) && dot_aligned_warning > 0.0f) {
@@ -190,7 +191,7 @@ void _rotation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState* s
         }
         
         auto line_mesh = generate_formatted_line(viewport.camera, std::move(vertices));
-        settings.render_scene.quick_mesh(line_mesh, true, true);
+        settings.render_scene.quick_mesh(line_mesh, true, settings.widget);
     }
 }
 

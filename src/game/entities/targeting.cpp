@@ -1,11 +1,12 @@
 ﻿#include "targeting.hpp"
 
+#include "consumer.hpp"
 #include "spawner.hpp"
+#include "general/astar.hpp"
 #include "game/scene.hpp"
 #include "game/entities/ability.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/caster.hpp"
-
 namespace spellbook {
 
 bool taunted(Ability& ability, Caster& caster) {
@@ -95,13 +96,40 @@ bool plus_targeting(int range, Ability& ability, EntryGatherFunction entry_gathe
     return ability.has_target;
 }
 
-bool end_targeting(Ability& ability) {
-    // astar::Navigation& nav = *ability.scene->navigation;
-    // entt::registry& registry = ability.scene->registry;
-    // for (auto [entity, spawner, spawner_transform] : registry.view<Spawner, LogicTransform>().each()) {
-    //     
-    // }
-    return false;
+bool trap_targeting(Ability& ability) {
+    LogicTransform& caster_tfm = ability.scene->registry.get<LogicTransform>(ability.caster);
+    ability.has_target = false;
+    for (int i = 0; true; i++) {
+        bool any = false;
+        for (auto& path : ability.scene->paths) {
+            if (i >= path.path.size())
+                continue;
+            any = true;
+            
+            if (math::abs(caster_tfm.position.z - path.path[i].z) > 0.3f)
+                continue;
+                
+            if (math::distance(path.path[i], math::round(path.path[i])) > 0.1f)
+                continue;
+            
+            bool floor_occupied = false;
+            for (entt::entity e : ability.scene->get_any(math::round_cast(path.path[i]))) {
+                if (ability.scene->registry.any_of<FloorOccupier>(e)) {
+                    floor_occupied = true;
+                    break;
+                }
+            }
+            if (floor_occupied)
+                continue;
+
+            ability.target = math::round_cast(path.path[i]);
+            ability.has_target = true;
+            return true;
+        }
+        if (!any)
+            break;
+    }
+    return ability.has_target;
 }
 
 

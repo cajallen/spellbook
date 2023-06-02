@@ -79,6 +79,9 @@ struct Renderer {
     umap<u64, MaterialGPU> material_cache;
     umap<u64, TextureGPU>  texture_cache;
 
+    vuk::Unique<std::array<VkSemaphore, 3>> present_ready;
+    vuk::Unique<std::array<VkSemaphore, 3>> render_complete;
+
     bool suspend = false;
     
     Renderer();

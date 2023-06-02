@@ -103,10 +103,6 @@ void AssassinAttack::targeting() {
 void build_assassin(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {
     scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
     Caster& caster = scene->registry.get<Caster>(entity);
-
-    caster.attack = std::make_unique<AssassinAttack>();
-    caster.attack->setup(scene, entity, 0.4f, 0.5f, Ability::Type_Attack);
-    caster.attack->entry_gather_function = lizard_entry_gather();
 }
 
 void draw_assassin_dragging_preview(Scene* scene, entt::entity entity) {

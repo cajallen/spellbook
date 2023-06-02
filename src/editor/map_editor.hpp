@@ -30,6 +30,7 @@ struct MapEditor : EditorScene {
     vector<Button<SpawnerPrefab>> spawner_buttons;
 
     bool painting = false;
+    bool last_paint = false;
     
     bool eraser_selected = false;
     u32 selected_consumer = ~0u;

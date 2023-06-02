@@ -12,7 +12,7 @@ struct Caster;
 
 using EntryGatherFunction = std::function<uset<entt::entity>(Ability&, v3i, float)>;
 
-bool end_targeting(Ability& ability);
+bool trap_targeting(Ability& ability);
 
 bool square_targeting(int range, Ability& ability, EntryGatherFunction entry_eval);
 bool plus_targeting(int range, Ability& ability, EntryGatherFunction entry_eval);

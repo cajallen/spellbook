@@ -19,21 +19,25 @@ vector<entt::entity> MapTargeting::select_enemies(v3i pos, float in_future) {
     }
 
     auto& enemy_map = enemy_cache.emplace(used_time, umap<v3i, vector<entt::entity>>{}).first->second;
-    for (auto [entity, l_transform] : scene->registry.view<Enemy, LogicTransform>().each()) {
-        v3i pos = math::round_cast(l_transform.position);
+    for (auto [entity, enemy, logic_tfm] : scene->registry.view<Enemy, LogicTransform>().each()) {
         auto traveler = scene->registry.try_get<Traveler>(entity);
+        v3i pos_min, pos_max;
         if (!traveler) {
-            if (!enemy_map.contains(pos))
-                enemy_map[pos] = {};
-
-            enemy_map[pos].push_back(entity);
+            pos_min = math::round_cast(logic_tfm.position - v3(0.1f, 0.1f, 0.0f));
+            pos_max = math::round_cast(logic_tfm.position + v3(0.1f, 0.1f, 0.0f));
         } else {
-            v3i expected_pos = math::round_cast(predict_pos(*traveler, l_transform.position, used_time - scene->time));
-            
-            if (!enemy_map.contains(expected_pos))
-                enemy_map[expected_pos] = {};
-
-            enemy_map[expected_pos].push_back(entity);
+            v3 expected_pos = predict_pos(*traveler, logic_tfm.position, used_time - scene->time);
+            pos_min = math::round_cast(expected_pos - v3(0.1f, 0.1f, 0.0f));
+            pos_max = math::round_cast(expected_pos + v3(0.1f, 0.1f, 0.0f));
+        }
+        for (int x = pos_min.x; x <= pos_max.x; x++) {
+            for (int y = pos_min.y; y <= pos_max.y; y++) {
+                v3i map_pos = v3i(x, y, pos_min.z);
+                if (!enemy_map.contains(map_pos))
+                    enemy_map[map_pos] = {};
+    
+                enemy_map[map_pos].push_back(entity);
+            }
         }
     }
 

@@ -60,11 +60,14 @@ f32 dot(v3 a, v3 b);
 
 f32 cross(v2 a, v2 b);
 v3  cross(v3 a, v3 b);
+v3  ncross(v3 a, v3 b);
 
 // transforms 0-1 to value in range
 f32 to_range(f32 value, range r);
 // transforms valaue in range to 0-1
 f32 from_range(f32 value, range r);
+
+bool iterate(v3i& current, const v3i& min, const v3i& max);
 
 f32 cos(f32 angle);
 f32 sin(f32 angle);
@@ -105,6 +108,9 @@ bool ray_intersects_aabb(v2 rstart, v2 rdir, v2 bstart, v2 bend, float* out_dist
 template <typename T> bool is_nan(T value) {
     return std::isnan(value);
 }
+template <> bool is_nan(v2 value);
+template <> bool is_nan(v3 value);
+
 template <typename T> bool is_inf(T value) {
     return std::isinf(value);
 }

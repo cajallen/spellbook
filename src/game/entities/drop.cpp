@@ -18,7 +18,7 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
     model_comp.model_gpu = std::move(instance_model(scene->render_scene, *model_comp.model_cpu));
 
     scene->registry.emplace<LogicTransform>(entity, position);
-    scene->registry.emplace<ModelTransform>(entity, v3{}, euler{}, v3(bead_prefab.scale));
+    scene->registry.emplace<ModelTransform>(entity, v3{}, quat{}, v3(bead_prefab.scale));
     scene->registry.emplace<TransformLink>(entity, v3(0.5));
 
     scene->registry.emplace<Pickup>(entity, bead_prefab.type);

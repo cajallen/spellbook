@@ -2,6 +2,7 @@
 
 #include <functional>
 #include "general/string.hpp"
+#include "general/vector.hpp"
 
 namespace spellbook {
 
@@ -23,7 +24,9 @@ struct Timer {
     float remaining_time;
     float time_scale = 1.0f;
     bool ticking = false;
-    bool one_shot = true;
+    
+    // Don't delete while running even if all references are dropped
+    bool unowned = true;
 
     void start(float time = -1.0f);
     void update(float delta);
@@ -31,13 +34,19 @@ struct Timer {
     void stop();
 };
 
+struct TimerManager {
+    vector<std::shared_ptr<Timer>> timers;
+    vector<TimerCallback> timer_callbacks;
+    
+};
+
 void update_timers(Scene* scene);
 
-Timer& add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool permanent = false);
-Timer& add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool permanent = false);
-void destroy_timer(Timer* timer);
-void remove_timer(Scene* scene, Timer* timer);
-void remove_timer(Scene* scene, const string& name);
+std::shared_ptr<Timer> add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool unowned_oneshot = false);
+std::shared_ptr<Timer> add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool unowned_oneshot = false);
 void inspect(Timer* timer);
+
+// To get rid of a timer, just drop references to it
+
 
 }

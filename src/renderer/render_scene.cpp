@@ -51,6 +51,11 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     scene_data.water_color2          = Color::hsv(195.0f, 0.9f, 0.70f).rgb;
     scene_data.water_intensity       = 3.0f;
     scene_data.water_level           = -0.5f;
+
+    auto cube = generate_cube(v3(0.0f, 0.0f, -3.5f), v3(10000.0f, 10000.0f, 1.0f));
+    auto cube_name = upload_mesh(cube);
+    auto background_mat_name = upload_material(MaterialCPU{.file_path = "black_mat", .color_tint = palette::black});
+    quick_mesh(cube_name, background_mat_name, false);
 }
 
 void RenderScene::image(v2i size) {
@@ -118,9 +123,9 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     cam_data.vp     = (m44GPU) viewport.camera->vp;
     CameraData sun_cam_data;
     v3 sun_vec = math::normalize(math::rotate(scene_data.sun_direction, v3::Z));
-    sun_cam_data.vp     = (m44GPU) (math::orthographic(v3(12.0f, 12.0f, 20.0f)) * math::look(sun_vec * 10.0f, -sun_vec, v3::Z));
+    sun_cam_data.vp     = (m44GPU) (math::orthographic(v3(30.0f, 30.0f, 40.0f)) * math::look(sun_vec * 25.0f, -sun_vec, v3::Z));
     CameraData top_cam_data;
-    top_cam_data.vp     = (m44GPU) (math::orthographic(v3(10.0f, 10.0f, 0.2f)) * math::look(v3(0.0f, 0.0f, 0.1f + scene_data.water_level), -v3::Z + v3(0.01f, 0.005f, 0.0f), v3::Y));
+    top_cam_data.vp     = (m44GPU) (math::orthographic(v3(20.0f, 20.0f, 0.2f)) * math::look(v3(0.0f, 0.0f, 0.1f + scene_data.water_level), -v3::Z + v3(0.01f, 0.005f, 0.0f), v3::Y));
 
     auto [pubo_camera, fubo_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&cam_data, 1));
     buffer_camera_data              = *pubo_camera;
@@ -415,7 +420,7 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             "top_blurred_temp0_input"_buffer >> vuk::eTransferWrite >> "top_blurred_temp0_output"
         },
         .execute = [this](vuk::CommandBuffer& cmd) {
-            cmd.copy_image_to_buffer("top_depth_output", "top_blurred_temp0_output", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eDepth}, .imageExtent = {1024, 1024, 1}});
+            cmd.copy_image_to_buffer("top_depth_output", "top_blurred_temp0_input", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eDepth}, .imageExtent = {1024, 1024, 1}});
         }
     });
     rg->add_pass({
@@ -425,7 +430,7 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             "top_blurred_temp1_input"_image >> vuk::eTransferWrite >> "top_blurred_temp1_output"
         },
         .execute = [this](vuk::CommandBuffer& cmd) {
-            cmd.copy_buffer_to_image("top_blurred_temp0_output", "top_blurred_temp1_output", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor}, .imageExtent = {1024, 1024, 1}});
+            cmd.copy_buffer_to_image("top_blurred_temp0_output", "top_blurred_temp1_input", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor}, .imageExtent = {1024, 1024, 1}});
         }
     });
     // Blur x
@@ -440,7 +445,7 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             cmd.bind_compute_pipeline("blur");
 
             cmd.bind_image(0, 0, "top_blurred_temp1_output");
-            cmd.bind_image(0, 1, "top_blurred_temp2_output");
+            cmd.bind_image(0, 1, "top_blurred_temp2_input");
 
             auto target      = *cmd.get_resource_image_attachment("top_blurred_temp1_output");
             auto target_size = target.extent.extent;
@@ -462,7 +467,7 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             cmd.bind_compute_pipeline("blur");
 
             cmd.bind_image(0, 0, "top_blurred_temp2_output");
-            cmd.bind_image(0, 1, "top_blurred");
+            cmd.bind_image(0, 1, "top_blurred_temp3_input");
 
             auto target      = *cmd.get_resource_image_attachment("top_blurred_temp2_output");
             auto target_size = target.extent.extent;
@@ -557,7 +562,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 render_particles(emitter, command_buffer);
             }
             // Render grid
-            if (render_grid) {
+        if (render_grid) {
                 auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->value.view.get();
                 command_buffer
                     .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {

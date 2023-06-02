@@ -1,10 +1,14 @@
 ﻿#pragma once
 
-#include "ability.hpp"
-#include "general/id_ptr.hpp"
+#include <entt/entity/fwd.hpp>
 
+#include "general/geometry.hpp"
 
 namespace spellbook {
+
+struct Scene;
+struct Ability;
+struct Stat;
 
 struct Taunt {
     enum Type {
@@ -51,5 +55,6 @@ struct Caster {
 };
 
 void caster_system(Scene* scene);
+void on_caster_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 
 }

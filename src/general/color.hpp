@@ -124,15 +124,15 @@ const Color gray_7 = Color(0.7f, 0.7f, 0.7f, 1.0f);
 const Color gray_8 = Color(0.8f, 0.8f, 0.8f, 1.0f);
 const Color gray_9 = Color(0.9f, 0.9f, 0.9f, 1.0f);
 
-const Color spellbook_0 = Color::hsv(310.f + 15.f, 0.1f, 1.0f);
-const Color spellbook_1 = Color::hsv(305.f + 15.f, 0.2f, 0.9f);
-const Color spellbook_2 = Color::hsv(300.f + 15.f, 0.3f, 0.8f);
-const Color spellbook_3 = Color::hsv(295.f + 15.f, 0.4f, 0.7f);
-const Color spellbook_4 = Color::hsv(290.f + 15.f, 0.5f, 0.6f);
-const Color spellbook_5 = Color::hsv(285.f + 15.f, 0.6f, 0.5f);
-const Color spellbook_6 = Color::hsv(280.f + 15.f, 0.7f, 0.4f);
-const Color spellbook_7 = Color::hsv(275.f + 15.f, 0.8f, 0.3f);
-const Color spellbook_8 = Color::hsv(270.f + 15.f, 0.9f, 0.2f);
+const Color spellbook_0 = Color::hsv(310.f + 15.f, 0.05f, 1.0f);
+const Color spellbook_1 = Color::hsv(305.f + 15.f, 0.1f, 0.9f);
+const Color spellbook_2 = Color::hsv(300.f + 15.f, 0.2f, 0.8f);
+const Color spellbook_3 = Color::hsv(295.f + 15.f, 0.3f, 0.7f);
+const Color spellbook_4 = Color::hsv(290.f + 15.f, 0.4f, 0.6f);
+const Color spellbook_5 = Color::hsv(285.f + 15.f, 0.5f, 0.5f);
+const Color spellbook_6 = Color::hsv(280.f + 15.f, 0.6f, 0.4f);
+const Color spellbook_7 = Color::hsv(275.f + 15.f, 0.7f, 0.3f);
+const Color spellbook_8 = Color::hsv(270.f + 15.f, 0.8f, 0.2f);
 
 
 const Color spellbook_gray = mix(Color(palette::spellbook_3), Color(palette::gray_5), 0.50f);

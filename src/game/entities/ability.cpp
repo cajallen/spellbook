@@ -3,6 +3,7 @@
 #include <imgui/imgui.h>
 
 #include "components.hpp"
+#include "impair.hpp"
 #include "extension/fmt.hpp"
 #include "game/pose_controller.hpp"
 #include "game/scene.hpp"
@@ -10,21 +11,52 @@
 
 namespace spellbook {
 
-Ability::~Ability() {
-    if (pre_trigger_timer)
-        remove_timer(scene, pre_trigger_timer);
-    if (post_trigger_timer)
-        remove_timer(scene, post_trigger_timer);
+Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float post, float init_range) {
+    scene = init_scene;
+    caster = init_caster;
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+
+    range = {&*caster_comp.range, init_range};
+    
+    pre_trigger_time = {&*caster_comp.attack_speed, pre};
+    post_trigger_time = {&*caster_comp.attack_speed, post};
+    pre_trigger_timer = add_timer(scene, fmt_("{}::pre", get_name()),
+        [this](Timer* timer) {
+            post_trigger_timer->start(post_trigger_time.value());
+            if (set_anims) {
+                auto poser = scene->registry.try_get<PoseController>(caster);
+                if (poser) {
+                    poser->set_state(get_post_trigger_animation_state(), post_trigger_time.value());
+                }
+            }
+            trigger();
+        }, false
+    );
+    post_trigger_timer = add_timer(scene, fmt_("{}::post", get_name()),
+        [this](Timer* timer) {
+            end();
+            if (set_anims) {
+                auto poser = scene->registry.try_get<PoseController>(caster);
+                if (poser) {
+                    poser->set_state(AnimationState_Idle);
+                }
+            }
+        }, false
+    );
 }
 
+Attack::Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cooldown, float range) : Ability(init_scene, init_caster, pre, post, range) {
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+    
+    cooldown_time = {&*caster_comp.cooldown_reduction, cooldown};
+    cooldown_timer = add_timer(scene, fmt_("{}::cd", get_name()), [this](Timer* timer) {});
+}
 
 void Ability::request_cast() {
-    if (auto_remove_dragging_impair)
-        remove_dragging_impair(scene, caster);
-    if (set_attack_anims || set_cast_anims) {
+    if (set_anims) {
         auto poser = scene->registry.try_get<PoseController>(caster);
         if (poser) {
-            poser->set_state(set_cast_anims ? AnimationState_CastInto : AnimationState_AttackInto, pre_trigger_time.value());
+            poser->set_state(get_pre_trigger_animation_state(), pre_trigger_time.value());
         }
     }
     
@@ -32,12 +64,14 @@ void Ability::request_cast() {
     pre_trigger_timer->start(pre_trigger_time.value());
 }
 
-bool Ability::casting() {
-    return pre_trigger_timer->ticking || post_trigger_timer->ticking;
+void Spell::request_cast() {
+    remove_dragging_impair(scene, caster);
+    Ability::request_cast();
 }
 
-bool Ability::ready_to_cast() {
-    return !casting();
+
+bool Ability::casting() const {
+    return pre_trigger_timer->ticking || post_trigger_timer->ticking;
 }
 
 void Ability::stop_casting() {
@@ -47,72 +81,7 @@ void Ability::stop_casting() {
 
 void inspect(Ability* ability) {
     ImGui::PushID(ability);
-    
-    if (ability->has_target) {
-        ImGui::DragInt3("Target", ability->target.data, 0.01f, 0, 0, "%d", ImGuiSliderFlags_NoInput);
-    } else {
-        ImGui::Text("No target");
-    }
-    
-    if (ImGui::TreeNode("Pre Trigger Time")) {
-        inspect(ability->pre_trigger_timer);
-        ImGui::TreePop();
-    }
-    if (ImGui::TreeNode("Post Trigger Time")) {
-        inspect(ability->post_trigger_timer);
-        ImGui::TreePop();
-    }
     ImGui::PopID();
-}
-
-void Ability::setup(Scene* init_scene, entt::entity init_caster, float pre, float post, Type type) {
-    scene = init_scene;
-    caster = init_caster;
-    Caster& caster_comp = scene->registry.get<Caster>(caster);
-    auto_remove_dragging_impair = true;
-    set_attack_anims = type == Type_Attack;
-    set_cast_anims = type == Type_Ability;
-    pre_trigger_time = {&*caster_comp.attack_speed, pre};
-    post_trigger_time = {&*caster_comp.attack_speed, post};
-    pre_trigger_timer = &add_timer(scene, fmt_("{}::pre", name),
-        [this](Timer* timer) {
-            post_trigger_timer->start(post_trigger_time.value());
-            if (set_cast_anims || set_attack_anims) {
-                auto poser = scene->registry.try_get<PoseController>(caster);
-                if (poser) {
-                    poser->set_state(set_cast_anims ? AnimationState_CastOut : AnimationState_AttackOut, post_trigger_time.value());
-                }
-            }
-            trigger();
-        }, true
-    );
-    post_trigger_timer = &add_timer(scene, fmt_("{}::post", name),
-    [this](Timer* timer) {
-            end();
-            if (set_cast_anims || set_attack_anims) {
-                auto poser = scene->registry.try_get<PoseController>(caster);
-                if (poser) {
-                    poser->set_state(AnimationState_Idle);
-                }
-            }
-        }, true
-    );
-}
-
-void Ability::targeting() {
-
-}
-
-void Ability::start() {
-
-}
-
-void Ability::trigger() {
-
-}
-
-void Ability::end() {
-
 }
 
 float Ability::time_to_hit(v3i pos) {
@@ -129,6 +98,36 @@ void Ability::lizard_turn_to_target() {
         scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
     }
 }
+
+bool Ability::in_range() const {
+    LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    bool out_of_range = math::abs(float(target.z) - logic_tfm.position.z) > 0.2f ||
+        math::abs(float(target.x) - logic_tfm.position.x) > range.value() ||
+        math::abs(float(target.y) - logic_tfm.position.y) > range.value();
+    return !out_of_range;
+}
+
+bool Ability::can_cast() const {
+    Impairs& impairs = scene->registry.get<Impairs>(caster);
+    if (impairs.is_impaired(scene, ImpairType_NoCast))
+        return false;
+    if (!has_target)
+        return false;
+    
+    if (!in_range())
+        return false;
+    if (casting())
+        return false;
+    return true;
+}
+
+bool Attack::can_cast() const {
+    if (cooldown_timer && cooldown_timer->ticking)
+        return false;
+    return Ability::can_cast();
+}
+
+
 
 
 

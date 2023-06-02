@@ -318,21 +318,23 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     scene->registry.emplace<LogicTransform>(entity, v3(location));
 
     scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, scene->spawn_state_info);
-
-    // Model
-    if (!spawner_prefab.enemies.empty()) {
-        auto& model_comp     = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(
-            load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemies.front()->enemy_prefab_path).model_path));
-        model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
-        
-        scene->registry.emplace<ModelTransform>(entity);
-        scene->registry.emplace<TransformLink>(entity, v3(0.5f));
-    }
+    scene->registry.emplace<FloorOccupier>(entity);
+    // // Model
+    // if (!spawner_prefab.enemies.empty()) {
+    //     auto& model_comp     = scene->registry.emplace<Model>(entity);
+    //     model_comp.model_cpu = std::make_unique<ModelCPU>(
+    //         load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemies.front()->enemy_prefab_path).model_path));
+    //     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+    //     
+    //     scene->registry.emplace<ModelTransform>(entity);
+    //     scene->registry.emplace<TransformLink>(entity, v3(0.5f));
+    // }
 
     // Preload all of the enemies
-    for (auto& enemy_info : spawner_prefab.enemies)
-        load_asset<ModelCPU>(load_asset<EnemyPrefab>(enemy_info->enemy_prefab_path).model_path);
+    for (auto& enemy_info : spawner_prefab.enemies) {
+        load_asset<ModelCPU>(load_asset<EnemyPrefab>(enemy_info->enemy_prefab_path).base_model_path);
+        load_asset<ModelCPU>(load_asset<EnemyPrefab>(enemy_info->enemy_prefab_path).attachment_model_path);
+    }
 
     return entity;
 }

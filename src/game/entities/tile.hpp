@@ -21,9 +21,13 @@ struct TilePrefab {
     TileType type;
     string model_path;
     string file_path;
+    v3 visual_offset = v3(0.5f, 0.5f, 0.0f);
+    uset<v3i> solids;
+
+    v3i new_offset;
 };
 
-JSON_IMPL(TilePrefab, type, model_path);
+JSON_IMPL(TilePrefab, type, model_path, visual_offset, solids);
 
 struct Scene;
 

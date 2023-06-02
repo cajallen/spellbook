@@ -18,11 +18,13 @@ namespace spellbook {
 
 const float base_projectile_speed = 4.0f;
 
-struct WarlockAttack : Ability {
+struct WarlockAttack : Attack {
+    using Attack::Attack;
     void targeting() override;
     void start() override;
     void trigger() override;
     float time_to_hit(v3i pos) override;
+    string get_name() const override { return "Warlock Spell"; }
 };
 
 void WarlockAttack::start() {
@@ -44,15 +46,14 @@ void WarlockAttack::trigger() {
     std::unique_ptr<SkeletonCPU>& skeleton = model->model_cpu->skeleton;
 
     v3 pot_pos = warlock_l_transform.position;
-    v3 pot_dir = v3(math::cos(transform->rotation.yaw), math::sin(transform->rotation.yaw), 0.0f);
-    for (auto& bone : skeleton->bones) {
-        if (bone->name == "Pot") {
-            m44 t =  transform->get_transform() * model->model_cpu->root_node->cached_transform * bone->transform();
-            pot_pos = math::apply_transform(t, v3(0.0f, 0.2f, 0.0f));
-            v3 end_vec = math::apply_transform(t, v3(0.0f, 1.0f, 0.0f));
-            pot_dir = math::normalize(end_vec - pot_pos);
-            pot_pos -= v3(0.5f);
-        }
+    v3 pot_dir = math::rotate(transform->rotation, v3(1.0f, 0.0f, 0.0f));
+    Bone* pot_bone = skeleton->find_bone("Pot");
+    if (pot_bone) {
+        m44 t =  transform->get_transform() * model->model_cpu->root_node->cached_transform * pot_bone->transform();
+        pot_pos = math::apply_transform(t, v3(0.0f, 0.2f, 0.0f));
+        v3 end_vec = math::apply_transform(t, v3(0.0f, 1.0f, 0.0f));
+        pot_dir = math::normalize(end_vec - pot_pos);
+        pot_pos -= v3(0.5f);
     }
     EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/warlock/pot_spray.sbemt");
     emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), pot_dir);
@@ -102,35 +103,37 @@ float WarlockAttack::time_to_hit(v3i pos) {
 }
 
 
-struct WarlockAbility : Ability {
+struct WarlockSpell : Spell {
+    using Spell::Spell;
+
     void trigger() override;
+    string get_name() const override { return "Warlock Spell"; }
 };
 
-void WarlockAbility::trigger() {
+void WarlockSpell::trigger() {
     constexpr float buff_duration = 12.0f;
 
-    auto& warlock_l_transform = scene->registry.get<LogicTransform>(caster);
+    auto& warlock_logic_tfm = scene->registry.get<LogicTransform>(caster);
     
     auto model = scene->registry.try_get<Model>(caster);
     auto transform = scene->registry.try_get<ModelTransform>(caster);
     auto& skeleton = model->model_cpu->skeleton;
 
-    v3 pot_pos = warlock_l_transform.position;
-    v3 pot_dir = v3(math::cos(transform->rotation.yaw), math::sin(transform->rotation.yaw), 0.0f);
-    for (auto& bone : skeleton->bones) {
-        if (bone->name == "Pot") {
-            m44 t =  transform->get_transform() * model->model_cpu->root_node->cached_transform * bone->transform();
-            pot_pos = math::apply_transform(t, v3(0.0f, 0.2f, 0.0f));
-            v3 end_vec = math::apply_transform(t, v3(0.0f, 1.0f, 0.0f));
-            pot_dir = math::normalize(end_vec - pot_pos);
-            pot_pos -= v3(0.5f);
-        }
+    v3 pot_pos = warlock_logic_tfm.position;
+    v3 pot_dir = v3(math::cos(warlock_logic_tfm.rotation.yaw), math::sin(warlock_logic_tfm.rotation.yaw), 0.0f);
+    Bone* pot_bone = skeleton->find_bone("Pot");
+    if (pot_bone) {
+        m44 t =  transform->get_transform() * model->model_cpu->root_node->cached_transform * pot_bone->transform();
+        pot_pos = math::apply_transform(t, v3(0.0f, 0.2f, 0.0f));
+        v3 end_vec = math::apply_transform(t, v3(0.0f, 1.0f, 0.0f));
+        pot_dir = math::normalize(end_vec - pot_pos);
+        pot_pos -= v3(0.5f);
     }
     EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/warlock/ability_pot_spray.sbemt");
     emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), pot_dir);
     quick_emitter(scene, "Warlock Ability Pot Spray", pot_pos + v3(0.5f), emitter_cpu, 0.3f);
-    quick_emitter(scene, "Warlock Aura Burst", warlock_l_transform.position + v3(0.5f, 0.5f, 0.0f), load_asset<EmitterCPU>("emitters/warlock/ability_base.sbemt"), 0.2f);
-    quick_emitter(scene, "Warlock Aura Ticking", warlock_l_transform.position + v3(0.5f), load_asset<EmitterCPU>("emitters/warlock/ability_ticking.sbemt"), buff_duration);
+    quick_emitter(scene, "Warlock Aura Burst", warlock_logic_tfm.position + v3(0.5f, 0.5f, 0.0f), load_asset<EmitterCPU>("emitters/warlock/ability_base.sbemt"), 0.2f);
+    quick_emitter(scene, "Warlock Aura Ticking", warlock_logic_tfm.position + v3(0.5f), load_asset<EmitterCPU>("emitters/warlock/ability_ticking.sbemt"), buff_duration);
 
     Caster& caster_comp = scene->registry.get<Caster>(caster);
     caster_comp.attack_speed->add_effect((u64) this, StatEffect(StatEffect::Type_Multiply, -0.4f, INT_MAX, buff_duration));
@@ -143,12 +146,10 @@ void build_warlock(Scene* scene, entt::entity entity, const LizardPrefab& lizard
     scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
     Caster& caster = scene->registry.get<Caster>(entity);
 
-    caster.attack = std::make_unique<WarlockAttack>();
-    caster.attack->setup(scene, entity, 1.0f, 1.0f, Ability::Type_Attack);
+    caster.attack = std::make_unique<WarlockAttack>(scene, entity, 1.0f, 1.0f, 1.0f, 3.0f);
     caster.attack->entry_gather_function = lizard_entry_gather();
 
-    caster.attack = std::make_unique<WarlockAbility>();
-    caster.attack->setup(scene, entity, 0.8f, 0.6f, Ability::Type_Ability);
+    caster.ability = std::make_unique<WarlockSpell>(scene, entity, 0.8f, 0.6f);
     caster.ability->entry_gather_function = lizard_entry_gather();
 }
 

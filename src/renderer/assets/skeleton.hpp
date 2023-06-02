@@ -75,13 +75,25 @@ struct Bone {
 
     float time = 0.0f;
     m44 local_transform = {};
+
+    m44 ik_transform = {};
+    bool ik_set_this_frame;
     
     m44 transform() const;
     m44 final_transform() const;
+    m44 final_ik_transform() const;
     void update(float new_time = -1.0f);
     m44 update_position();
     m44 update_rotation();
     m44 update_scaling();
+
+    v3 calculate_position();
+};
+
+struct IKTarget {
+    Bone* source;
+    v3 target;
+    int length;
 };
 
 struct SkeletonCPU {
@@ -89,12 +101,16 @@ struct SkeletonCPU {
     vector<std::unique_ptr<Bone>> bones;
     string current_pose;
 
+    vector<IKTarget> iks;
+
     float time = 0.0f;
 
     void update();
     void save_pose(AnimationState pose_set, string pose_name, float timing, int pose_index = -1);
     void load_pose(PoseSet::Entry& pose_entry, float offset = -1.0f);
     void store_pose(const string& pose_name);
+
+    Bone* find_bone(const string& name);
 };
 
 struct SkeletonGPU {
@@ -109,7 +125,7 @@ SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu);
 
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);
-JSON_IMPL(BonePrefab, name, parent, position, inverse_bind_matrix);
+JSON_IMPL(BonePrefab, name, parent, position, inverse_bind_matrix, length);
 JSON_IMPL(PoseSet::Entry, name, time_to, pose, ease_mode);
 JSON_IMPL(PoseSet, entries);
 
@@ -120,5 +136,8 @@ SkeletonPrefab& load_asset(const string& input_path, bool assert_exist, bool cle
 
 bool inspect(SkeletonCPU* skeleton_cpu);
 bool inspect(PoseSet* pose_set, int* load_pose = nullptr);
+
+void apply_constraints(vector<v3>& points, const vector<float>& lengths);
+void apply_constraints(IKTarget ik);
 
 }

@@ -55,29 +55,23 @@ void main() {
 		vec4 local_position = bones[vin_bone_id[i]] * vec4(vin_position, 1.0);
 		total_position += local_position * vin_bone_weight[i];
 		
-		vec3 local_normal = mat3(bones[vin_bone_id[i]]) * vin_normal;
-		vec3 local_tangent = mat3(bones[vin_bone_id[i]]) * vin_tangent;
-		total_normal += local_normal;
-		total_tangent += local_tangent;
+		mat3 N = transpose(inverse(mat3(bones[vin_bone_id[i]])));
+		vec3 local_normal = normalize(N * normalize(vin_normal));
+		vec3 local_tangent = normalize(N * normalize(vin_tangent));
+		total_normal += local_normal * vin_bone_weight[i];
+		total_tangent += local_tangent * vin_bone_weight[i];
 	}
 
 	total_position = bones_used > 0 ? total_position : vec4(vin_position, 1.0);
-	total_normal = bones_used > 0 ? total_normal : vin_normal;
-	total_tangent = bones_used > 0 ? total_tangent : vin_tangent;
+	total_normal = normalize(bones_used > 0 ? total_normal : vin_normal);
+	total_tangent = normalize(bones_used > 0 ? total_tangent : vin_tangent);
 	
     vec4 h_position = model[gl_InstanceIndex] * total_position;
-    
-	if (bones_used == 0) {
-		vec3 p = h_position.xyz / h_position.w;
-		p = round(p * 1000.0) / 1000.0;
-		h_position = vec4(p, 1.0);
-	}
-	
 	vout.position = h_position.xyz / h_position.w;
 	
-    mat3 N = inverse(transpose(mat3(model[gl_InstanceIndex])));
-	vec3 n = normalize(N * normalize(total_normal));
-	vec3 t = normalize(N * normalize(total_tangent));
+    mat3 N = transpose(inverse(mat3(model[gl_InstanceIndex])));
+	vec3 n = normalize(N * total_normal);
+	vec3 t = normalize(N * total_tangent);
 	t = normalize(t - dot(t, n) * n);
 	vec3 b = cross(n, t);
 	vout.TBN      = mat3(t, b, n);

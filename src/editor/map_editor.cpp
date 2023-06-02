@@ -5,6 +5,7 @@
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "pose_widget.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/matrix_math.hpp"
@@ -20,6 +21,7 @@
 #include "game/entities/tile.hpp"
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
+#include "game/entities/enemy.hpp"
 #include "game/entities/lizard.hpp"
 
 namespace spellbook {
@@ -174,7 +176,7 @@ bool map_editor_click_painting(ClickCallbackArgs args) {
         }
     }
     else if (args.action == GLFW_RELEASE && args.button == GLFW_MOUSE_BUTTON_LEFT) {
-        map_editor.painting = false;
+        map_editor.last_paint = true;
     }
     return false;
 }
@@ -244,8 +246,9 @@ void MapEditor::update() {
     
     if (p_scene->pause)
         return;
-    
+
     Viewport& viewport = p_scene->render_scene.viewport;
+    
     if (viewport.hovered) {
         v3i cell;
         bool auto_adjust = (selected_lizard != ~0u || selected_spawner != ~0u || selected_consumer != ~0u);
@@ -279,8 +282,11 @@ void MapEditor::update() {
                 build_visuals(p_scene, &cell);
             }
             else if (selected_tile != -1) {
-                instance_and_write_tile(tile_buttons[selected_tile].item_path, cell, rotation);
-                build_visuals(p_scene, &cell);
+                TilePrefab tile_prefab = load_asset<TilePrefab>(tile_buttons[selected_tile].item_path);
+                if (tile_prefab.type != TileType_Scenery || last_paint) {
+                    instance_and_write_tile(tile_buttons[selected_tile].item_path, cell, rotation);
+                    build_visuals(p_scene, &cell);
+                }
             }
             else if (selected_spawner != -1) {
                 instance_and_write_spawner(spawner_buttons[selected_spawner].item_path, cell);
@@ -300,18 +306,16 @@ void MapEditor::update() {
         p_scene->registry.clear<Dragging>();
         p_scene->selected_entity = entt::null;
     }
+
+    if (last_paint) {
+        painting = false;
+        last_paint = false;
+    }
 }
 
 void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
-        static m33 m;
-        static euler e;
-        ImGui::DragEuler3("Euler", &e);
-        ImGui::DragMat3("Rotation", &m, 0.02f, "%.2f");
-        if (ImGui::Button("Rot to Euler"))
-            e = math::to_euler(m);
-        
         if (ImGui::Button("Play")) {
             ADD_EDITOR_SCENE(GameScene);
             auto game_scene = (GameScene*) EditorScenes::values().back();
@@ -463,7 +467,7 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
                 
         scene->registry.emplace<ModelTransform>(entity,
             v3(pos) + v3(1.0f),
-            euler{tile_entry.rotation.yaw * math::PI * 0.5f},
+            quat(v3::Z, tile_entry.rotation.yaw * math::PI * 0.5f),
             v3(tile_entry.rotation.flip_x ? -1.0f : 1.0f, 1.0f, tile_entry.rotation.flip_z ? -1.0f : 1.0f)
         );
     }
@@ -528,16 +532,16 @@ void MapEditor::draw_preview(v3i cell) {
             });
             p_scene->render_scene.quick_mesh(ramp_line_mesh, true, true);
         } else {
-            auto line_mesh = generate_formatted_line(camera,
-            {
-                {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
-                {(v3) cell + v3(1.f, 0.f, 1.05f), palette::white, line_width},
-                {(v3) cell + v3(1.f, 1.f, 1.05f), palette::white, line_width},
-                {(v3) cell + v3(0.f, 1.f, 1.05f), palette::white, line_width},
-                {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width},
-                {(v3) cell + v3(0.f, 0.f, 1.05f), palette::white, line_width}
-            });
-            p_scene->render_scene.quick_mesh(line_mesh, true, true);
+            Bitmask3D bitmask;
+            bitmask.set(cell + v3i::Z);
+            quat r = quat(v3::Z, math::PI * 0.5f * float(rotation));
+            for (const v3i& offset : tile_prefab.solids) {
+                v3 loc = v3(cell + v3i::Z) + math::rotate(r, v3(offset));
+                bitmask.set(math::round_cast(loc));
+            }
+            auto mesh = generate_formatted_3d_bitmask(&p_scene->camera, bitmask);
+            if (!mesh.vertices.empty())
+                p_scene->render_scene.quick_mesh(mesh, true, true);
         }
     } else if (selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) {
         vector<FormattedVertex> vertices;

@@ -29,7 +29,7 @@ struct MaterialCPU {
     string normal_asset_path   = "textures/white.sbtex";
     string emissive_asset_path = "textures/white.sbtex";
 
-    Sampler sampler = Sampler().anisotropy(true);
+    Sampler sampler = Sampler().address(Address_Mirrored).anisotropy(true);
 
     vuk::CullModeFlagBits cull_mode = vuk::CullModeFlagBits::eNone;
 
@@ -37,7 +37,7 @@ struct MaterialCPU {
 };
 
 JSON_IMPL(MaterialCPU, color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, color_asset_path,
-        orm_asset_path, normal_asset_path, emissive_asset_path, sampler, cull_mode);
+        orm_asset_path, normal_asset_path, emissive_asset_path, sampler, cull_mode, shader_name);
 
 struct MaterialDataGPU {
     v4 color_tint;

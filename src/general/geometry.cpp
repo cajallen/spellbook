@@ -146,6 +146,7 @@ euler string2euler(string word) {
     };
 }
 
+
 v3i direction_to_vec(Direction direction) {
     switch (direction) {
         case (Direction_PosX): return v3i::X;

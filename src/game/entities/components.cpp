@@ -49,14 +49,11 @@ void          inspect_components(Scene* scene, entt::entity entity) {
     if (auto* component = scene->registry.try_get<LogicTransform>(entity)) {
         ImGui::Text("LogicTransform");
         ImGui::DragFloat3("Position", component->position.data, 0.01f);
-        ImGui::DragEuler3("Rotation", &component->rotation);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<ModelTransform>(entity)) {
         ImGui::Text("ModelTransform");
         ImGui::DragFloat3("Translation", component->translation.data, 0.01f);
-        ImGui::DragEuler3("Rotation", &component->rotation);
-        ImGui::DragFloat3("Scale", component->scale.data, 0.01f);
         ImGui::Separator();
     }
     if (auto* component = scene->registry.try_get<TransformLink>(entity)) {
@@ -182,11 +179,23 @@ void ModelTransform::set_translation(const v3& v) {
     }
 }
 void ModelTransform::set_rotation(const euler& e) {
-    if (rotation != e) {
-        rotation = e;
+    quat q = math::to_quat(e);
+    if (math::dot(rotation, q) <= 0.9999f) {
+        rotation = q;
         dirty = true;
     }
 }
+
+void ModelTransform::set_rotation(const quat& q) {
+    float len = math::length(rotation);
+    assert_else(1.00001 >= len && len >= 0.99999f)
+        rotation /= len;
+    if (math::dot(rotation, q) <= 0.99999f) {
+        rotation = q;
+        dirty = true;
+    }
+}
+
 void ModelTransform::set_scale(const v3& v) {
     if (scale != v) {
         scale = v;
@@ -209,26 +218,31 @@ Health::Health(float health_value, Scene* init_scene, const string& hurt_emitter
     max_health = Stat(scene, value);
     damage_taken_multiplier = Stat(scene, 1.0f);
     emitter_cpu_path = hurt_emitter_path;
+
 }
 
 void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction) {
     Caster* caster = scene->registry.try_get<Caster>(damager);
-    Health* health = scene->registry.try_get<Health>(damagee);
-    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * health->damage_taken_multiplier.value();
-    health->value -= hurt_value;
+    Health& health = scene->registry.get<Health>(damagee);
+    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * health.damage_taken_multiplier.value();
+    health.value -= hurt_value;
 
-    if (!health->emitter_cpu_path.empty()) {
-        EmitterCPU hurt_emitter = load_asset<EmitterCPU>(health->emitter_cpu_path);
+    if (!health.emitter_cpu_path.empty()) {
+        EmitterCPU hurt_emitter = load_asset<EmitterCPU>(health.emitter_cpu_path);
         hurt_emitter.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
         u64 random_id = math::random_u64();
         EmitterComponent& emitter = scene->registry.get<EmitterComponent>(damagee);
         emitter.add_emitter(random_id, hurt_emitter);
 
-        float hurt_time = math::map_range(hurt_value / health->max_health.value(), {0.0f, 1.0f}, {0.1f, 0.3f});
-        add_timer(scene, fmt_("hurt_timer"), [scene, damagee, random_id](Timer* timer) {
-            if (scene->registry.valid(damagee))
-                scene->registry.get<EmitterComponent>(damagee).remove_emitter(random_id);
-        }, false).start(hurt_time);
+        float hurt_time = math::map_range(hurt_value / health.max_health.value(), {0.0f, 1.0f}, {0.1f, 0.3f});
+        if (!health.hurt_emitter_timer) {
+            health.hurt_emitter_timer = add_timer(scene, fmt_("hurt_timer"), [scene, damagee, random_id](Timer* timer) {
+                if (scene->registry.valid(damagee))
+                    scene->registry.get<EmitterComponent>(damagee).remove_emitter(random_id);
+            }, false);
+        }
+
+        health.hurt_emitter_timer->start(hurt_time);
     }
 }
 
@@ -260,8 +274,6 @@ entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 locatio
     scene->registry.emplace<EmitterComponent>(entity, scene);
     scene->registry.emplace<Health>(entity, health_value, scene, hurt_path);
     scene->registry.emplace<Impairs>(entity);
-
-    scene->registry.emplace<Caster>(entity, scene);
     
     if (model_comp.model_cpu->skeleton) {
         scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton);
@@ -270,5 +282,79 @@ entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 locatio
     return entity;
 }
 
+
+void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity) {
+    auto impairs = registry.try_get<Impairs>(entity);
+    if (impairs) {
+        apply_untimed_impair(*impairs, Dragging::magic_number | u32(entity), ImpairType_NoCast);
+    }
+
+    auto caster = registry.try_get<Caster>(entity);
+    if (caster->casting()) {
+        caster->attack->stop_casting();
+        caster->ability->stop_casting();
+    }
+}
+
+void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    auto&    dragging = registry.get<Dragging>(entity);
+    auto& logic_tfm = registry.get<LogicTransform>(entity);
+    if (math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
+        scene.player.bank.beads[Bead_Quartz]--;
+    
+    logic_tfm.position = math::round(dragging.potential_logic_position);
+
+    constexpr float drag_fade_duration = 0.15f;
+    
+    auto poser = registry.try_get<PoseController>(entity);
+    if (poser) {
+        poser->set_state(AnimationState_Idle, 0.0f, drag_fade_duration);
+    }
+
+    bool remain_impaired = false;
+    if (scene.is_casting_platform(math::round_cast(dragging.potential_logic_position))) {
+        logic_tfm.position += v3(0.0f, 0.0, 0.1f);
+
+        auto caster = registry.try_get<Caster>(entity);
+        if (caster) {
+            Ability* ability = &*caster->ability;
+            add_timer(caster->ability->scene, "drag_cast_delay",
+                [ability](Timer* timer) {
+                    ability->targeting();
+                    ability->request_cast();
+                }, true
+            )->start(drag_fade_duration);
+            remain_impaired = true;
+        }
+    }
+
+    if (!remain_impaired) {
+        remove_dragging_impair(registry, entity);
+    }
+}
+
+
+void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    Model& model = registry.get<Model>(entity);
+    deinstance_model(scene.render_scene, model.model_gpu);
+}
+
+
+void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    auto& emitter = registry.get<EmitterComponent>(entity);
+    for (auto& [id, emitter_gpu] : emitter.emitters)
+        deinstance_emitter(*emitter_gpu, true);
+}
+
+void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    GridSlot* grid_slot = registry.try_get<GridSlot>(entity);
+    if (!grid_slot)
+        return;
+    for (entt::entity neighbor : grid_slot->linked) {
+        registry.get<GridSlot>(neighbor).linked.clear();
+        if (registry.valid(neighbor))
+            registry.destroy(neighbor);
+    }
+}
 
 }

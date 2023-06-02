@@ -6,6 +6,7 @@
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/hash.hpp"
+#include "general/bitmask_3d.hpp"
 
 namespace spellbook {
 
@@ -135,6 +136,31 @@ MeshCPU generate_icosphere(int subdivisions) {
     return MeshCPU(name, vertex_list, index_list);
 }
 
+MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex) {
+    string name = fmt_("dot_hash:{:#x}", hash_data(&vertex, 1));
+    
+    v3 cam_vec = math::normalize(vertex.position - camera->position);
+    v3 line_vec = v3::X;
+    if (math::dot(cam_vec, line_vec) > 0.99f)
+        line_vec = v3::Y;
+    v3 t = math::normalize(math::cross(cam_vec, line_vec));
+    v3 b = math::normalize(math::cross(cam_vec, t));
+
+    MeshCPU mesh_cpu;
+    mesh_cpu.file_path = name;
+    
+    for (int i = 0; i < 16; i++) {
+        float angle1 = float(i) / 16.0f * math::TAU;
+        float angle2 = float(i+1) / 16.0f * math::TAU;
+        mesh_cpu.vertices.emplace_back(vertex.position, v3(0,0,1), v3(1,0,0), vertex.color.rgb, v2(0));
+        mesh_cpu.vertices.emplace_back(vertex.position + vertex.width * t * math::cos(angle1) + vertex.width * b * math::sin(angle1), v3(0,0,1), v3(1,0,0), vertex.color.rgb, v2(0));
+        mesh_cpu.vertices.emplace_back(vertex.position + vertex.width * t * math::cos(angle2) + vertex.width * b * math::sin(angle2), v3(0,0,1), v3(1,0,0), vertex.color.rgb, v2(0));
+        mesh_cpu.indices.push_back(i*3+0);
+        mesh_cpu.indices.push_back(i*3+1);
+        mesh_cpu.indices.push_back(i*3+2);
+    }
+    return mesh_cpu;
+}
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices) {
     string name = fmt_("line_hash:{:#x}", hash_data(vertices.data(), vertices.bsize()));
     
@@ -296,6 +322,85 @@ void generate_palette(const PaletteCreateInfo& info) {
     }
     stbi_write_png_compression_level = 0;
     stbi_write_png("resources/palette.png", out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
+}
+
+MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) {
+    vector<FormattedVertex> vertices;
+
+    v3i rough_min = bitmask.rough_min();
+    v3i rough_max = bitmask.rough_max();
+
+    v3i v = rough_min;
+    do {
+        if (!bitmask.get(v))
+            continue;
+
+        
+        if (!bitmask.get(v + v3i::X) && !bitmask.get(v + v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(1, 0, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v - v3i::X) && !bitmask.get(v + v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(0, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v + v3i::Y) && !bitmask.get(v + v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(0, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v - v3i::Y) && !bitmask.get(v + v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 0, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+
+        if (!bitmask.get(v + v3i::X) && !bitmask.get(v - v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(1, 0, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 1, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v - v3i::X) && !bitmask.get(v - v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(0, 1, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v + v3i::Y) && !bitmask.get(v - v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(0, 1, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 1, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v - v3i::Y) && !bitmask.get(v - v3i::Z)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 0, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+
+        if (!bitmask.get(v + v3i::X) && !bitmask.get(v + v3i::Y)) {
+            vertices.emplace_back(v3(v + v3i(1, 1, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v + v3i::X) && !bitmask.get(v - v3i::Y)) {
+            vertices.emplace_back(v3(v + v3i(1, 0, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(1, 0, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v - v3i::X) && !bitmask.get(v - v3i::Y)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(0, 0, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!bitmask.get(v - v3i::X) && !bitmask.get(v + v3i::Y)) {
+            vertices.emplace_back(v3(v + v3i(0, 1, 0)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(v + v3i(0, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+    } while (math::iterate(v, rough_min, rough_max));
+
+    return generate_formatted_line(camera, vertices);
 }
 
 }

@@ -40,6 +40,7 @@ struct vector {
 
     void clear();
     void resize(u32 size);
+    void resize(u32 size, T t);
     void rebsize(u32 size);
     void reserve(u32 capacity);
 
@@ -225,6 +226,11 @@ void vector<T>::clear() {
 template <typename T>
 void vector<T>::resize(u32 size) {
     internal.resize(size);
+}
+
+template <typename T>
+void vector<T>::resize(u32 size, T v) {
+    internal.resize(size, v);
 }
 
 template <typename T>

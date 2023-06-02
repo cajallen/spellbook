@@ -119,6 +119,12 @@ Renderer::Renderer() : imgui_data() {
     super_frame_resource.emplace(*context, num_inflight_frames);
     global_allocator.emplace(*super_frame_resource);
     swapchain = context->add_swapchain(make_swapchain(vkbdevice));
+
+    present_ready = vuk::Unique<std::array<VkSemaphore, 3>>(*global_allocator);
+    render_complete = vuk::Unique<std::array<VkSemaphore, 3>>(*global_allocator);
+
+    global_allocator->allocate_semaphores(*present_ready);
+    global_allocator->allocate_semaphores(*render_complete);
 }
 
 void Renderer::enqueue_setup(vuk::Future&& fut) {
@@ -157,6 +163,12 @@ void Renderer::setup() {
         pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
         pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "src/shaders/textured_3d.frag");
         context->create_named_pipeline("textured_model", pci);
+    }
+    {
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
+        pci.add_glsl(get_contents("src/shaders/desert_rocks.frag"), "src/shaders/desert_rocks.frag");
+        context->create_named_pipeline("desert_rocks", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
@@ -209,6 +221,7 @@ void Renderer::update() {
     }
 }
 
+vuk::SingleSwapchainRenderBundle bundle;
 void Renderer::render() {
     ZoneScoped;
     assert_else(stage == RenderStage_Inactive)
@@ -241,12 +254,18 @@ void Renderer::render() {
     rg->add_pass({.name = "force_transition", .resources = std::move(resources)});
 
     auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN++"}, imgui_data, ImGui::GetDrawData(), imgui_images);
+    
+    auto rg_p = std::make_shared<vuk::RenderGraph>("presenter");
+    rg_p->attach_in("_src", std::move(fut));
+    // we tell the rendergraph that _src will be used for presenting after the rendergraph
+    rg_p->release_for_present("_src");
+    
     stage    = RenderStage_Presenting;
     vuk::Compiler compiler;
-    {
-        ZoneScopedN("Present");
-        present(*frame_allocator, compiler, swapchain, std::move(fut));
-    }
+    auto erg = *compiler.link(std::span{ &rg_p, 1 }, {});
+    bundle = *acquire_one(*context, swapchain, (*present_ready)[context->get_frame_count() % 3], (*render_complete)[context->get_frame_count() % 3]);
+    auto result = *execute_submit(*frame_allocator, std::move(erg), std::move(bundle));
+    present_to_one(*context, std::move(result));
     imgui_images.clear();
 
     for (auto scene : scenes) {
@@ -304,6 +323,8 @@ void Renderer::cleanup() {
 }
 
 Renderer::~Renderer() {
+    present_ready.reset();
+    render_complete.reset();
     imgui_data.font_texture.view.reset();
     imgui_data.font_texture.image.reset();
     super_frame_resource.reset();

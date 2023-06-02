@@ -6,49 +6,25 @@
 
 namespace spellbook {
 
-Timer& add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback, bool permanent) {
-    auto& timer = *scene->timers.emplace(name);
-    timer.scene = scene;
-    timer.callback = TimerCallback{&timer, callback};
+
+std::shared_ptr<Timer> add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback, bool unowned_oneshot) {
+    std::shared_ptr<Timer> timer_ptr = std::make_shared<Timer>(name, scene);
+    scene->timer_manager.timers.push_back(timer_ptr);
+    Timer& timer = *timer_ptr;
+    timer.callback = TimerCallback{&timer, std::move(callback)};
     timer.trigger_every_tick = false;
-    timer.one_shot = !permanent;
-    return timer;
+    timer.unowned = unowned_oneshot;
+    return timer_ptr;
 }
 
-Timer& add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback, bool permanent) {
-    auto& timer = *scene->timers.emplace(name);
-    timer.scene = scene;
+std::shared_ptr<Timer> add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback, bool unowned_oneshot) {
+    std::shared_ptr<Timer> timer_ptr = std::make_shared<Timer>(name, scene);
+    scene->timer_manager.timers.push_back(timer_ptr);
+    Timer& timer = *timer_ptr;
     timer.callback = TimerCallback{&timer, callback};
     timer.trigger_every_tick = true;
-    timer.one_shot = !permanent;
-    return timer;
-}
-
-void destroy_timer(Timer* timer) {
-    timer->stop();
-}
-
-
-void remove_timer(Scene* scene, const string& name) {
-    for (auto it = scene->timers.begin(); it != scene->timers.end();) {
-        if (it->name == name) {
-            destroy_timer(&*it);
-            it = scene->timers.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
-
-void remove_timer(Scene* scene, Timer* timer) {
-    for (auto it = scene->timers.begin(); it != scene->timers.end();) {
-        if (&*it == timer) {
-            destroy_timer(timer);
-            it = scene->timers.erase(it);
-        } else {
-            ++it;
-        }
-    }
+    timer.unowned = unowned_oneshot;
+    return timer_ptr;
 }
 
 void Timer::start(float new_time) {
@@ -65,14 +41,14 @@ void Timer::update(float delta) {
     remaining_time -= delta;
     if (trigger_every_tick)
         if (callback.callback)
-            scene->timer_callbacks.push_back(callback);
+            scene->timer_manager.timer_callbacks.push_back(callback);
     if (remaining_time < 0.0f)
         timeout();
 }
 
 void Timer::timeout() {
     if (!trigger_every_tick && callback.callback)
-        scene->timer_callbacks.push_back(callback);
+        scene->timer_manager.timer_callbacks.push_back(callback);
     stop();
 }
 
@@ -89,21 +65,18 @@ void inspect(Timer* timer) {
 }
 
 void update_timers(Scene* scene) {
-    for (auto& timer : scene->timers) {
-        timer.update(scene->delta_time);
+    for (auto timer : scene->timer_manager.timers) {
+        timer->update(scene->delta_time);
     }
-    for (auto& timer_callback : scene->timer_callbacks) {
+    for (auto& timer_callback : scene->timer_manager.timer_callbacks) {
         timer_callback.callback(timer_callback.timer);
     }
-    scene->timer_callbacks.clear();
-    for (auto it = scene->timers.begin(); it != scene->timers.end();) {
-        if (!it->ticking && it->one_shot) {
-            destroy_timer(&*it);
-            it = scene->timers.erase(it);
-        }
-        else
-            ++it;
-    }
+    scene->timer_manager.timer_callbacks.clear();
+    scene->timer_manager.timers.remove_if([](const shared_ptr<Timer>& it) -> bool {
+        bool unowned_and_done = it->unowned && !it->ticking;
+        bool owned_and_dead = !it->unowned && it.use_count() == 1;
+        return unowned_and_done || owned_and_dead;
+    }, true);
 }
 
 }

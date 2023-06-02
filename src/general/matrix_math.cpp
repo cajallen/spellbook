@@ -45,6 +45,34 @@ m44 look(v3 eye, v3 vec, v3 up) {
     return result;
 }
 
+m44 look_ik(v3 eye, v3 vec, v3 up) {
+    // NOTE: z-axis points in the opposite direction to how depth maps
+    v3 y_axis = math::normalize(vec);
+    v3 x_axis = math::normalize(math::cross(up, y_axis));
+    v3 z_axis = math::cross(y_axis, x_axis);
+
+    m44 result = m44({
+        x_axis.x,
+        x_axis.y,
+        x_axis.z,
+        -math::dot(eye, x_axis),
+        y_axis.x,
+        y_axis.y,
+        y_axis.z,
+        -math::dot(eye, y_axis),
+        z_axis.x,
+        z_axis.y,
+        z_axis.z,
+        -math::dot(eye, z_axis),
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+    });
+
+    return math::inverse(result);
+}
+
 m44 translate(v3 position) {
     return m44 {1, 0, 0, position.x, 0, 1, 0, position.y, 0, 0, 1, position.z, 0, 0, 0, 1};
 }
@@ -105,21 +133,21 @@ euler rotation2euler(const m33& rot) {
 }
 
 m44 rotation(quat q) {
-    auto xx = q.x * q.x;
-    auto cr = q.x * q.y;
-    auto xz = q.x * q.z;
-    auto xw = q.x * q.w;
-    auto yy = q.y * q.y;
-    auto yz = q.y * q.z;
-    auto yw = q.y * q.w;
-    auto zz = q.z * q.z;
-    auto zw = q.z * q.w;
+    float xx = q.x * q.x;
+    float xy = q.x * q.y;
+    float xz = q.x * q.z;
+    float xw = q.x * q.w;
+    float yy = q.y * q.y;
+    float yz = q.y * q.z;
+    float yw = q.y * q.w;
+    float zz = q.z * q.z;
+    float zw = q.z * q.w;
 
     return m44(1.0f - 2.0f * (yy + zz),
-        2.0f * (cr - zw),
+        2.0f * (xy - zw),
         2.0f * (xz + yw),
         0.0f,
-        2.0f * (cr + zw),
+        2.0f * (xy + zw),
         1.0f - 2.0f * (xx + zz),
         2.0f * (yz - xw),
         0.0f,

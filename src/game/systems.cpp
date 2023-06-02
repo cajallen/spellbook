@@ -71,7 +71,7 @@ void health_draw_system(Scene* scene) {
     }
 
     auto       health_draw_system = scene->registry.view<LogicTransform, Health>();
-    for (auto [entity, transform, health] : health_draw_system.each()) {
+    for (auto [entity, logic_tfm, health] : health_draw_system.each()) {
         bool friendly = scene->registry.all_of<Lizard>(entity);
         if (health.value <= 0.0f)
             continue;
@@ -79,12 +79,12 @@ void health_draw_system(Scene* scene) {
         float percentage = health.value / health.max_health.value();
         float percentage2 = health.buffer_value / health.max_health.value();
         auto link = scene->registry.try_get<TransformLink>(entity);
-        v3 position = link ? transform.position + link->offset : transform.position;
+        v3 position = link ? logic_tfm.position + link->offset : logic_tfm.position + v3(0.5f, 0.5f, 0.0f);
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
 
-        float width = friendly ? 0.7f : 0.6f;
+        float width = friendly ? 0.7f : 0.5f;
         float vertical_offset = friendly ? 1.5f : 0.6f;
-        float thickness = friendly ? 0.05f : 0.035f;
+        float thickness = friendly ? 0.05f : 0.03f;
         
         m44 inner_matrix = math::translate(position) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
@@ -114,17 +114,16 @@ void transform_system(Scene* scene) {
     // Transform Link
     {
         ZoneScopedN("Transform Link");
-        for (auto [entity, link, l_transform, m_transform] : registry.view<TransformLink, LogicTransform, ModelTransform>().each()) {
+        for (auto [entity, link, logic_tfm, model_tfm] : registry.view<TransformLink, LogicTransform, ModelTransform>().each()) {
             // We disable links for dragging
             if (registry.any_of<Dragging>(entity))
                 continue;
 
-            float diff = math::abs(math::angle_difference(m_transform.rotation.yaw, l_transform.rotation.yaw));
-            if (diff > 0.01f) {
-                float real_diff = math::min(diff, link.rotate_speed * scene->delta_time);
-                m_transform.set_rotation(euler{.yaw = math::lerp_angle(real_diff / diff, {m_transform.rotation.yaw, l_transform.rotation.yaw})});
-            }
-            m_transform.set_translation(l_transform.position + link.offset);
+
+            Name* name = registry.try_get<Name>(entity);
+            quat logic_quat = math::to_quat(logic_tfm.rotation);
+            model_tfm.set_rotation(math::normalize(math::slerp(model_tfm.rotation, logic_quat, 0.5f)));
+            model_tfm.set_translation(logic_tfm.position + link.offset);
         }
     }
     {
@@ -133,8 +132,8 @@ void transform_system(Scene* scene) {
         for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
             // Note, this isn't correct, if the transform is accessed early the dirty flag will clear,
             // but it's just for investigating optimization options
-            if (!transform.dirty)
-                continue;
+            // if (!transform.dirty)
+            //     continue;
             for (auto& [node, renderable] : model.model_gpu.renderables) {
                 ZoneScoped;
                 renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
@@ -167,10 +166,10 @@ void consumer_system(Scene* scene) {
             obelisk_node->cache_transform();
         }
         
-        for (auto [e_consumee, consumee_transform] : consumees.each()) {
+        for (auto [e_consumee, enemy, consumee_tfm] : consumees.each()) {
             if (scene->registry.any_of<Killed>(e_consumee))
                 continue;
-            f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_transform.position.xy);
+            f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_tfm.position.xy);
             if (dist < consumer.consume_distance && !scene->edit_mode) {
                 scene->registry.emplace<Killed>(e_consumee, false, scene->time);
             }
@@ -338,11 +337,7 @@ void spawner_draw_system(Scene* scene) {
     for (auto [entity, spawner, m_transform, transform_link] : scene->registry.view<Spawner, ModelTransform, TransformLink>().each()) {
         transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * scene->time);
         m_transform.set_scale(v3(0.6f));
-        m_transform.set_rotation(euler{
-            .yaw = 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time),
-            .pitch = m_transform.rotation.pitch,
-            .roll = m_transform.rotation.roll
-        });
+        m_transform.set_rotation(quat(v3::Z, 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time)));
     }
 }
 

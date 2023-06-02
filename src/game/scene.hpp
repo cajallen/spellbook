@@ -11,6 +11,7 @@
 #include "game/shop.hpp"
 #include "game/player.hpp"
 #include "game/map_targeting.hpp"
+#include "general/bitmask_3d.hpp"
 
 
 namespace spellbook {
@@ -23,6 +24,28 @@ struct SpawnStateInfo;
 namespace astar {
 struct Navigation;
 }
+
+struct PathInfo {
+    entt::entity spawner;
+    entt::entity consumer;
+    vector<v3> path;
+};
+
+struct MapData {
+    Bitmask3D solids;
+    Bitmask3D path_solids;
+    Bitmask3D slot_solids;
+    Bitmask3D unstandable_solids;
+    umap<v3i, Direction> ramps;
+
+    void clear() {
+        solids.clear();
+        path_solids.clear();
+        slot_solids.clear();
+        unstandable_solids.clear();
+        ramps.clear();
+    }
+};
 
 struct Scene {
     string           name;
@@ -43,13 +66,14 @@ struct Scene {
 
     bool pause = false;
 
-    plf::colony<Timer> timers;
-    vector<TimerCallback> timer_callbacks;
+    TimerManager timer_manager;
 
     umap<v3i, entt::entity> visual_map_entities;
-
+    MapData map_data;
     std::unique_ptr<MapTargeting> targeting;
+    
     std::unique_ptr<astar::Navigation> navigation;
+    vector<PathInfo> paths;
 
     Scene();
     ~Scene();
@@ -67,6 +91,7 @@ struct Scene {
     void health_cleanup(entt::registry&, entt::entity);
     void caster_cleanup(entt::registry&, entt::entity);
     void emitter_cleanup(entt::registry&, entt::entity);
+    void gridslot_cleanup(entt::registry&, entt::entity);
 
     void select_entity(entt::entity entity);
 

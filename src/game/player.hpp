@@ -13,8 +13,8 @@ struct Bank {
 };
 
 struct Player {
-    Scene* scene;
-    Bank bank;
+    Scene* scene = nullptr;
+    Bank bank = {};
 };
 
 void inspect(Bank* bank);

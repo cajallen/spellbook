@@ -4,6 +4,7 @@
 #include <vuk/Partials.hpp>
 #include <entt/entity/registry.hpp>
 
+#include "pose_widget.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "extension/imgui_extra.hpp"
 #include "extension/fmt.hpp"
@@ -63,6 +64,9 @@ void AssetEditor::setup() {
     FROM_JSON_MEMBER(lizard_prefab.file_path)
     else
         lizard_prefab.file_path = "none";
+    FROM_JSON_MEMBER(enemy_prefab.file_path)
+    else
+        enemy_prefab.file_path = "none";
     
     
     emitter_cpu.mesh = upload_mesh(generate_cube(v3(0.0f), v3(1.0f)));
@@ -82,6 +86,7 @@ void AssetEditor::shutdown() {
     TO_JSON_MEMBER(tile_set.file_path);
     TO_JSON_MEMBER(bead_prefab.file_path);
     TO_JSON_MEMBER(lizard_prefab.file_path);
+    TO_JSON_MEMBER(enemy_prefab.file_path);
     file_dump(j, asset_editor_file.string());
 }
 
@@ -126,7 +131,8 @@ void AssetEditor::switch_tab(Tab new_tab) {
         
         } break;
         case (Tab_Enemy): {
-        
+            if (background_renderable != nullptr)
+                render_scene.delete_renderable(background_renderable);
         } break;
         case (Tab_Spawner): {
         
@@ -166,7 +172,7 @@ void AssetEditor::switch_tab(Tab new_tab) {
             material_gpu = &render_scene.quick_material(material_cpu, false);
         } break;
         case (Tab_Lizard): {
-            auto cube = generate_cube(v3(0.5f, 0.5f, -0.5f), v3(3.0f, 3.0f, 0.5f));
+            auto cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
             auto cube_name = upload_mesh(cube);
             auto background_mat_name = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
             background_renderable = &p_scene->render_scene.quick_mesh(cube_name, background_mat_name, false);
@@ -175,10 +181,17 @@ void AssetEditor::switch_tab(Tab new_tab) {
                 instance_prefab(p_scene, lizard_prefab, v3i(0));
         } break;
         case (Tab_Tile): {
-        
+            if (!tile_prefab.file_path.empty() && tile_prefab.file_path != "none")
+                instance_prefab(p_scene, tile_prefab, v3i(0));
         } break;
         case (Tab_Enemy): {
-        
+            auto cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
+            auto cube_name = upload_mesh(cube);
+            auto background_mat_name = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            background_renderable = &p_scene->render_scene.quick_mesh(cube_name, background_mat_name, false);
+            
+            if (!enemy_prefab.file_path.empty() && enemy_prefab.file_path != "none")
+                instance_prefab(p_scene, enemy_prefab, v3i(0));
         } break;
         case (Tab_Spawner): {
         
@@ -304,7 +317,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Vi
             asset_editor.switch_tab(type);
         
         bool changed = inspect(asset_value);
-                    
+
         if (ImGui::Button("Save##AssetTab")) {
             save_asset(*asset_value);
         }
@@ -377,7 +390,19 @@ void AssetEditor::window(bool* p_open) {
                 
                 p_scene->render_scene.quick_mesh(line_mesh, true, true);
             });
-            asset_tab(*this, ICON_FA_CUBE " Tile", Tab_Tile, &tile_prefab);
+            asset_tab(*this, ICON_FA_CUBE " Tile", Tab_Tile, &tile_prefab, [this](bool changed) {
+                Bitmask3D bitmask;
+                bitmask.set(v3i(0));
+                for (const v3i& solid : tile_prefab.solids)
+                    bitmask.set(solid);
+                auto mesh = generate_formatted_3d_bitmask(&p_scene->camera, bitmask);
+                if (!mesh.vertices.empty())
+                    p_scene->render_scene.quick_mesh(mesh, true, true);
+
+                auto mesh2 = generate_formatted_dot(&p_scene->camera, {v3(tile_prefab.new_offset) + v3(0.5f, 0.5f, 0.5f), palette::spellbook_4, 0.03f});
+                if (!mesh2.vertices.empty())
+                    p_scene->render_scene.quick_mesh(mesh2, true, true);
+            });
             asset_tab(*this, ICON_FA_APPLE " Enemy", Tab_Enemy, &enemy_prefab);
             asset_tab(*this, ICON_FA_SIGN_OUT "Spawner", Tab_Spawner, &spawner_prefab);
             asset_tab(*this, ICON_FA_SIGN_IN " Consumer", Tab_Consumer, &consumer_prefab);

@@ -24,7 +24,8 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     scene->registry.emplace<ModelTransform>(entity);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     scene->registry.emplace<Consumer>(entity);
-    
+    scene->registry.emplace<FloorOccupier>(entity);
+
     return entity;
 }
 

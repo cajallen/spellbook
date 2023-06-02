@@ -141,6 +141,10 @@ v3 cross(v3 a, v3 b) {
     return out;
 }
 
+v3 ncross(v3 a, v3 b) {
+    return normalize(cross(a, b));
+}
+
 f32 to_range(f32 value, range r) {
     return r.start + value * (r.end - r.start);
 }
@@ -149,6 +153,21 @@ f32 from_range(f32 value, range r) {
     if (r.end - r.start == 0.0f)
         return 0.0f;
     return (value - r.start) / (r.end - r.start);
+}
+
+bool iterate(v3i& current, const v3i& min, const v3i& max) {
+    current.x += 1;
+    if (current.x > max.x) {
+        current.y += 1;
+        current.x = min.x;
+    }
+    if (current.y > max.y) {
+        current.z += 1;
+        current.y = min.y;
+    }
+    if (current.z > max.z)
+        return false;
+    return true;
 }
 
 f32 length_squared(line2 v) {
@@ -341,6 +360,13 @@ v3 rotate(v3 v, u32 cardinal_rotation) {
     if (cardinal_rotation % 4 == 3)
         return v3{v.y, -v.x, v.z};
     return v;
+}
+
+template <> bool is_nan(v2 value) {
+    return std::isnan(value.x) || std::isnan(value.y);
+}
+template <> bool is_nan(v3 value) {
+    return std::isnan(value.x) || std::isnan(value.y) || std::isnan(value.z);
 }
 
 } // namespace math

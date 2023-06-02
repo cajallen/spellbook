@@ -10,6 +10,7 @@
 #include "general/bitmask_3d.hpp"
 #include "renderer/draw_functions.hpp"
 #include "editor/console.hpp"
+#include "entities/area_trigger.hpp"
 #include "entities/caster.hpp"
 #include "game/game.hpp"
 #include "game/systems.hpp"
@@ -49,11 +50,11 @@ void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
 
 void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
     auto&    dragging = registry.get<Dragging>(entity);
-    auto& l_transform = registry.get<LogicTransform>(entity);
-    if (math::length(l_transform.position - math::round(dragging.potential_logic_position)) > 0.1f)
+    auto& logic_tfm = registry.get<LogicTransform>(entity);
+    if (math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
         player.bank.beads[Bead_Quartz]--;
     
-    l_transform.position = math::round(dragging.potential_logic_position);
+    logic_tfm.position = math::round(dragging.potential_logic_position);
 
     constexpr float drag_fade_duration = 0.15f;
     
@@ -64,17 +65,17 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
 
     bool remain_impaired = false;
     if (is_casting_platform(math::round_cast(dragging.potential_logic_position))) {
-        l_transform.position += v3(0.0f, 0.0, 0.1f);
+        logic_tfm.position += v3(0.0f, 0.0, 0.1f);
 
         auto caster = registry.try_get<Caster>(entity);
         if (caster) {
             Ability* ability = &*caster->ability;
             add_timer(caster->ability->scene, "drag_cast_delay",
                 [ability](Timer* timer) {
+                    ability->targeting();
                     ability->request_cast();
                 }, true
-            ).start(drag_fade_duration);
-            caster->ability->request_cast();
+            )->start(drag_fade_duration);
             remain_impaired = true;
         }
     }
@@ -99,6 +100,16 @@ void Scene::emitter_cleanup(entt::registry& registry, entt::entity entity) {
         deinstance_emitter(*emitter_gpu, true);
 }
 
+void Scene::gridslot_cleanup(entt::registry& registry, entt::entity entity) {
+    GridSlot* grid_slot = registry.try_get<GridSlot>(entity);
+    if (!grid_slot)
+        return;
+    for (entt::entity neighbor : grid_slot->linked) {
+        registry.get<GridSlot>(neighbor).linked.clear();
+        if (registry.valid(neighbor))
+            registry.destroy(neighbor);
+    }
+}
 
 void Scene::setup(const string& input_name) {
     name = input_name;
@@ -110,12 +121,12 @@ void Scene::setup(const string& input_name) {
 	controller.name = name + "::controller";
 	controller.setup(&render_scene.viewport, &camera);
 
-    registry.on_construct<Dragging>().connect<&Scene::dragging_setup>(*this);
-    registry.on_destroy<Model>().connect<&Scene::model_cleanup>(*this);
-    registry.on_destroy<Dragging>().connect<&Scene::dragging_cleanup>(*this);
-    registry.on_destroy<Health>().connect<&Scene::health_cleanup>(*this);
-    registry.on_destroy<Caster>().connect<&Scene::caster_cleanup>(*this);
-    registry.on_destroy<EmitterComponent>().connect<&Scene::emitter_cleanup>(*this);
+    registry.on_construct<Dragging>().connect<&on_dragging_create>(*this);
+    registry.on_destroy<Model>().connect<&on_model_destroy>(*this);
+    registry.on_destroy<Dragging>().connect<&on_dragging_destroy>(*this);
+    registry.on_destroy<EmitterComponent>().connect<&on_emitter_component_destroy>(*this);
+    registry.on_destroy<GridSlot>().connect<&on_gridslot_destroy>(*this);
+    registry.on_destroy<Enemy>().connect<&on_enemy_destroy>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
@@ -126,7 +137,7 @@ void Scene::setup(const string& input_name) {
     targeting = std::make_unique<MapTargeting>();
     targeting->scene = this;
 
-    navigation = std::make_unique<astar::Navigation>();
+    navigation = std::make_unique<astar::Navigation>(&map_data.path_solids, &map_data.slot_solids, &map_data.unstandable_solids, &map_data.ramps);
 }
 
 void Scene::update() {
@@ -135,17 +146,43 @@ void Scene::update() {
     delta_time = Input::delta_time * time_scale;
     frame++;
     time += delta_time;
-    
-    for (auto [entity, slot, logic_pos] : registry.view<GridSlot, LogicTransform>().each()) {
+
+    map_data.clear();
+    for (auto [entity, slot, logic_tfm] : registry.view<GridSlot, LogicTransform>().each()) {
         if (slot.ramp) {
-            navigation->ramps[v3i(logic_pos.position)] = slot.direction;
+            map_data.ramps[v3i(logic_tfm.position)] = slot.direction;
             continue;
         }
-        if (slot.path)
-            navigation->path_solids.set(v3i(logic_pos.position));
+        if (!slot.standable)
+            map_data.unstandable_solids.set(v3i(logic_tfm.position));
+        else if (slot.path)
+            map_data.path_solids.set(v3i(logic_tfm.position));
         else
-            navigation->off_road_solids.set(v3i(logic_pos.position));
+            map_data.slot_solids.set(v3i(logic_tfm.position));
+        map_data.solids.set(v3i(logic_tfm.position));
     }
+    paths.clear();
+    for (auto [spawner_e, spawner, spawner_tfm] : registry.view<Spawner, LogicTransform>().each()) {
+        for (auto [consumer_e, consumer, consumer_tfm] : registry.view<Consumer, LogicTransform>().each()) {
+            vector<v3> path = navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
+            if (math::distance(path.front(), consumer_tfm.position) < 0.1f) {
+                paths.emplace_back(spawner_e, consumer_e, std::move(path));
+            }
+        }
+    }
+    for (auto& path : paths) {
+        vector<FormattedVertex> vertices;
+        float x = time * 6.0f;
+        for (v3& v : path.path) {
+            float hue = 190.0f + 10.0f * math::sin(x);
+            float saturation = 0.3f + 0.1f * math::sin(x);
+            float width = 0.03f - 0.01f * math::clamp(math::sin(x), -1.0f, 0.0f);
+            vertices.emplace_back(v + v3(0.5f, 0.5f, 0.05f), Color::hsv(hue, saturation, 0.8f), width);
+            x += 1.5f;
+        }
+        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, true);
+    }
+    
     
     update_timers(this);
     
@@ -153,9 +190,12 @@ void Scene::update() {
 
     dragging_update_system(this);
     collision_update_system(this);
+    enemy_aggro_system(this);
     dragging_system(this);
     spawner_system(this);
     travel_system(this);
+    area_trigger_system(this);
+    enemy_ik_controller_system(this);
 
     caster_system(this);
     projectile_system(this);
@@ -295,8 +335,8 @@ void Scene::output_window(bool* p_open) {
 
 bool Scene::is_casting_platform(v3i pos) {
     auto view = registry.view<LogicTransform, CastingPlatform>();
-    for (auto [entity, logic_pos, platform] : view.each()) {
-        if (math::length(logic_pos.position - v3(pos)) < 0.5f) {
+    for (auto [entity, logic_tfm, platform] : view.each()) {
+        if (math::length(logic_tfm.position - v3(pos)) < 0.5f) {
             return true;
         }
     }
@@ -305,8 +345,8 @@ bool Scene::is_casting_platform(v3i pos) {
 
 entt::entity Scene::get_tile(v3i pos) {
     auto view = registry.view<LogicTransform, GridSlot>();
-    for (auto [entity, logic_pos, tile] : view.each()) {
-        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+    for (auto [entity, logic_tfm, tile] : view.each()) {
+        if (math::length(logic_tfm.position - v3(pos)) < 0.1f) {
             return entity;
         }
     }
@@ -315,8 +355,8 @@ entt::entity Scene::get_tile(v3i pos) {
 
 entt::entity Scene::get_spawner(v3i pos) {
     auto view = registry.view<LogicTransform, Spawner>();
-    for (auto [entity, logic_pos, spawner] : view.each()) {
-        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+    for (auto [entity, logic_tfm, spawner] : view.each()) {
+        if (math::length(logic_tfm.position - v3(pos)) < 0.1f) {
             return entity;
         }
     }
@@ -325,8 +365,8 @@ entt::entity Scene::get_spawner(v3i pos) {
 
 entt::entity Scene::get_consumer(v3i pos) {
     auto view = registry.view<LogicTransform, Consumer>();
-    for (auto [entity, logic_pos, traveler] : view.each()) {
-        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+    for (auto [entity, logic_tfm, traveler] : view.each()) {
+        if (math::length(logic_tfm.position - v3(pos)) < 0.1f) {
             return entity;
         }
     }
@@ -336,8 +376,8 @@ entt::entity Scene::get_consumer(v3i pos) {
 vector<entt::entity> Scene::get_any(v3i pos) {
     vector<entt::entity> entities;
     auto view = registry.view<LogicTransform>();
-    for (auto [entity, logic_pos] : view.each()) {
-        if (math::length(logic_pos.position - v3(pos)) < 0.1f) {
+    for (auto [entity, logic_tfm] : view.each()) {
+        if (math::length(logic_tfm.position - v3(pos)) < 0.1f) {
             entities.push_back(entity);
         }
     }
@@ -367,7 +407,7 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
     
     add_timer(scene, fmt_("{}_timer", name), [scene, e](Timer* timer) {
         scene->registry.destroy(e);
-    }, false).start(duration);
+    }, true)->start(duration);
     
     return e;
 }
@@ -375,8 +415,8 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
 void Scene::select_entity(entt::entity entity) {
     selected_entity = entity;
     v3  intersect = math::intersect_axis_plane(render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-    auto transform = registry.try_get<LogicTransform>(selected_entity);
-    if (!transform)
+    LogicTransform* logic_tfm = registry.try_get<LogicTransform>(selected_entity);
+    if (!logic_tfm)
         return;
 
     Impairs* impairs = registry.try_get<Impairs>(selected_entity);
@@ -385,20 +425,14 @@ void Scene::select_entity(entt::entity entity) {
             return;
     
     if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {
-        registry.emplace<Dragging>(selected_entity, time, transform->position, intersect);
+        registry.emplace<Dragging>(selected_entity, time, logic_tfm->position, intersect);
     }
 }
 
 bool Scene::get_object_placement(v2i offset, v3i& pos) {
-    auto slots     = registry.view<GridSlot, LogicTransform>();
-    Bitmask3D bitmask;
-    for (auto [entity, slot, logic_pos] : slots.each()) {
-        bitmask.set(v3i(logic_pos.position));
-    }
-    
     ray3 mouse_ray = render_scene.viewport.ray(math::round_cast(Input::mouse_pos) + offset);
     v3 intersect;
-    return bitmask.ray_intersection(mouse_ray, intersect, pos);
+    return ray_intersection(map_data.solids, mouse_ray, intersect, pos, {});
 }
 
 bool Scene::get_object_placement(v3i& pos) {

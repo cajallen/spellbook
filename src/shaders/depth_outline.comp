@@ -59,22 +59,32 @@ struct InputRead {
     float widget_depth;
 };
 
-const int NUM_TAPS = 12;
+const int NUM_TAPS = 20;
+const float TOTAL_TAPS_WEIGHT = 64.0;
 const ivec3 samples[NUM_TAPS] = ivec3[](
-    ivec3(-1, 0, 9),
-    ivec3( 1, 0, 9),
-    ivec3( 0,-1, 9),
-    ivec3( 0, 1, 9),
+    ivec3(-1, 0, 8),
+    ivec3( 1, 0, 8),
+    ivec3( 0,-1, 8),
+    ivec3( 0, 1, 8),
 
-    ivec3(-1,-1, 3),
-    ivec3( 1, 1, 3),
-    ivec3(-1, 1, 3),
-    ivec3( 1,-1, 3),
+    ivec3(-1,-1, 4),
+    ivec3( 1, 1, 4),
+    ivec3(-1, 1, 4),
+    ivec3( 1,-1, 4),
 
-    ivec3(-2, 0, 1),
-    ivec3( 2, 0, 1),
-    ivec3( 0,-2, 1),
-    ivec3( 0, 2, 1)
+    ivec3(-2, 0, 2),
+    ivec3( 2, 0, 2),
+    ivec3( 0,-2, 2),
+    ivec3( 0, 2, 2),
+    
+    ivec3(-2, 1, 1),
+    ivec3( 2, 1, 1),
+    ivec3( 1,-2, 1),
+    ivec3( 1, 2, 1),
+    ivec3(-2,-1, 1),
+    ivec3( 2,-1, 1),
+    ivec3(-1,-2, 1),
+    ivec3(-1, 2, 1)
 );
 
 SimpleInputRead read_simple_inputs(ivec2 coord) {
@@ -85,7 +95,11 @@ SimpleInputRead read_simple_inputs(ivec2 coord) {
     vec2 uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
     vec4 h_position_worldspace = inverse_vp * vec4(uv, depth_read, 1.0);
     data.position = h_position_worldspace.xyz / h_position_worldspace.w;
-    data.depth = distance(camera_position.xyz, data.position);
+
+    if (depth_read == 0.0)
+        data.depth = 1000.0;
+    else
+        data.depth = distance(camera_position.xyz, data.position);
     
     return data;
 }
@@ -103,7 +117,10 @@ InputRead read_inputs(ivec2 coord) {
     data.uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
     vec4 h_position_worldspace = inverse_vp * vec4(data.uv, data.depth_read, 1.0);
     data.position = h_position_worldspace.xyz / h_position_worldspace.w;
-    data.depth = distance(camera_position.xyz, data.position);
+    if (data.depth_read == 0.0)
+        data.depth = 1000.0;
+    else
+        data.depth = distance(camera_position.xyz, data.position);
 
     vec4 widget_hpos = inverse_vp * vec4(data.uv, texelFetch(s_widget_depth, coord, 0).r, 1.0);
     vec3 widget_position = widget_hpos.xyz / widget_hpos.w;
@@ -115,7 +132,7 @@ float calculate_toon_diffuse(float NdotL) {
     const float transition = 0.02;
     const float transition1_start = 0.07;
     const float transition2_start = 0.50;
-    const float range = 0.15;
+    const float range = 0.05;
     const float mid_out = 0.5;
 
     float val = 0.0;
@@ -428,17 +445,18 @@ void main() {
     float closest_depth = 1.0 / 0.0;
     for (int i = 0; i < NUM_TAPS; i++) {
         SimpleInputRead offset_data = read_simple_inputs(coord + samples[i].xy);
-        float depth_val = abs(data.depth - offset_data.depth);
-        depth_outline += samples[i].z / 28.0 * depth_val;
-        if (data.normal != vec3(0.0)) {
+        float depth_val = 2.0 / (1.0 + pow(6.0, data.depth - offset_data.depth)) - 1.0;
+        depth_outline += samples[i].z / TOTAL_TAPS_WEIGHT * depth_val;
+
+        if (data.depth < 1000.0) {
             float normal_val = smoothstep(pc.outline_step.z, pc.outline_step.w, 1.0 - abs(dot(data.normal, offset_data.normal)));
-            normal_outline += samples[i].z / 28.0 * normal_val;
+            normal_outline += samples[i].z / TOTAL_TAPS_WEIGHT * normal_val;
         }
-        
+    
         closest_depth = min(closest_depth, offset_data.depth);
     }
-    depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, depth_outline);
-    float outline = max(depth_outline, 8.0 * normal_outline);
+    depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, abs(depth_outline));
+    float outline = max(depth_outline, 2.0 * normal_outline);
 
     vec3 color = calculate_lighting(data, 1.0, 1.0);
     
@@ -474,7 +492,8 @@ void main() {
             imageStore(u_target, coord, vec4(linear_to_srgb(data.normal), 1.0));
             break;      
         case 5:
-            imageStore(u_target, coord, vec4(vec3(data.depth), 1.0));
+            imageStore(u_target, coord, vec4(vec3(depth_outline), 1.0));
+            //imageStore(u_target, coord, vec4(vec3(1.0 - data.depth / 20.0), 1.0));
             break;
         case 6:
             break;      

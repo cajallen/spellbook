@@ -48,7 +48,7 @@
       <ForcedIncludeFiles>global.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h";TRACY_ENABLE</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
@@ -133,6 +133,7 @@
     <ClCompile Include="src\game\entities\consumer.cpp" />
     <ClCompile Include="src\game\entities\drop.cpp" />
     <ClCompile Include="src\game\entities\enemy.cpp" />
+    <ClCompile Include="src\game\entities\enemy_ik.cpp" />
     <ClCompile Include="src\game\entities\impair.cpp" />
     <ClCompile Include="src\game\entities\lizard.cpp" />
     <ClCompile Include="src\game\entities\lizards\assassin.cpp" />
@@ -360,6 +361,7 @@
     <ClInclude Include="src\game\entities\consumer.hpp" />
     <ClInclude Include="src\game\entities\drop.hpp" />
     <ClInclude Include="src\game\entities\enemy.hpp" />
+    <ClInclude Include="src\game\entities\enemy_ik.hpp" />
     <ClInclude Include="src\game\entities\impair.hpp" />
     <ClInclude Include="src\game\entities\lizard.hpp" />
     <ClInclude Include="src\game\entities\lizards\lizard_builder.hpp" />
@@ -439,6 +441,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="src\shaders\blur.comp" />
+    <Content Include="src\shaders\desert_rocks.frag" />
     <Content Include="src\shaders\directional_depth.frag" />
     <Content Include="src\shaders\point_depth.frag" />
     <Content Include="src\shaders\depth_outline.comp" />

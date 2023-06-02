@@ -44,7 +44,7 @@ void ChampionAttack::trigger() {
                 return;
             auto& enemy_caster = scene->registry.get<Caster>(enemy);
             enemy_caster.taunt.reset(u64(this));
-        }, false).start(2.0f);
+        }, true)->start(2.0f);
     }
 
     for (int x = -1; x <= 1; x++) {
@@ -78,10 +78,6 @@ void ChampionAttack::targeting() {
 void build_champion(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {
     scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
     Caster& caster = scene->registry.get<Caster>(entity);
-
-    caster.attack = std::make_unique<ChampionAttack>();
-    caster.attack->setup(scene, entity, 1.3f, 1.1f, Ability::Type_Attack);
-    caster.attack->entry_gather_function = square_aoe_entry_gather(1);
 }
 
 void draw_champion_dragging_preview(Scene* scene, entt::entity entity) {

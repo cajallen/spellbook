@@ -12,22 +12,22 @@ struct Player;
 struct SpawnStateInfo;
 
 struct ShopEntry {
-    Bead cost_type;
-    int cost_amount;
-    string lizard_prefab_path;
+    Bead cost_type = Bead_Oak;
+    int cost_amount = 0;
+    string lizard_prefab_path = {};
 };
 
 struct Warehouse {
-    vector<ShopEntry> entries;
-    vector<float> probabilities;
-    vector<u8> stock;
+    vector<ShopEntry> entries = {};
+    vector<float> probabilities = {};
+    vector<u8> stock = {};
 
     ShopEntry* get_entry();
     void add_entry(ShopEntry&& shop_entry, float probability);
 };
 
 struct ShopGenerator {
-    SpawnStateInfo* round_info;
+    SpawnStateInfo* round_info = nullptr;
     
     virtual void setup(Scene* scene);
     virtual vector<ShopEntry*>* generate_shop();
@@ -38,7 +38,7 @@ struct ShopGenerator {
 
 struct SimpleShopGenerator : ShopGenerator {
     int shop_size = 3;
-    Warehouse warehouse;
+    Warehouse warehouse = {};
     vector<ShopEntry*> out_shop;
     
     void setup(Scene* scene) override;
@@ -50,9 +50,9 @@ struct SimpleShopGenerator : ShopGenerator {
 
 struct FirstFreeShopGenerator : ShopGenerator {
     int shop_size = 3;
-    Warehouse first_warehouse;
-    Warehouse warehouse;
-    vector<ShopEntry*> out_shop;
+    Warehouse first_warehouse = {};
+    Warehouse warehouse = {};
+    vector<ShopEntry*> out_shop = {};
     
     void setup(Scene* scene) override;
     vector<ShopEntry*>* generate_shop() override;
@@ -62,8 +62,8 @@ struct FirstFreeShopGenerator : ShopGenerator {
 };
 
 struct Shop {
-    std::unique_ptr<ShopGenerator> shop_generator;
-    vector<ShopEntry*>* entries;
+    std::unique_ptr<ShopGenerator> shop_generator = {};
+    vector<ShopEntry*>* entries = nullptr;
 };
 
 bool button(ShopEntry* shop_entry);

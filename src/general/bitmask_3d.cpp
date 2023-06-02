@@ -19,13 +19,13 @@ void Bitmask3D::set(v3i pos, bool on) {
         chunks[chunk_index] &= ~(0b1ull << bit_index);
 }
 
-bool Bitmask3D::get(v3i pos) {
+bool Bitmask3D::get(v3i pos) const {
     v3i chunk_index = math::floor_cast(v3(pos) / v3(4.0f));
     if (!chunks.contains(chunk_index))
         return false;
     v3i local_pos = pos - chunk_index * v3i(4);
     u8 bit_index = local_pos.z * 4 * 4 + local_pos.y * 4 + local_pos.x;
-    return chunks[chunk_index] & (0b1ull << bit_index);
+    return chunks.at(chunk_index) & (0b1ull << bit_index);
 }
 
 void Bitmask3D::clear() {
@@ -33,7 +33,7 @@ void Bitmask3D::clear() {
 }
 
 
-v3i Bitmask3D::rough_min() {
+v3i Bitmask3D::rough_min() const {
     v3i min_id = v3i(INT_MAX);
     for (auto& [chunk_id, _] : chunks) {
         if (chunk_id.x < min_id.x)
@@ -47,7 +47,7 @@ v3i Bitmask3D::rough_min() {
         return v3i(INT_MAX);
     return min_id * 4;
 }
-v3i Bitmask3D::rough_max() {
+v3i Bitmask3D::rough_max() const {
     v3i max_id = v3i(-INT_MAX);
     for (auto& [chunk_id, _] : chunks) {
         if (chunk_id.x > max_id.x)
@@ -62,9 +62,9 @@ v3i Bitmask3D::rough_max() {
     return max_id * 4 + v3i(3);
 }
 
-bool Bitmask3D::ray_intersection(ray3 ray, v3& pos, v3i& open_cube) {
-    v3i bound_min = rough_min();
-    v3i bound_max = rough_max();
+bool ray_intersection(const Bitmask3D& bitmask, ray3 ray, v3& pos, v3i& open_cube, const std::function<bool(ray3, v3i, v3&)>& additional_constraints) {
+    v3i bound_min = bitmask.rough_min();
+    v3i bound_max = bitmask.rough_max();
     
     v3i step = math::copy_sign(v3i(1), math::floor_cast(ray.dir));
     v3 delta_t = math::abs(v3(1.0f) / ray.dir);
@@ -78,9 +78,12 @@ bool Bitmask3D::ray_intersection(ray3 ray, v3& pos, v3i& open_cube) {
     v3 next_t = math::abs(v3(delta_t.x * x_dist, delta_t.y * y_dist, delta_t.z * z_dist));
     float t = 0.0f;
 
-    while (true) {
-        if (get(current_voxel)) {
+    while (!math::is_nan(t)) {
+        if (bitmask.get(current_voxel)) {
             pos = ray.origin + t * ray.dir;
+            return true;
+        }
+        if (additional_constraints && additional_constraints(ray, current_voxel, pos)) {
             return true;
         }
 
@@ -91,10 +94,7 @@ bool Bitmask3D::ray_intersection(ray3 ray, v3& pos, v3i& open_cube) {
             min_axis = 1;
         if (next_t[2] < next_t[min_axis])
             min_axis = 2;
-
-        console({.str=fmt_("current_voxel: {}", current_voxel), .frame_tags={"ray_intersect"}});
-        console({.str=fmt_("next_t:        {}, t: {}", next_t, t), .frame_tags={"ray_intersect"}});
-        console({.str=fmt_("=====", next_t, t), .frame_tags={"ray_intersect"}});
+        
         current_voxel[min_axis] = current_voxel[min_axis] + step[min_axis];
         t += next_t[min_axis];
         next_t -= v3(next_t[min_axis]);
@@ -112,6 +112,7 @@ bool Bitmask3D::ray_intersection(ray3 ray, v3& pos, v3i& open_cube) {
             }
         }
     }
+    return false;
 }
 
 }

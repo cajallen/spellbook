@@ -23,7 +23,6 @@ struct Impairs {
     umap<u64, TimedEntry> timed_impairs;
 
     bool is_impaired(Scene* scene, ImpairType type);
-
 };
 
 void apply_untimed_impair(Impairs& impairs, u64 id, ImpairType type);

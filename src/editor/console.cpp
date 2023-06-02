@@ -333,6 +333,7 @@ void Console::_handle_call_request(std::istringstream& iss) {
 
     // custom types need a "string2type" method, and fmt support
     HOOK_FUNCTION_CASE1(math::euler2vector, euler);
+    HOOK_FUNCTION_CASE1(math::to_quat, euler);
 }
 
 }
