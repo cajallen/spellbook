@@ -56,6 +56,10 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
             scene->registry.emplace<CastingPlatform>(entity);
             return entity;
         }
+        default: {
+            assert_else("NYI");
+            return entity;
+        }
     }
     umap<v3i, entt::entity> entity_map;
     entity_map[v3i(0)] = entity;
