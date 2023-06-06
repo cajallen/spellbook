@@ -36,6 +36,8 @@ struct LizardPrefab {
     f32 max_health = 1.0f;
     f32 health_regen = 0.1f;
     string hurt_path;
+
+    float scale = 1.0f;
 };
 
 struct Lizard { // Component
@@ -44,7 +46,7 @@ struct Lizard { // Component
 };
 
 
-JSON_IMPL(LizardPrefab, type, model_path, max_health, health_regen, default_direction);
+JSON_IMPL(LizardPrefab, type, model_path, max_health, health_regen, default_direction, scale);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const LizardPrefab&, v3i location);

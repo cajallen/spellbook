@@ -43,6 +43,10 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<Caster>(entity, scene);
     scene->registry.emplace<Draggable>(entity);
     
+    ModelTransform& model_tfm = scene->registry.get<ModelTransform>(entity);
+    model_tfm.scale = v3(lizard_prefab.scale);
+    model_tfm.dirty = true;
+    
     PoseController* poser = scene->registry.try_get<PoseController>(entity);
     if (poser)
         poser->set_state(AnimationState_Idle, 0.0f);
@@ -88,7 +92,8 @@ bool inspect(LizardPrefab* lizard_prefab) {
     changed |= ImGui::PathSelect("Model", &lizard_prefab->model_path, "resources/models", FileType_Model);
     changed |= ImGui::DragFloat3("Default Direction", lizard_prefab->default_direction.data, 0.1f);
     changed |= ImGui::DragFloat("Health", &lizard_prefab->max_health, 0.5f, 0.5f, 0.0f, "%.1f");
-    changed |= ImGui::DragFloat("Health Regen", &lizard_prefab->health_regen, 0.02);
+    changed |= ImGui::DragFloat("Health Regen", &lizard_prefab->health_regen, 0.02f);
+    changed |= ImGui::DragFloat("Scale", &lizard_prefab->scale, 0.02f);
     return changed;
 }
 

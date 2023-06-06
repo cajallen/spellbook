@@ -20,7 +20,7 @@
 namespace spellbook {
 
 const float attack_projectile_speed = 6.0f;
-const float attack_damage = 0.5f;
+const float attack_damage = 2.0f;
 const float attack_vuln_amount = 1.0f;
 
 struct RangerAttack : Attack {
@@ -85,14 +85,15 @@ void RangerAttack::trigger() {
                 }
 
                 v3 pos = v3(projectile->target) + v3(0.5f, 0.5f, 0.05f);
-                add_tween_timer(scene, "ranger_hit", [pos, this](Timer* timer) {
+                Scene* scene_cap = scene;
+                add_tween_timer(scene, "ranger_hit", [pos, scene_cap](Timer* timer) {
                     vector<FormattedVertex> vertices;
                     float remaining_perc = timer->remaining_time / timer->total_time;
                     float width = math::clamp(remaining_perc * 2.0f, {0.0f, 1.0f}) * 0.05f;
                     add_formatted_square(vertices, pos, v3(0.40f, 0.f, 0.f), v3(0.f, 0.40f, 0.f), palette::steel_blue, width);
                     if (vertices.empty())
                         return;
-                    scene->render_scene.quick_mesh(generate_formatted_line(&scene->camera, vertices), true, false);         
+                    scene_cap->render_scene.quick_mesh(generate_formatted_line(&scene_cap->camera, vertices), true, false);         
                 }, true)->start(0.2f);
                 
                 // Vulnerability
@@ -125,7 +126,7 @@ void RangerAttack::trigger() {
             }
         }
     };
-    quick_projectile(scene, projectile, arrow_pos, "emitters/ranger/basic_proj.sbemt", "models/hanther/hanther_arrow.sbmod");
+    quick_projectile(scene, projectile, arrow_pos, "emitters/ranger/basic_proj.sbemt", "models/hanther/hanther_arrow.sbmod", 0.5f);
 }
 
 
@@ -210,8 +211,8 @@ void RangerSpell::trigger() {
             PoseController& poser = registry.emplace<PoseController>(trap_entity, *model_comp.model_cpu->skeleton);
             
             registry.emplace<LogicTransform>(trap_entity, v3(projectile->target));
-            registry.emplace<ModelTransform>(trap_entity);
-            registry.emplace<TransformLink>(trap_entity, v3(1.0f, 0.0f, 0.0f));
+            registry.emplace<ModelTransform>(trap_entity, v3(projectile->target), quat(), v3(0.5f));
+            registry.emplace<TransformLink>(trap_entity, v3(0.75f, 0.25f, 0.0f));
     
             registry.emplace<EmitterComponent>(trap_entity, scene_ptr);
             
@@ -245,7 +246,7 @@ void RangerSpell::trigger() {
 
         }
     };
-    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt", "models/hanther/hanther_trap.sbmod");
+    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt", "models/hanther/hanther_trap.sbmod", 0.3f);
 }
 
 void build_ranger(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {

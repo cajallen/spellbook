@@ -21,6 +21,11 @@ void spawner_system(Scene* scene) {
         return;
 
     for (auto [entity, spawner, logic_transform] : scene->registry.view<Spawner, LogicTransform>().each()) {
+        if (!spawner.force_spawn_path.empty()) {
+            instance_prefab(scene, load_asset<EnemyPrefab>(spawner.force_spawn_path), v3i(logic_transform.position));
+            spawner.force_spawn_path = "";
+        }
+        
         // Advance Round ?
         while (spawner.state.round_number < spawner.level_state->round_number) {
             spawner.state.advance_round();
@@ -277,6 +282,20 @@ bool inspect(Spawner* spawner) {
     changed |= ImGui::Checkbox("spawn_wave", &spawner->spawn_wave);
     changed |= ImGui::Checkbox("spawn_enemy", &spawner->spawn_enemy);
 
+    ImGui::BeginTable("Spawner Debug Spawn Table", 1);
+    ImGui::TableSetupColumn("Enemy");
+    ImGui::TableHeadersRow();
+
+    for (const auto& entry : fs::directory_iterator(to_resource_path("enemies"))) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        string button_name = fmt_("Spawn {}", entry.path().stem().string());
+        if (ImGui::Button(button_name.c_str())) {
+            spawner->force_spawn_path = entry.path().string();
+        }
+    }
+    ImGui::EndTable();
+
     return changed;
 }
 
@@ -315,6 +334,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
 
     auto entity = scene->registry.create();
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", "spawner", i++));
+    scene->registry.emplace<AddToInspect>(entity);
     scene->registry.emplace<LogicTransform>(entity, v3(location));
 
     scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, scene->spawn_state_info);

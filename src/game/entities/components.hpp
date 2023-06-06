@@ -27,6 +27,7 @@ struct Model {
 struct LogicTransform {
     v3 position = v3(0.0f);
     euler rotation = euler();
+    float step_up = 0.0f;
 };
 
 struct ModelTransform {
@@ -72,9 +73,7 @@ struct Health {
     Stat damage_taken_multiplier;
     Stat regen;
     umap<entt::entity, Stat> dots;
-
-    std::shared_ptr<Timer> hurt_emitter_timer;
-
+    
     Health(float health_value, Scene* scene, const string& hurt_emitter_path = "");
 };
 void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction);

@@ -431,8 +431,9 @@ inline f32 clamp(f32 input, range range) {
 }
 
 inline f32 map_range(f32 input, range input_range, range output_range) {
-    f32 value = to_range(from_range(input, input_range), output_range);
-    return value = math::clamp(value, output_range);
+    float value = clamp(from_range(input, input_range), {0.0f, 1.0f});
+    value = to_range(value, output_range);
+    return value;
 }
 
 constexpr f32 lerp(f32 x, range r) {

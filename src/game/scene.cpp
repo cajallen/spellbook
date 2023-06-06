@@ -163,7 +163,7 @@ void Scene::update() {
     }
     paths.clear();
     for (auto [spawner_e, spawner, spawner_tfm] : registry.view<Spawner, LogicTransform>().each()) {
-        for (auto [consumer_e, consumer, consumer_tfm] : registry.view<Consumer, LogicTransform>().each()) {
+        for (auto [consumer_e, consumer, consumer_tfm] : registry.view<Shrine, LogicTransform>().each()) {
             vector<v3> path = navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
             if (math::distance(path.front(), consumer_tfm.position) < 0.1f) {
                 paths.emplace_back(spawner_e, consumer_e, std::move(path));
@@ -194,6 +194,8 @@ void Scene::update() {
     dragging_system(this);
     spawner_system(this);
     travel_system(this);
+    enemy_decollision_system(this);
+    scene_vertical_offset_system(this);
     area_trigger_system(this);
     enemy_ik_controller_system(this);
 
@@ -239,7 +241,7 @@ void Scene::inspect_entity(entt::entity entity) {
     ZoneScoped;
 	if (!registry.any_of<Name>(entity))
 		return;
-
+    
 	auto& name = registry.get<Name>(entity).name;
 
 	if (name.empty())
@@ -264,10 +266,9 @@ void Scene::settings_window(bool* p_open) {
 		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
 		if (ImGui::BeginTabBar("SceneTabs", tab_bar_flags)) {
 			if (ImGui::BeginTabItem("Entities")) {
-			    auto named_entities = registry.view<Name>();
+			    auto named_entities = registry.view<AddToInspect>();
 				for (auto it = named_entities.rbegin(), last = named_entities.rend(); it != last; ++it)
-				    if (!registry.any_of<AddToInspect>(*it))
-                        inspect_entity(*it);
+                    inspect_entity(*it);
 
 			    ImGui::Dummy(ImVec2{1.0f, 400.0f});
 				ImGui::EndTabItem();
@@ -363,8 +364,8 @@ entt::entity Scene::get_spawner(v3i pos) {
     return entt::null;
 }
 
-entt::entity Scene::get_consumer(v3i pos) {
-    auto view = registry.view<LogicTransform, Consumer>();
+entt::entity Scene::get_shrine(v3i pos) {
+    auto view = registry.view<LogicTransform, Shrine>();
     for (auto [entity, logic_tfm, traveler] : view.each()) {
         if (math::length(logic_tfm.position - v3(pos)) < 0.1f) {
             return entity;

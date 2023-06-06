@@ -119,11 +119,9 @@ void transform_system(Scene* scene) {
             if (registry.any_of<Dragging>(entity))
                 continue;
 
-
-            Name* name = registry.try_get<Name>(entity);
             quat logic_quat = math::to_quat(logic_tfm.rotation);
             model_tfm.set_rotation(math::normalize(math::slerp(model_tfm.rotation, logic_quat, 0.5f)));
-            model_tfm.set_translation(logic_tfm.position + link.offset);
+            model_tfm.set_translation(logic_tfm.position + link.offset + v3::Z * logic_tfm.step_up);
         }
     }
     {
@@ -138,42 +136,6 @@ void transform_system(Scene* scene) {
                 ZoneScoped;
                 renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
             }
-        }
-    }
-}
-
-void consumer_system(Scene* scene) {
-    ZoneScoped;
-    auto consumers = scene->registry.view<Consumer, LogicTransform>();
-    auto consumees = scene->registry.view<Enemy, LogicTransform>();
-
-    for (auto [e_consumer, consumer, consumer_transform] : consumers.each()) {
-        Model* model = scene->registry.try_get<Model>(e_consumer);
-        ModelTransform* model_transform = scene->registry.try_get<ModelTransform>(e_consumer);
-
-        if (model && model_transform) {
-            id_ptr<ModelCPU::Node> obelisk_node = {};
-            auto& nodes = model->model_cpu->nodes;
-            for (auto node : nodes) {
-                if (node->name == "Obelisk") {
-                    obelisk_node = node;
-                    break;
-                }
-            }
-            float yaw = scene->time; 
-            float z = 0.1f * (1.0f + math::sin(0.5f * scene->time));
-            obelisk_node->transform = math::translate(v3(0.0f, 0.0f, z)) * math::rotation(euler{.yaw = yaw});
-            obelisk_node->cache_transform();
-        }
-        
-        for (auto [e_consumee, enemy, consumee_tfm] : consumees.each()) {
-            if (scene->registry.any_of<Killed>(e_consumee))
-                continue;
-            f32 dist = math::length(v2(consumer_transform.position.xy) - consumee_tfm.position.xy);
-            if (dist < consumer.consume_distance && !scene->edit_mode) {
-                scene->registry.emplace<Killed>(e_consumee, false, scene->time);
-            }
-
         }
     }
 }
@@ -389,6 +351,46 @@ void pickup_system(Scene* scene) {
             .pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f
         });
         scene->registry.get<TransformLink>(entity).offset.z = 0.1f * math::sin(pickup.cycle_point * math::TAU) + 0.3f;
+    }
+}
+
+float calculate_step_up(Scene* scene, entt::entity id, v3 pos) {
+    v2 closest_shrine_dist = v2(FLT_MAX, FLT_MAX);
+    v2 closest_platform_dist = v2(FLT_MAX, FLT_MAX);
+    for (auto [entity2, shrine_logic_tfm, shrine] : scene->registry.view<LogicTransform, Shrine>().each()) {
+        if (id == entity2)
+            continue;
+        if (math::abs(shrine_logic_tfm.position.z -pos.z) > 0.1f)
+            continue;
+
+        v2 potential_new_dist = math::abs(shrine_logic_tfm.position.xy -pos.xy);
+        if (math::length(potential_new_dist) < math::length(closest_shrine_dist))
+            closest_shrine_dist = potential_new_dist;
+    }
+    for (auto [entity2, platform_logic_tfm, platform] : scene->registry.view<LogicTransform, CastingPlatform>().each()) {
+        if (id == entity2)
+            continue;
+        if (math::abs(platform_logic_tfm.position.z -pos.z) > 0.1f)
+            continue;
+
+        v2 potential_new_dist = math::abs(platform_logic_tfm.position.xy -pos.xy);
+        if (math::length(potential_new_dist) < math::length(closest_platform_dist))
+            closest_platform_dist = potential_new_dist;
+    }
+
+        
+    if (math::length(closest_platform_dist) < 0.5f) {
+        return math::map_range(math::length(closest_platform_dist), {0.45f, 0.5f}, {0.1f, 0.0f});
+    }
+    if (math::length(closest_shrine_dist) < 0.65f) {
+        return math::map_range(math::length(closest_shrine_dist), {0.4f, 0.65f}, {0.2f, 0.0f});
+    }
+    return 0.0f;
+}
+
+void scene_vertical_offset_system(Scene* scene) {
+    for (auto [entity, logic_tfm] : scene->registry.view<LogicTransform>().each()) {
+        logic_tfm.step_up = calculate_step_up(scene, entity, logic_tfm.position);
     }
 }
 

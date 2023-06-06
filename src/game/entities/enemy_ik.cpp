@@ -5,6 +5,7 @@
 #include "extension/fmt.hpp"
 #include "general/matrix_math.hpp"
 #include "game/scene.hpp"
+#include "game/systems.hpp"
 #include "game/entities/components.hpp"
 
 namespace spellbook {
@@ -98,8 +99,9 @@ void SpiderController::resolve_desire() {
 void SpiderController::update_target(Scene* scene, const LogicTransform& logic_tfm) {
     for (int i = 0; i < 4; i++) {
         if (is_moving(i)) {
+            float step_up = calculate_step_up(scene, entt::null, v3(world_targets[i].xy - v2(0.5f, 0.5f), logic_tfm.position.z));
             world_targets[i] = world_desired[i] + (settings.control_radius - 0.01f) * (math::length(velocity) > 0.01f ? math::normalize(velocity) : v3(0.0f));
-            world_targets[i].z = get_foot_height(scene, world_targets[i].xy, logic_tfm.position.z + 0.5f);
+            world_targets[i].z = get_foot_height(scene, world_targets[i].xy, logic_tfm.position.z + 0.5f) + step_up;
         }
     }
 }

@@ -35,7 +35,7 @@ struct EnemyPrefab {
 
 struct Traveler {
     struct Target {
-        u32 priority;
+        u32 priority = INT_MAX;
         v3i pos;
     };
     
@@ -45,21 +45,22 @@ struct Traveler {
     vector<v3> pathing = {};
     
     void set_target(Target new_target) {
-        assert_else(new_target.priority != 0);
-        if (target.priority >= new_target.priority)
+        assert_else(new_target.priority != INT_MAX);
+        if (new_target.priority > target.priority)
             return;
         target = new_target;
     }
     void reset_target() {
-        target = {0, v3i{}};
+        target = {INT_MAX, v3i{}};
     }
     bool has_target() const {
-        return target.priority != 0u;
+        return target.priority != INT_MAX;
     }
 };
 
 struct Enemy {
     entt::entity attachment;
+    entt::entity from_spawner;
     entt::entity target_consumer;
 };
 
@@ -75,10 +76,12 @@ bool inspect(EnemyPrefab*);
 void enemy_aggro_system(Scene* scene);
 void travel_system(Scene* scene);
 void enemy_ik_controller_system(Scene* scene);
+void enemy_decollision_system(Scene* scene);
 
 v3 predict_pos(Traveler& traveler, v3 pos, float time);
 
-float get_foot_height(Scene* scene, v3 enemy_origin, v2 foot_pos);
+void disconnect_attachment(Scene* scene, entt::entity base);
+void connect_attachment(Scene* scene, entt::entity base, entt::entity attachment);
 
 void on_enemy_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 

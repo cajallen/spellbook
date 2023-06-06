@@ -1,5 +1,8 @@
 #pragma once
 
+#include <entt/entity/fwd.hpp>
+#include "general/geometry.hpp"
+
 namespace spellbook {
 
 struct Scene;
@@ -27,7 +30,10 @@ void collision_update_system(Scene* scene);
 void emitter_system(Scene* scene);
 void visual_tile_widget_system(Scene* scene);
 void pickup_system(Scene* scene);
+void scene_vertical_offset_system(Scene* scene);
 
 void spawner_draw_system(Scene* scene);
+
+float calculate_step_up(Scene* scene, entt::entity id, v3 pos);
 
 }

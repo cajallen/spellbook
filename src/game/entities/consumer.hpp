@@ -11,18 +11,23 @@ namespace spellbook {
 
 struct ConsumerPrefab {
     string file_path;
-    string model_path;
+    string shrine_model_path;
+    string egg_model_path;
 };
 
-JSON_IMPL(ConsumerPrefab, model_path);
+JSON_IMPL(ConsumerPrefab, shrine_model_path, egg_model_path);
 
 struct Scene;
 entt::entity instance_prefab(Scene*, const ConsumerPrefab&, v3i location);
 bool inspect(ConsumerPrefab*);
 
-struct Consumer {
-    f32 consume_distance = 0.02f;
-    int amount_consumed = 0;
+void consumer_system(Scene* scene);
+
+struct Shrine {
+    entt::entity egg_entity;
+    bool egg_attached;
 };
+
+struct Egg {};
 
 }

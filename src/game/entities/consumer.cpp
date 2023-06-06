@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "enemy.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "game/scene.hpp"
@@ -13,27 +14,55 @@ namespace spellbook {
 entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab, v3i location) {
     static int i      = 0;
     
-    auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", "consumer", i++));
-
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.model_path));
-    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+    // Make shrine
+    entt::entity shrine_entity = scene->registry.create();
+    entt::entity egg_entity = scene->registry.create();
     
-    scene->registry.emplace<LogicTransform>(entity, v3(location));
-    scene->registry.emplace<ModelTransform>(entity);
-    scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
-    scene->registry.emplace<Consumer>(entity);
-    scene->registry.emplace<FloorOccupier>(entity);
+    scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", "Shrine", i++));
 
-    return entity;
+    Model& shrine_model = scene->registry.emplace<Model>(shrine_entity);
+    shrine_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.shrine_model_path));
+    shrine_model.model_gpu = instance_model(scene->render_scene, *shrine_model.model_cpu);
+    
+    scene->registry.emplace<LogicTransform>(shrine_entity, v3(location));
+    scene->registry.emplace<ModelTransform>(shrine_entity);
+    scene->registry.emplace<TransformLink>(shrine_entity, v3(0.5f, 0.5f, 0.0f));
+    scene->registry.emplace<Shrine>(shrine_entity, egg_entity, true);
+    scene->registry.emplace<FloorOccupier>(shrine_entity);
+
+    
+    Model& egg_model = scene->registry.emplace<Model>(egg_entity);
+    egg_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.egg_model_path));
+    egg_model.model_gpu = instance_model(scene->render_scene, *egg_model.model_cpu);
+    
+    scene->registry.emplace<LogicTransform>(egg_entity, v3(location));
+    scene->registry.emplace<ModelTransform>(egg_entity);
+    scene->registry.emplace<TransformLink>(egg_entity, v3(0.5f, 0.5f, 0.3f));
+    scene->registry.emplace<Attachment>(egg_entity, shrine_entity, false);
+    scene->registry.emplace<Egg>(egg_entity);
+
+    
+    return shrine_entity;
 }
 
 bool inspect(ConsumerPrefab* consumer_prefab) {
     bool changed = false;
     ImGui::PathSelect("File", &consumer_prefab->file_path, "resources/consumers", FileType_Consumer);
-    changed |= ImGui::PathSelect("Model", &consumer_prefab->model_path, "resources/models", FileType_Model);
+    changed |= ImGui::PathSelect("Shrine Model", &consumer_prefab->shrine_model_path, "resources/models", FileType_Model);
+    changed |= ImGui::PathSelect("Egg Model", &consumer_prefab->egg_model_path, "resources/models", FileType_Model);
     return changed;
 }
+
+void consumer_system(Scene* scene) {
+    for (auto [entity, shrine, shrine_logic_tfm] : scene->registry.view<Shrine, LogicTransform>().each()) {
+        if (!shrine.egg_attached)
+            continue;
+
+        LogicTransform& egg_logic_tfm = scene->registry.get<LogicTransform>(shrine.egg_entity);
+        egg_logic_tfm.position = shrine_logic_tfm.position;
+        egg_logic_tfm.rotation.yaw += scene->delta_time * 1.0f;
+    }
+}
+
 
 }

@@ -30,16 +30,6 @@ struct EnemyLaserAttack : Attack {
     void trigger() override;
 };
 
-void enemy_fallback_targeting(Ability& ability) {
-    auto consumers = ability.scene->registry.view<Consumer>();
-    if (consumers.empty())
-        return;
-    entt::entity consumer_entity = consumers[math::random_s32(consumers.size())];
-    LogicTransform& consumer_transform = ability.scene->registry.get<LogicTransform>(consumer_entity);
-    ability.target = math::round_cast(consumer_transform.position);
-    ability.has_target = true;
-}
-
 void EnemyLaserAttack::trigger() {
     uset<entt::entity> lizards = entry_gather_function(*this, target, 0.0f);
     for (entt::entity lizard : lizards) {
@@ -76,8 +66,6 @@ void EnemyLaserAttack::targeting() {
 
     if (square_targeting(1, *this, entry_gather_function))
         return;
-
-    enemy_fallback_targeting(*this);
 }
 
 entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i location) {
@@ -88,12 +76,14 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
         if (math::distance(path.path.back(), v3(location)) < 0.1f)
             available_paths.push_back(&path);
     }
-    entt::entity selected_consumer = !available_paths.empty() ? available_paths[math::random_s32(available_paths.size())]->consumer : entt::null;
+    PathInfo* selected_path = !available_paths.empty() ? available_paths[math::random_s32(available_paths.size())] : nullptr;
+    entt::entity spawner = selected_path ? selected_path->spawner : entt::null;
+    entt::entity selected_consumer = selected_path ? selected_path->consumer : entt::null;
         
     entt::entity base_entity = setup_basic_unit(scene, prefab.base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
     entt::entity attachment_entity = scene->registry.create();
     scene->registry.erase<TransformLink>(base_entity);
-    scene->registry.emplace<Enemy>(base_entity, attachment_entity, selected_consumer);
+    scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
     scene->registry.emplace<Traveler>(base_entity);
     scene->registry.emplace<SpiderController>(base_entity, settings);
     
@@ -147,7 +137,7 @@ void enemy_ik_controller_system(Scene* scene) {
         if (!model.model_cpu->skeleton)
             continue;
         
-        model_tfm.translation = logic_tfm.position + v3(0.5f, 0.5f, 0.0f * ik.extra_z);
+        model_tfm.translation = logic_tfm.position + v3(0.5f, 0.5f, 0.0f * ik.extra_z) + v3::Z * logic_tfm.step_up;
         model_tfm.rotation = math::quat_between(v3::Z, ik.quad_norm);
         model_tfm.dirty = true;
 
@@ -181,6 +171,7 @@ void enemy_ik_controller_system(Scene* scene) {
     }
 }
 void enemy_aggro_system(Scene* scene) {
+    // managem movement requests from attachment
     for (auto [entity, attachment, caster] : scene->registry.view<Attachment, Caster>().each()) {
         if (!caster.attack->has_target)
             continue;
@@ -191,14 +182,37 @@ void enemy_aggro_system(Scene* scene) {
         Traveler* traveler = scene->registry.try_get<Traveler>(attachment.base);
         if (!traveler)
             continue;
-        traveler->set_target({1, caster.attack->target});
+        traveler->set_target({5, caster.attack->target});
     }
 
+    // bring egg back if we have it, otherwise seek egg
     for (auto [entity, enemy, traveler] : scene->registry.view<Enemy, Traveler>().each()) {
+        bool has_egg = scene->registry.any_of<Egg>(enemy.attachment);
+        if (has_egg) {
+            LogicTransform& spawner_tfm = scene->registry.get<LogicTransform>(enemy.from_spawner);
+            traveler.set_target({2, math::round_cast(spawner_tfm.position)});
+            continue;
+        }
         if (!scene->registry.valid(enemy.target_consumer))
             continue;
-        LogicTransform& consumer_tfm = scene->registry.get<LogicTransform>(enemy.target_consumer);
-        traveler.set_target({2, math::round_cast(consumer_tfm.position)});
+        Shrine& shrine = scene->registry.get<Shrine>(enemy.target_consumer);
+        LogicTransform& egg_tfm = scene->registry.get<LogicTransform>(shrine.egg_entity);
+        traveler.set_target({10, math::round_cast(egg_tfm.position)});
+    }
+
+    // Pick up egg if possible
+    for (auto [entity, enemy, traveler, logic_tfm] : scene->registry.view<Enemy, Traveler, LogicTransform>().each()) {
+        entt::entity egg_entity = scene->registry.get<Shrine>(enemy.target_consumer).egg_entity;
+        Attachment& egg_attachment = scene->registry.get<Attachment>(egg_entity);
+        // another enemy is carrying the egg
+        if (scene->registry.valid(egg_attachment.base) && egg_attachment.base != enemy.target_consumer)
+            continue;
+        LogicTransform& egg_tfm = scene->registry.get<LogicTransform>(egg_entity);
+        if (math::distance(egg_tfm.position, logic_tfm.position) < 0.01f) {
+            disconnect_attachment(scene, entity);
+            disconnect_attachment(scene, enemy.target_consumer);
+            connect_attachment(scene, entity, egg_entity);
+        }
     }
 }
 void travel_system(Scene* scene) {
@@ -220,7 +234,7 @@ void travel_system(Scene* scene) {
         
         // Use pathing to move
         v3   velocity        = v3(traveler.pathing.back()) - transform.position;
-        bool at_target       = math::length(velocity) < 0.01f;
+        bool at_target       = math::length(velocity) < 0.05f;
         if (at_target) {
             traveler.pathing.remove_back();
             velocity = v3(0);
@@ -229,6 +243,25 @@ void travel_system(Scene* scene) {
         f32 min_velocity = 0.0f;
         if (!at_target)
             transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
+    }
+}
+
+void enemy_decollision_system(Scene* scene) {
+    for (auto [entity1, enemy1, logic_tfm1, traveler1] : scene->registry.view<Enemy, LogicTransform, Traveler>().each()) {
+        for (auto [entity2, enemy2, logic_tfm2, traveler2] : scene->registry.view<Enemy, LogicTransform, Traveler>().each()) {
+            if (entity1 == entity2)
+                continue;
+            entt::entity target_egg = scene->registry.get<Shrine>(enemy2.target_consumer).egg_entity;
+            if (enemy2.attachment == target_egg)
+                continue;
+            float dist = math::distance(logic_tfm1.position, logic_tfm2.position);
+            float push_amount = scene->delta_time * math::map_range(dist, {0.0f, 0.4f}, {1.0f, 0.0f});
+            if (push_amount < scene->delta_time * 0.1f)
+                continue;
+            v2 jitter = {math::random_f32(0.1f), math::random_f32(0.1f)};
+            v3 push_dir = math::normalize(v3(logic_tfm2.position.xy - logic_tfm1.position.xy + jitter, 0.0f));
+            logic_tfm2.position += push_amount * push_dir;
+        }
     }
 }
 
@@ -251,51 +284,67 @@ v3 predict_pos(Traveler& traveler, v3 pos, float time) {
     return expected_pos;
 }
 
-float get_foot_height(Scene* scene, v3 enemy_origin, v2 foot_pos) {
-    const umap<v3i, Direction>& ramps = scene->map_data.ramps;
-    v3 out_pos;
-    v3i out_cube;
-    bool found = ray_intersection(scene->map_data.solids, ray3{v3(foot_pos, enemy_origin.z + 0.1f), v3(0.0f, 0.0f, -1.0f)}, out_pos, out_cube,
-        [ramps](ray3 r, v3i v, v3& out_pos) {
-            if (!ramps.contains(v))
-                return false;
-
-            switch (ramps.at(v)) {
-                case Direction_PosX: {
-                    float z_offset = math::fract(r.origin.x);
-                    out_pos = v3(r.origin.xy, float(v.z-1) + z_offset);
-                } break;
-                case Direction_NegX: {
-                    float z_offset = 1.0f - math::fract(r.origin.x);
-                    out_pos = v3(r.origin.xy, float(v.z-1) + z_offset);
-                } break;
-                case Direction_PosY: {
-                    float z_offset = math::fract(r.origin.y);
-                    out_pos = v3(r.origin.xy, float(v.z-1) + z_offset);
-                } break;
-                case Direction_NegY: {
-                    float z_offset = 1.0 - math::fract(r.origin.y);
-                    out_pos = v3(r.origin.xy, float(v.z-1) + z_offset);
-                } break;
-            }
-            
-            return true;
-        });
-
-    if (found)
-        return out_pos.z;
-    else
-        return enemy_origin.z;
+void on_enemy_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    disconnect_attachment(&scene, entity);
 }
 
-void on_enemy_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
-    Enemy& enemy = registry.get<Enemy>(entity);
-    if (!registry.valid(enemy.attachment))
+void disconnect_attachment(Scene* scene, Enemy& enemy) {
+    if (!scene->registry.valid(enemy.attachment))
         return;
-    Attachment& attachment = registry.get<Attachment>(enemy.attachment);
+    Attachment& attachment = scene->registry.get<Attachment>(enemy.attachment);
     attachment.base = entt::null;
     if (attachment.requires_base)
-        registry.emplace<Killed>(enemy.attachment);
+        scene->registry.emplace<Killed>(enemy.attachment);
+    enemy.attachment = entt::null;
+}
+void disconnect_attachment(Scene* scene, Shrine& shrine) {
+    if (!scene->registry.valid(shrine.egg_entity) || !shrine.egg_attached)
+        return;
+    Attachment& attachment = scene->registry.get<Attachment>(shrine.egg_entity);
+    attachment.base = entt::null;
+    assert_else(!attachment.requires_base);
+    shrine.egg_attached = false;
+}
+
+void disconnect_attachment(Scene* scene, entt::entity base) {
+    Enemy* enemy = scene->registry.try_get<Enemy>(base);
+    Shrine* shrine = scene->registry.try_get<Shrine>(base);
+    assert_else((enemy != nullptr) != (shrine != nullptr))
+        return;
+
+    if (enemy)
+        disconnect_attachment(scene, *enemy);
+
+    if (shrine)
+        disconnect_attachment(scene, *shrine);
+}
+
+void connect_attachment(Scene* scene, Enemy& enemy, entt::entity base, entt::entity attach_entity) {
+    Attachment& attachment = scene->registry.get<Attachment>(attach_entity);
+    assert_else(!scene->registry.valid(enemy.attachment));
+    assert_else(!scene->registry.valid(attachment.base));
+    enemy.attachment = attach_entity;
+    attachment.base = base;
+}
+
+void connect_attachment(Scene* scene, Shrine& shrine, entt::entity base, entt::entity attach_entity) {
+    Attachment& attachment = scene->registry.get<Attachment>(attach_entity);
+    assert_else(!scene->registry.valid(attachment.base));
+    shrine.egg_attached = true;
+    attachment.base = base;
+}
+
+void connect_attachment(Scene* scene, entt::entity base, entt::entity attachment) {
+    Enemy* enemy = scene->registry.try_get<Enemy>(base);
+    Shrine* shrine = scene->registry.try_get<Shrine>(base);
+    assert_else((enemy != nullptr) != (shrine != nullptr))
+        return;
+
+    if (enemy)
+        connect_attachment(scene, *enemy, base, attachment);
+
+    if (shrine)
+        connect_attachment(scene, *shrine, base, attachment);
 }
 
 }

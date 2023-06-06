@@ -34,10 +34,10 @@ void main() {
     vec2 uv = calculate_uv();
 
     float distortion1 = map_range(perlin_noise(0.15 * fin.position, 0), 0.30, 0.70, -2.0, 2.0);
-    float distortion2 = map_range(perlin_noise(1.0 * fin.position, 0), 0.35, 0.65, -0.4, 0.4);
-    float distortion3 = map_range(perlin_noise(2.5 * fin.position, 0), 0.40, 0.60, -0.2, 0.2);
+    float distortion2 = map_range(perlin_noise(1.0 * fin.position, 1), 0.35, 0.65, -0.4, 0.4);
+    float distortion3 = map_range(perlin_noise(2.5 * fin.position, 2), 0.40, 0.60, -0.2, 0.2);
     float noise_coord = round(fin.position.z * 6.0 + distortion1+distortion2+distortion3);
-    float noise_value = float_noise(to_uint_seed(noise_coord), 0);
+    float noise_value = float_noise(to_uint_seed(noise_coord), 3);
     
     fout_color = vec4(textureLod(s_base_color, noise_value, 0.0).rgb, 1.0);
     vec3 normal_input = texture(s_normal, uv).rgb * 2.0 - 1.0;

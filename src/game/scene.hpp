@@ -99,7 +99,7 @@ struct Scene {
     bool is_casting_platform(v3i);
     entt::entity get_tile(v3i);
     entt::entity get_spawner(v3i);
-    entt::entity get_consumer(v3i);
+    entt::entity get_shrine(v3i);
     vector<entt::entity> get_any(v3i);
 
     bool get_object_placement(v3i& pos);

@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <entt/entity/fwd.hpp>
+
 #include "general/geometry.hpp"
 #include "general/matrix.hpp"
 #include "general/math.hpp"

@@ -66,6 +66,8 @@ struct Spawner {
     bool enemy_spawning = false;
     bool spawn_wave = false;
     bool spawn_enemy = false;
+
+    string force_spawn_path;
 };
 
 JSON_IMPL(EnemySpawnInfo, enemy_prefab_path, pre_delay, post_delay);

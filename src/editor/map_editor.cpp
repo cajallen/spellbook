@@ -291,7 +291,7 @@ void MapEditor::update() {
             else if (selected_spawner != -1) {
                 instance_and_write_spawner(spawner_buttons[selected_spawner].item_path, cell);
             }
-            else if (selected_consumer != -1) {
+            else if (selected_consumer != -1 && last_paint) {
                 instance_and_write_consumer(consumer_buttons[selected_consumer].item_path, cell);
             }
             else if (selected_lizard != -1) {
@@ -387,7 +387,7 @@ void MapEditor::shutdown() {
 }
 
 void MapEditor::instance_and_write_consumer(const string& path, v3i pos) {
-    entt::entity old_tile = p_scene->get_consumer(pos);
+    entt::entity old_tile = p_scene->get_shrine(pos);
     if (old_tile != entt::null) {
         p_scene->registry.destroy(old_tile);
     }
