@@ -91,7 +91,7 @@ void WarlockAttack::targeting() {
     if (taunted(*this, caster_comp))
         return;
 
-    if (square_targeting(2, *this, entry_gather_function))
+    if (square_targeting(2, *this, entry_gather_function, entry_eval_function))
         return;
 }
 
@@ -147,10 +147,10 @@ void build_warlock(Scene* scene, entt::entity entity, const LizardPrefab& lizard
     Caster& caster = scene->registry.get<Caster>(entity);
 
     caster.attack = std::make_unique<WarlockAttack>(scene, entity, 1.0f, 1.0f, 1.0f, 3.0f);
-    caster.attack->entry_gather_function = lizard_entry_gather();
+    caster.attack->entry_gather_function = gather_enemies();
 
-    caster.ability = std::make_unique<WarlockSpell>(scene, entity, 0.8f, 0.6f);
-    caster.ability->entry_gather_function = lizard_entry_gather();
+    caster.spell = std::make_unique<WarlockSpell>(scene, entity, 0.8f, 0.6f);
+    caster.spell->entry_gather_function = gather_enemies();
 }
 
 void draw_warlock_dragging_preview(Scene* scene, entt::entity entity) {

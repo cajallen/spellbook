@@ -23,12 +23,9 @@ Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float p
     pre_trigger_timer = add_timer(scene, fmt_("{}::pre", get_name()),
         [this](Timer* timer) {
             post_trigger_timer->start(post_trigger_time.value());
-            if (set_anims) {
-                auto poser = scene->registry.try_get<PoseController>(caster);
-                if (poser) {
+            if (set_anims)
+                if (auto poser = scene->registry.try_get<PoseController>(caster))
                     poser->set_state(get_post_trigger_animation_state(), post_trigger_time.value());
-                }
-            }
             trigger();
         }, false
     );
@@ -45,11 +42,21 @@ Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float p
     );
 }
 
-Attack::Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cooldown, float range) : Ability(init_scene, init_caster, pre, post, range) {
+Attack::Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cooldown, float cast_range) : Ability(init_scene, init_caster, pre, post, cast_range) {
     Caster& caster_comp = scene->registry.get<Caster>(caster);
-    
     cooldown_time = {&*caster_comp.cooldown_reduction, cooldown};
     cooldown_timer = add_timer(scene, fmt_("{}::cd", get_name()), [this](Timer* timer) {});
+
+    pre_trigger_timer = add_timer(scene, fmt_("{}::pre", get_name()),
+        [this](Timer* timer) {
+            post_trigger_timer->start(post_trigger_time.value());
+            cooldown_timer->start(cooldown_time.value());
+            if (set_anims)
+                if (auto poser = scene->registry.try_get<PoseController>(caster))
+                    poser->set_state(get_post_trigger_animation_state(), post_trigger_time.value());
+            trigger();
+        }, false
+    );
 }
 
 void Ability::request_cast() {

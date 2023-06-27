@@ -76,8 +76,8 @@ void health_draw_system(Scene* scene) {
         if (health.value <= 0.0f)
             continue;
 
-        float percentage = health.value / health.max_health.value();
-        float percentage2 = health.buffer_value / health.max_health.value();
+        float percentage = health.value / health.max_health->value();
+        float percentage2 = health.buffer_value / health.max_health->value();
         auto link = scene->registry.try_get<TransformLink>(entity);
         v3 position = link ? logic_tfm.position + link->offset : logic_tfm.position + v3(0.5f, 0.5f, 0.0f);
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
@@ -166,7 +166,7 @@ void health_system(Scene* scene) {
     auto healths = scene->registry.view<Health>();
     for (auto [entity, health] : healths.each()) {
         for (auto& [dotter, dot] : health.dots) {
-            damage(scene, dotter, entity, dot.value() * scene->delta_time, v3(0.0f));
+            damage(scene, dotter, entity, dot->value() * scene->delta_time, v3(0.0f));
         }
         float dh = 6.0f * (health.buffer_value - health.value) + 0.3f;
         health.buffer_value = math::max(health.buffer_value - dh * scene->delta_time, health.value);
@@ -178,8 +178,9 @@ void health_system(Scene* scene) {
             scene->registry.emplace<Killed>(entity, true, scene->time);
         }
 
-        health.value += health.regen.value() * scene->delta_time;
-        health.value = math::min(health.value, health.max_health.value());
+        if (health.regen)
+            health.value += health.regen->value() * scene->delta_time;
+        health.value = math::min(health.value, health.max_health->value());
     }
 }
 
@@ -243,7 +244,7 @@ void dragging_system(Scene* scene) {
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();
     for (auto [entity, drag, transform] : _view.each()) {
-        f32 vertical_offset = 0.5f * math::smoothstep(drag.start_time, drag.start_time + raise_speed, scene->time);
+        f32 vertical_offset = drag.drag_height * math::smoothstep(drag.start_time, drag.start_time + raise_speed, scene->time);
         v3 pos = drag.target_position + v3(0.0f, 0.0f, vertical_offset);
         if (scene->registry.all_of<TransformLink>(entity)) {
             pos += scene->registry.get<TransformLink>(entity).offset;
@@ -292,14 +293,6 @@ void collision_update_system(Scene* scene) {
                     collision2.with.erase(entity1);
             }
         }
-    }
-}
-
-void spawner_draw_system(Scene* scene) {
-    for (auto [entity, spawner, m_transform, transform_link] : scene->registry.view<Spawner, ModelTransform, TransformLink>().each()) {
-        transform_link.offset.z = 1.0f + 0.25f * math::sin(2.0f * scene->time);
-        m_transform.set_scale(v3(0.6f));
-        m_transform.set_rotation(quat(v3::Z, 2.0f * (scene->time_scale == 0.0f ? Input::time : scene->time)));
     }
 }
 
@@ -377,10 +370,20 @@ float calculate_step_up(Scene* scene, entt::entity id, v3 pos) {
         if (math::length(potential_new_dist) < math::length(closest_platform_dist))
             closest_platform_dist = potential_new_dist;
     }
+    for (auto [entity2, platform_logic_tfm, platform] : scene->registry.view<LogicTransform, Spawner>().each()) {
+        if (id == entity2)
+            continue;
+        if (math::abs(platform_logic_tfm.position.z -pos.z) > 0.1f)
+            continue;
+
+        v2 potential_new_dist = math::abs(platform_logic_tfm.position.xy -pos.xy);
+        if (math::length(potential_new_dist) < math::length(closest_platform_dist))
+            closest_platform_dist = potential_new_dist;
+    }
 
         
     if (math::length(closest_platform_dist) < 0.5f) {
-        return math::map_range(math::length(closest_platform_dist), {0.45f, 0.5f}, {0.1f, 0.0f});
+        return math::map_range(math::length(closest_platform_dist), {0.38f, 0.5f}, {0.1f, 0.0f});
     }
     if (math::length(closest_shrine_dist) < 0.65f) {
         return math::map_range(math::length(closest_shrine_dist), {0.4f, 0.65f}, {0.2f, 0.0f});

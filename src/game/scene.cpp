@@ -44,7 +44,7 @@ void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
     auto caster = registry.try_get<Caster>(entity);
     if (caster->casting()) {
         caster->attack->stop_casting();
-        caster->ability->stop_casting();
+        caster->spell->stop_casting();
     }
 }
 
@@ -69,8 +69,8 @@ void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
 
         auto caster = registry.try_get<Caster>(entity);
         if (caster) {
-            Ability* ability = &*caster->ability;
-            add_timer(caster->ability->scene, "drag_cast_delay",
+            Ability* ability = &*caster->spell;
+            add_timer(caster->spell->scene, "drag_cast_delay",
                 [ability](Timer* timer) {
                     ability->targeting();
                     ability->request_cast();
@@ -138,6 +138,8 @@ void Scene::setup(const string& input_name) {
     targeting->scene = this;
 
     navigation = std::make_unique<astar::Navigation>(&map_data.path_solids, &map_data.slot_solids, &map_data.unstandable_solids, &map_data.ramps);
+
+    audio.setup();
 }
 
 void Scene::update() {
@@ -164,16 +166,16 @@ void Scene::update() {
     paths.clear();
     for (auto [spawner_e, spawner, spawner_tfm] : registry.view<Spawner, LogicTransform>().each()) {
         for (auto [consumer_e, consumer, consumer_tfm] : registry.view<Shrine, LogicTransform>().each()) {
-            vector<v3> path = navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
-            if (math::distance(path.front(), consumer_tfm.position) < 0.1f) {
+            Path path = navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
+            if (math::distance(path.get_destination(), consumer_tfm.position) < 0.1f) {
                 paths.emplace_back(spawner_e, consumer_e, std::move(path));
             }
         }
     }
-    for (auto& path : paths) {
+    for (auto& path_info : paths) {
         vector<FormattedVertex> vertices;
         float x = time * 6.0f;
-        for (v3& v : path.path) {
+        for (v3& v : path_info.path.waypoints) {
             float hue = 190.0f + 10.0f * math::sin(x);
             float saturation = 0.3f + 0.1f * math::sin(x);
             float width = 0.03f - 0.01f * math::clamp(math::sin(x), -1.0f, 0.0f);
@@ -183,11 +185,13 @@ void Scene::update() {
         render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, true);
     }
     
-    
     update_timers(this);
     
 	controller.update();
+    audio.update(this);
 
+    traveler_reset_system(this);
+    
     dragging_update_system(this);
     collision_update_system(this);
     enemy_aggro_system(this);
@@ -205,7 +209,6 @@ void Scene::update() {
     pickup_system(this);
     
     visual_tile_widget_system(this);
-    spawner_draw_system(this);
     transform_system(this);
     emitter_system(this);
     pose_system(this);
@@ -228,6 +231,7 @@ void Scene::set_edit_mode(bool to) {
 }
 
 void Scene::cleanup() {
+    audio.shutdown();
     delete spawn_state_info;
     
     controller.cleanup();
@@ -390,15 +394,13 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const 
 }
 
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, EmitterCPU emitter_cpu, float duration) {
-    // emitter_cpu.position = position;
     auto e = scene->registry.create();
     
     struct EmitterTimerTimeoutPayload {
         Scene* scene;
         entt::entity entity;
     };
-
-    auto payload = new EmitterTimerTimeoutPayload(scene, e);
+    
     scene->registry.emplace<Name>(e, name);
     scene->registry.emplace<LogicTransform>(e, position);
     
@@ -426,7 +428,8 @@ void Scene::select_entity(entt::entity entity) {
             return;
     
     if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {
-        registry.emplace<Dragging>(selected_entity, time, logic_tfm->position, intersect);
+        Draggable& draggable = registry.get<Draggable>(selected_entity);
+        registry.emplace<Dragging>(selected_entity, draggable.drag_height, time, logic_tfm->position, intersect);
     }
 }
 

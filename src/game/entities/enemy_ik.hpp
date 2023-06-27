@@ -16,9 +16,9 @@ struct Model;
 struct SpiderControllerSettings {
     string bone_names[4];
 
-    float control_dist;
-    float control_radius;
-    float control_time;
+    float desired_dist_from_center;
+    float step_ahead_dist;
+    float step_time;
     
     v3 default_control_points[4];
 
@@ -36,6 +36,7 @@ struct SpiderController {
     v3 old_pos;
     float old_stuff_time;
     v3 velocity;
+    float speed;
     
     v3 world_starts[4];
     v3 world_targets[4];
@@ -45,6 +46,8 @@ struct SpiderController {
     v3 world_desired[4];
     bool want_move_leg[4];
     bool want_move_set[2];
+
+    float updated_desired_dist_from_center;
 
     SpiderController(SpiderControllerSettings& settings);
     

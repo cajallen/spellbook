@@ -11,14 +11,13 @@
 namespace spellbook {
 
 SpiderControllerSettings::SpiderControllerSettings() : bone_names{"foot.pn", "foot.pp", "foot.np", "foot.nn"} {
-    control_dist = 0.2f;
-    control_radius = 0.1f;
-    control_time = 0.15f;
+    desired_dist_from_center = 0.22f;
+    step_time = 0.25f;
     
-    default_control_points[0] = v3(control_dist, -control_dist, 0.f);
-    default_control_points[1] = v3(control_dist, control_dist, 0.f);
-    default_control_points[2] = v3(-control_dist, control_dist, 0.f);
-    default_control_points[3] = v3(-control_dist, -control_dist, 0.f);
+    default_control_points[0] = math::normalize(v3(1.0f, -1.0f, 0.f));
+    default_control_points[1] = math::normalize(v3(1.0f, 1.0f, 0.f));
+    default_control_points[2] = math::normalize(v3(-1.0f, 1.0f, 0.f));
+    default_control_points[3] = math::normalize(v3(-1.0f, -1.0f, 0.f));
 }
 
 SpiderController::SpiderController(SpiderControllerSettings& settings) : settings(settings) {
@@ -32,13 +31,15 @@ SpiderController::SpiderController(SpiderControllerSettings& settings) : setting
     velocity = {};
 
     last_leg_moved = 0;
+
+    updated_desired_dist_from_center = settings.desired_dist_from_center;
 }
 
 void SpiderController::initialize_if_needed(const m44& tfm) {
     if (!initialized) {
         for (int i = 0; i < 4; i++) {
-            world_starts[i] = math::apply_transform(tfm, settings.default_control_points[i]);
-            world_targets[i] = math::apply_transform(tfm, settings.default_control_points[i]);
+            world_starts[i] = math::apply_transform(tfm, updated_desired_dist_from_center * settings.default_control_points[i]);
+            world_targets[i] = math::apply_transform(tfm, updated_desired_dist_from_center * settings.default_control_points[i]);
             lerp_t[i] = 1.0f;
         }
         initialized = true;
@@ -46,17 +47,22 @@ void SpiderController::initialize_if_needed(const m44& tfm) {
 }
 
 void SpiderController::update_velocity(Scene* scene, const LogicTransform& logic_tfm) {
-    velocity = old_stuff_time > 0.0f && scene->time != old_stuff_time ?
-    (logic_tfm.position - old_pos) / (scene->time - old_stuff_time) :
-    v3(0.0f);
+    if (math::abs(scene->time - old_stuff_time) > 0.01f && old_stuff_time > 0.0f)
+        velocity = (logic_tfm.position - old_pos) / (scene->time - old_stuff_time);
+    speed = math::length(velocity);
     old_pos = logic_tfm.position;
     old_stuff_time = scene->time;
+
+    settings.step_ahead_dist = speed > 0.1f ? 0.5f * speed * settings.step_time : 0.15f;
+    updated_desired_dist_from_center = updated_desired_dist_from_center < settings.desired_dist_from_center ?
+        math::min(updated_desired_dist_from_center + scene->delta_time * 0.5f, settings.desired_dist_from_center) :
+        math::max(updated_desired_dist_from_center - scene->delta_time * 0.5f, settings.desired_dist_from_center);
 }
 
 
 void SpiderController::update_desire(const m44& tfm) {
     for (int i = 0; i < 4; i++) {
-        world_desired[i] = math::apply_transform(tfm, settings.default_control_points[i]);
+        world_desired[i] = math::apply_transform(tfm, updated_desired_dist_from_center * settings.default_control_points[i]);
                 
         if (lerp_t[i] < 1.0f) {
             want_move_leg[i] = false;
@@ -64,10 +70,10 @@ void SpiderController::update_desire(const m44& tfm) {
         }
                 
         float dist_to_desired = math::distance(get_control_point(i), world_desired[i]);
-        if (dist_to_desired > settings.control_radius) {
+        if (dist_to_desired > 0.05f) {
             want_move_leg[i] = true;
         }
-        else if (dist_to_desired > 0.03f && math::length(velocity) <= 0.01f) {
+        else if (dist_to_desired > 0.02f && math::length(velocity) <= 0.01f) {
             want_move_leg[i] = true;
         }
     }
@@ -100,7 +106,7 @@ void SpiderController::update_target(Scene* scene, const LogicTransform& logic_t
     for (int i = 0; i < 4; i++) {
         if (is_moving(i)) {
             float step_up = calculate_step_up(scene, entt::null, v3(world_targets[i].xy - v2(0.5f, 0.5f), logic_tfm.position.z));
-            world_targets[i] = world_desired[i] + (settings.control_radius - 0.01f) * (math::length(velocity) > 0.01f ? math::normalize(velocity) : v3(0.0f));
+            world_targets[i] = world_desired[i] + settings.step_ahead_dist * (math::length(velocity) > 0.01f ? math::normalize(velocity) : v3(0.0f));
             world_targets[i].z = get_foot_height(scene, world_targets[i].xy, logic_tfm.position.z + 0.5f) + step_up;
         }
     }
@@ -123,7 +129,7 @@ void SpiderController::update_constraints(Scene* scene, const Model& model, cons
         v3 local_current_target = math::apply_transform(tfm_inv, get_control_point(i));
         IKTarget ik_target = {bone, local_current_target, 3};
         apply_constraints(ik_target);
-        lerp_t[i] += scene->delta_time / settings.control_time;
+        lerp_t[i] += scene->delta_time / settings.step_time;
     }
 }
 
@@ -136,7 +142,13 @@ void SpiderController::update_transform_linkers() {
     v3 tri_norm1 = math::ncross(world_targets[1] - world_targets[0], world_targets[2] - world_targets[0]);
     v3 tri_norm2 = math::ncross(world_targets[2] - world_targets[0], world_targets[3] - world_targets[0]);
     quad_norm = math::normalize(tri_norm1 + tri_norm2);
+    if (math::is_nan(quad_norm))
+        quad_norm = v3::Z;
     extra_z = 1.0f - math::dot(quad_norm, v3::Z);
+
+    assert_else(!math::is_nan(extra_z));
+
+    settings.desired_dist_from_center = math::dot(quad_norm, v3::Z) > 0.99f ? 0.26f : 0.31f;
 }
 
 

@@ -6,6 +6,7 @@
 #include "geometry.hpp"
 #include "math.hpp"
 #include "bitmask_3d.hpp"
+#include "path.hpp"
 
 namespace spellbook::astar {
 using HeuristicFunction = std::function<u32(v3i, v3i)>;
@@ -31,7 +32,7 @@ struct Navigation {
     vector<std::pair<v3i, u32>> _get_neighbors(v3i position);
     
     // includes start/end, reverse order (target first)
-    vector<v3> find_path(v3i source, v3i target, float tolerance = 0.1f);
+    Path find_path(v3i source, v3i target, float tolerance = 0.1f);
 
     Bitmask3D* path_solids;
     Bitmask3D* off_road_solids;

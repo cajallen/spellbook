@@ -99,6 +99,8 @@ s32 csb(u32 input);
 s32 csb(s32 input);
 
 v2 project_point_onto_line(v2 point, line2 line);
+v3 project_point_onto_line(v3 point, line3 line);
+v3 project_to_segment(v3 point, line3 line);
 v3 project_point_onto_plane(v3 point, v3 plane_point, v3 plane_normal);
 v3 intersect_axis_plane(ray3 ray, u32 axis, f32 axis_value);
 

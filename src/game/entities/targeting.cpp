@@ -1,12 +1,14 @@
 ﻿#include "targeting.hpp"
 
 #include "consumer.hpp"
+#include "enemy.hpp"
 #include "spawner.hpp"
 #include "general/astar.hpp"
 #include "game/scene.hpp"
 #include "game/entities/ability.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/caster.hpp"
+
 namespace spellbook {
 
 bool taunted(Ability& ability, Caster& caster) {
@@ -19,16 +21,17 @@ bool taunted(Ability& ability, Caster& caster) {
     return false;
 }
 
-bool square_targeting(int range, Ability& ability, EntryGatherFunction entry_gather) {
+bool square_targeting(int range, Ability& ability, const EntryGatherFunction& gather_func, const EntryEvalFunction& eval_func) {
     v3i caster_pos = math::round_cast(ability.scene->registry.get<LogicTransform>(ability.caster).position);
     struct Entry {
         v3i offset = {};
-        u32 count;
+        int count;
     };
     vector<Entry> entries;
-    auto add_entry = [&ability, &entries, &caster_pos, &entry_gather](v3i offset) {
+    auto add_entry = [&ability, &entries, &caster_pos, &gather_func, &eval_func](v3i offset) {
         float time_to = ability.time_to_hit(caster_pos + offset);
-        entries.emplace_back(offset, (u32) entry_gather(ability, caster_pos + offset, time_to).size());
+        int score = eval_func(ability.scene, gather_func(ability, caster_pos + offset, time_to));
+        entries.emplace_back(offset, score);
     };
     for (int x = -range; x <= range; x++) {
         for (int y = -range; y <= range; y++) {
@@ -57,16 +60,17 @@ bool square_targeting(int range, Ability& ability, EntryGatherFunction entry_gat
     return ability.has_target;
 }
 
-bool plus_targeting(int range, Ability& ability, EntryGatherFunction entry_gather) {
+bool plus_targeting(int range, Ability& ability, const EntryGatherFunction& gather_func, const EntryEvalFunction& eval_func) {
     v3i caster_pos = math::round_cast(ability.scene->registry.get<LogicTransform>(ability.caster).position);
     struct Entry {
         v3i offset = {};
         u32 count;
     };
     vector<Entry> entries;
-    auto add_entry = [&ability, &entries, &caster_pos, &entry_gather](v3i offset) {
+    auto add_entry = [&ability, &entries, &caster_pos, &gather_func, &eval_func](v3i offset) {
         float time_to = ability.time_to_hit(caster_pos + offset);
-        entries.emplace_back(offset, (u32) entry_gather(ability, caster_pos + offset, time_to).size());
+        int score = eval_func(ability.scene, gather_func(ability, caster_pos + offset, time_to));
+        entries.emplace_back(offset, score);
     };
 
     for (const v2i& offset : {v2i{-range, 0}, v2i{0, -range}, v2i{range, 0}, v2i{0, range}}) {
@@ -101,19 +105,19 @@ bool trap_targeting(Ability& ability) {
     ability.has_target = false;
     for (int i = 0; true; i++) {
         bool any = false;
-        for (auto& path : ability.scene->paths) {
-            if (i >= path.path.size())
+        for (auto& path_info : ability.scene->paths) {
+            if (i >= path_info.path.waypoints.size())
                 continue;
             any = true;
             
-            if (math::abs(caster_tfm.position.z - path.path[i].z) > 0.3f)
+            if (math::abs(caster_tfm.position.z - path_info.path.waypoints[i].z) > 0.3f)
                 continue;
                 
-            if (math::distance(path.path[i], math::round(path.path[i])) > 0.1f)
+            if (math::distance(path_info.path.waypoints[i], math::round(path_info.path.waypoints[i])) > 0.1f)
                 continue;
             
             bool floor_occupied = false;
-            for (entt::entity e : ability.scene->get_any(math::round_cast(path.path[i]))) {
+            for (entt::entity e : ability.scene->get_any(math::round_cast(path_info.path.waypoints[i]))) {
                 if (ability.scene->registry.any_of<FloorOccupier>(e)) {
                     floor_occupied = true;
                     break;
@@ -122,7 +126,7 @@ bool trap_targeting(Ability& ability) {
             if (floor_occupied)
                 continue;
 
-            ability.target = math::round_cast(path.path[i]);
+            ability.target = math::round_cast(path_info.path.waypoints[i]);
             ability.has_target = true;
             return true;
         }
@@ -133,7 +137,7 @@ bool trap_targeting(Ability& ability) {
 }
 
 
-EntryGatherFunction square_aoe_entry_gather(int range) {
+EntryGatherFunction gather_enemies_aoe(int range) {
     return [range](Ability& ability, v3i pos, float time_to) -> uset<entt::entity> {
         uset<entt::entity> enemies;
         for (int x = -range; x <= range; x++) {
@@ -146,20 +150,48 @@ EntryGatherFunction square_aoe_entry_gather(int range) {
     };
 }
 
-EntryGatherFunction enemy_entry_gather() {
+EntryGatherFunction gather_enemies_floor() {
+    return [](Ability& ability, v3i pos, float time_to) -> uset<entt::entity> {
+        uset<entt::entity> enemies;
+        for (auto [entity, enemy, logic_tfm] : ability.scene->registry.view<Enemy, LogicTransform>().each()) {
+            int level_diff = math::round_cast(logic_tfm.position.z) - pos.z;
+            if (level_diff == 0)
+                enemies.insert(entity);
+        }
+        return enemies;
+    };
+}
+
+EntryGatherFunction gather_lizard() {
     return [](Ability& ability, v3i pos, float time_to) -> uset<entt::entity> {
         entt::entity liz = ability.scene->targeting->select_lizard(pos);
         return liz == entt::null ? uset<entt::entity>{} : uset<entt::entity>{liz};
     };
 }
 
-EntryGatherFunction lizard_entry_gather() {
+EntryGatherFunction gather_enemies() {
     return [](Ability& ability, v3i pos, float time_to) -> uset<entt::entity> {
         uset<entt::entity> enemies;
         for (entt::entity e : ability.scene->targeting->select_enemies(pos, time_to))
             enemies.insert(e);
         return enemies;
     };
+}
+
+int simple_entry_eval(Scene* scene, const uset<entt::entity>& units) {
+        return units.size();
+}
+
+int basic_lizard_entry_eval(Scene* scene, const uset<entt::entity>& units) {
+    int counter = 0;
+    for (entt::entity entity : units) {
+        entt::entity attachment_entity = scene->registry.get<Enemy>(entity).attachment;
+        if (scene->registry.any_of<Egg>(attachment_entity))
+            counter += 10;
+        else
+            counter += 1;
+    }
+    return counter;
 }
 
 

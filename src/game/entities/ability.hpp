@@ -16,9 +16,9 @@ float instant_time_to_callback(Ability&, v3i);
 
 struct Ability {
     Scene* scene;
-    entt::entity caster;
+    entt::entity caster = entt::null;
     
-    bool set_anims;
+    bool set_anims = true;
     
     StatInstance pre_trigger_time;
     StatInstance post_trigger_time;
@@ -27,10 +27,11 @@ struct Ability {
     std::shared_ptr<Timer> post_trigger_timer;
 
     StatInstance range;
+    EntryEvalFunction entry_eval_function;
     EntryGatherFunction entry_gather_function;
     
-    bool has_target;
-    v3i target;
+    bool has_target = false;
+    v3i target = {};
 
     Ability(Scene* init_scene, entt::entity init_caster, float pre, float post, float range = 1000.0f);
     virtual ~Ability() = default;
@@ -58,7 +59,7 @@ struct Attack : Ability {
     StatInstance cooldown_time;
     std::shared_ptr<Timer> cooldown_timer;
 
-    Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cooldown, float range = 1000.0f);
+    Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cooldown, float cast_range = 1000.0f);
     ~Attack() override = default;
     string get_name() const override { return "attack"; }
     AnimationState get_pre_trigger_animation_state() const override { return AnimationState_AttackInto; }

@@ -12,13 +12,13 @@
 namespace spellbook {
 
 entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab, v3i location) {
-    static int i      = 0;
     
     // Make shrine
     entt::entity shrine_entity = scene->registry.create();
     entt::entity egg_entity = scene->registry.create();
     
-    scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", "Shrine", i++));
+    static int shrine_i = 0;
+    scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", fs::path(consumer_prefab.shrine_model_path).stem().string(), shrine_i++));
 
     Model& shrine_model = scene->registry.emplace<Model>(shrine_entity);
     shrine_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.shrine_model_path));
@@ -29,18 +29,22 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     scene->registry.emplace<TransformLink>(shrine_entity, v3(0.5f, 0.5f, 0.0f));
     scene->registry.emplace<Shrine>(shrine_entity, egg_entity, true);
     scene->registry.emplace<FloorOccupier>(shrine_entity);
+    scene->registry.emplace<AddToInspect>(shrine_entity);
 
     
     Model& egg_model = scene->registry.emplace<Model>(egg_entity);
     egg_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.egg_model_path));
     egg_model.model_gpu = instance_model(scene->render_scene, *egg_model.model_cpu);
-    
+
+    static int egg_i = 0;
+    scene->registry.emplace<Name>(egg_entity, fmt_("{}_{}", fs::path(consumer_prefab.egg_model_path).stem().string(), egg_i++));
     scene->registry.emplace<LogicTransform>(egg_entity, v3(location));
     scene->registry.emplace<ModelTransform>(egg_entity);
     scene->registry.emplace<TransformLink>(egg_entity, v3(0.5f, 0.5f, 0.3f));
     scene->registry.emplace<Attachment>(egg_entity, shrine_entity, false);
     scene->registry.emplace<Egg>(egg_entity);
-
+    scene->registry.emplace<Draggable>(egg_entity, 0.2f);
+    scene->registry.emplace<AddToInspect>(egg_entity);
     
     return shrine_entity;
 }
@@ -55,10 +59,15 @@ bool inspect(ConsumerPrefab* consumer_prefab) {
 
 void consumer_system(Scene* scene) {
     for (auto [entity, shrine, shrine_logic_tfm] : scene->registry.view<Shrine, LogicTransform>().each()) {
-        if (!shrine.egg_attached)
-            continue;
-
         LogicTransform& egg_logic_tfm = scene->registry.get<LogicTransform>(shrine.egg_entity);
+        if (!shrine.egg_attached) {
+            Attachment& egg_attachment = scene->registry.get<Attachment>(shrine.egg_entity);
+            if (!scene->registry.valid(egg_attachment.base)) {
+                egg_logic_tfm.position = math::round(egg_logic_tfm.position);
+            }
+            continue;
+        }
+
         egg_logic_tfm.position = shrine_logic_tfm.position;
         egg_logic_tfm.rotation.yaw += scene->delta_time * 1.0f;
     }

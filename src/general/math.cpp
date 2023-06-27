@@ -229,6 +229,20 @@ v2 project_point_onto_line(v2 point, line2 line) {
     return line.end * (math::dot(line.vector(), point - line.start) / math::length_squared(line));
 }
 
+v3 project_point_onto_line(v3 point, line3 line) {
+    return line.end * (math::dot(line.vector(), point - line.start) / math::length_squared(line));
+}
+
+v3 project_to_segment(v3 point, line3 line) {
+    v3 line_vec = line.vector();
+    float len_sq = math::length_squared(line_vec);
+    if (len_sq == 0.0f)
+        return line.start;
+    float d = math::dot(line_vec, point - line.start);
+    float t = math::clamp(d / len_sq, {0.0f, 1.0f});
+    return line.start + t * line_vec;
+}
+
 v3 project_point_onto_plane(v3 point, v3 plane_point, v3 plane_normal) {
     return point - math::dot(point - plane_point, plane_normal) * plane_normal;
 }

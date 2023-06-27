@@ -6,3 +6,5 @@
 #include <stb_image_write.h>
 #define DOCTEST_CONFIG_IMPLEMENT
 #include <doctest/doctest.h>
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>

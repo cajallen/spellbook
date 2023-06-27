@@ -34,7 +34,7 @@ struct Taunt {
 
 struct Caster {
     std::unique_ptr<Ability> attack;
-    std::unique_ptr<Ability> ability;
+    std::unique_ptr<Ability> spell;
 
     Taunt taunt;
     

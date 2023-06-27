@@ -376,7 +376,7 @@ void AssetEditor::window(bool* p_open) {
                 if (!force_target) {
                     if (ImGui::Button("Cast")) {
                         for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
-                            caster.ability->request_cast();
+                            caster.spell->request_cast();
                         }
                     }
                 }

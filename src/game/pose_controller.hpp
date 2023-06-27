@@ -13,11 +13,11 @@ struct PoseController {
     SkeletonCPU& skeleton;
     
     AnimationState state = AnimationState_Idle;
-    PoseSet* pose_set;
+    PoseSet* pose_set = nullptr;
     
     int target_index = 0;
     float time_to_next_index = 0.0f;
-    float fractional_state_total;
+    float fractional_state_total = 0.0f;
 
     float time_to_override = -1.0f;
 

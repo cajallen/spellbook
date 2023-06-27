@@ -54,6 +54,8 @@ struct SpawnerPrefab {
     vector<id_ptr<RoundSpawnInfo>> rounds;
     vector<id_ptr<WaveSpawnInfo>> waves;
     vector<id_ptr<EnemySpawnInfo>> enemies;
+
+    string model_file_path;
 };
 
 struct Spawner {

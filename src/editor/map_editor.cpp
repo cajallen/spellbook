@@ -24,6 +24,8 @@
 #include "game/entities/enemy.hpp"
 #include "game/entities/lizard.hpp"
 
+#include "general/astar.hpp"
+
 namespace spellbook {
 
 ADD_EDITOR_SCENE(MapEditor);
@@ -243,7 +245,7 @@ void MapEditor::setup_scene(Scene* scene, bool scene_setup) {
 
 void MapEditor::update() {
     ZoneScoped;
-    
+
     if (p_scene->pause)
         return;
 
@@ -317,6 +319,8 @@ void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
         if (ImGui::Button("Play")) {
+            p_scene->audio.play_sound("audio/page_flip.flac", {.global = true, .volume = 0.3f});
+
             ADD_EDITOR_SCENE(GameScene);
             auto game_scene = (GameScene*) EditorScenes::values().back();
             game_scene->setup(map_prefab);

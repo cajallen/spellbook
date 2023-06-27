@@ -21,18 +21,12 @@ Caster::Caster(Scene* scene) {
 }
 
 bool Caster::casting() const {
-    return (attack && attack->casting()) || (ability && ability->casting());
+    return (attack && attack->casting()) || (spell && spell->casting());
 }
 
 
 void caster_system(Scene* scene) {
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
-        v3i taunt_target;
-        if (caster.taunt.try_get(&taunt_target)) {
-            caster.attack->target = taunt_target;
-            caster.attack->has_target = true;
-            continue;
-        }
         if (caster.attack && !caster.casting() )
             caster.attack->targeting();
     }

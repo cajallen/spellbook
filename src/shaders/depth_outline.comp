@@ -434,6 +434,11 @@ vec3 water(ivec2 coord, vec3 input_color, InputRead data, out float out_water_de
     return input_color;
 }
 
+vec3 fog(vec3 color, float depth) {
+    float x = 1.0 - exp(-(depth-4.0) / 300.0);
+    return mix(color, vec3(0.4, 0.5, 0.6), x);
+}
+
 layout (local_size_x = 8, local_size_y = 8) in;
 void main() {
     ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
@@ -474,6 +479,8 @@ void main() {
                 color = mix(color, data.widget_color.rgb, 0.5 * data.widget_color.a);
         }
     }
+    
+    color = fog(color, min(water_depth, data.depth));
     
     switch (pc.mode) {
         case 0:

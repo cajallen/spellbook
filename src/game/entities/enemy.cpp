@@ -4,20 +4,22 @@
 #include <entt/entity/registry.hpp>
 #include <imgui.h>
 
-#include "caster.hpp"
-#include "enemy_ik.hpp"
-#include "impair.hpp"
-#include "targeting.hpp"
-#include "editor/pose_widget.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
-#include "game/pose_controller.hpp"
+#include "editor/pose_widget.hpp"
+#include "game/game.hpp"
 #include "general/astar.hpp"
+#include "general/color.hpp"
+#include "general/matrix_math.hpp"
+#include "renderer/draw_functions.hpp"
+#include "game/pose_controller.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/consumer.hpp"
-#include "general/matrix_math.hpp"
-#include "renderer/draw_functions.hpp"
+#include "game/entities/caster.hpp"
+#include "game/entities/enemy_ik.hpp"
+#include "game/entities/impair.hpp"
+#include "game/entities/targeting.hpp"
 
 
 namespace spellbook {
@@ -31,25 +33,27 @@ struct EnemyLaserAttack : Attack {
 };
 
 void EnemyLaserAttack::trigger() {
+    auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    scene->audio.play_sound("audio/enemy/laser.flac", {.position = logic_tfm.position});
+    
     uset<entt::entity> lizards = entry_gather_function(*this, target, 0.0f);
     for (entt::entity lizard : lizards) {
-        auto& this_lt = scene->registry.get<LogicTransform>(caster);
         auto& liz_lt = scene->registry.get<LogicTransform>(lizard);
         
-        damage(scene, caster, lizard, 1.0f, liz_lt.position - this_lt.position);
+        damage(scene, caster, lizard, 1.0f, liz_lt.position - logic_tfm.position);
 
         constexpr float duration = 0.15f;
-        entt::entity caster_v = caster;
-        beam_animate = add_tween_timer(scene, "Enemy laser tick", [this, lizard, caster_v](Timer* timer) {
-            if (timer->ticking && timer->scene->registry.valid(lizard) && timer->scene->registry.valid(caster_v)) {
-                auto* this_lt = scene->registry.try_get<LogicTransform>(caster);
-                auto* liz_lt = scene->registry.try_get<LogicTransform>(lizard);
+        entt::entity caster_cap = caster;
+        beam_animate = add_tween_timer(scene, "Enemy laser tick", [lizard, caster_cap](Timer* timer) {
+            if (timer->ticking && timer->scene->registry.valid(lizard) && timer->scene->registry.valid(caster_cap)) {
+                auto* this_lt = timer->scene->registry.try_get<LogicTransform>(caster_cap);
+                auto* liz_lt = timer->scene->registry.try_get<LogicTransform>(lizard);
                 if (this_lt && liz_lt) {
                     vector<FormattedVertex> vertices;
                     float width = (timer->remaining_time / timer->total_time) * 0.10f + 0.05f;
                     vertices.emplace_back(this_lt->position + v3(0.5f), palette::light_pink, width + 0.05f);
                     vertices.emplace_back(liz_lt->position + v3(0.5f), palette::red, width);
-                    scene->render_scene.quick_mesh(generate_formatted_line(&scene->camera, vertices), true, false);
+                    timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
                 }
             }
         }, false);
@@ -64,16 +68,153 @@ void EnemyLaserAttack::targeting() {
     if (taunted(*this, caster_comp))
         return;
 
-    if (square_targeting(1, *this, entry_gather_function))
-        return;
+    square_targeting(1, *this, entry_gather_function, entry_eval_function);
 }
+
+struct EnemyResistorAttack : Attack {
+    std::shared_ptr<Timer> aura_animate;
+
+    using Attack::Attack;
+    void trigger() override;
+    void targeting() override;
+    bool can_cast() const override;
+};
+
+void EnemyResistorAttack::trigger() {
+    LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    scene->audio.play_sound("audio/enemy/resistor.flac", {.position = logic_tfm.position, .volume = 0.5f});
+    
+    constexpr float buff_duration = 2.0f;
+    uset<entt::entity> enemies = entry_gather_function(*this, target, 0.0f);
+    for (entt::entity enemy : enemies) {
+        Health& health = scene->registry.get<Health>(enemy);
+        health.damage_taken_multiplier->add_effect((u64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
+    }
+    
+    constexpr float duration = 0.25f;
+    entt::entity caster_cap = caster;
+    aura_animate = add_tween_timer(scene, "Enemy laser tick", [caster_cap](Timer* timer) {
+        if (timer->ticking && timer->scene->registry.valid(caster_cap) && timer->scene->registry.valid(caster_cap)) {
+            auto* this_lt = timer->scene->registry.try_get<LogicTransform>(caster_cap);
+            if (!this_lt) 
+                return;
+            float t = 1.0f - timer->remaining_time / timer->total_time;
+            vector<FormattedVertex> vertices;
+            Color color = mix(palette::red, palette::pink, t);
+            float radius = math::mix(0.25f, 1.5f, math::ease(t, math::EaseMode_CubicOut));
+            float line_width = 0.05f;
+            add_formatted_square(vertices, this_lt->position + v3(0.5f, 0.5f, 0.0f), v3(radius, 0.f, 0.f), v3(0.f, radius, 0.f), color, line_width);
+            if (vertices.empty())
+                return;
+            timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
+        }
+    }, false);
+    aura_animate->start(duration);
+}
+
+void EnemyResistorAttack::targeting() {
+    has_target = false;
+}
+
+bool EnemyResistorAttack::can_cast() const {
+    if (cooldown_timer && cooldown_timer->ticking)
+        return false;
+    Impairs& impairs = scene->registry.get<Impairs>(caster);
+    if (impairs.is_impaired(scene, ImpairType_NoCast))
+        return false;
+    if (casting())
+        return false;
+    return true;
+}
+
+struct EnemyMortarAttack : Attack {
+    std::shared_ptr<Timer> beam1_animate;
+    std::shared_ptr<Timer> beam2_animate;
+    std::shared_ptr<Timer> indicator_animate;
+    std::shared_ptr<Timer> trigger_timer;
+
+    using Attack::Attack;
+    void targeting() override;
+    void trigger() override;
+};
+
+void EnemyMortarAttack::trigger() {
+    constexpr float beam_duration = 0.2f;
+    entt::entity caster_cap = caster;
+    beam1_animate = add_tween_timer(scene, "Enemy mortar beam 1", [caster_cap](Timer* timer) {
+        if (timer->ticking && timer->scene->registry.valid(caster_cap)) {
+            LogicTransform& caster_logic_tfm = timer->scene->registry.get<LogicTransform>(caster_cap);
+            vector<FormattedVertex> vertices;
+            float width = (1.0f - timer->remaining_time / timer->total_time) * 0.05f + 0.05f;
+            vertices.emplace_back(caster_logic_tfm.position + v3(0.5f, 0.5f, 0.0f), palette::light_pink, width);
+            vertices.emplace_back(caster_logic_tfm.position + v3(0.5f, 0.5f, 0.0f) + v3::Z * 1.5f, palette::red, 0.0f);
+            timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
+        }
+    }, false);
+    beam1_animate->start(beam_duration);
+
+    v3i position_cap = target;
+    constexpr float indicator_duration = 1.5f;
+    indicator_animate = add_tween_timer(scene, "Enemy mortar indicator", [position_cap](Timer* timer) {
+        if (timer->ticking) {
+            float t = 1.0f - timer->remaining_time / timer->total_time;
+            
+            vector<FormattedVertex> vertices;
+            Color color = mix(palette::pink, palette::red, t);
+            float line_width = math::mix(0.02f, 0.06f, t);
+            float radius = math::mix(0.4f, 0.5f, t);
+            add_formatted_square(vertices, v3(position_cap) + v3(0.5f, 0.5f, 0.02f), v3(radius, 0.0f, 0.f), v3(0.f, radius, 0.f), color, line_width);
+            if (vertices.empty())
+                return;
+            timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
+        }
+    }, false);
+    indicator_animate->start(indicator_duration);
+
+    trigger_timer = add_timer(scene, "Enemy mortar trigger", [this, position_cap](Timer* timer) {
+        uset<entt::entity> lizards = entry_gather_function(*this, position_cap, 0.0f);
+        for (entt::entity lizard : lizards) {
+            auto& this_lt = scene->registry.get<LogicTransform>(caster);
+            auto& liz_lt = scene->registry.get<LogicTransform>(lizard);
+        
+            damage(timer->scene, caster, lizard, 5.0f, liz_lt.position - this_lt.position);
+        }
+        
+        beam2_animate = add_tween_timer(timer->scene, "Enemy mortar beam 2", [position_cap](Timer* timer) {
+            if (timer->ticking) {
+                vector<FormattedVertex> vertices;
+                float width = (timer->remaining_time / timer->total_time) * 0.1f + 0.1f;
+                float height = (timer->remaining_time / timer->total_time) * 1.0f + 0.5f;
+                vertices.emplace_back(v3(position_cap) + v3(0.5f, 0.5f, 0.0f), palette::light_pink, width);
+                vertices.emplace_back(v3(position_cap) + v3(0.5f, 0.5f, 0.0f) + v3::Z * height, palette::red, 0.0f);
+                timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
+            }
+        }, false);
+        beam2_animate->start(beam_duration);
+        
+        EmitterCPU hit_emitter = load_asset<EmitterCPU>("emitters/enemy/mortar_hit.sbemt");
+        quick_emitter(scene, "Mortar Hit", v3(position_cap) + v3(0.5f, 0.5f, 0.5f), hit_emitter, 0.1f);
+    }, false);
+    trigger_timer->start(indicator_duration);
+}
+
+
+void EnemyMortarAttack::targeting() {
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+
+    if (taunted(*this, caster_comp))
+        return;
+
+    square_targeting(5, *this, entry_gather_function, entry_eval_function);
+}
+
 
 entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i location) {
     static SpiderControllerSettings settings;
 
     vector<PathInfo*> available_paths;
     for (PathInfo& path : scene->paths) {
-        if (math::distance(path.path.back(), v3(location)) < 0.1f)
+        if (math::distance(path.path.get_start(), v3(location)) < 0.1f)
             available_paths.push_back(&path);
     }
     PathInfo* selected_path = !available_paths.empty() ? available_paths[math::random_s32(available_paths.size())] : nullptr;
@@ -81,14 +222,16 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     entt::entity selected_consumer = selected_path ? selected_path->consumer : entt::null;
         
     entt::entity base_entity = setup_basic_unit(scene, prefab.base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
+    static int base_i = 0;
+    scene->registry.emplace<Name>(base_entity, fmt_("{}_{}", fs::path(prefab.base_model_path).stem().string(), base_i++));
     entt::entity attachment_entity = scene->registry.create();
     scene->registry.erase<TransformLink>(base_entity);
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
     scene->registry.emplace<Traveler>(base_entity);
     scene->registry.emplace<SpiderController>(base_entity, settings);
     
-    scene->registry.get<Traveler>(base_entity).max_speed = Stat(scene, prefab.max_speed);
-    scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.scale);
+    scene->registry.get<Traveler>(base_entity).max_speed = std::make_unique<Stat>(scene, prefab.max_speed);
+    scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.base_scale);
 
     if (!prefab.drops.entries.empty())
         scene->registry.emplace<DropChance>(base_entity, prefab.drops);
@@ -96,21 +239,39 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     auto& model_comp = scene->registry.emplace<Model>(attachment_entity);
     model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(prefab.attachment_model_path));
     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
-    
-    scene->registry.emplace<Caster>(attachment_entity, scene);
+
+    static int attachment_i = 0;
+    scene->registry.emplace<Name>(attachment_entity, fmt_("{}_{}", fs::path(prefab.attachment_model_path).stem().string(), attachment_i++));
+    scene->registry.emplace<AddToInspect>(attachment_entity);
     scene->registry.emplace<Impairs>(attachment_entity);
     scene->registry.emplace<Attachment>(attachment_entity, base_entity);
     scene->registry.emplace<LogicTransform>(attachment_entity, v3(location));
     scene->registry.emplace<ModelTransform>(attachment_entity);
+    scene->registry.get<ModelTransform>(attachment_entity).scale = v3(prefab.attachment_scale);
     if (model_comp.model_cpu->skeleton) {
         scene->registry.emplace<PoseController>(attachment_entity, *model_comp.model_cpu->skeleton);
     }
     
-    Caster& caster = scene->registry.get<Caster>(attachment_entity);
     switch (prefab.type) {
-        default: {
+        case (EnemyType_Laser): {
+            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene);
             caster.attack = std::make_unique<EnemyLaserAttack>(scene, attachment_entity, 0.5f, 1.0f, 1.5f, 1.0f);
-            caster.attack->entry_gather_function = enemy_entry_gather();
+            caster.attack->entry_gather_function = gather_lizard();
+            caster.attack->entry_eval_function = simple_entry_eval;
+        } break;
+        case (EnemyType_Resistor): {
+            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene);
+            caster.attack = std::make_unique<EnemyResistorAttack>(scene, attachment_entity, 0.1f, 0.1f, 1.5f, 1.0f);
+            caster.attack->entry_gather_function = gather_enemies_aoe(1);
+            caster.attack->entry_eval_function = simple_entry_eval;
+        } break;
+        case (EnemyType_Mortar): {
+            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene);
+            caster.attack = std::make_unique<EnemyMortarAttack>(scene, attachment_entity, 0.75f, 0.75f, 4.0f, 5.0f);
+            caster.attack->entry_gather_function = gather_lizard();
+            caster.attack->entry_eval_function = simple_entry_eval;
+        } break;
+        default: {
         } break;
     }
     
@@ -126,7 +287,8 @@ bool inspect(EnemyPrefab* enemy_prefab) {
     changed |= ImGui::PathSelect("Hurt", &enemy_prefab->hurt_path, "resources/emitters", FileType_Emitter);
     changed |= ImGui::DragFloat("Max Health", &enemy_prefab->max_health, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Max Speed", &enemy_prefab->max_speed, 0.01f, 0.0f);
-    changed |= ImGui::DragFloat("Scale", &enemy_prefab->scale, 0.01f, 0.0f);
+    changed |= ImGui::DragFloat("Base Scale", &enemy_prefab->base_scale, 0.01f, 0.0f);
+    changed |= ImGui::DragFloat("Attachment Scale", &enemy_prefab->attachment_scale, 0.01f, 0.0f);
     changed |= inspect(&enemy_prefab->drops);
     
     return changed;
@@ -136,13 +298,20 @@ void enemy_ik_controller_system(Scene* scene) {
     for (auto [entity, logic_tfm, model_tfm, model, ik] : scene->registry.view<LogicTransform, ModelTransform, Model, SpiderController>().each()) {
         if (!model.model_cpu->skeleton)
             continue;
-        
+
+        assert_else(!math::is_nan(ik.extra_z))
+            ik.extra_z = 0.0f;
+        assert_else(!math::is_nan(ik.quad_norm))
+            ik.quad_norm = v3::Z;
         model_tfm.translation = logic_tfm.position + v3(0.5f, 0.5f, 0.0f * ik.extra_z) + v3::Z * logic_tfm.step_up;
         model_tfm.rotation = math::quat_between(v3::Z, ik.quad_norm);
         model_tfm.dirty = true;
 
         m44 tfm = model_tfm.get_transform();
         m44 tfm_inv = math::inverse(tfm);
+
+        bool set0_moving = ik.is_set_moving(0);
+        bool set1_moving = ik.is_set_moving(1);
 
         ik.initialize_if_needed(tfm);
         ik.update_velocity(scene, logic_tfm);
@@ -168,12 +337,19 @@ void enemy_ik_controller_system(Scene* scene) {
                 attachment_model_tfm.set_translation(math::apply_transform(t, v3(0.0f, 0.0f, 0.0f)));
             }
         }
+
+        if ((set0_moving && !ik.is_set_moving(0)) || (set1_moving && !ik.is_set_moving(1))) {
+            scene->audio.play_sound("audio/enemy/step.wav", {.position = logic_tfm.position});
+        }
     }
 }
 void enemy_aggro_system(Scene* scene) {
-    // managem movement requests from attachment
+    if (scene->edit_mode)
+        return;
+    // manage movement requests from attachment
     for (auto [entity, attachment, caster] : scene->registry.view<Attachment, Caster>().each()) {
-        if (!caster.attack->has_target)
+        Attack* attack = (Attack*) &*caster.attack;
+        if (!caster.attack->has_target || caster.attack->in_range() || attack->cooldown_timer->ticking)
             continue;
 
         if (!scene->registry.valid(attachment.base))
@@ -208,13 +384,20 @@ void enemy_aggro_system(Scene* scene) {
         if (scene->registry.valid(egg_attachment.base) && egg_attachment.base != enemy.target_consumer)
             continue;
         LogicTransform& egg_tfm = scene->registry.get<LogicTransform>(egg_entity);
-        if (math::distance(egg_tfm.position, logic_tfm.position) < 0.01f) {
+        if (math::distance(egg_tfm.position, logic_tfm.position) < 0.1f) {
             disconnect_attachment(scene, entity);
             disconnect_attachment(scene, enemy.target_consumer);
             connect_attachment(scene, entity, egg_entity);
         }
     }
 }
+
+void traveler_reset_system(Scene* scene) {
+    for (auto [entity, traveler] : scene->registry.view<Traveler>().each()) {
+        traveler.reset_target();
+    }
+}
+
 void travel_system(Scene* scene) {
     for (auto [entity, transform, traveler] : scene->registry.view<LogicTransform, Traveler>().each()) {
         if (scene->registry.any_of<Impairs>(entity) && scene->registry.get<Impairs>(entity).is_impaired(scene, ImpairType_NoMove))
@@ -223,23 +406,25 @@ void travel_system(Scene* scene) {
             continue;
         
         // Update pathing from target
-        if (traveler.pathing.empty() || math::round_cast(traveler.pathing.front()) != traveler.target.pos) {
-            traveler.pathing = scene->navigation->find_path(math::round_cast(transform.position), traveler.target.pos);
+        if (!traveler.path.valid() || math::round_cast(traveler.path.get_destination()) != traveler.target.pos) {
+            traveler.path = scene->navigation->find_path(math::round_cast(transform.position), traveler.target.pos);
         }
 
-        if (traveler.pathing.empty())
+        if (!traveler.path.valid())
             continue;
-        // if (scene->registry.any_of<Caster>(entity) && scene->registry.get<Caster>(entity).attack->casting())
-        //     continue;
+
+        Enemy* enemy = scene->registry.try_get<Enemy>(entity);
+        Caster* caster = enemy ? scene->registry.try_get<Caster>(enemy->attachment) : nullptr;
+        if (caster && caster->attack->casting())
+            continue;
         
         // Use pathing to move
-        v3   velocity        = v3(traveler.pathing.back()) - transform.position;
+        v3   velocity        = v3(traveler.path.get_real_target(transform.position)) - transform.position;
         bool at_target       = math::length(velocity) < 0.05f;
         if (at_target) {
-            traveler.pathing.remove_back();
             velocity = v3(0);
         }
-        f32 max_velocity = traveler.max_speed.value() * scene->delta_time;
+        f32 max_velocity = traveler.max_speed->value() * scene->delta_time;
         f32 min_velocity = 0.0f;
         if (!at_target)
             transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
@@ -269,11 +454,13 @@ v3 predict_pos(Traveler& traveler, v3 pos, float time) {
     v3 expected_pos = pos;
     if (time == 0.0f)
         return expected_pos;
-    for (u32 i = traveler.pathing.size(); i > 0; i--) {
+    if (traveler.path.waypoints.empty())
+        return expected_pos;
+    for (s32 i = traveler.path.reached; i > 0; i--) {
         // TODO: If we're not using pathing, just return pos
-        v3 pos1 = i == traveler.pathing.size() ? pos : v3(traveler.pathing[i]);
-        v3 pos2 = v3(traveler.pathing[i-1]);
-        float time_delta = math::distance(v3(pos1), v3(pos2)) / traveler.max_speed.value();
+        v3 pos1 = i == traveler.path.reached ? pos : v3(traveler.path.waypoints[i]);
+        v3 pos2 = v3(traveler.path.waypoints[i-1]);
+        float time_delta = math::distance(v3(pos1), v3(pos2)) / traveler.max_speed->value();
         if (time_delta > time) {
             expected_pos = math::lerp(time / time_delta, range3{v3(pos1), v3(pos2)});
             break;
@@ -291,18 +478,23 @@ void on_enemy_destroy(Scene& scene, entt::registry& registry, entt::entity entit
 void disconnect_attachment(Scene* scene, Enemy& enemy) {
     if (!scene->registry.valid(enemy.attachment))
         return;
-    Attachment& attachment = scene->registry.get<Attachment>(enemy.attachment);
-    attachment.base = entt::null;
-    if (attachment.requires_base)
-        scene->registry.emplace<Killed>(enemy.attachment);
+    Attachment* attachment = scene->registry.try_get<Attachment>(enemy.attachment);
+    if (attachment) {
+        attachment->base = entt::null;
+        if (attachment->requires_base)
+            scene->registry.emplace<Killed>(enemy.attachment);
+    }
     enemy.attachment = entt::null;
 }
 void disconnect_attachment(Scene* scene, Shrine& shrine) {
     if (!scene->registry.valid(shrine.egg_entity) || !shrine.egg_attached)
         return;
-    Attachment& attachment = scene->registry.get<Attachment>(shrine.egg_entity);
-    attachment.base = entt::null;
-    assert_else(!attachment.requires_base);
+    
+    Attachment* attachment = scene->registry.try_get<Attachment>(shrine.egg_entity);
+    if (attachment) {
+        attachment->base = entt::null;
+        assert_else(!attachment->requires_base);
+    }
     shrine.egg_attached = false;
 }
 
@@ -345,6 +537,16 @@ void connect_attachment(Scene* scene, entt::entity base, entt::entity attachment
 
     if (shrine)
         connect_attachment(scene, *shrine, base, attachment);
+}
+
+void inspect(Traveler* traveler) {
+    if (traveler->has_target())
+        ImGui::DragInt3("Target", traveler->target.pos.data, 0.01f);
+    ImGui::Text("Pathing size: %d", traveler->path.waypoints.size());
+    if (ImGui::TreeNode("Speed")) {
+        inspect(&*traveler->max_speed);
+        ImGui::TreePop();
+    }
 }
 
 }

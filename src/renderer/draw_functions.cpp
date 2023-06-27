@@ -7,6 +7,7 @@
 #include "extension/fmt_geometry.hpp"
 #include "general/hash.hpp"
 #include "general/bitmask_3d.hpp"
+#include "renderer/render_scene.hpp"
 
 namespace spellbook {
 
@@ -402,5 +403,28 @@ MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) 
 
     return generate_formatted_line(camera, vertices);
 }
+
+void draw_path(RenderScene& render_scene, Path& path, const v3& pos) {
+    vector<FormattedVertex> path_waypoints_vertices;
+    for (const v3& waypoint : path.waypoints) {
+        float t = float(path.waypoints.index(waypoint)) / float(path.waypoints.size() - 1);
+        Color c = mix(palette::indian_red, palette::lime_green, t);
+        path_waypoints_vertices.emplace_back(waypoint, c, 0.03f);
+    }
+
+    vector<FormattedVertex> target_vec_vertices = {
+        {pos, palette::spellbook_1, 0.05f},
+        {path.get_real_target(pos), palette::spellbook_1, 0.05f}
+    };
+
+    auto line_mesh1 = generate_formatted_line(render_scene.viewport.camera, std::move(path_waypoints_vertices));
+    if (!line_mesh1.vertices.empty())
+        render_scene.quick_mesh(line_mesh1, true, true);
+
+    auto line_mesh2 = generate_formatted_line(render_scene.viewport.camera, std::move(target_vec_vertices));
+    if (!line_mesh2.vertices.empty())
+        render_scene.quick_mesh(line_mesh2, true, true);
+}
+
 
 }

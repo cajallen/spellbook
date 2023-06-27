@@ -173,7 +173,7 @@ T* vector<T>::remove(T* it, bool unordered) {
         this->remove_back();
         return it;
     } else {
-        return internal.erase(it);
+        return internal.erase(this->begin() + (it - this->begin()));
     }
 }
 

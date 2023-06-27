@@ -2,10 +2,10 @@
 
 #include <entt/entity/entity.hpp>
 
+#include "entt/signal/sigh.hpp"
 #include "general/string.hpp"
 #include "general/umap.hpp"
 #include "general/geometry.hpp"
-#include "game/entities/stat.hpp"
 #include "renderer/assets/model.hpp"
 
 namespace spellbook {
@@ -14,6 +14,7 @@ struct Scene;
 struct EmitterCPU;
 struct EmitterGPU;
 struct Timer;
+struct Stat;
 
 struct Name {
     string name;
@@ -69,10 +70,12 @@ struct Health {
     
     string emitter_cpu_path;
 
-    Stat max_health;
-    Stat damage_taken_multiplier;
-    Stat regen;
-    umap<entt::entity, Stat> dots;
+    std::unique_ptr<Stat> max_health;
+    std::unique_ptr<Stat> damage_taken_multiplier;
+    std::unique_ptr<Stat> regen;
+    umap<entt::entity, std::unique_ptr<Stat>> dots;
+
+    entt::sigh<void(Scene*, entt::entity, entt::entity, float)> damage_signal;
     
     Health(float health_value, Scene* scene, const string& hurt_emitter_path = "");
 };
@@ -84,11 +87,11 @@ struct Killed {
 };
 
 struct Draggable {
-    float drag_distance = 4.0f;
-    int drag_cost = 1;
+    float drag_height;
 };
 struct Dragging {
     static constexpr u32 magic_number = 0xd2a90000;
+    float drag_height;
     f32 start_time = 0.0f;
     v3  start_logic_position = v3(0.0f);
     v3  start_intersect = v3(0.0f);

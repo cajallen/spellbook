@@ -5,13 +5,15 @@
 
 #include "general/string.hpp"
 #include "general/vector.hpp"
+#include "general/path.hpp"
+#include "general/bitmask_3d.hpp"
 #include "renderer/render_scene.hpp"
 #include "game/camera_controller.hpp"
 #include "game/timer.hpp"
 #include "game/shop.hpp"
 #include "game/player.hpp"
 #include "game/map_targeting.hpp"
-#include "general/bitmask_3d.hpp"
+#include "game/audio.hpp"
 
 
 namespace spellbook {
@@ -28,7 +30,7 @@ struct Navigation;
 struct PathInfo {
     entt::entity spawner;
     entt::entity consumer;
-    vector<v3> path;
+    Path path;
 };
 
 struct MapData {
@@ -57,6 +59,7 @@ struct Scene {
     Shop shop;
     Player player;
     SpawnStateInfo* spawn_state_info;
+    Audio          audio;
     
     bool edit_mode = true; // disables certain features
     u32 frame = 0;

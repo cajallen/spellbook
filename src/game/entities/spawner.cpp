@@ -181,6 +181,8 @@ bool inspect(LevelSpawnInfo* level_spawn_info) {
 bool inspect(SpawnerPrefab* spawner_prefab) {
     bool changed = false;
     ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources/spawners", FileType_Spawner, true);
+    changed |= ImGui::PathSelect("Base Model", &spawner_prefab->model_file_path, "resources/models", FileType_Model);
+
     ImGui::Text("Level Spawn Info");
     changed |= inspect(&spawner_prefab->level_spawn_info);
     ImGui::Separator();
@@ -337,6 +339,15 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     scene->registry.emplace<AddToInspect>(entity);
     scene->registry.emplace<LogicTransform>(entity, v3(location));
 
+    if (!spawner_prefab.model_file_path.empty()) {
+        auto& model_comp = scene->registry.emplace<Model>(entity);
+        model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(spawner_prefab.model_file_path));
+        model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+        
+        scene->registry.emplace<ModelTransform>(entity);
+        scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
+    }
+    
     scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, scene->spawn_state_info);
     scene->registry.emplace<FloorOccupier>(entity);
     // // Model
@@ -383,6 +394,7 @@ SpawnerPrefab from_jv_impl(const json_value& jv, SpawnerPrefab* _) {
     }
 
     FROM_JSON_ELE(level_spawn_info);
+    FROM_JSON_ELE(model_file_path);
     
     return value;
 }
@@ -409,6 +421,7 @@ inline json_value to_jv(const SpawnerPrefab& value) {
     j["enemies"] = make_shared<json_value>(to_jv(enemies));
     
     TO_JSON_ELE(level_spawn_info);
+    TO_JSON_ELE(model_file_path);
     
     return to_jv(j);
 }

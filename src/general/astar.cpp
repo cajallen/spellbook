@@ -20,7 +20,7 @@ u32 astar::Node::get_score() const {
     return G + H;
 }
 
-vector<v3> astar::Navigation::find_path(v3i source, v3i target, float tolerance) {
+Path astar::Navigation::find_path(v3i source, v3i target, float tolerance) {
     shared_ptr<Node>         current = nullptr;
     vector<shared_ptr<Node>> open_set, closed_set;
     open_set.reserve(100);
@@ -109,7 +109,7 @@ vector<v3> astar::Navigation::find_path(v3i source, v3i target, float tolerance)
     }
     path.push_back(raw_path.back());
     
-    return path;
+    return Path(std::move(path));
 }
 
 shared_ptr<astar::Node> astar::Navigation::_find_node_on_list(vector<shared_ptr<Node>>& nodes_, v3i position) {

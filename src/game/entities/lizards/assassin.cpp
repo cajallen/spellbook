@@ -55,8 +55,8 @@ void AssassinAttack::trigger() {
         damage(scene, caster, enemy, 3.0f / enemies.size(), enemy_lt.position - this_lt.position);
 
         if (!health.dots.contains(caster))
-            health.dots[caster] = Stat(scene, 0.0f);
-        health.dots[caster].add_effect(0, StatEffect{StatEffect::Type_Add, poison_dps, poison_max_stacks, poison_duration});
+            health.dots[caster] = std::make_unique<Stat>(scene, 0.0f);
+        health.dots[caster]->add_effect(0, StatEffect{StatEffect::Type_Add, poison_dps, poison_max_stacks, poison_duration});
     }
 
     EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/assassin/basic_hit.sbemt");
@@ -97,7 +97,7 @@ void AssassinAttack::targeting() {
     if (taunted(*this, caster_comp))
         return;
     
-    plus_targeting(1, *this, entry_gather_function);
+    plus_targeting(1, *this, entry_gather_function, entry_eval_function);
 }
 
 void build_assassin(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {

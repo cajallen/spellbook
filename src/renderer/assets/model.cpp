@@ -122,7 +122,6 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
         }
     };
 
-    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (model->root_node.valid()) {
         traverse(model->root_node);
     } else {
@@ -130,7 +129,6 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
     }
 
     if (model->skeleton != nullptr) {
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode("Skeleton")) {
             inspect(&*model->skeleton);
             ImGui::TreePop();

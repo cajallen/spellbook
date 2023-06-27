@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "game.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "game/player.hpp"
@@ -62,7 +63,7 @@ void ShopGenerator::inspect() {
 
 void FirstFreeShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
     // first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbliz"}, 1.0f);
     // first_warehouse.add_entry({Bead_Oak, 0, "lizards/assassin.sbliz"}, 1.0f);
     first_warehouse.add_entry({Bead_Oak, 0, "lizards/ranger.sbliz"}, 1.0f);
@@ -211,6 +212,7 @@ void show_shop(Shop* shop, Player* player) {
     
     ImGui::BeginGroup();
     if (ImGui::Button("Get Shop")) {
+        player->scene->audio.play_sound("audio/reroll.flac", {.global = true, .volume = 0.3f});
         shop->shop_generator->reset();
         shop->entries = shop->shop_generator->generate_shop();
     }
@@ -241,6 +243,7 @@ void show_shop(Shop* shop, Player* player) {
                         load_asset<LizardPrefab>(shop->entries->at(i)->lizard_prefab_path, true),
                         math::round_cast(intersect)
                     );
+                    player->scene->audio.play_sound("audio/drop.flac", {.global = true, .volume = 0.3f});
                     player->scene->select_entity(lizard);
                     player->bank.beads[bead_type] -= shop->entries->at(i)->cost_amount;
                     shop->shop_generator->purchase(i);

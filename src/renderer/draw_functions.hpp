@@ -4,6 +4,8 @@
 #include "renderer/renderer.hpp"
 #include "renderer/camera.hpp"
 
+#include "general/path.hpp"
+
 namespace spellbook {
 
 struct Bitmask3D;
@@ -39,6 +41,8 @@ struct PaletteCreateInfo {
 };
 
 void generate_palette(const PaletteCreateInfo& info);
+
+void draw_path(RenderScene& render_scene, Path& path, const v3& pos);
 
 }
 

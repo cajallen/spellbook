@@ -47,6 +47,8 @@ void PoseController::progress_in_state() {
         case AnimationState_AttackOut:
         case AnimationState_Attack2Into:
         case AnimationState_Attack2Out:
+        case AnimationState_CastInto:
+        case AnimationState_CastOut:
             used_timing = new_entry.time_to * (fractional_state_total == 0.0f ? 1.0f : fractional_state_total); 
     }
     if (time_to_override != -1.0f) {
