@@ -107,7 +107,7 @@ void inspect_components(Scene* scene, entt::entity entity) {
     )
     INSPECT_COMPONENT(PoseController,
         ImGui::EnumCombo("State", &component->state);
-        ImGui::Text("Pose set: %16" PRIXPTR, component->pose_set);
+        ImGui::Text("Pose set: %16" PRIXPTR, component->animation);
         ImGui::Text("Target index: %d", component->target_index);
         ImGui::Text("Fractional state total: %.2f", component->fractional_state_total);
         ImGui::Text("Time to override: %.2f", component->time_to_override);

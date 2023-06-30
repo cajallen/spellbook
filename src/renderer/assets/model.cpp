@@ -567,43 +567,31 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
 
     if (replace_existing_pose) {
         umap<string, u32> name_to_index;
-        for (auto& entry : skeleton.pose_backfill.entries) {
-            name_to_index[entry.name] = skeleton.pose_backfill.entries.index(entry);
+        for (auto& entry : skeleton.pose_catalog) {
+            name_to_index[entry.name] = skeleton.pose_catalog.index(entry);
         }
 
         for (auto& pose : key_sets) {
             // Replace existing
-            if (key_sets.index(pose) < skeleton.pose_backfill.entries.size()) {
+            if (key_sets.index(pose) < skeleton.pose_catalog.size()) {
                 // Update backfill
                 for (auto& [bone_index, key_set] : pose) {
-                    skeleton.pose_backfill.entries[key_sets.index(pose)].pose[node_index_to_bone[bone_index]->name] = key_set;
+                    skeleton.pose_catalog[key_sets.index(pose)].bones[node_index_to_bone[bone_index]->name] = key_set;
                 }
             } else {
                 string new_name = fmt_("pose_{}", key_sets.index(pose));
-                auto& entry = skeleton.pose_backfill.entries.emplace_back(new_name, 0.1f);
+                auto& entry = skeleton.pose_catalog.emplace_back(Pose{new_name});
                 for (auto& [bone_index, key_set] : pose) {
-                    entry.pose[node_index_to_bone[bone_index]->name] = key_set;
+                    entry.bones[node_index_to_bone[bone_index]->name] = key_set;
                 }
             }
         }
-
-
-        // Update existing poses
-        for (PoseSet& existing_pose_set : skeleton.poses) {
-            for (PoseSet::Entry& existing_entry : existing_pose_set.entries) {
-                if (name_to_index.contains(existing_entry.name)) {
-                    PoseSet::Entry& new_entry = skeleton.pose_backfill.entries[name_to_index[existing_entry.name]];
-                    existing_entry.pose = new_entry.pose;
-                }
-            }
-        }
-        
     } else {
         for (auto& pose : key_sets) {
             string new_name = fmt_("pose_{}", key_sets.index(pose));
-            auto& entry = skeleton.pose_backfill.entries.emplace_back(new_name, 0.1f);
+            auto& entry = skeleton.pose_catalog.emplace_back(Pose{new_name});
             for (auto& [bone_index, key_set] : pose) {
-                entry.pose[node_index_to_bone[bone_index]->name] = key_set;
+                entry.bones[node_index_to_bone[bone_index]->name] = key_set;
             }
         }
     }

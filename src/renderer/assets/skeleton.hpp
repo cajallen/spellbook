@@ -27,22 +27,15 @@ struct KeySet {
     KeyFrame<v3> scale;
 };
 
-struct PoseSet {
-    struct Entry {
-        string name;
-        float time_to = 0.0f;
-        math::EaseMode ease_mode = math::EaseMode_Quad;
-        umap<string, KeySet> pose;
-    };
-    
-    vector<Entry> entries;
+struct Pose {
+    string name;
+    umap<string, KeySet> bones;
+};
 
-    Entry* get_entry(const string& name) {
-        for (auto& entry : entries)
-            if (entry.name == name)
-                return &entry;
-        return nullptr;
-    }
+struct AnimationFrame {
+    Pose* pose = nullptr;
+    float time_to = 0.0f;
+    math::EaseMode ease_mode = math::EaseMode_Quad;
 };
 
 struct BonePrefab {
@@ -57,9 +50,9 @@ struct SkeletonPrefab {
     string file_path;
 
     vector<id_ptr<BonePrefab>> bones;
-    array<PoseSet, AnimationStateCount> poses;
+    array<vector<AnimationFrame>, AnimationStateCount> animations;
 
-    PoseSet pose_backfill;
+    vector<Pose> pose_catalog;
 };
 
 struct Bone {
@@ -106,8 +99,8 @@ struct SkeletonCPU {
     float time = 0.0f;
 
     void update();
-    void save_pose(AnimationState pose_set, string pose_name, float timing, int pose_index = -1);
-    void load_pose(PoseSet::Entry& pose_entry, float offset = -1.0f);
+    void load_pose(Pose& pose, float offset = -1.0f);
+    void load_frame(AnimationFrame& frame, float offset = -1.0f);
     void store_pose(const string& pose_name);
 
     Bone* find_bone(const string& name);
@@ -126,8 +119,11 @@ SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu);
 JSON_IMPL_TEMPLATE(template<typename T>, KeyFrame<T>, value, time);
 JSON_IMPL(KeySet, position, rotation, scale);
 JSON_IMPL(BonePrefab, name, parent, position, inverse_bind_matrix, length);
-JSON_IMPL(PoseSet::Entry, name, time_to, pose, ease_mode);
-JSON_IMPL(PoseSet, entries);
+JSON_IMPL(Pose, name, bones);
+
+
+inline AnimationFrame from_jv_impl(const json_value& jv, vector<Pose>& pose_catalog, AnimationFrame* _);
+inline json_value to_jv(const AnimationFrame& value);
 
 template <>
 bool     save_asset(const SkeletonPrefab& asset_file);
@@ -135,7 +131,7 @@ template <>
 SkeletonPrefab& load_asset(const string& input_path, bool assert_exist, bool clear_cache);
 
 bool inspect(SkeletonCPU* skeleton_cpu);
-bool inspect(PoseSet* pose_set, int* load_pose = nullptr);
+bool inspect(vector<AnimationFrame>* animation, int* load_pose);
 
 void apply_constraints(vector<v3>& points, const vector<float>& lengths);
 void apply_constraints(IKTarget ik);

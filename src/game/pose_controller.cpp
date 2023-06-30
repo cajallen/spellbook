@@ -9,39 +9,39 @@
 namespace spellbook {
 
 void PoseController::set_state(AnimationState new_state, float time_in_target, float new_time_to_override) {
-    if (state != new_state || pose_set == nullptr) {
+    if (state != new_state || animation == nullptr) {
         state = new_state;
         target_index = -1;
         fractional_state_total = time_in_target;
         time_to_next_index = 0.0f;
         time_to_override = new_time_to_override;
 
-        pose_set = &skeleton.prefab->poses[new_state];
-        if (pose_set->entries.empty())
-            pose_set = nullptr;
+        animation = &skeleton.prefab->animations[new_state];
+        if (animation->empty())
+            animation = nullptr;
     }
 }
 
 bool PoseController::is_active() const {
-    return pose_set != nullptr;
+    return animation != nullptr;
 }
 
 void PoseController::clear_state() {
-    pose_set = nullptr;
+    animation = nullptr;
 }
 
 void PoseController::progress_in_state() {
-    if (pose_set == nullptr)
+    if (animation == nullptr)
         return;
     
     target_index++;
-    if (target_index >= pose_set->entries.size()) {
+    if (target_index >= animation->size()) {
         target_index = 0;
     }
     
-    auto& new_entry = pose_set->entries[target_index];
+    auto& target_frame = (*animation)[target_index];
 
-    float used_timing = new_entry.time_to;
+    float used_timing = target_frame.time_to;
     switch (state) {
         case AnimationState_AttackInto:
         case AnimationState_AttackOut:
@@ -49,7 +49,7 @@ void PoseController::progress_in_state() {
         case AnimationState_Attack2Out:
         case AnimationState_CastInto:
         case AnimationState_CastOut:
-            used_timing = new_entry.time_to * (fractional_state_total == 0.0f ? 1.0f : fractional_state_total); 
+            used_timing = target_frame.time_to * (fractional_state_total == 0.0f ? 1.0f : fractional_state_total); 
     }
     if (time_to_override != -1.0f) {
         used_timing = time_to_override;
@@ -57,13 +57,13 @@ void PoseController::progress_in_state() {
     }
     if (used_timing < 0.005f)
         used_timing = -1.0f;
-    skeleton.load_pose(new_entry, used_timing);
+    skeleton.load_frame(target_frame, used_timing);
     time_to_next_index = used_timing;
 }
 
 
 void PoseController::update(float delta_time) {
-    if (pose_set == nullptr)
+    if (animation == nullptr)
         return;
     
     time_to_next_index -= delta_time;

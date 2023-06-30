@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "general/vector.hpp"
+#include "renderer/assets/skeleton.hpp"
 #include "renderer/assets/animation_state.hpp"
 
 namespace spellbook {
@@ -13,7 +15,7 @@ struct PoseController {
     SkeletonCPU& skeleton;
     
     AnimationState state = AnimationState_Idle;
-    PoseSet* pose_set = nullptr;
+    vector<AnimationFrame>* animation = nullptr;
     
     int target_index = 0;
     float time_to_next_index = 0.0f;

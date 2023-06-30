@@ -124,37 +124,17 @@ SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu) {
     return skeleton_gpu;
 }
 
-void SkeletonCPU::save_pose(AnimationState set_type, string pose_name, float timing, int pose_index) {
-    PoseSet& pose_set = prefab->poses[set_type];
-
-    PoseSet::Entry* existing_entry = pose_set.get_entry(pose_name);
-    if (existing_entry) {
-        pose_set.entries.remove_index(pose_set.entries.index(*existing_entry));
-    }
-
-    umap<string, KeySet>* bone_map;
-    if (pose_index == -1) {
-        auto& entry = pose_set.entries.emplace_back(pose_name, timing);
-        bone_map = &entry.pose;
-    } else {
-        auto& entry = pose_set.entries.emplace(pose_index, pose_name, timing);
-        bone_map = &entry.pose;
-    }
-    for (std::unique_ptr<Bone>& bone : bones) {
-        (*bone_map)[bone->name] = bone->start;
-    }
-}
-
 void SkeletonCPU::store_pose(const string& pose_name) {
-    PoseSet& pose_set = prefab->pose_backfill;
-
-    PoseSet::Entry* existing_entry = pose_set.get_entry(pose_name);
-    if (existing_entry) {
-        pose_set.entries.remove_index(pose_set.entries.index(*existing_entry));
-    }
+    Pose* existing_pose = nullptr;
+    for (auto& entry : prefab->pose_catalog)
+        if (entry.name == pose_name)
+            existing_pose = &entry;
     
-    auto& entry = pose_set.entries.emplace_back(pose_name, 0.0f);
-    auto bone_map = &entry.pose;
+    if (existing_pose)
+        prefab->pose_catalog.remove_index(prefab->pose_catalog.index(*existing_pose));
+    
+    auto& entry = prefab->pose_catalog.push_back(Pose{pose_name});
+    auto bone_map = &entry.bones;
     
     for (std::unique_ptr<Bone>& bone : bones) {
         (*bone_map)[bone->name] = bone->start;
@@ -171,12 +151,43 @@ Bone* SkeletonCPU::find_bone(const string& name) {
 }
 
 
-void SkeletonCPU::load_pose(PoseSet::Entry& entry, float offset) {
-    current_pose = entry.name;
+void SkeletonCPU::load_pose(Pose& pose, float offset) {
+    current_pose = "pose";
+    for (std::unique_ptr<Bone>& bone : bones) {
+        bone->ease_mode = math::EaseMode_Linear;
+        if (offset <= 0.0f) {
+            bone->start = pose.bones[bone->name];
+            bone->target.position.time = -1.0f;
+            bone->target.rotation.time = -1.0f;
+            bone->target.scale.time = -1.0f;
+            continue;
+        }
+        
+        if (bone->target.position.time != -1.0f)
+            bone->start.position.value = bone->target.position.value;
+        if (bone->target.rotation.time != -1.0f)
+            bone->start.rotation.value = bone->target.rotation.value;
+        if (bone->target.scale.time != -1.0f)
+            bone->start.scale.value = bone->target.scale.value;
+        bone->start.position.time = time;
+        bone->start.rotation.time = time;
+        bone->start.scale.time = time;
+        
+        float used_offset = offset > 0.0f ? offset : 0.0f;
+        bone->target = pose.bones[bone->name];
+        bone->target.position.time = time + used_offset;
+        bone->target.rotation.time = time + used_offset;
+        bone->target.scale.time = time + used_offset;
+    }
+}
+
+
+void SkeletonCPU::load_frame(AnimationFrame& entry, float offset) {
+    current_pose = entry.pose->name;
     for (std::unique_ptr<Bone>& bone : bones) {
         bone->ease_mode = entry.ease_mode;
         if (offset <= 0.0f) {
-            bone->start = entry.pose[bone->name];
+            bone->start = entry.pose->bones[bone->name];
             bone->target.position.time = -1.0f;
             bone->target.rotation.time = -1.0f;
             bone->target.scale.time = -1.0f;
@@ -194,7 +205,7 @@ void SkeletonCPU::load_pose(PoseSet::Entry& entry, float offset) {
         bone->start.scale.time = time;
         
         float used_offset = offset > 0.0f ? offset : entry.time_to;
-        bone->target = entry.pose[bone->name];
+        bone->target = entry.pose->bones[bone->name];
         bone->target.position.time = time + used_offset;
         bone->target.rotation.time = time + used_offset;
         bone->target.scale.time = time + used_offset;
@@ -306,9 +317,9 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(enum_name.c_str())) {
             int load_pose = INT_MAX;
-            changed |= inspect(&prefab->poses[type], &load_pose);
-            if (load_pose < prefab->poses[type].entries.size()) {
-                skeleton_cpu->load_pose(prefab->poses[type].entries[load_pose], 0.0f);
+            changed |= inspect(&prefab->animations[type], &load_pose);
+            if (load_pose < prefab->animations[type].size()) {
+                skeleton_cpu->load_frame(prefab->animations[type][load_pose], 0.0f);
             } else {
                 assert_else(load_pose == INT_MAX);
             }
@@ -331,28 +342,28 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
     ImGui::EnumCombo("To Type", &take_state.to_type);
     ImGui::SameLine();
     if (ImGui::Button("Migrate")) {
-        auto& pose_set = prefab->poses[take_state.to_type];
-        for (int i = 0; i < prefab->pose_backfill.entries.size(); i++) {
+        auto& animation = prefab->animations[take_state.to_type];
+        for (int i = 0; i < prefab->pose_catalog.size(); i++) {
             if (take_state.selected[i]) {
-                pose_set.entries.push_back(prefab->pose_backfill.entries[i]);
+                animation.push_back({&prefab->pose_catalog[i], 1.0f});
             }
         }
     }
-    if (take_state.selected.size() != prefab->pose_backfill.entries.size())
-        take_state.selected.resize(prefab->pose_backfill.entries.size());
-    for (int i = 0; i < prefab->pose_backfill.entries.size(); i++) {
+    if (take_state.selected.size() != prefab->pose_catalog.size())
+        take_state.selected.resize(prefab->pose_catalog.size());
+    for (int i = 0; i < prefab->pose_catalog.size(); i++) {
         ImGui::PushID(i);
-        if (ImGui::Button(skeleton_cpu->current_pose == prefab->pose_backfill.entries[i].name ? ICON_FA_REFRESH : ICON_FA_CAMERA))
-            skeleton_cpu->load_pose(prefab->pose_backfill.entries[i], 0.0f);
+        if (ImGui::Button(skeleton_cpu->current_pose == prefab->pose_catalog[i].name ? ICON_FA_REFRESH : ICON_FA_CAMERA))
+            skeleton_cpu->load_pose(prefab->pose_catalog[i], 0.0f);
         ImGui::SameLine();
-        ImGui::InputText("Name", &prefab->pose_backfill.entries[i].name);
+        ImGui::InputText("Name", &prefab->pose_catalog[i].name);
         ImGui::SameLine();
         ImGui::Dummy(ImVec2{ImGui::GetContentRegionAvail().x - 60.f, 0.f});
         ImGui::SameLine();
         ImGui::Checkbox("##Selected", (bool*) &take_state.selected[i]);
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_TIMES, {25.f, 0.f})) {
-            prefab->pose_backfill.entries.remove_index(i, false);
+            prefab->pose_catalog.remove_index(i, false);
             i--;
         }
         ImGui::PopID();
@@ -363,10 +374,10 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
     return changed;
 }
 
-bool inspect(PoseSet* pose_set, int* load_pose) {
-    ImGui::PushID(pose_set);
+bool inspect(vector<AnimationFrame>* animation, int* load_pose) {
+    ImGui::PushID(animation);
     bool changed = false;
-    for (int i = 0; i < pose_set->entries.size(); i++) {
+    for (int i = 0; i < (*animation).size(); i++) {
         ImGui::PushID(i);
         if (load_pose) {
             *load_pose = INT_MAX;
@@ -376,17 +387,17 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
         }
         float width = ImGui::GetContentRegionAvail().x;
         ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
-        ImGui::InputText("##Name", &pose_set->entries[i].name);
+        ImGui::InputText("##Name", &(*animation)[i].pose->name, ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
-        changed |= ImGui::DragFloat("Time To", &pose_set->entries[i].time_to, 0.01f);
+        changed |= ImGui::DragFloat("Time To", &(*animation)[i].time_to, 0.01f);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
-        changed |= ImGui::EnumCombo("##EaseMode", &pose_set->entries[i].ease_mode);
+        changed |= ImGui::EnumCombo("##EaseMode", &(*animation)[i].ease_mode);
         ImGui::SameLine();
         if (i > 0) {
             if (ImGui::Button(ICON_FA_ARROW_UP, {25.f, 0.f})) {
-                std::swap(pose_set->entries[i-1], pose_set->entries[i]);
+                std::swap((*animation)[i-1], (*animation)[i]);
                 changed = true;
                 ImGui::PopID();
                 break;
@@ -395,9 +406,9 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
             ImGui::Dummy(ImVec2{25.f, 0.f});
         }
         ImGui::SameLine();
-        if (i + 1 < pose_set->entries.size()) {
+        if (i + 1 < (*animation).size()) {
             if (ImGui::Button(ICON_FA_ARROW_DOWN, {25.f, 0.f})) {
-                std::swap(pose_set->entries[i], pose_set->entries[i+1]);
+                std::swap((*animation)[i], (*animation)[i+1]);
                 changed = true;
                 ImGui::PopID();
                 break;
@@ -407,7 +418,7 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
         }
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_TIMES, {25.f, 0.f})) {
-            pose_set->entries.remove_index(i, false);
+            (*animation).remove_index(i, false);
             changed = true;
             ImGui::PopID();
             break;
@@ -419,6 +430,31 @@ bool inspect(PoseSet* pose_set, int* load_pose) {
     return changed;
 }
 
+AnimationFrame from_jv_impl(const json_value& jv, vector<Pose>& pose_catalog, AnimationFrame* _) {
+    json j = from_jv<json>(jv);
+    AnimationFrame value;
+    FROM_JSON_ELE(time_to);
+    FROM_JSON_ELE(ease_mode);
+
+    string pose_name;
+    if (j.contains("pose_name"))
+        pose_name = from_jv<string>(*j.at("pose_name"));
+    
+    for (Pose& pose : pose_catalog)
+        if (pose.name == pose_name)
+            value.pose = &pose;
+    
+    return value;
+}
+json_value to_jv(const AnimationFrame& value) {
+    auto j = json();
+    TO_JSON_ELE(time_to);
+    TO_JSON_ELE(ease_mode);
+    j["pose_name"] = make_shared<json_value>(to_jv(value.pose->name));
+    
+    return to_jv(j);
+}
+
 template <>
 bool     save_asset(const SkeletonPrefab& value) {
     json j;
@@ -427,9 +463,9 @@ bool     save_asset(const SkeletonPrefab& value) {
         json_bones.push_back(to_jv_full(bone));
     }
     j["bones"] = make_shared<json_value>(to_jv(json_bones));
-    TO_JSON_ELE(poses);
-    TO_JSON_ELE(pose_backfill);
-
+    j["pose_catalog"] = make_shared<json_value>(to_jv(value.pose_catalog));
+    j["animation"] = make_shared<json_value>(to_jv(value.animations));
+    
     string ext = std::filesystem::path(value.file_path).extension().string();
     assert_else(ext == extension(FileType_Skeleton))
         return false;
@@ -469,8 +505,19 @@ SkeletonPrefab& load_asset(const string& input_path, bool assert_exists, bool cl
             value.bones.push_back(bone);
         }
     }
-    FROM_JSON_ELE(poses);
-    FROM_JSON_ELE(pose_backfill);
+    if (j.contains("pose_catalog"))
+        value.pose_catalog = from_jv<decltype(value.pose_catalog)>(*j.at("pose_catalog"));
+
+    if (j.contains("animations")) {
+        int i = 0;
+        for (const json_value& jv_anim : j["animations"]->get_list()) {
+            for (const json_value& jv_frame : jv_anim.get_list()) {
+                AnimationFrame frame = from_jv_impl(jv_frame, value.pose_catalog, (AnimationFrame*) 0);
+                value.animations[i].push_back(frame);
+            }
+            i++;
+        }
+    }
     
     return value;
 }
