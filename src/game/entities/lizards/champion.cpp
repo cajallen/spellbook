@@ -26,13 +26,7 @@ struct ChampionAttack : Attack {
 
 void ChampionAttack::start() {
     LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    v3i caster_pos = math::round_cast(logic_tfm.position);
-    auto lizard = scene->registry.try_get<Lizard>(caster);
-    if (lizard) {
-        v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
-        float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
-        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
-    }
+    lizard_turn_to_target();
 
     v3 pos_cap = logic_tfm.position;
     add_timer(scene, "taunt", [pos_cap](Timer* timer) {
@@ -71,15 +65,15 @@ void ChampionAttack::trigger() {
         for (int y = -1; y <= 1; y++) {
             entt::entity tile = scene->get_tile(target + v3i(x, y, -1));
             if (tile == entt::null) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion_basic_fizzle.sbemt", 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_fizzle.sbemt", 0.20f);
                 continue;
             }
 
             auto& grid_slot = scene->registry.get<GridSlot>(tile);
             if ((grid_slot.path || grid_slot.ramp) && x == 0 && y == 0) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion_basic_hit.sbemt", 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_hit.sbemt", 0.20f);
             } else {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion_basic_miss.sbemt", 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_miss.sbemt", 0.20f);
             }
         }
     }

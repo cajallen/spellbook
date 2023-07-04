@@ -73,6 +73,33 @@ m44 look_ik(v3 eye, v3 vec, v3 up) {
     return math::inverse(result);
 }
 
+
+m44 normal_yaw(v3 normal, float yaw) {
+    v3 z_axis = math::normalize(normal);
+    v3 x_axis = v3(math::cos(yaw), math::sin(yaw), 0.0f);
+    v3 y_axis = math::normalize(math::cross(z_axis, x_axis));
+    x_axis = math::normalize(math::cross(y_axis, z_axis));
+
+    return m44{
+        x_axis.x,
+        x_axis.y,
+        x_axis.z,
+        0.0f,
+        y_axis.x,
+        y_axis.y,
+        y_axis.z,
+        0.0f,
+        z_axis.x,
+        z_axis.y,
+        z_axis.z,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+    };
+}
+
 m44 translate(v3 position) {
     return m44 {1, 0, 0, position.x, 0, 1, 0, position.y, 0, 0, 1, position.z, 0, 0, 0, 1};
 }
@@ -108,7 +135,7 @@ m44 rotation(euler e) {
 }
 
 euler rotation2euler(const m33& rot) {
-    euler euler;
+    euler euler = {};
     euler.pitch = math::asin(rot.cr(2, 0));
     f32 C       = math::cos(euler.pitch);
 
@@ -169,14 +196,41 @@ euler to_euler(m44 rot) {
 }
 
 quat to_quat(m33 mat) {
-    // Does this work?
-    // quat q;
-    // q.w = sqrt(1.0f + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2)) / 2.0f;
-    // q.x = (mat.rc(2,1) - mat.rc(1,2)) / (4.0f * q.w);
-    // q.y = (mat.rc(0,2) - mat.rc(2,0)) / (4.0f * q.w);
-    // q.z = (mat.rc(1,0) - mat.rc(0,1)) / (4.0f * q.w);
-    // return q;
+#define TO_QUAT_VERSION 1
 
+#if (TO_QUAT_VERSION == 0)
+    quat q;
+    q.w = sqrt(1.0f + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2)) / 2.0f;
+    q.x = (mat.rc(2,1) - mat.rc(1,2)) / (4.0f * q.w);
+    q.y = (mat.rc(0,2) - mat.rc(2,0)) / (4.0f * q.w);
+    q.z = (mat.rc(1,0) - mat.rc(0,1)) / (4.0f * q.w);
+    return q;
+#elif (TO_QUAT_VERSION == 1)
+    float t;
+    quat q;
+    if (mat.rc(2,2) < 0) {
+        if (mat.rc(0,0) >mat.rc(1,1)) {
+            t = 1 + mat.rc(0,0) -mat.rc(1,1) -mat.rc(2,2);
+            q = quat( t, mat.rc(0,1)+mat.rc(1,0), mat.rc(2,0)+mat.rc(0,2), mat.rc(1,2)-mat.rc(2,1));
+        }
+        else {
+            t = 1 -mat.rc(0,0) + mat.rc(1,1) -mat.rc(2,2);
+            q = quat(mat.rc(0,1)+mat.rc(1,0), t, mat.rc(1,2)+mat.rc(2,1), mat.rc(2,0)-mat.rc(0,2));
+        }
+    }
+    else {
+        if (mat.rc(0,0) < -mat.rc(1,1)) {
+            t = 1 -mat.rc(0,0) -mat.rc(1,1) + mat.rc(2,2);
+            q = quat(mat.rc(2,0)+mat.rc(0,2), mat.rc(1,2)+mat.rc(2,1), t, mat.rc(0,1)-mat.rc(1,0));
+        }
+        else {
+            t = 1 + mat.rc(0,0) + mat.rc(1,1) + mat.rc(2,2);
+            q = quat(mat.rc(1,2)-mat.rc(2,1), mat.rc(2,0)-mat.rc(0,2), mat.rc(0,1)-mat.rc(1,0), t);
+        }
+    }
+    q *= 0.5 / math::sqrt(t);
+    return q;
+#elif (TO_QUAT_VERSION == 2)
     float T    = mat.rc(1-1, 1-1) + mat.rc(2-1, 2-1) + mat.rc(3-1, 3-1);
     float M    = math::max(mat.rc(1-1, 1-1), mat.rc(2-1, 2-1), mat.rc(3-1, 3-1), T);
     float qmax = 0.5f * math::sqrt(1.0f - T + 2.0f * M);
@@ -202,7 +256,8 @@ quat to_quat(m33 mat) {
         q.z = (mat.rc(2-1, 1-1) - mat.rc(1-1, 2-1)) / (4 * qmax);
         q.w = qmax;
     }
-    return q;
+    return math::normalize(q);
+#endif
 }
 
 quat  to_quat(m44 rot) {

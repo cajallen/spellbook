@@ -4,7 +4,6 @@
 #include <filesystem>
 
 #include "general/logger.hpp"
-#include "game/game.hpp"
 #include "game/game_file.hpp"
 
 namespace spellbook {

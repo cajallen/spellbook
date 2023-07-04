@@ -10,6 +10,8 @@ m44 orthographic(v3 extents);
 m44 look(v3 eye, v3 vec, v3 up);
 m44 look_ik(v3 eye, v3 vec, v3 up);
 
+m44 normal_yaw(v3 normal, float yaw);
+
 m44 translate(v3 position);
 m44 scale(v3 scale);
 m44 rotation(euler e);

@@ -375,59 +375,21 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
 }
 
 bool inspect(vector<AnimationFrame>* animation, int* load_pose) {
-    ImGui::PushID(animation);
-    bool changed = false;
-    for (int i = 0; i < (*animation).size(); i++) {
-        ImGui::PushID(i);
-        if (load_pose) {
-            *load_pose = INT_MAX;
-            if (ImGui::Button(ICON_FA_CAMERA))
-                *load_pose = i;
+    return ImGui::OrderedVector(*animation,
+        [](AnimationFrame& frame) {
+            float width = ImGui::GetContentRegionAvail().x;
+            ImGui::SetNextItemWidth(width * 0.30f);
+            ImGui::InputText("##Name", &frame.pose->name, ImGuiInputTextFlags_ReadOnly);
             ImGui::SameLine();
-        }
-        float width = ImGui::GetContentRegionAvail().x;
-        ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
-        ImGui::InputText("##Name", &(*animation)[i].pose->name, ImGuiInputTextFlags_ReadOnly);
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
-        changed |= ImGui::DragFloat("Time To", &(*animation)[i].time_to, 0.01f);
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(width * 0.33f - 50.0f);
-        changed |= ImGui::EnumCombo("##EaseMode", &(*animation)[i].ease_mode);
-        ImGui::SameLine();
-        if (i > 0) {
-            if (ImGui::Button(ICON_FA_ARROW_UP, {25.f, 0.f})) {
-                std::swap((*animation)[i-1], (*animation)[i]);
-                changed = true;
-                ImGui::PopID();
-                break;
-            }
-        } else {
-            ImGui::Dummy(ImVec2{25.f, 0.f});
-        }
-        ImGui::SameLine();
-        if (i + 1 < (*animation).size()) {
-            if (ImGui::Button(ICON_FA_ARROW_DOWN, {25.f, 0.f})) {
-                std::swap((*animation)[i], (*animation)[i+1]);
-                changed = true;
-                ImGui::PopID();
-                break;
-            }
-        } else {
-            ImGui::Dummy(ImVec2{25.f, 0.f}); 
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_TIMES, {25.f, 0.f})) {
-            (*animation).remove_index(i, false);
-            changed = true;
-            ImGui::PopID();
-            break;
-        }
-        ImGui::PopID();
-        ImGui::Separator();
-    }
-    ImGui::PopID();
-    return changed;
+            ImGui::SetNextItemWidth(width * 0.30f);
+            ImGui::DragFloat("##TimeTo", &frame.time_to, 0.01f, 0.0f, 10.0f, "%.2f");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(width * 0.30f);
+            ImGui::EnumCombo("##EaseMode", &frame.ease_mode);
+            return false;
+        },
+        std::function<void(vector<AnimationFrame>&,bool)>{},
+        false);
 }
 
 AnimationFrame from_jv_impl(const json_value& jv, vector<Pose>& pose_catalog, AnimationFrame* _) {
@@ -458,13 +420,14 @@ json_value to_jv(const AnimationFrame& value) {
 template <>
 bool     save_asset(const SkeletonPrefab& value) {
     json j;
+    j["dependencies"] = make_shared<json_value>(to_jv(value.dependencies));
     vector<json_value> json_bones;
     for (id_ptr<BonePrefab> bone : value.bones) {
         json_bones.push_back(to_jv_full(bone));
     }
     j["bones"] = make_shared<json_value>(to_jv(json_bones));
     j["pose_catalog"] = make_shared<json_value>(to_jv(value.pose_catalog));
-    j["animation"] = make_shared<json_value>(to_jv(value.animations));
+    j["animations"] = make_shared<json_value>(to_jv(value.animations));
     
     string ext = std::filesystem::path(value.file_path).extension().string();
     assert_else(ext == extension(FileType_Skeleton))
@@ -498,6 +461,7 @@ SkeletonPrefab& load_asset(const string& input_path, bool assert_exists, bool cl
     
     json      j = parse_file(absolute_path_string);
     value.file_path = input_path;
+    value.dependencies = game.asset_system.load_dependencies(j);
 
     if (j.contains("bones")) {
         for (const json_value& jv : j["bones"]->get_list()) {

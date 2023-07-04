@@ -390,6 +390,12 @@
     <ClCompile Include="src\general\path.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\audio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\general\json_cache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\global.hpp">
@@ -1086,6 +1092,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\general\path.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\audio.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\general\json_cache.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

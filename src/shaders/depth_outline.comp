@@ -169,26 +169,40 @@ float calculate_toon_diffuse(float NdotL) {
     return val;
 }
 
-bool diag_shadow(inout float sum, vec2 uv, ivec2 p1, ivec2 p2, float thickness, float comparison) {
+bool check_skip(float value, vec2 coord, ivec2 offset, float comparison) {
     ivec2 max_coord = textureSize(s_sun_depth, 0);
-    if (uv.x + p1.x < 0 || uv.x + p2.x < 0 || uv.y + p1.y < 0 || uv.y + p2.y < 0) {
+    if (coord.x + offset.x < 0 || coord.y + offset.y < 0) {
+        return true;
+    }
+    if (coord.x + offset.x >= max_coord.x|| coord.y + offset.y >= max_coord.y) {
+        return true;
+    }
+
+    float read = texelFetch(s_sun_depth,ivec2(coord)+offset,0).r;
+    float other = comparison < read ? 0.0 : 1.0;
+    return other < 0.5 && (abs(other - value) < 0.5);
+}
+
+bool diag_shadow(inout float sum, vec2 coord, ivec2 offset1, ivec2 offset2, float thickness, float comparison) {
+    ivec2 max_coord = textureSize(s_sun_depth, 0);
+    if (coord.x + offset1.x < 0 || coord.x + offset2.x < 0 || coord.y + offset1.y < 0 || coord.y + offset2.y < 0) {
         sum = 1.0;
         return false;
     }
-    if (uv.x + p1.x >= max_coord.x || uv.x + p2.x >= max_coord.x || uv.y + p1.y >= max_coord.y || uv.y + p2.y >= max_coord.y) {
+    if (coord.x + offset1.x >= max_coord.x || coord.x + offset2.x >= max_coord.x || coord.y + offset1.y >= max_coord.y || coord.y + offset2.y >= max_coord.y) {
         sum = 1.0;
         return false;
     }
 
-    vec4 v1 = texelFetch(s_sun_depth, ivec2(uv)+ivec2(p1.x,p1.y), 0);
-    vec4 v2 = texelFetch(s_sun_depth, ivec2(uv)+ivec2(p2.x,p2.y), 0);
+    vec4 v1 = texelFetch(s_sun_depth, ivec2(coord)+offset1, 0);
+    vec4 v2 = texelFetch(s_sun_depth, ivec2(coord)+offset2, 0);
     
     float f1 = comparison < (v1.r) ? 0.0 : 1.0;
     float f2 = comparison < (v2.r) ? 0.0 : 1.0;
     
     if (abs(f1 - f2) < 0.1) {
-    	vec2 dir = vec2(p2-p1);
-        vec2 lp = uv-(floor(uv+vec2(p1))+0.5);
+    	vec2 dir = vec2(offset2-offset1);
+        vec2 lp = coord-(floor(coord+vec2(offset1))+0.5);
     	dir = normalize(vec2(dir.y,-dir.x));
         float l = clamp((thickness-dot(lp,dir))*15.0,0.0,1.0);
         sum = mix(sum,f1,l);
@@ -221,22 +235,30 @@ float shaded(InputRead data) {
 
     float shaded_amount = world_position_depth < world_read_depth ? 0.0 : 1.0;
 
-    if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 0), ivec2( 0, 1), 0.38197, world_position_depth)) {
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 0), ivec2( 1, 1), 0.25, world_position_depth);
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1,-1), ivec2( 0, 1), 0.25, world_position_depth);
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2(-1, 1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 0), ivec2( 0, 1), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 0), ivec2( 1, 1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1,-1), ivec2( 0, 1), 0.25, world_position_depth);
+        }
     }
-    if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0, 1), ivec2( 1, 0), 0.38197, world_position_depth)) {
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0, 1), ivec2( 1,-1), 0.25, world_position_depth);
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 1), ivec2( 1, 0), 0.25, world_position_depth);
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2( 1, 1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0, 1), ivec2( 1, 0), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0, 1), ivec2( 1,-1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 1), ivec2( 1, 0), 0.25, world_position_depth);
+        }
     }
-    if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 0), ivec2( 0,-1), 0.38197, world_position_depth)) {
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 0), ivec2(-1,-1), 0.25, world_position_depth);
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 1), ivec2( 0,-1), 0.25, world_position_depth);
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2( 1,-1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 0), ivec2( 0,-1), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 0), ivec2(-1,-1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 1), ivec2( 0,-1), 0.25, world_position_depth);
+        }
     }
-    if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0,-1), ivec2(-1, 0), 0.38197, world_position_depth)) {
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0,-1), ivec2(-1, 1), 0.25, world_position_depth);
-        diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1,-1), ivec2(-1, 0), 0.25, world_position_depth);
-    } 
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2(-1,-1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0,-1), ivec2(-1, 0), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0,-1), ivec2(-1, 1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1,-1), ivec2(-1, 0), 0.25, world_position_depth);
+        } 
+    }
     return clamp(shaded_amount, 0.0, 1.0);
 }
 

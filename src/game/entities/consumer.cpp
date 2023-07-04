@@ -69,7 +69,7 @@ void consumer_system(Scene* scene) {
         }
 
         egg_logic_tfm.position = shrine_logic_tfm.position;
-        egg_logic_tfm.rotation.yaw += scene->delta_time * 1.0f;
+        egg_logic_tfm.yaw += scene->delta_time * 1.0f;
     }
 }
 

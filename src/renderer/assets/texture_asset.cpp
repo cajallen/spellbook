@@ -16,7 +16,7 @@ namespace spellbook {
 
 TextureCPU load_texture(const string& file_name) {
     // TODO: CompressionMode
-    AssetFile asset_file = load_asset_file(file_name);
+    AssetFile& asset_file = game.asset_system.load_asset(to_resource_path(file_name).string());
 
     constexpr array expected_type = {'T', 'E', 'X'};
     assert_else(asset_file.version == 2 && asset_file.type == expected_type)

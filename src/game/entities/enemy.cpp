@@ -50,8 +50,8 @@ void EnemyLaserAttack::trigger() {
                 auto* liz_lt = timer->scene->registry.try_get<LogicTransform>(lizard);
                 if (this_lt && liz_lt) {
                     vector<FormattedVertex> vertices;
-                    float width = (timer->remaining_time / timer->total_time) * 0.10f + 0.05f;
-                    vertices.emplace_back(this_lt->position + v3(0.5f), palette::light_pink, width + 0.05f);
+                    float width = (timer->remaining_time / timer->total_time) * 0.05f + 0.03f;
+                    vertices.emplace_back(this_lt->position + v3(0.5f, 0.5f, 0.19f), palette::light_pink, width + 0.05f);
                     vertices.emplace_back(liz_lt->position + v3(0.5f), palette::red, width);
                     timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
                 }
@@ -281,6 +281,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
 bool inspect(EnemyPrefab* enemy_prefab) {
     bool changed = false;
     ImGui::PathSelect("File", &enemy_prefab->file_path, "resources/enemies", FileType_Enemy);
+    changed |= inspect_dependencies(enemy_prefab->dependencies, enemy_prefab->file_path);
     changed |= ImGui::EnumCombo("Type", &enemy_prefab->type);
     changed |= ImGui::PathSelect("Base Model", &enemy_prefab->base_model_path, "resources/models", FileType_Model);
     changed |= ImGui::PathSelect("Attachment Model", &enemy_prefab->attachment_model_path, "resources/models", FileType_Model);
@@ -322,27 +323,50 @@ void enemy_ik_controller_system(Scene* scene) {
         ik.update_transform_linkers();
         ik.update_constraints(scene, model, tfm_inv);
 
-        if (scene->registry.any_of<Enemy>(entity)) {
-            Enemy& enemy = scene->registry.get<Enemy>(entity);
-            if (!scene->registry.valid(enemy.attachment))
-                continue;
-
-            LogicTransform& attachment_logic_tfm = scene->registry.get<LogicTransform>(enemy.attachment);
-            attachment_logic_tfm.position = logic_tfm.position;
-
-            ModelTransform& attachment_model_tfm = scene->registry.get<ModelTransform>(enemy.attachment);
-            Bone* anchor_bone = model.model_cpu->skeleton->find_bone("anchor");
-            if (anchor_bone) {
-                m44 t =  tfm * model.model_cpu->root_node->cached_transform * anchor_bone->transform();
-                attachment_model_tfm.set_translation(math::apply_transform(t, v3(0.0f, 0.0f, 0.0f)));
-            }
-        }
-
         if ((set0_moving && !ik.is_set_moving(0)) || (set1_moving && !ik.is_set_moving(1))) {
             scene->audio.play_sound("audio/enemy/step.wav", {.position = logic_tfm.position});
         }
     }
 }
+
+void attachment_transform_system(Scene* scene) {
+    for (auto [base_entity, logic_tfm, enemy] : scene->registry.view<LogicTransform, Enemy>().each()) {
+        if (!scene->registry.valid(enemy.attachment))
+            continue;
+        
+        Model* model = scene->registry.try_get<Model>(base_entity);
+        ModelTransform* model_tfm = scene->registry.try_get<ModelTransform>(base_entity);
+        SpiderController* ik = scene->registry.try_get<SpiderController>(base_entity);
+
+        Caster* caster = scene->registry.try_get<Caster>(enemy.attachment);
+        LogicTransform& attachment_logic_tfm = scene->registry.get<LogicTransform>(enemy.attachment);
+        ModelTransform& attachment_model_tfm = scene->registry.get<ModelTransform>(enemy.attachment);
+        
+        attachment_logic_tfm.position = logic_tfm.position;
+        attachment_logic_tfm.normal = ik ? ik->quad_norm : v3::Z;
+        if (caster && caster->attack->has_target) {
+            v3 vec = math::normalize(v3(caster->attack->target) - attachment_logic_tfm.position);
+            attachment_logic_tfm.yaw = math::atan2(vec.y, vec.x);
+        } else if (ik && math::length(ik->velocity) > 0.01f) {
+            v3 vec = math::normalize(ik->velocity);
+            attachment_logic_tfm.yaw = math::atan2(vec.y, vec.x);
+        }
+
+        if (model && model_tfm) {
+            m44 tfm = model_tfm->get_transform();
+            Bone* anchor_bone = model->model_cpu->skeleton->find_bone("anchor");
+            if (anchor_bone) {
+                m44 t =  tfm * model->model_cpu->root_node->cached_transform * anchor_bone->transform();
+                attachment_model_tfm.set_translation(math::apply_transform(t, v3(0.0f, 0.0f, 0.0f)));
+            }
+            quat logic_quat = math::to_quat(math::normal_yaw(attachment_logic_tfm.normal, attachment_logic_tfm.yaw - math::PI / 2.0f));
+            assert_else(!math::is_nan(logic_quat))
+                logic_quat = {};
+            attachment_model_tfm.set_rotation(logic_quat);
+        }
+    }
+}
+
 void enemy_aggro_system(Scene* scene) {
     if (scene->edit_mode)
         return;

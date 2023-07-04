@@ -10,7 +10,8 @@ struct Scene;
 
 struct MapPrefab {
     string file_path;
-
+    vector<string> dependencies;
+    
     struct TileEntry {
         string prefab_path;
         u32 rotation;
@@ -24,7 +25,7 @@ struct MapPrefab {
 JSON_IMPL(MapPrefab::TileEntry, prefab_path, rotation);
 JSON_IMPL(MapPrefab, tiles, spawners, consumers, lizards, solid_tiles);
 
-void inspect(MapPrefab*);
+bool inspect(MapPrefab* prefab);
 Scene* instance_map(const MapPrefab&, const string& name);
 
 

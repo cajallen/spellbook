@@ -21,6 +21,8 @@ enum Bead {
 
 struct BeadPrefab {
     string file_path;
+    vector<string> dependencies;
+    
     string model_path;
     Bead type;
     float scale = 1.0f;

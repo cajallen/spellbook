@@ -29,6 +29,9 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
 bool inspect(BeadPrefab* bead_prefab) {
     bool changed = false;
     ImGui::PathSelect("File", &bead_prefab->file_path, "resources/drops", FileType_Drop, true);
+
+    changed |= inspect_dependencies(bead_prefab->dependencies, bead_prefab->file_path);
+    
     changed |= ImGui::EnumCombo("Type", &bead_prefab->type);
     changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, "resources/models", FileType_Model, true);
     changed |= ImGui::DragFloat("Scale", &bead_prefab->scale, 0.01f);

@@ -18,9 +18,11 @@ enum TileType {
 };
 
 struct TilePrefab {
+    string file_path;
+    vector<string> dependencies;
+    
     TileType type;
     string model_path;
-    string file_path;
     v3 visual_offset = v3(0.5f, 0.5f, 0.0f);
     uset<v3i> solids;
 

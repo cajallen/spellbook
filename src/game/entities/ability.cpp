@@ -102,7 +102,7 @@ void Ability::lizard_turn_to_target() {
     if (lizard) {
         v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
         float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
-        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
+        scene->registry.get<LogicTransform>(caster).yaw = ang;
     }
 }
 

@@ -71,12 +71,19 @@ template<typename T, typename InspectFunc, typename InsertFunc>
 bool OrderedVector(spellbook::vector<T>& values, InspectFunc callback, InsertFunc insert_callback, bool show_indices) {
     bool changed = false;
 
-    bool pressed = false;
-    if (ImGui::Button("  " ICON_FA_PLUS "  Add  ")) {
-        pressed = true;
-        changed = true;
+    bool insert_button = true;
+    if constexpr(std::is_constructible<bool, InsertFunc>::value) {
+        if (!insert_callback)
+            insert_button = false;
     }
-    insert_callback(values, pressed);
+    if (insert_button) {
+        bool pressed = false;
+        if (ImGui::Button("  " ICON_FA_PLUS "  Add  ")) {
+            pressed = true;
+            changed = true;
+        }
+        insert_callback(values, pressed);
+    }
     
     if (ImGui::BeginTable("vector_table", show_indices ? 5 : 4)) {
         if (show_indices)
@@ -113,6 +120,50 @@ bool OrderedVector(spellbook::vector<T>& values, InspectFunc callback, InsertFun
                     changed = true;
                 }
             }
+            ImGui::TableNextColumn();
+
+            if (ImGui::Button(ICON_FA_TIMES, {24.f, 0.f})) {
+                values.remove_index(i, false);
+                changed = true;
+                i--;
+            }
+            
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    return changed;
+}
+
+template<typename T, typename InspectFunc, typename InsertFunc>
+bool UnorderedVector(spellbook::vector<T>& values, InspectFunc callback, InsertFunc insert_callback, bool show_indices) {
+    bool changed = false;
+
+    bool pressed = false;
+    if (ImGui::Button("  " ICON_FA_PLUS "  Add  ")) {
+        pressed = true;
+        changed = true;
+    }
+    insert_callback(values, pressed);
+
+    float table_width = ImGui::GetContentRegionAvail().x;
+    if (ImGui::BeginTable("vector_table", show_indices ? 3 : 2, 0, ImVec2{table_width, 0})) {
+        if (show_indices)
+            ImGui::TableSetupColumn("indices", ImGuiTableColumnFlags_WidthFixed, 16.0f);
+        ImGui::TableSetupColumn("inspect", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("remove", ImGuiTableColumnFlags_WidthFixed, 28.0f);
+        for (int i = 0; i < values.size(); i++) {
+            ImGui::PushID(i);
+            
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+
+            if (show_indices) {
+                ImGui::Text("%d", i);
+                ImGui::TableNextColumn();
+            }
+
+            changed |= callback(values[i]);
             ImGui::TableNextColumn();
 
             if (ImGui::Button(ICON_FA_TIMES, {24.f, 0.f})) {

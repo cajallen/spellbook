@@ -172,6 +172,16 @@ bool PathSelect(const string& hint, string* out, const string& base_folder, spel
 bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType file_type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     if (!fs::exists(base_folder))
         fs::create_directory(base_folder);
+
+    bool has_width = false;
+    float desired_width = 0.0f;
+    if (GImGui->NextItemData.Flags & ImGuiNextItemDataFlags_HasWidth) {
+        float hint_width = ImGui::CalcTextSize(hint.c_str(), 0, true).x;
+        desired_width = GImGui->NextItemData.Width - hint_width;
+        has_width = true;
+        GImGui->NextItemData.Flags &= ~ImGuiNextItemDataFlags_HasWidth;
+    }
+    
     
     bool changed = false;
     PushID(hint.c_str());
@@ -181,6 +191,9 @@ bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, 
             OpenPopup("File Select");
         SameLine();
         string out_string = out->string();
+        if (has_width) {
+            ImGui::SetNextItemWidth(desired_width);
+        }
         if (InputText(hint.c_str(), &out_string)) {
             *out = fs::path(out_string);
             changed = true;

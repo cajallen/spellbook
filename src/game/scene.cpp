@@ -114,7 +114,7 @@ void Scene::gridslot_cleanup(entt::registry& registry, entt::entity entity) {
 void Scene::setup(const string& input_name) {
     name = input_name;
 	render_scene.name = name + "::render_scene";
-	camera = Camera(v3(-8.0f, 0.0f, 4.0f), math::d2r(euler{0.0f, -30.0f}));
+	camera = Camera(v3(-8.0f, 8.0f, 6.0f), math::d2r(euler{-45.0f, -30.0f}));
 	render_scene.viewport.name	 = render_scene.name + "::viewport";
 	render_scene.viewport.camera = &camera;
 	render_scene.viewport.setup();
@@ -202,6 +202,7 @@ void Scene::update() {
     scene_vertical_offset_system(this);
     area_trigger_system(this);
     enemy_ik_controller_system(this);
+    attachment_transform_system(this);
 
     caster_system(this);
     projectile_system(this);

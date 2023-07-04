@@ -59,7 +59,6 @@ void   file_dump(const json& json, const string& file_name);
 string dump_json(const json& json);
 void   delete_json(json& j);
 
-
 template <typename JsonT> json_value                   to_jv(const vector<JsonT>& _vector);
 template <typename JsonT> json_value                   to_jv(const vector<shared_ptr<JsonT>>& _vector);
 template <typename JsonT1, typename JsonT2> json_value to_jv(umap<JsonT1, JsonT2> _map);
@@ -110,22 +109,7 @@ json_value to_jv(const std::array<JsonT, N>& _array) {
     vector<json_value> _list = {};
     for (const JsonT& e : _array) {
         json_value jv  = to_jv(e);
-        bool       add = true;
-        visit(overloaded{
-                [&](const json& j) {
-                    if (j.size() == 0)
-                        add = false;
-                },
-                [&](const vector<json_value>& jvs) {
-                    if (jvs.size() == 0)
-                        add = false;
-                },
-                [](auto a) {
-                }
-            },
-            jv.value);
-        if (add)
-            _list.push_back(to_jv(e));
+        _list.push_back(to_jv(e));
     }
     json_value jv;
     jv.value = json_variant{_list};

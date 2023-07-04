@@ -49,6 +49,7 @@ struct LevelSpawnInfo {
 
 struct SpawnerPrefab {
     string file_path;
+    vector<string> dependencies;
 
     LevelSpawnInfo level_spawn_info;
     vector<id_ptr<RoundSpawnInfo>> rounds;

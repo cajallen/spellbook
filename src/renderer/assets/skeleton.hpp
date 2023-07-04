@@ -48,6 +48,7 @@ struct BonePrefab {
 
 struct SkeletonPrefab {
     string file_path;
+    vector<string> dependencies;
 
     vector<id_ptr<BonePrefab>> bones;
     array<vector<AnimationFrame>, AnimationStateCount> animations;

@@ -2,13 +2,15 @@
 
 #include <lz4.h>
 
+#include "game/game.hpp"
+#include "game/game_file.hpp"
 #include "general/logger.hpp"
 
 namespace spellbook {
 
 MeshCPU load_mesh(const string& file_name) {
     // TODO: CompressionMode
-    AssetFile asset_file = load_asset_file(file_name);
+    AssetFile& asset_file = game.asset_system.load_asset(to_resource_path(file_name).string());
 
     constexpr array expected_type = {'M','S','H'};
     check_else(asset_file.version == 3 && asset_file.type == expected_type)

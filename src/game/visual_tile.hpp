@@ -70,6 +70,8 @@ struct VisualTilePrefab {
 
 struct VisualTileSet {
     string file_path;
+    vector<string> dependencies;
+    
     vector<VisualTilePrefab> tiles;
 };
 

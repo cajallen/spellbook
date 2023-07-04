@@ -23,10 +23,12 @@ enum EnemyType {
 };
 
 struct EnemyPrefab {
+    string file_path;
+    vector<string> dependencies;
+    
     EnemyType type = EnemyType_Empty;
     string base_model_path = "models/enemy_spider/spider_base.sbmod";
     string attachment_model_path;
-    string file_path;
     string hurt_path;
     
     float max_health = 10.0f;
@@ -83,6 +85,7 @@ void traveler_reset_system(Scene* scene);
 void travel_system(Scene* scene);
 void enemy_ik_controller_system(Scene* scene);
 void enemy_decollision_system(Scene* scene);
+void attachment_transform_system(Scene* scene);
 
 v3 predict_pos(Traveler& traveler, v3 pos, float time);
 

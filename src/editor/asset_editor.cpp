@@ -336,7 +336,7 @@ void AssetEditor::window(bool* p_open) {
     ZoneScoped;
     
     if (ImGui::Begin("Asset Editor", p_open)) {
-        if (ImGui::BeginTabBar("Asset Types")) {
+        if (ImGui::BeginTabBar("Asset Types", ImGuiTabBarFlags_FittingPolicyScroll)) {
             asset_tab(*this, ICON_FA_SITEMAP " Model", Tab_Model, &model_cpu, [this](bool changed) {
                 if (model_cpu->skeleton != nullptr) {
                     PoseController* pose_controller = nullptr;
@@ -412,6 +412,7 @@ void AssetEditor::window(bool* p_open) {
             });
             asset_tab(*this, ICON_FA_CUBES " Tile Set", Tab_TileSet, &tile_set);
             asset_tab(*this, ICON_FA_CIRCLE " Drop", Tab_Drop, &bead_prefab);
+            asset_tab(*this, ICON_FA_MAP " Map", Tab_Map, &map_prefab);
 
             ImGui::EndTabBar();
         }

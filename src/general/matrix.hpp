@@ -108,15 +108,15 @@ struct m33 {
         : data {_00, _01, _02, _10, _11, _12, _20, _21, _22} {}
 
     constexpr m33(const m44& other)
-        : data {other.cr(0, 0),
-              other.cr(0, 1),
-              other.cr(0, 2),
-              other.cr(1, 0),
-              other.cr(1, 1),
-              other.cr(1, 2),
-              other.cr(2, 0),
-              other.cr(2, 1),
-              other.cr(2, 2)} {}
+        : data {other.rc(0, 0),
+              other.rc(0, 1),
+              other.rc(0, 2),
+              other.rc(1, 0),
+              other.rc(1, 1),
+              other.rc(1, 2),
+              other.rc(2, 0),
+              other.rc(2, 1),
+              other.rc(2, 2)} {}
 
     constexpr static m33 identity() {
         m33 mat = {};

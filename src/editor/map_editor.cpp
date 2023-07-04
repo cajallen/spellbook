@@ -5,6 +5,7 @@
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
+#include "console.hpp"
 #include "pose_widget.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
@@ -321,6 +322,8 @@ void MapEditor::window(bool* p_open) {
         if (ImGui::Button("Play")) {
             p_scene->audio.play_sound("audio/page_flip.flac", {.global = true, .volume = 0.3f});
 
+            console({.str="Playing map..."});
+            
             ADD_EDITOR_SCENE(GameScene);
             auto game_scene = (GameScene*) EditorScenes::values().back();
             game_scene->setup(map_prefab);

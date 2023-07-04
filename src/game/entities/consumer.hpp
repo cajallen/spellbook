@@ -11,6 +11,8 @@ namespace spellbook {
 
 struct ConsumerPrefab {
     string file_path;
+    vector<string> dependencies;
+    
     string shrine_model_path;
     string egg_model_path;
 };

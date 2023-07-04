@@ -28,9 +28,11 @@ enum LizardType {
 };
 
 struct LizardPrefab {
+    string file_path;
+    vector<string> dependencies;
+    
     LizardType type = LizardType_Empty;
     string model_path;
-    string file_path;
     
     v3 default_direction = v3(0,1,0);
     f32 max_health = 1.0f;

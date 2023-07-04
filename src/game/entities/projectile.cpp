@@ -31,27 +31,25 @@ entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const strin
 
 void projectile_system(Scene* scene) {
     auto projectile_view = scene->registry.view<Projectile, LogicTransform>();
-    for (auto [entity, projectile, l_transform] : projectile_view.each()) {
+    for (auto [entity, projectile, logic_tfm] : projectile_view.each()) {
         // Velocity and movement 
-        v3 vec_to = v3(projectile.target) - l_transform.position;
+        v3 vec_to = v3(projectile.target) - logic_tfm.position;
         v3 velocity_dir = math::normalize(vec_to);
         v3 velocity = velocity_dir * math::min(projectile.speed.value() * scene->delta_time, math::length(vec_to));
-        l_transform.position += velocity;
+        logic_tfm.position += velocity;
 
         // Alignment
         if (math::length(projectile.alignment) > 0.0f) {
-            float yaw = math::angle_difference(projectile.alignment.xy, velocity_dir.xy);
-            
-            l_transform.rotation = euler{.yaw = yaw};
+            logic_tfm.yaw = math::angle_difference(projectile.alignment.xy, velocity_dir.xy);
             if (projectile.first_frame) {
-                auto m_transform = scene->registry.try_get<ModelTransform>(entity);
-                if (m_transform)
-                    m_transform->set_rotation(l_transform.rotation);
+                auto model_tfm = scene->registry.try_get<ModelTransform>(entity);
+                if (model_tfm)
+                    model_tfm->set_rotation(math::to_quat(math::normal_yaw(logic_tfm.normal, logic_tfm.yaw)));
             }
         }
 
         // Trigger
-        float dist = math::distance(v3(projectile.target), l_transform.position);
+        float dist = math::distance(v3(projectile.target), logic_tfm.position);
         if (dist < 0.1f) {
             projectile.callback(entity);
             

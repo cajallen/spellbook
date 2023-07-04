@@ -157,6 +157,9 @@ void EmitterGPU::update_size() {
 bool inspect(Scene* scene, EmitterCPU* emitter) {
     bool changed = false;
     ImGui::PathSelect("File", &emitter->file_path, "resources", FileType_Emitter);
+
+    changed |= inspect_dependencies(emitter->dependencies, emitter->file_path);
+    
     PoseWidgetSettings settings {scene->render_scene};
     changed |= pose_widget((u64) emitter, &emitter->position, &emitter->rotation, settings);
     changed |= ImGui::DragFloat3("Offset", emitter->offset.data, 0.01f);

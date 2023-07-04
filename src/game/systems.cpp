@@ -118,9 +118,10 @@ void transform_system(Scene* scene) {
             // We disable links for dragging
             if (registry.any_of<Dragging>(entity))
                 continue;
-
-            quat logic_quat = math::to_quat(logic_tfm.rotation);
+            
+            quat logic_quat = math::to_quat(math::normal_yaw(logic_tfm.normal, logic_tfm.yaw));
             model_tfm.set_rotation(math::normalize(math::slerp(model_tfm.rotation, logic_quat, 0.5f)));
+            // model_tfm.set_rotation(logic_quat);
             model_tfm.set_translation(logic_tfm.position + link.offset + v3::Z * logic_tfm.step_up);
         }
     }
@@ -309,16 +310,16 @@ void emitter_system(Scene* scene) {
 
 void pickup_system(Scene* scene) {
     auto lizard_view = scene->registry.view<Lizard, LogicTransform>();
-    for (auto [entity, pickup, bead_transform] : scene->registry.view<Pickup, LogicTransform>().each()) {
-        v3 closest_position = bead_transform.position;
+    for (auto [entity, pickup, logic_tfm] : scene->registry.view<Pickup, LogicTransform>().each()) {
+        v3 closest_position = logic_tfm.position;
         float closest_distance = FLT_MAX;
         for (auto [lizard_entity, lizard, lizard_transform] : lizard_view.each()) {
-            float distance = math::length(bead_transform.position - lizard_transform.position);
+            float distance = math::length(logic_tfm.position - lizard_transform.position);
             if (distance < 0.2f) {
                 scene->player.bank.beads[pickup.bead_type]++;
                 scene->registry.emplace<Killed>(entity);
             } else {
-                if (math::abs(bead_transform.position.z - lizard_transform.position.z) >= 0.8f)
+                if (math::abs(logic_tfm.position.z - lizard_transform.position.z) >= 0.8f)
                     continue;
 
                 if (distance < closest_distance) {
@@ -329,16 +330,15 @@ void pickup_system(Scene* scene) {
         }
 
         if (closest_distance < 10.0f) {
-            v3 to_position = closest_position - bead_transform.position;
+            v3 to_position = closest_position - logic_tfm.position;
             to_position = math::normalize(to_position) * scene->delta_time * 2.0f;
-            bead_transform.position += to_position;
+            logic_tfm.position += to_position;
         }
 
         
         pickup.cycle_point = math::mod(pickup.cycle_point + 0.4f * scene->delta_time, 10.0f);
         
-        bead_transform.rotation.yaw = pickup.cycle_point * math::TAU;
-        bead_transform.rotation.pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f;
+        logic_tfm.yaw = pickup.cycle_point * math::TAU;
         scene->registry.get<ModelTransform>(entity).set_rotation(euler{
             .yaw = pickup.cycle_point * math::TAU,
             .pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f

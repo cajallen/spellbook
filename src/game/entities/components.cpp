@@ -55,6 +55,8 @@ void inspect_components(Scene* scene, entt::entity entity) {
     )
     INSPECT_COMPONENT(LogicTransform,
         ImGui::DragFloat3("Position", component->position.data, 0.01f);
+        ImGui::DragFloat3("Normal", component->normal.data, 0.01f);
+        ImGui::DragFloat("Yaw", &component->yaw, 0.01f);
     )
     INSPECT_COMPONENT(ModelTransform,
         bool changed = ImGui::DragFloat3("Translation", component->translation.data, 0.01f);

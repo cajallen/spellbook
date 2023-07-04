@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <functional>
+#include <memory>
 #include "general/string.hpp"
 #include "general/vector.hpp"
 

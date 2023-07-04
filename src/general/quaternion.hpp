@@ -187,6 +187,11 @@ quat slerp(const quat& q1, const quat& q2, float t);
 
 quat quat_between(const v3& from, const v3& to);
 
+template <>
+inline bool is_nan(quat value) {
+    return std::isnan(value.x) || std::isnan(value.y) || std::isnan(value.z) || std::isnan(value.w);
+}
+
 }
 
 euler string2quat(const string& word);

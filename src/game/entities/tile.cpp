@@ -23,7 +23,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
         scene->registry.emplace<ModelTransform>(entity, v3(location), quat(v3::Z, math::PI * 0.5f * float(rotation)));
         scene->registry.emplace<TransformLink>(entity, tile_prefab.visual_offset);
     }
-    scene->registry.emplace<LogicTransform>(entity, v3(location), euler{.yaw = math::PI * 0.5f * float(rotation)});
+    scene->registry.emplace<LogicTransform>(entity, v3(location), v3::Z, math::PI * 0.5f * float(rotation));
     switch (tile_prefab.type) {
         case (TileType_TowerSlot): {
             scene->registry.emplace<GridSlot>(entity, false, false, true);
@@ -33,6 +33,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
         } break;
         case (TileType_Ramp): {
             scene->registry.emplace<Name>(entity, fmt_("{}_{}", "tile", i++));
+            scene->registry.emplace<AddToInspect>(entity);
             switch (rotation) {
                 case 0: {
                     scene->registry.emplace<GridSlot>(entity, true, true, true, Direction_PosX);

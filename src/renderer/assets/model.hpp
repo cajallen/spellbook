@@ -23,6 +23,7 @@ struct SkeletonGPU;
 
 struct ModelCPU {
     string file_path;
+    vector<string> dependencies;
 
     struct Node {
         string name;

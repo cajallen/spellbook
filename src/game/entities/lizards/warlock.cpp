@@ -28,13 +28,7 @@ struct WarlockAttack : Attack {
 };
 
 void WarlockAttack::start() {
-    v3i caster_pos = math::round_cast(scene->registry.get<LogicTransform>(caster).position);
-    auto lizard = scene->registry.try_get<Lizard>(caster);
-    if (lizard) {
-        v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
-        float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
-        scene->registry.get<LogicTransform>(caster).rotation.yaw = ang;
-    }
+    lizard_turn_to_target();
 }
 
 void WarlockAttack::trigger() {
@@ -120,7 +114,7 @@ void WarlockSpell::trigger() {
     auto& skeleton = model->model_cpu->skeleton;
 
     v3 pot_pos = warlock_logic_tfm.position;
-    v3 pot_dir = v3(math::cos(warlock_logic_tfm.rotation.yaw), math::sin(warlock_logic_tfm.rotation.yaw), 0.0f);
+    v3 pot_dir = v3(math::cos(warlock_logic_tfm.yaw), math::sin(warlock_logic_tfm.yaw), 0.0f);
     Bone* pot_bone = skeleton->find_bone("Pot");
     if (pot_bone) {
         m44 t =  transform->get_transform() * model->model_cpu->root_node->cached_transform * pot_bone->transform();

@@ -27,7 +27,8 @@ struct Model {
 
 struct LogicTransform {
     v3 position = v3(0.0f);
-    euler rotation = euler();
+    v3 normal = v3::Z;
+    float yaw;
     float step_up = 0.0f;
 };
 
@@ -38,8 +39,6 @@ struct ModelTransform {
     m44 transform;
     bool dirty = true;
 
-    // ModelTransform();
-    // ModelTransform(v3 translation, euler rotation = {}, v3 scale = {});
     void set_translation(const v3& v);
     void set_rotation(const euler& e);
     void set_rotation(const quat& q);

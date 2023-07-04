@@ -180,7 +180,11 @@ bool inspect(LevelSpawnInfo* level_spawn_info) {
 
 bool inspect(SpawnerPrefab* spawner_prefab) {
     bool changed = false;
+    
     ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources/spawners", FileType_Spawner, true);
+
+    changed |= inspect_dependencies(spawner_prefab->dependencies, spawner_prefab->file_path);
+    
     changed |= ImGui::PathSelect("Base Model", &spawner_prefab->model_file_path, "resources/models", FileType_Model);
 
     ImGui::Text("Level Spawn Info");

@@ -1,5 +1,6 @@
 ﻿#include "game_file.hpp"
 
+#include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
 #include "renderer/assets/model.hpp"
 #include "renderer/assets/mesh.hpp"
@@ -16,6 +17,16 @@
 #include "game/entities/spawner.hpp"
 
 namespace spellbook {
+
+FileType file_type_from_path(const fs::path& path) {
+    string extension_string = path.extension().string();
+    for (u32 i = 0; i < magic_enum::enum_count<FileType>(); i++) {
+        FileType type = (FileType) i;
+        if (extension(type) == extension_string)
+            return type;
+    }
+    return FileType_Unknown;
+}
 
 string extension(FileType type) {
     switch (type) {
@@ -50,7 +61,6 @@ string extension(FileType type) {
         case (FileType_Skeleton):
             return ".sbskl";
     }
-    log_error("extension NYI");
     return "NYI";
 }
 
@@ -147,14 +157,38 @@ FileType from_typeinfo(const type_info& input) {
     return FileType_Unknown;
 }
 
+FileCategory file_category(FileType type) {
+    switch (type) {
+        case (FileType_Texture):
+        case (FileType_Mesh):
+            return FileCategory_Asset;
+        case (FileType_General):
+        case (FileType_Map):
+        case (FileType_Model):
+        case (FileType_Skeleton):
+        case (FileType_Material):
+        case (FileType_Lizard):
+        case (FileType_Tile):
+        case (FileType_Enemy):
+        case (FileType_Spawner):
+        case (FileType_Consumer):
+        case (FileType_Emitter):
+        case (FileType_VisualTileSet):
+        case (FileType_Drop):
+            return FileCategory_Json;
+        default:
+            return FileCategory_Other;
+    }
+}
+
 fs::path to_resource_path(const fs::path& path) {
+    fs::path ret;
     if (path.is_relative()) {
         if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(fs::current_path()).string()))
             return (fs::current_path() / path).string();
         return (game.resource_folder / path).string();
     }
-    else
-        return path.string();
+    return path;
 }
 
 fs::path from_resource_path(const fs::path& path) {
@@ -167,5 +201,44 @@ fs::path from_resource_path(const fs::path& path) {
         return path.lexically_proximate(game.resource_folder);
     }
 }
+
+bool inspect_dependencies(vector<string>& dependencies, const string& current_path) {
+    bool changed = false;
+    
+    if (ImGui::TreeNode("Dependencies")) {
+        if (ImGui::Button("Auto Populate")) {
+            string contents = get_contents(to_resource_path(current_path).string());
+
+            u64 start_at = 0;
+            while (start_at < contents.size()) {
+                u64 sb_index = contents.find(".sb", start_at);
+                if (sb_index == string::npos)
+                    break;
+                u64 start_quote = contents.rfind('"', sb_index) + 1;
+                u64 end_quote = contents.find_first_of('"', sb_index);
+                dependencies.push_back(string(contents.data() + start_quote, end_quote - start_quote));
+                
+                start_at = end_quote;
+            }
+            
+        }
+        changed |= ImGui::UnorderedVector(dependencies,
+            [](string& dep) {
+                float width = ImGui::GetContentRegionAvail().x;
+                float text_width = ImGui::CalcTextSize("Path").x;
+                ImGui::SetNextItemWidth(width - 8.f - text_width);
+                return ImGui::PathSelect("Path", &dep, "resources", FileType_Unknown);
+            },
+            [](vector<string>& deps, bool pressed) {
+                if (pressed) {
+                    deps.emplace_back();
+                }
+            },
+            true);
+        ImGui::TreePop();
+    }
+    return changed;
+}
+
 
 }

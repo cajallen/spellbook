@@ -25,6 +25,7 @@ namespace spellbook {
 
 ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
     file_path = oth.file_path;
+    dependencies = oth.dependencies;
     umap<u64, u64> old_to_new;
     for (id_ptr<Node> old_node : oth.nodes) {
         id_ptr<Node> new_node = id_ptr<Node>::emplace(
@@ -88,6 +89,8 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
     ImGui::PathSelect("File", &model->file_path, "resources/models", FileType_Model, false);
 
     bool changed = false;
+
+    changed |= inspect_dependencies(model->dependencies, model->file_path);
     
     std::function<void(id_ptr<ModelCPU::Node>)> traverse;
     traverse = [&traverse, &model, &changed](id_ptr<ModelCPU::Node> node) {
@@ -165,6 +168,7 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool f
 template<>
 bool save_asset(const ModelCPU& model) {
     json j;
+    j["dependencies"] = make_shared<json_value>(to_jv(model.dependencies));
     j["root_node"] = make_shared<json_value>(to_jv(model.root_node));
 
     vector<json_value> json_nodes;
@@ -200,7 +204,7 @@ ModelCPU& load_asset(const string& input_path, bool assert_exists, bool clear_ca
         return *asset_cache<ModelCPU>()[absolute_path_string];
 
     ModelCPU& model = *asset_cache<ModelCPU>().emplace(absolute_path_string, std::make_unique<ModelCPU>()).first->second;
-
+    
     string ext = absolute_path.extension().string();
     bool exists = fs::exists(absolute_path_string);
     bool corrext = ext == extension(from_typeinfo(typeid(ModelCPU)));
@@ -211,10 +215,11 @@ ModelCPU& load_asset(const string& input_path, bool assert_exists, bool clear_ca
         check_else(exists && corrext)
             return model;
     }
-    
-    json      j = parse_file(absolute_path.string());
-    model.file_path = input_path;
 
+    json& j = game.asset_system.load_json(absolute_path_string);
+    model.file_path = input_path;
+    model.dependencies = game.asset_system.load_dependencies(j);
+    
     if (j.contains("nodes")) {
         for (const json_value& jv : j["nodes"]->get_list()) {
             id_ptr<ModelCPU::Node> node = from_jv_impl(jv, (id_ptr<ModelCPU::Node>*) 0);
@@ -962,6 +967,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
 
             TextureCPU texture_cpu = {
                 color_path.string(),
+                {},
                 v2i{baseImage.width, baseImage.height},
                 format,
                 vector<u8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())

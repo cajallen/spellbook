@@ -9,7 +9,8 @@
 namespace spellbook {
 
 struct TextureCPU {
-    string file_path = "";
+    string file_path;
+    vector<string> dependencies;
 
     v2i         size   = {};
     vuk::Format format = {};

@@ -75,6 +75,8 @@ bool inspect(MaterialCPU* material) {
     bool changed = false;
     ImGui::PathSelect("File", &material->file_path, "resources", FileType_Material);
 
+    changed |= inspect_dependencies(material->dependencies, material->file_path);
+    
     changed |= ImGui::ColorEdit4("color_tint", material->color_tint.data, ImGuiColorEditFlags_DisplayHSV);
     changed |= ImGui::ColorEdit4("emissive_tint", material->emissive_tint.data, ImGuiColorEditFlags_DisplayHSV);
     changed |= ImGui::DragFloat("roughness_factor", &material->roughness_factor, 0.01f);

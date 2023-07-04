@@ -19,6 +19,7 @@ struct RenderScene;
 
 struct EmitterCPU {
     string file_path;
+    vector<string> dependencies;
     
     v3 offset = v3(0.0f);
     v3 position = v3(0.0f);

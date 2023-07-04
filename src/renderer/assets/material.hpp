@@ -17,6 +17,7 @@ namespace spellbook {
 
 struct MaterialCPU {
     string file_path;
+    vector<string> dependencies;
 
     Color color_tint       = palette::white;
     Color emissive_tint    = palette::black;

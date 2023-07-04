@@ -1,6 +1,7 @@
 #pragma once
 
 #include "editor_scene.hpp"
+#include "game/map.hpp"
 #include "game/scene.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
@@ -31,7 +32,8 @@ struct AssetEditor : EditorScene {
         Tab_Consumer,
         Tab_Emitter,
         Tab_TileSet,
-        Tab_Drop
+        Tab_Drop,
+        Tab_Map
     };
 
     // 3 modes, owned, cache, instanced
@@ -59,6 +61,7 @@ struct AssetEditor : EditorScene {
     EnemyPrefab enemy_prefab;
     SpawnerPrefab spawner_prefab;
     ConsumerPrefab consumer_prefab;
+    MapPrefab map_prefab;
 
     VisualTileSet tile_set;
 
