@@ -33,5 +33,6 @@ A tower defense game where you assemble a tribe of lizards to defend against rob
 ##### Rendering
 - [ ] Metallic
 - [ ] * Bloom
+- [ ] * Custom particle shaders
 
 Items marked with an asterisk (*) are less assured than the others.
