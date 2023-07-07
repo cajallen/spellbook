@@ -15,12 +15,14 @@ A tower defense game where you assemble a tribe of lizards to defend against rob
 - [ ] ~7 more 
 ##### Maps
 - [x] Desert Tile Set (1 map)
-- [ ] Green Tile Set
+- [ ] * Green Tile Set
 ##### Core
 - [ ] Respawning  
-- [ ] Dragging should swap units when one is placed onto another  
+- [ ] Drag swapping
 - [ ] Win / Loss state
 - [ ] Multiple Spawner / Shrine logic
+- [ ] Progression
+- [ ] * Items
 
 ### Engine
 ##### UI
@@ -28,3 +30,8 @@ A tower defense game where you assemble a tribe of lizards to defend against rob
 - [ ] HUD
 - [ ] Damage numbers
 - [ ] Win / Loss Screen
+##### Rendering
+- [ ] Metallic
+- [ ] * Bloom
+
+Items marked with an asterisk (*) are less assured than the others.
