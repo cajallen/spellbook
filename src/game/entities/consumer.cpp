@@ -45,6 +45,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     scene->registry.emplace<Egg>(egg_entity);
     scene->registry.emplace<Draggable>(egg_entity, 0.2f);
     scene->registry.emplace<AddToInspect>(egg_entity);
+    scene->registry.emplace<Grounded>(egg_entity);
     
     return shrine_entity;
 }

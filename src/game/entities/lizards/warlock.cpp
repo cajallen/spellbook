@@ -8,7 +8,6 @@
 #include "game/pose_controller.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
-#include "game/entities/impair.hpp"
 #include "game/entities/lizard.hpp"
 #include "game/entities/projectile.hpp"
 #include "game/entities/targeting.hpp"

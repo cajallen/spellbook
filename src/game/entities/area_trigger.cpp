@@ -51,6 +51,7 @@ bool area_trigger_simple_targeting(AreaTrigger& area_trigger) {
 }
 
 void area_trigger_system(Scene* scene) {
+    ZoneScoped;
     for (auto [entity, l_transform, area_trigger] : scene->registry.view<LogicTransform, AreaTrigger>().each()) {
         if (!area_trigger.triggered && area_trigger.targeting(area_trigger)) {
             area_trigger.triggered = true;

@@ -35,7 +35,8 @@ void MeshCPU::fix_tangents() {
 }
 
 string upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
-    assert_else(!mesh_cpu.file_path.empty());
+    if (mesh_cpu.file_path.empty())
+        return mesh_cpu.file_path;
     u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_path.data(), mesh_cpu.file_path.size());
     if (game.renderer.mesh_cache.contains(mesh_cpu_hash))
         return mesh_cpu.file_path;

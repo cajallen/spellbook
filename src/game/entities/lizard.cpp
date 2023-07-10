@@ -3,7 +3,6 @@
 #include <imgui.h>
 #include <entt/entity/entity.hpp>
 
-#include "impair.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
@@ -48,8 +47,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     scene->registry.emplace<Draggable>(entity, 0.5f);
     
     ModelTransform& model_tfm = scene->registry.get<ModelTransform>(entity);
-    model_tfm.scale = v3(lizard_prefab.scale);
-    model_tfm.dirty = true;
+    model_tfm.set_scale(v3(lizard_prefab.scale));
     
     PoseController* poser = scene->registry.try_get<PoseController>(entity);
     if (poser)

@@ -118,11 +118,13 @@ void transform_system(Scene* scene) {
             // We disable links for dragging
             if (registry.any_of<Dragging>(entity))
                 continue;
-            
+
+            Grounded* grounded = registry.try_get<Grounded>(entity);
+            v3 step_up = grounded ? v3::Z * grounded->step_up : v3{};
             quat logic_quat = math::to_quat(math::normal_yaw(logic_tfm.normal, logic_tfm.yaw));
             model_tfm.set_rotation(math::normalize(math::slerp(model_tfm.rotation, logic_quat, 0.5f)));
             // model_tfm.set_rotation(logic_quat);
-            model_tfm.set_translation(logic_tfm.position + link.offset + v3::Z * logic_tfm.step_up);
+            model_tfm.set_translation(logic_tfm.position + link.offset + step_up);
         }
     }
     {
@@ -131,12 +133,13 @@ void transform_system(Scene* scene) {
         for (auto [entity, model, transform] : registry.view<Model, ModelTransform>().each()) {
             // Note, this isn't correct, if the transform is accessed early the dirty flag will clear,
             // but it's just for investigating optimization options
-            // if (!transform.dirty)
-            //     continue;
+            if (!transform.renderable_dirty)
+                continue;
             for (auto& [node, renderable] : model.model_gpu.renderables) {
                 ZoneScoped;
                 renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
             }
+            transform.renderable_dirty = false;
         }
     }
 }
@@ -339,10 +342,10 @@ void pickup_system(Scene* scene) {
         pickup.cycle_point = math::mod(pickup.cycle_point + 0.4f * scene->delta_time, 10.0f);
         
         logic_tfm.yaw = pickup.cycle_point * math::TAU;
-        scene->registry.get<ModelTransform>(entity).set_rotation(euler{
+        scene->registry.get<ModelTransform>(entity).set_rotation(math::to_quat(euler{
             .yaw = pickup.cycle_point * math::TAU,
             .pitch = math::sin(pickup.cycle_point * math::TAU) * 0.05f
-        });
+        }));
         scene->registry.get<TransformLink>(entity).offset.z = 0.1f * math::sin(pickup.cycle_point * math::TAU) + 0.3f;
     }
 }
@@ -392,8 +395,9 @@ float calculate_step_up(Scene* scene, entt::entity id, v3 pos) {
 }
 
 void scene_vertical_offset_system(Scene* scene) {
-    for (auto [entity, logic_tfm] : scene->registry.view<LogicTransform>().each()) {
-        logic_tfm.step_up = calculate_step_up(scene, entity, logic_tfm.position);
+    ZoneScoped;
+    for (auto [entity, logic_tfm, grounded] : scene->registry.view<LogicTransform, Grounded>().each()) {
+        grounded.step_up = calculate_step_up(scene, entity, logic_tfm.position);
     }
 }
 

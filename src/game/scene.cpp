@@ -3,6 +3,7 @@
 #include <tracy/Tracy.hpp>
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
+#include <entt/core/hashed_string.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
@@ -20,11 +21,13 @@
 #include "game/entities/consumer.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
-#include "game/entities/impair.hpp"
+#include "game/entities/tags.hpp"
 #include "game/entities/projectile.hpp"
 #include "general/astar.hpp"
 
 namespace spellbook {
+
+using namespace entt::literals;
 
 Scene::Scene() {}
 Scene::~Scene() {}
@@ -36,9 +39,9 @@ void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
 }
 
 void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
-    auto impairs = registry.try_get<Impairs>(entity);
-    if (impairs) {
-        apply_untimed_impair(*impairs, Dragging::magic_number | u32(entity), ImpairType_NoCast);
+    auto tags = registry.try_get<Tags>(entity);
+    if (tags) {
+        tags->apply_tag(Dragging::get_drag_tag_id(entity), "no_cast"_hs);
     }
 
     auto caster = registry.try_get<Caster>(entity);
@@ -145,45 +148,12 @@ void Scene::setup(const string& input_name) {
 void Scene::update() {
 	ZoneScoped;
     
-    delta_time = Input::delta_time * time_scale;
     frame++;
+    delta_time = Input::delta_time * time_scale;
     time += delta_time;
 
-    map_data.clear();
-    for (auto [entity, slot, logic_tfm] : registry.view<GridSlot, LogicTransform>().each()) {
-        if (slot.ramp) {
-            map_data.ramps[v3i(logic_tfm.position)] = slot.direction;
-            continue;
-        }
-        if (!slot.standable)
-            map_data.unstandable_solids.set(v3i(logic_tfm.position));
-        else if (slot.path)
-            map_data.path_solids.set(v3i(logic_tfm.position));
-        else
-            map_data.slot_solids.set(v3i(logic_tfm.position));
-        map_data.solids.set(v3i(logic_tfm.position));
-    }
-    paths.clear();
-    for (auto [spawner_e, spawner, spawner_tfm] : registry.view<Spawner, LogicTransform>().each()) {
-        for (auto [consumer_e, consumer, consumer_tfm] : registry.view<Shrine, LogicTransform>().each()) {
-            Path path = navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
-            if (math::distance(path.get_destination(), consumer_tfm.position) < 0.1f) {
-                paths.emplace_back(spawner_e, consumer_e, std::move(path));
-            }
-        }
-    }
-    for (auto& path_info : paths) {
-        vector<FormattedVertex> vertices;
-        float x = time * 6.0f;
-        for (v3& v : path_info.path.waypoints) {
-            float hue = 190.0f + 10.0f * math::sin(x);
-            float saturation = 0.3f + 0.1f * math::sin(x);
-            float width = 0.03f - 0.01f * math::clamp(math::sin(x), -1.0f, 0.0f);
-            vertices.emplace_back(v + v3(0.5f, 0.5f, 0.05f), Color::hsv(hue, saturation, 0.8f), width);
-            x += 1.5f;
-        }
-        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, true);
-    }
+    map_data.update(registry);
+    update_paths(paths, *this);
     
     update_timers(this);
     
@@ -224,6 +194,61 @@ void Scene::update() {
         preview_3d_components(this, entity);
     }
 }
+
+void MapData::update(entt::registry& registry) {
+    clear();
+    for (auto [entity, slot, logic_tfm] : registry.view<GridSlot, LogicTransform>().each()) {
+        if (slot.ramp) {
+            ramps[v3i(logic_tfm.position)] = slot.direction;
+            continue;
+        }
+        if (!slot.standable)
+            unstandable_solids.set(v3i(logic_tfm.position));
+        else if (slot.path)
+            path_solids.set(v3i(logic_tfm.position));
+        else
+            slot_solids.set(v3i(logic_tfm.position));
+        solids.set(v3i(logic_tfm.position));
+    }
+}
+    
+void MapData::clear() {
+    solids.clear();
+    path_solids.clear();
+    slot_solids.clear();
+    unstandable_solids.clear();
+    ramps.clear();
+}
+
+void update_paths(vector<PathInfo>& paths, Scene& scene) {
+    ZoneScoped;
+    paths.clear();
+    for (auto [spawner_e, spawner, spawner_tfm] : scene.registry.view<Spawner, LogicTransform>().each()) {
+        for (auto [consumer_e, consumer, consumer_tfm] : scene.registry.view<Shrine, LogicTransform>().each()) {
+            Path path = scene.navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
+            if (math::distance(path.get_destination(), consumer_tfm.position) < 0.1f) {
+                paths.emplace_back(spawner_e, consumer_e, std::move(path));
+            }
+        }
+    }
+}
+
+void render_paths(vector<PathInfo>& paths, RenderScene& render_scene, float time) {
+    ZoneScoped;
+    for (auto& path_info : paths) {
+        vector<FormattedVertex> vertices;
+        float x = time * 6.0f;
+        for (v3& v : path_info.path.waypoints) {
+            float hue = 190.0f + 10.0f * math::sin(x);
+            float saturation = 0.3f + 0.1f * math::sin(x);
+            float width = 0.03f - 0.01f * math::clamp(math::sin(x), -1.0f, 0.0f);
+            vertices.emplace_back(v + v3(0.5f, 0.5f, 0.05f), Color::hsv(hue, saturation, 0.8f), width);
+            x += 1.5f;
+        }
+        render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, false);
+    }
+}
+
 
 void Scene::set_edit_mode(bool to) {
     render_scene.render_grid = false;
@@ -423,9 +448,9 @@ void Scene::select_entity(entt::entity entity) {
     if (!logic_tfm)
         return;
 
-    Impairs* impairs = registry.try_get<Impairs>(selected_entity);
-    if (impairs)
-        if (impairs->is_impaired(this, ImpairType_NoMove))
+    Tags* tags = registry.try_get<Tags>(selected_entity);
+    if (tags)
+        if (tags->has_tag("no_move"_hs))
             return;
     
     if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {

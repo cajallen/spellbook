@@ -29,20 +29,24 @@ struct LogicTransform {
     v3 position = v3(0.0f);
     v3 normal = v3::Z;
     float yaw;
-    float step_up = 0.0f;
+};
+
+struct Grounded {
+    float step_up;
 };
 
 struct ModelTransform {
     v3    translation = v3(0.0f);
     quat  rotation    = quat();
     v3    scale       = v3(1.0f);
-    m44 transform;
-    bool dirty = true;
+    m44   transform;
+    bool  transform_dirty = true;
+    bool  renderable_dirty = true;
 
     void set_translation(const v3& v);
-    void set_rotation(const euler& e);
     void set_rotation(const quat& q);
     void set_scale(const v3& v);
+    void set_dirty();
     const m44& get_transform();
 };
 
@@ -97,6 +101,10 @@ struct Dragging {
     
     v3 target_position = v3(0.0f);
     v3 potential_logic_position = v3(0.0f);
+
+    static u64 get_drag_tag_id(entt::entity entity) {
+        return u64(Dragging::magic_number) << 32ull | u64(entity);
+    }
 };
 
 struct Collision {

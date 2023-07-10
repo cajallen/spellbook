@@ -1,11 +1,15 @@
 ﻿#include "caster.hpp"
 
+#include <entt/core/hashed_string.hpp>
+
 #include "extension/fmt.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
-#include "game/entities/impair.hpp"
+#include "game/entities/tags.hpp"
 
 namespace spellbook {
+
+using namespace entt::literals;
 
 Caster::Caster(Scene* scene) {
     damage = std::make_unique<Stat>(scene);
@@ -26,15 +30,16 @@ bool Caster::casting() const {
 
 
 void caster_system(Scene* scene) {
+    ZoneScoped;
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
         if (caster.attack && !caster.casting() )
             caster.attack->targeting();
     }
 
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
-        Impairs* impairs = scene->registry.try_get<Impairs>(entity);
-        if (impairs)
-            if (impairs->is_impaired(scene, ImpairType_NoCast))
+        Tags* tags = scene->registry.try_get<Tags>(entity);
+        if (tags)
+            if (tags->has_tag("no_cast"_hs))
                 continue;
 
         if (caster.casting())

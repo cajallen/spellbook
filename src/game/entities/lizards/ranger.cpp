@@ -3,6 +3,7 @@
 #include "game/entities/lizards/lizard_builder.hpp"
 
 #include <entt/entity/entity.hpp>
+#include <entt/core/hashed_string.hpp>
 
 #include "editor/console.hpp"
 #include "extension/fmt.hpp"
@@ -15,7 +16,7 @@
 #include "game/entities/components.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/enemy.hpp"
-#include "game/entities/impair.hpp"
+#include "game/entities/tags.hpp"
 #include "game/entities/lizard.hpp"
 #include "game/entities/projectile.hpp"
 #include "game/entities/targeting.hpp"
@@ -23,11 +24,11 @@
 
 namespace spellbook {
 
-const float attack_projectile_speed = 6.0f;
-const float attack_damage = 3.0f;
-const float attack_vuln_amount = 1.0f;
+using namespace entt::literals;
 
-u64 vuln_id;
+constexpr float attack_projectile_speed = 6.0f;
+constexpr float attack_damage = 3.0f;
+constexpr float attack_vuln_amount = 1.0f;
 
 struct RangerAttack : Attack {
     using Attack::Attack;
@@ -40,7 +41,6 @@ struct RangerAttack : Attack {
 };
 
 void RangerAttack::start() {
-    vuln_id = hash_string("Ranger Basic Mark");
     lizard_turn_to_target();
 }
 
@@ -109,9 +109,9 @@ void RangerAttack::trigger() {
                 // Vulnerability
                 // Remove existing vulns
                 for (auto [entity, enemy, health] : scene->registry.view<Enemy, Health>().each()) {
-                    health.damage_taken_multiplier->remove_effect(vuln_id);
+                    health.damage_taken_multiplier->remove_effect(u32("ranger_mark"_hs));
                     auto& emitters = scene->registry.get<EmitterComponent>(entity);
-                    emitters.remove_emitter(vuln_id);
+                    emitters.remove_emitter(u32("ranger_mark"_hs));
                 }
                 // Select vuln
                 entt::entity select_enemy = entt::null;
@@ -126,12 +126,12 @@ void RangerAttack::trigger() {
                 // Apply vuln
                 if (scene->registry.valid(select_enemy)) {
                     Health& health = scene->registry.get<Health>(select_enemy);
-                    health.damage_taken_multiplier->add_effect(vuln_id, StatEffect{
+                    health.damage_taken_multiplier->add_effect(u64("ranger_mark"_hs), StatEffect{
                         .type = StatEffect::Type_Multiply,
                         .value = attack_vuln_amount
                     });
                     auto& emitters = scene->registry.get<EmitterComponent>(select_enemy);
-                    emitters.add_emitter(vuln_id, load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"));
+                    emitters.add_emitter(u64("ranger_mark"_hs), load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"));
                 }
             }
         }
@@ -187,7 +187,7 @@ int ranger_attack_entry_eval(Scene* scene, const uset<entt::entity>& units) {
             counter += 1;
         
         Health& health = scene->registry.get<Health>(entity);
-        bool marked = health.damage_taken_multiplier->effects.contains(vuln_id);
+        bool marked = health.damage_taken_multiplier->effects.contains(u64("ranger_mark"_hs));
         if (marked)
             counter += 3;
     }
@@ -253,17 +253,15 @@ void RangerSpell::trigger() {
                 
                 add_timer(area_trigger.scene, "Ranger Trap Arm Timer", [trap_entity, caster_entity](Timer* timer) {
                     AreaTrigger& area_trigger = timer->scene->registry.get<AreaTrigger>(trap_entity); 
-                    u64 root_id = hash_string("Ranger Trap Root");
-                    u64 silence_id = hash_string("Ranger Trap Silence");
-        
-                    LogicTransform& l_transform = timer->scene->registry.get<LogicTransform>(area_trigger.entity);
+                    LogicTransform& logic_tfm = timer->scene->registry.get<LogicTransform>(area_trigger.entity);
 
-                    uset<entt::entity> enemies = area_trigger.entry_gather(area_trigger, math::round_cast(l_transform.position));
+                    uset<entt::entity> enemies = area_trigger.entry_gather(area_trigger, math::round_cast(logic_tfm.position));
                     for (entt::entity enemy : enemies) {
                         damage(timer->scene, caster_entity, enemy, 2.0f, v3(0, 0, 1));
-        
-                        apply_timed_impair(timer->scene, enemy, root_id, ImpairType_NoMove, 2.0f);
-                        apply_timed_impair(timer->scene, enemy, silence_id, ImpairType_NoCast, 2.0f);
+
+                        Tags& tags = timer->scene->registry.get<Tags>(enemy);
+                        tags.apply_tag("no_move"_hs, "Ranger Trap Root"_hs, 3.0f);
+                        tags.apply_tag("no_cast"_hs, "Ranger Trap Silence"_hs, 3.0f);
                     }
                 }, true)->start(0.5f);
                 add_timer(area_trigger.scene, "Ranger Trap Dissipate Timer", [trap_entity](Timer* timer) {
@@ -284,7 +282,7 @@ void build_ranger(Scene* scene, entt::entity entity, const LizardPrefab& lizard_
     caster.attack->entry_gather_function = gather_enemies();
     caster.attack->entry_eval_function = ranger_attack_entry_eval;
 
-    caster.spell = std::make_unique<RangerSpell>(scene, entity, 1.0f, 1.0f);
+    caster.spell = std::make_unique<RangerSpell>(scene, entity, 0.5f, 0.5f);
     caster.spell->entry_gather_function = gather_enemies();
     caster.spell->entry_eval_function = basic_lizard_entry_eval;
 }

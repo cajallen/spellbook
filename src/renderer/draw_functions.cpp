@@ -335,7 +335,6 @@ MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) 
     do {
         if (!bitmask.get(v))
             continue;
-
         
         if (!bitmask.get(v + v3i::X) && !bitmask.get(v + v3i::Z)) {
             vertices.emplace_back(v3(v + v3i(1, 0, 1)), palette::spellbook_2, 0.03f);
@@ -397,6 +396,54 @@ MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) 
         if (!bitmask.get(v - v3i::X) && !bitmask.get(v + v3i::Y)) {
             vertices.emplace_back(v3(v + v3i(0, 1, 0)), palette::spellbook_2, 0.03f);
             vertices.emplace_back(v3(v + v3i(0, 1, 1)), palette::spellbook_2, 0.03f);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+    } while (math::iterate(v, rough_min, rough_max));
+
+    return generate_formatted_line(camera, vertices);
+}
+
+MeshCPU generate_outline(Camera* camera, const Bitmask3D& bitmask, const vector<v3i>& places, const Color& color, float thickness) {
+    vector<FormattedVertex> vertices;
+
+    Bitmask3D new_bitmask;
+    for (const v3i& place : places) {
+        // blocked
+        if (bitmask.get(place))
+            continue;
+        // over air
+        if (!bitmask.get(place - v3i::Z))
+            continue;
+
+        new_bitmask.set(place);
+    }
+
+    v3i rough_min = new_bitmask.rough_min();
+    v3i rough_max = new_bitmask.rough_max();
+
+    v3i v = rough_min;
+    do {
+        if (!new_bitmask.get(v))
+            continue;
+        
+        if (!new_bitmask.get(v + v3i::X)) {
+            vertices.emplace_back(v3(v + v3i(1, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(v + v3i(1, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!new_bitmask.get(v - v3i::X)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(v + v3i(0, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!new_bitmask.get(v + v3i::Y)) {
+            vertices.emplace_back(v3(v + v3i(0, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(v + v3i(1, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        }
+        if (!new_bitmask.get(v - v3i::Y)) {
+            vertices.emplace_back(v3(v + v3i(0, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
+            vertices.emplace_back(v3(v + v3i(1, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
             vertices.emplace_back(v3(), palette::clear, 0.0f);
         }
     } while (math::iterate(v, rough_min, rough_max));

@@ -40,13 +40,8 @@ struct MapData {
     Bitmask3D unstandable_solids;
     umap<v3i, Direction> ramps;
 
-    void clear() {
-        solids.clear();
-        path_solids.clear();
-        slot_solids.clear();
-        unstandable_solids.clear();
-        ramps.clear();
-    }
+    void update(entt::registry& registry);
+    void clear();
 };
 
 struct Scene {
@@ -110,6 +105,9 @@ struct Scene {
 
     void set_edit_mode(bool to);
 };
+
+void update_paths(vector<PathInfo>& paths, Scene& scene);
+void render_paths(vector<PathInfo>& paths, RenderScene& scene, float time);
 
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const string& emitter_path, float duration);
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, EmitterCPU emitter_cpu, float duration);

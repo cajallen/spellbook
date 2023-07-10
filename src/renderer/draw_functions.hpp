@@ -25,6 +25,7 @@ MeshCPU generate_icosphere(int subdivisions);
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices);
 MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex);
 MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask);
+MeshCPU generate_outline(Camera* camera, const Bitmask3D& bitmask, const vector<v3i>& places, const Color& color, float thickness);
 
 void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_1, v3 axis_2, Color color, float width);
 

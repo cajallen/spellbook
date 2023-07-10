@@ -2,6 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
+#include <entt/core/hashed_string.hpp>
 #include <imgui.h>
 
 #include "extension/fmt.hpp"
@@ -18,11 +19,13 @@
 #include "game/entities/consumer.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/enemy_ik.hpp"
-#include "game/entities/impair.hpp"
+#include "game/entities/tags.hpp"
 #include "game/entities/targeting.hpp"
 
 
 namespace spellbook {
+
+using namespace entt::literals;
 
 struct EnemyLaserAttack : Attack {
     std::shared_ptr<Timer> beam_animate;
@@ -119,8 +122,8 @@ void EnemyResistorAttack::targeting() {
 bool EnemyResistorAttack::can_cast() const {
     if (cooldown_timer && cooldown_timer->ticking)
         return false;
-    Impairs& impairs = scene->registry.get<Impairs>(caster);
-    if (impairs.is_impaired(scene, ImpairType_NoCast))
+    Tags& tags = scene->registry.get<Tags>(caster);
+    if (tags.has_tag("no_cast"_hs))
         return false;
     if (casting())
         return false;
@@ -243,7 +246,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     static int attachment_i = 0;
     scene->registry.emplace<Name>(attachment_entity, fmt_("{}_{}", fs::path(prefab.attachment_model_path).stem().string(), attachment_i++));
     scene->registry.emplace<AddToInspect>(attachment_entity);
-    scene->registry.emplace<Impairs>(attachment_entity);
+    scene->registry.emplace<Tags>(attachment_entity, *scene);
     scene->registry.emplace<Attachment>(attachment_entity, base_entity);
     scene->registry.emplace<LogicTransform>(attachment_entity, v3(location));
     scene->registry.emplace<ModelTransform>(attachment_entity);
@@ -296,6 +299,7 @@ bool inspect(EnemyPrefab* enemy_prefab) {
 }
 
 void enemy_ik_controller_system(Scene* scene) {
+    ZoneScoped;
     for (auto [entity, logic_tfm, model_tfm, model, ik] : scene->registry.view<LogicTransform, ModelTransform, Model, SpiderController>().each()) {
         if (!model.model_cpu->skeleton)
             continue;
@@ -304,9 +308,13 @@ void enemy_ik_controller_system(Scene* scene) {
             ik.extra_z = 0.0f;
         assert_else(!math::is_nan(ik.quad_norm))
             ik.quad_norm = v3::Z;
-        model_tfm.translation = logic_tfm.position + v3(0.5f, 0.5f, 0.0f * ik.extra_z) + v3::Z * logic_tfm.step_up;
+
+        Grounded* grounded = scene->registry.try_get<Grounded>(entity);
+        v3 step_up = grounded ? v3::Z * grounded->step_up : v3{};
+        
+        model_tfm.translation = logic_tfm.position + v3(0.5f, 0.5f, 0.0f * ik.extra_z) + step_up;
         model_tfm.rotation = math::quat_between(v3::Z, ik.quad_norm);
-        model_tfm.dirty = true;
+        model_tfm.set_dirty();
 
         m44 tfm = model_tfm.get_transform();
         m44 tfm_inv = math::inverse(tfm);
@@ -330,6 +338,7 @@ void enemy_ik_controller_system(Scene* scene) {
 }
 
 void attachment_transform_system(Scene* scene) {
+    ZoneScoped;
     for (auto [base_entity, logic_tfm, enemy] : scene->registry.view<LogicTransform, Enemy>().each()) {
         if (!scene->registry.valid(enemy.attachment))
             continue;
@@ -368,6 +377,7 @@ void attachment_transform_system(Scene* scene) {
 }
 
 void enemy_aggro_system(Scene* scene) {
+    ZoneScoped;
     if (scene->edit_mode)
         return;
     // manage movement requests from attachment
@@ -417,14 +427,16 @@ void enemy_aggro_system(Scene* scene) {
 }
 
 void traveler_reset_system(Scene* scene) {
+    ZoneScoped;
     for (auto [entity, traveler] : scene->registry.view<Traveler>().each()) {
         traveler.reset_target();
     }
 }
 
 void travel_system(Scene* scene) {
+    ZoneScoped;
     for (auto [entity, transform, traveler] : scene->registry.view<LogicTransform, Traveler>().each()) {
-        if (scene->registry.any_of<Impairs>(entity) && scene->registry.get<Impairs>(entity).is_impaired(scene, ImpairType_NoMove))
+        if (scene->registry.any_of<Tags>(entity) && scene->registry.get<Tags>(entity).has_tag("no_move"_hs))
             continue;
         if (!traveler.has_target())
             continue;
@@ -456,6 +468,7 @@ void travel_system(Scene* scene) {
 }
 
 void enemy_decollision_system(Scene* scene) {
+    ZoneScoped;
     for (auto [entity1, enemy1, logic_tfm1, traveler1] : scene->registry.view<Enemy, LogicTransform, Traveler>().each()) {
         for (auto [entity2, enemy2, logic_tfm2, traveler2] : scene->registry.view<Enemy, LogicTransform, Traveler>().each()) {
             if (entity1 == entity2)

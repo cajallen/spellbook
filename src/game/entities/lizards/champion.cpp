@@ -9,7 +9,6 @@
 #include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
-#include "game/entities/impair.hpp"
 #include "game/entities/lizard.hpp"
 #include "game/entities/targeting.hpp"
 
@@ -212,17 +211,23 @@ void draw_champion_dragging_preview(Scene* scene, entt::entity entity) {
     v3 logic_pos = scene->registry.get<Dragging>(entity).potential_logic_position;
     v3i logic_posi = math::round_cast(logic_pos);
     
-    vector<FormattedVertex> vertices;
+    vector<v3i> center_pieces = {logic_posi};
+    vector<v3i> aoe_pieces = {};
     for (const v2i& offset : {v2i{-1, 0}, v2i{0, -1}, v2i{1, 0}, v2i{0, 1}}) {
-        if (scene->get_tile(logic_posi + v3i(offset.x, offset.y, -1)) != entt::null) {
-            v3 pos = logic_pos + v3(0.5f, 0.5f, 0.02f) + v3(offset.x, offset.y, 0.0f);
-            add_formatted_square(vertices, pos, v3(0.5f, 0.f, 0.f), v3(0.f, 0.5f, 0.f), palette::aquamarine, 0.05f);
-            add_formatted_square(vertices, pos, v3(1.5f, 0.f, 0.f), v3(0.f, 1.5f, 0.f), palette::dark_sea_green, 0.03f);
+        center_pieces.push_back(logic_posi + v3i(offset, 0));
+        if (scene->map_data.solids.get(logic_posi + v3i(offset, -1)) && !scene->map_data.solids.get(logic_posi + v3i(offset, 0))) {
+            v3i it = v3i(-1, -1, 0);
+            do {
+                aoe_pieces.push_back(logic_posi + v3i(offset, 0) + it);
+            } while (math::iterate(it, v3i(-1, -1, 0), v3i(1, 1, 0)));
         }
     }
-    if (vertices.empty())
-        return;
-    scene->render_scene.quick_mesh(generate_formatted_line(&scene->camera, vertices), true, false);
+    scene->render_scene.quick_mesh(
+        generate_outline(&scene->camera, scene->map_data.solids, center_pieces, palette::aquamarine, 0.05f),
+        true, false);
+    scene->render_scene.quick_mesh(
+        generate_outline(&scene->camera, scene->map_data.solids, aoe_pieces, palette::sea_green, 0.03f),
+        true, false);
 }
 
 }

@@ -1,15 +1,18 @@
 ﻿#include "ability.hpp"
 
 #include <imgui/imgui.h>
+#include <entt/core/hashed_string.hpp>
 
 #include "components.hpp"
-#include "impair.hpp"
+#include "tags.hpp"
 #include "extension/fmt.hpp"
 #include "game/pose_controller.hpp"
 #include "game/scene.hpp"
 #include "game/entities/caster.hpp"
 
 namespace spellbook {
+
+using namespace entt::literals;
 
 Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float post, float init_range) {
     scene = init_scene;
@@ -115,8 +118,8 @@ bool Ability::in_range() const {
 }
 
 bool Ability::can_cast() const {
-    Impairs& impairs = scene->registry.get<Impairs>(caster);
-    if (impairs.is_impaired(scene, ImpairType_NoCast))
+    Tags& tags = scene->registry.get<Tags>(caster);
+    if (tags.has_tag("no_cast"_hs))
         return false;
     if (!has_target)
         return false;

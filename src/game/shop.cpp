@@ -65,7 +65,7 @@ void FirstFreeShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
     first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"}, 1.0f);
     // first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbliz"}, 1.0f);
-    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/assassin.sbliz"}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/assassin.sbliz"}, 1.0f);
     first_warehouse.add_entry({Bead_Oak, 0, "lizards/ranger.sbliz"}, 1.0f);
 
     warehouse.add_entry({Bead_Oak, 3, "lizards/champion.sbliz"}, 1.0f);

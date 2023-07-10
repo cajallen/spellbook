@@ -3,9 +3,10 @@
 #include <cinttypes>
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
+#include <entt/core/hashed_string.hpp>
 
 #include "caster.hpp"
-#include "impair.hpp"
+#include "tags.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "game/game.hpp"
@@ -24,14 +25,16 @@
 
 namespace spellbook {
 
+using namespace entt::literals;
+
 void remove_dragging_impair(Scene* scene, entt::entity entity) {
     remove_dragging_impair(scene->registry, entity);
 }
 
 void remove_dragging_impair(entt::registry& reg, entt::entity entity) {
-    auto impairs = reg.try_get<Impairs>(entity);
-    if (impairs) {
-        impairs->untimed_impairs.erase(Dragging::magic_number | u32(entity));
+    Tags* tags = reg.try_get<Tags>(entity);
+    if (tags) {
+        tags->remove_tag(Dragging::get_drag_tag_id(entity));
     }
 }
 
@@ -62,7 +65,7 @@ void inspect_components(Scene* scene, entt::entity entity) {
         bool changed = ImGui::DragFloat3("Translation", component->translation.data, 0.01f);
         changed |= ImGui::DragFloat3("Scale", component->scale.data, 0.01f);
         if (changed)
-            component->dirty = true;
+            component->set_dirty();
     )
     INSPECT_COMPONENT(TransformLink, 
         ImGui::DragFloat3("Offset", component->offset.data, 0.01f);
@@ -155,14 +158,7 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
 void ModelTransform::set_translation(const v3& v) {
     if (translation != v) {
         translation = v;
-        dirty = true;
-    }
-}
-void ModelTransform::set_rotation(const euler& e) {
-    quat q = math::to_quat(e);
-    if (math::dot(rotation, q) <= 0.9999f) {
-        rotation = q;
-        dirty = true;
+        set_dirty();
     }
 }
 
@@ -172,20 +168,25 @@ void ModelTransform::set_rotation(const quat& q) {
         rotation /= len;
     if (math::dot(rotation, q) <= 0.99999f) {
         rotation = q;
-        dirty = true;
+        set_dirty();
     }
 }
 
 void ModelTransform::set_scale(const v3& v) {
     if (scale != v) {
         scale = v;
-        dirty = true;
+        set_dirty();
     }
 }
 
+void ModelTransform::set_dirty() {
+    transform_dirty = true;
+    renderable_dirty = true;
+}
+
 const m44& ModelTransform::get_transform() {
-    if (dirty) {
-        dirty = false;
+    if (transform_dirty) {
+        transform_dirty = false;
         transform = math::translate(translation) * math::rotation(rotation) * math::scale(scale);
     }
     return transform;
@@ -245,12 +246,13 @@ entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 locatio
     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
+    scene->registry.emplace<Grounded>(entity);
     scene->registry.emplace<ModelTransform>(entity);
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     
     scene->registry.emplace<EmitterComponent>(entity, scene);
     scene->registry.emplace<Health>(entity, health_value, scene, hurt_path);
-    scene->registry.emplace<Impairs>(entity);
+    scene->registry.emplace<Tags>(entity, *scene);
     
     if (model_comp.model_cpu->skeleton) {
         scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton);
@@ -261,9 +263,9 @@ entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 locatio
 
 
 void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity) {
-    auto impairs = registry.try_get<Impairs>(entity);
-    if (impairs) {
-        apply_untimed_impair(*impairs, Dragging::magic_number | u32(entity), ImpairType_NoCast);
+    auto tags = registry.try_get<Tags>(entity);
+    if (tags) {
+        tags->apply_tag("no_cast"_hs, Dragging::get_drag_tag_id(entity));
     }
 
     Caster* caster = registry.try_get<Caster>(entity);
