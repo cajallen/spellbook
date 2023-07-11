@@ -34,6 +34,7 @@ struct PathInfo {
 };
 
 struct MapData {
+    bool dirty = false;
     Bitmask3D solids;
     Bitmask3D path_solids;
     Bitmask3D slot_solids;
@@ -82,15 +83,6 @@ struct Scene {
     void inspect_entity(entt::entity entity);
     void settings_window(bool* p_open);
     void output_window(bool* p_open);
-
-    void dragging_setup(entt::registry&, entt::entity);
-    void model_cleanup(entt::registry&, entt::entity);
-    void dragging_cleanup(entt::registry&, entt::entity);
-    void health_cleanup(entt::registry&, entt::entity);
-    void caster_cleanup(entt::registry&, entt::entity);
-    void emitter_cleanup(entt::registry&, entt::entity);
-    void gridslot_cleanup(entt::registry&, entt::entity);
-
     void select_entity(entt::entity entity);
 
     // Helper query functions

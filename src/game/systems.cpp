@@ -33,40 +33,40 @@ void health_draw_system(Scene* scene) {
     
     // dependencies
     static bool deps = false;
-    static string mesh_name;
-    static string health_friendly_name;
-    static string health_enemy_name;
-    static string health_buffer_name;
-    static string health_bar_name;
+    static u64 mesh_id;
+    static u64 health_friendly_id;
+    static u64 health_enemy_id;
+    static u64 health_buffer_id;
+    static u64 health_bar_id;
     if (!deps) {
-        mesh_name = upload_mesh(generate_cube(v3(0), v3(1)));
+        mesh_id = upload_mesh(generate_cube(v3(0), v3(1)));
         
         MaterialCPU health_friendly_material = {
             .file_path     = "health_friendly_material",
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
-        health_friendly_name = upload_material(health_friendly_material);
+        health_friendly_id = upload_material(health_friendly_material);
         MaterialCPU health_enemy_material = {
             .file_path     = "health_enemy_material",
             .color_tint    = palette::black,
             .emissive_tint = palette::fire_brick
         };
-        health_enemy_name = upload_material(health_enemy_material);
+        health_enemy_id = upload_material(health_enemy_material);
         MaterialCPU material3_cpu = {
             .file_path     = "health_buffer_material",
             .color_tint    = palette::black,
             .emissive_tint = palette::yellow,
             .cull_mode = vuk::CullModeFlagBits::eFront
         };
-        health_buffer_name = upload_material(material3_cpu);
+        health_buffer_id = upload_material(material3_cpu);
         MaterialCPU material2_cpu = {
             .file_path     = "health_bar_material",
             .color_tint    = palette::black,
             .roughness_factor = 1.0f,
             .cull_mode     = vuk::CullModeFlagBits::eFront
         };
-        health_bar_name = upload_material(material2_cpu);
+        health_bar_id = upload_material(material2_cpu);
         deps = true;
     }
 
@@ -98,9 +98,9 @@ void health_draw_system(Scene* scene) {
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
                            math::scale(v3(0.5f * width, thickness, thickness));
 
-        auto renderable1 = Renderable{mesh_name, friendly ? health_friendly_name : health_enemy_name, (m44GPU) inner_matrix, {}, true};
-        auto renderable2 = Renderable{mesh_name, health_bar_name, (m44GPU) outer_matrix, {}, true};
-        auto renderable3 = Renderable{mesh_name, health_buffer_name, (m44GPU) buffer_matrix, {}, true};
+        auto renderable1 = Renderable{mesh_id, friendly ? health_friendly_id : health_enemy_id, (m44GPU) inner_matrix, {}, true};
+        auto renderable2 = Renderable{mesh_id, health_bar_id, (m44GPU) outer_matrix, {}, true};
+        auto renderable3 = Renderable{mesh_id, health_buffer_id, (m44GPU) buffer_matrix, {}, true};
         scene->render_scene.add_renderable(renderable1);
         scene->render_scene.add_renderable(renderable2);
         scene->render_scene.add_renderable(renderable3);
@@ -205,8 +205,7 @@ void selection_id_system(Scene* scene) {
 void dragging_update_system(Scene* scene) {
     ZoneScoped;
     if (scene->render_scene.fut_query_result.get_control()) {
-        vuk::Compiler compiler;
-        auto result_buf = *scene->render_scene.fut_query_result.get<vuk::Buffer>(*game.renderer.global_allocator, compiler);
+        auto result_buf = *scene->render_scene.fut_query_result.get<vuk::Buffer>(*game.renderer.global_allocator, game.renderer.compiler);
         u32 result_int = *((u32*) result_buf.mapped_ptr);
         scene->render_scene.fut_query_result = {};
 
@@ -235,15 +234,6 @@ void dragging_system(Scene* scene) {
             drag.target_position = v3(cell);
             drag.potential_logic_position = v3(cell);
         }
-        //
-        // entt::entity potential_entity = scene->get_tile(math::round_cast(drag.target_position.xy));
-        // auto potential_transform = scene->registry.try_get<LogicTransform>(potential_entity);
-        // if (potential_transform) {
-        //     v3 new_potential_pos = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
-        //     if (math::max(math::abs(new_potential_pos.x - transform.position.x), math::abs(new_potential_pos.x - transform.position.x)) <= draggable.drag_distance)
-        //         drag.potential_logic_position = potential_transform->position + v3(0.0f, 0.0f, 1.0f);
-        // }
-        // drag.target_position.z = drag.potential_logic_position.z;
     }
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();

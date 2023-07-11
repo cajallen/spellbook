@@ -87,9 +87,11 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
     settings.alignment_random = v4(new_emitter.alignment_random * 2.0, 0.0f);
 
     rate = 1.0f / new_emitter.particles_per_second;
-    
-    mesh = new_emitter.mesh;
-    material = new_emitter.material;
+
+    mesh = hash_string(new_emitter.mesh);
+    material = hash_string(new_emitter.material);
+    game.renderer.file_path_cache[mesh] = new_emitter.mesh;
+    game.renderer.file_path_cache[material] = new_emitter.material;
 
     bool upload_color = false, upload_size = false;
     if (emitter_cpu.color1_start != new_emitter.color1_start ||
@@ -233,25 +235,10 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
 }
 
 void upload_dependencies(EmitterGPU& renderable) {
-    MeshGPU* mesh = game.renderer.get_mesh(renderable.mesh);
-    MaterialGPU* material = game.renderer.get_material(renderable.material);
-
-    if (renderable.mesh.empty() || renderable.material.empty())
+    if (renderable.mesh == 0 || renderable.material == 0)
         return;
-    if (mesh == nullptr) {
-        if (exists(to_resource_path(renderable.mesh))) {
-            upload_mesh(load_mesh(renderable.mesh));
-        } else {
-            console({.str = "Renderable mesh asset not found: " + renderable.mesh, .group = "assets", .frame_tags = {"render_scene"}});
-        }
-    }
-    if (material == nullptr) {
-        if (exists(to_resource_path(renderable.material))) {
-            upload_material(load_material(renderable.material));
-        } else {
-            console({.str = "Renderable material asset not found: " + renderable.material, .group = "assets", .frame_tags = {"render_scene"}});
-        }
-    }
+    game.renderer.get_mesh_or_upload(renderable.mesh);
+    game.renderer.get_material_or_upload(renderable.material);
 }
 
 void EmitterCPU::set_velocity_direction(v3 dir) {

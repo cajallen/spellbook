@@ -72,8 +72,8 @@ struct EmitterSettings {
 };
 
 struct EmitterGPU {
-    static constexpr std::string_view cube_mesh = "emitter_cube";
-    static constexpr std::string_view sphere_mesh = "emitter_sphere";
+    static constexpr u64 cube_mesh = hash_view("emitter_cube");
+    static constexpr u64 sphere_mesh = hash_view("emitter_sphere");
     // For editing purposes
     EmitterCPU emitter_cpu;
     
@@ -83,11 +83,10 @@ struct EmitterGPU {
     
     Image color;
     vuk::Unique<vuk::Buffer> particles_buffer;
-    string mesh;
-    string material;
+    u64 mesh;
+    u64 material;
 
     bool emitting = true;
-    
     float deinstance_at = FLT_MAX;
 
     void calculate_max() {

@@ -56,6 +56,7 @@ struct PostProcessData {
 struct RenderScene {
     string              name;
     
+    plf::colony<StaticRenderable> static_renderables;
     plf::colony<Renderable> renderables;
     plf::colony<Renderable> widget_renderables;
     plf::colony<EmitterGPU> emitters;
@@ -101,20 +102,21 @@ struct RenderScene {
 
     void        cleanup(vuk::Allocator& allocator);
 
-    Renderable* add_renderable(Renderable&& renderable);
     Renderable* add_renderable(const Renderable& renderable);
-    Renderable* copy_renderable(Renderable* renderable);
     void        delete_renderable(Renderable* renderable);
+    void        delete_renderable(StaticRenderable* renderable);
 
-    Renderable& quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget = false);
-    Renderable& quick_mesh(const string& mesh_name, bool frame_allocated, bool widget = false);
-    Renderable& quick_mesh(const string& mesh_name, const string& mat_name, bool frame_allocated);
+    Renderable& quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget);
     Renderable& quick_material(const MaterialCPU& material_cpu, bool frame_allocated);
+    Renderable& quick_renderable(const MeshCPU& mesh_id, u64 mat_id, bool frame_allocated);
+    Renderable& quick_renderable(u64 mesh_id, u64 mat_id, bool frame_allocated);
+    Renderable& quick_renderable(u64 mesh_id, const MaterialCPU& mat_id, bool frame_allocated);
 
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 
     vuk::Buffer buffer_model_mats;
     vuk::Buffer buffer_ids;
+
     umap<mat_id, umap<mesh_id, vector<std::tuple<u32, m44GPU*>>>> renderables_built;
     umap<mat_id, umap<mesh_id, vector<std::tuple<u32, SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
     void setup_renderables_for_passes(vuk::Allocator& allocator);

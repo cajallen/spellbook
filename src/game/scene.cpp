@@ -32,88 +32,6 @@ using namespace entt::literals;
 Scene::Scene() {}
 Scene::~Scene() {}
 
-
-void Scene::model_cleanup(entt::registry& registry, entt::entity entity) {
-    Model& model = registry.get<Model>(entity);
-    deinstance_model(render_scene, model.model_gpu);
-}
-
-void Scene::dragging_setup(entt::registry& registry, entt::entity entity) {
-    auto tags = registry.try_get<Tags>(entity);
-    if (tags) {
-        tags->apply_tag(Dragging::get_drag_tag_id(entity), "no_cast"_hs);
-    }
-
-    auto caster = registry.try_get<Caster>(entity);
-    if (caster->casting()) {
-        caster->attack->stop_casting();
-        caster->spell->stop_casting();
-    }
-}
-
-void Scene::dragging_cleanup(entt::registry& registry, entt::entity entity) {
-    auto&    dragging = registry.get<Dragging>(entity);
-    auto& logic_tfm = registry.get<LogicTransform>(entity);
-    if (math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
-        player.bank.beads[Bead_Quartz]--;
-    
-    logic_tfm.position = math::round(dragging.potential_logic_position);
-
-    constexpr float drag_fade_duration = 0.15f;
-    
-    auto poser = registry.try_get<PoseController>(entity);
-    if (poser) {
-        poser->set_state(AnimationState_Idle, 0.0f, drag_fade_duration);
-    }
-
-    bool remain_impaired = false;
-    if (is_casting_platform(math::round_cast(dragging.potential_logic_position))) {
-        logic_tfm.position += v3(0.0f, 0.0, 0.1f);
-
-        auto caster = registry.try_get<Caster>(entity);
-        if (caster) {
-            Ability* ability = &*caster->spell;
-            add_timer(caster->spell->scene, "drag_cast_delay",
-                [ability](Timer* timer) {
-                    ability->targeting();
-                    ability->request_cast();
-                }, true
-            )->start(drag_fade_duration);
-            remain_impaired = true;
-        }
-    }
-
-    if (!remain_impaired) {
-        remove_dragging_impair(registry, entity);
-    }
-}
-
-void Scene::health_cleanup(entt::registry& registry, entt::entity entity) {
-    auto& health = registry.get<Health>(entity);
-}
-
-void Scene::caster_cleanup(entt::registry& registry, entt::entity entity) {
-    auto& caster = registry.get<Caster>(entity);
-}
-
-
-void Scene::emitter_cleanup(entt::registry& registry, entt::entity entity) {
-    auto& emitter = registry.get<EmitterComponent>(entity);
-    for (auto& [id, emitter_gpu] : emitter.emitters)
-        deinstance_emitter(*emitter_gpu, true);
-}
-
-void Scene::gridslot_cleanup(entt::registry& registry, entt::entity entity) {
-    GridSlot* grid_slot = registry.try_get<GridSlot>(entity);
-    if (!grid_slot)
-        return;
-    for (entt::entity neighbor : grid_slot->linked) {
-        registry.get<GridSlot>(neighbor).linked.clear();
-        if (registry.valid(neighbor))
-            registry.destroy(neighbor);
-    }
-}
-
 void Scene::setup(const string& input_name) {
     name = input_name;
 	render_scene.name = name + "::render_scene";
@@ -126,10 +44,13 @@ void Scene::setup(const string& input_name) {
 
     registry.on_construct<Dragging>().connect<&on_dragging_create>(*this);
     registry.on_destroy<Model>().connect<&on_model_destroy>(*this);
+    registry.on_destroy<StaticModel>().connect<&on_model_destroy>(*this);
     registry.on_destroy<Dragging>().connect<&on_dragging_destroy>(*this);
     registry.on_destroy<EmitterComponent>().connect<&on_emitter_component_destroy>(*this);
     registry.on_destroy<GridSlot>().connect<&on_gridslot_destroy>(*this);
     registry.on_destroy<Enemy>().connect<&on_enemy_destroy>(*this);
+    registry.on_construct<GridSlot>().connect<&on_gridslot_create>(*this);
+    registry.on_destroy<GridSlot>().connect<&on_gridslot_destroy>(*this);
 
     game.scenes.push_back(this);
 	game.renderer.add_scene(&render_scene);
@@ -152,7 +73,8 @@ void Scene::update() {
     delta_time = Input::delta_time * time_scale;
     time += delta_time;
 
-    map_data.update(registry);
+    if (map_data.dirty)
+        map_data.update(registry);
     update_paths(paths, *this);
     
     update_timers(this);
@@ -196,6 +118,7 @@ void Scene::update() {
 }
 
 void MapData::update(entt::registry& registry) {
+    ZoneScoped;
     clear();
     for (auto [entity, slot, logic_tfm] : registry.view<GridSlot, LogicTransform>().each()) {
         if (slot.ramp) {
@@ -210,6 +133,7 @@ void MapData::update(entt::registry& registry) {
             slot_solids.set(v3i(logic_tfm.position));
         solids.set(v3i(logic_tfm.position));
     }
+    dirty = false;
 }
     
 void MapData::clear() {

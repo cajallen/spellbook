@@ -468,15 +468,18 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
         auto entity = scene->registry.create();
         scene->visual_map_entities[pos] = entity;
 
-        auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(tile_entry.model_path));
-        model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
-                
-        scene->registry.emplace<ModelTransform>(entity,
-            v3(pos) + v3(1.0f),
-            quat(v3::Z, tile_entry.rotation.yaw * math::PI * 0.5f),
-            v3(tile_entry.rotation.flip_x ? -1.0f : 1.0f, 1.0f, tile_entry.rotation.flip_z ? -1.0f : 1.0f)
+        StaticModel& model = scene->registry.emplace<StaticModel>(entity,
+            instance_static_model(scene->render_scene, load_asset<ModelCPU>(tile_entry.model_path))
         );
+
+        m44GPU tfm = m44GPU(
+            math::translate(v3(pos) + v3(1.0f)) *
+            math::rotation(quat(v3::Z, tile_entry.rotation.yaw * math::PI * 0.5f)) *
+            math::scale(v3(tile_entry.rotation.flip_x ? -1.0f : 1.0f, 1.0f, tile_entry.rotation.flip_z ? -1.0f : 1.0f))
+        );
+        for (StaticRenderable* renderable : model.renderables) {
+            renderable->transform = tfm;
+        }
     }
 }
 
@@ -537,7 +540,7 @@ void MapEditor::draw_preview(v3i cell) {
                 {(v3) cell + v3(0.5f) - dir + perp, palette::white, line_width},
                 {(v3) cell + v3(0.5f) - dir - perp, palette::white, line_width}
             });
-            p_scene->render_scene.quick_mesh(ramp_line_mesh, true, true);
+            p_scene->render_scene.quick_renderable(ramp_line_mesh, true, true);
         } else {
             Bitmask3D bitmask;
             bitmask.set(cell + v3i::Z);

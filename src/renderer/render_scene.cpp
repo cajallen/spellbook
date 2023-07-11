@@ -52,10 +52,9 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     scene_data.water_intensity       = 3.0f;
     scene_data.water_level           = -0.5f;
 
-    auto cube = generate_cube(v3(0.0f, 0.0f, -3.5f), v3(10000.0f, 10000.0f, 1.0f));
-    auto cube_name = upload_mesh(cube);
-    auto background_mat_name = upload_material(MaterialCPU{.file_path = "black_mat", .color_tint = palette::black});
-    quick_mesh(cube_name, background_mat_name, false);
+    MeshCPU cube = generate_cube(v3(0.0f, 0.0f, -3.5f), v3(10000.0f, 10000.0f, 1.0f));
+    u64 background_mat_name = upload_material(MaterialCPU{.file_path = "black_mat", .color_tint = palette::black});
+    quick_renderable(cube, background_mat_name, false);
 }
 
 void RenderScene::image(v2i size) {
@@ -94,17 +93,9 @@ void RenderScene::update_size(v2i new_size) {
     viewport.update_size(new_size);
 }
 
-Renderable* RenderScene::add_renderable(Renderable&& renderable) {
-    // console({.str = fmt_("Adding renderable: {}", renderable), .group = "renderables"});
-    return &*renderables.emplace(std::move(renderable));
-}
 Renderable* RenderScene::add_renderable(const Renderable& renderable) {
     // console({.str = fmt_("Adding renderable: {}", renderable), .group = "renderables"});
     return &*renderables.emplace(renderable);
-}
-Renderable* RenderScene::copy_renderable(Renderable* renderable) {
-    // console({.str = fmt_("Copying renderable: {}", copy), .group = "renderables"});
-    return &*renderables.emplace(*renderable);
 }
 
 void RenderScene::delete_renderable(Renderable* renderable) {
@@ -112,6 +103,10 @@ void RenderScene::delete_renderable(Renderable* renderable) {
     renderables.erase(renderables.get_iterator(renderable));
 }
 
+void RenderScene::delete_renderable(StaticRenderable* renderable) {
+    // console({.str = fmt_("Deleting renderable"), .group = "renderables"});
+    static_renderables.erase(static_renderables.get_iterator(renderable));
+}
 
 void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     ZoneScoped;
@@ -172,24 +167,33 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     rigged_renderables_built.clear();
 
     u32 count = 0;
+
+    for (auto& renderable : static_renderables) {
+        assert_else(game.renderer.material_cache.contains(renderable.material_id))
+            continue;
+        assert_else(game.renderer.mesh_cache.contains(renderable.mesh_id))
+            continue;
+
+        auto& mat_map = renderables_built.try_emplace(renderable.material_id).first->second;
+        auto& mesh_list = mat_map.try_emplace(renderable.mesh_id).first->second;
+        mesh_list.emplace_back(0, &renderable.transform);
+        count++;
+    }
     
     for (auto& renderable : renderables) {
-        u64 mesh_hash = hash_data(renderable.mesh_asset_path.data(), renderable.mesh_asset_path.size());
-        u64 mat_hash = hash_data(renderable.material_asset_path.data(), renderable.material_asset_path.size());
-
-        if (!game.renderer.material_cache.contains(mat_hash))
+        if (!game.renderer.material_cache.contains(renderable.material_id))
             continue;
-        if (!game.renderer.mesh_cache.contains(mesh_hash))
+        if (!game.renderer.mesh_cache.contains(renderable.mesh_id))
             continue;
         
         if (renderable.skeleton == nullptr) {
-            auto& mat_map = renderables_built.try_emplace(mat_hash).first->second;
-            auto& mesh_list = mat_map.try_emplace(mesh_hash).first->second;
+            auto& mat_map = renderables_built.try_emplace(renderable.material_id).first->second;
+            auto& mesh_list = mat_map.try_emplace(renderable.mesh_id).first->second;
             mesh_list.emplace_back(renderable.selection_id, &renderable.transform);
             count++;
         } else {
-            auto& mat_map = rigged_renderables_built.try_emplace(mat_hash).first->second;
-            auto& mesh_list = mat_map.try_emplace(mesh_hash).first->second;
+            auto& mat_map = rigged_renderables_built.try_emplace(renderable.material_id).first->second;
+            auto& mesh_list = mat_map.try_emplace(renderable.mesh_id).first->second;
             mesh_list.emplace_back(renderable.selection_id, renderable.skeleton, &renderable.transform);
             count++;
         }
@@ -563,7 +567,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             }
             // Render grid
         if (render_grid) {
-                auto grid_view = game.renderer.get_texture("textures/grid.sbtex")->value.view.get();
+                auto grid_view = game.renderer.get_texture_or_upload("textures/grid.sbtex").value.view.get();
                 command_buffer
                     .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
                         .depthTestEnable  = true,
@@ -730,32 +734,11 @@ Renderable& RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocate
         widget_setup();
     
     Renderable r;
-    r.mesh_asset_path = upload_mesh(mesh_cpu, frame_allocated);
-    r.material_asset_path = widget ? "widget" : "default";
+    r.mesh_id = upload_mesh(mesh_cpu, frame_allocated);
+    r.material_id = hash_string(widget ? "widget" : "default");
     r.frame_allocated = frame_allocated;
-    
-    return *(widget ? widget_renderables : renderables).emplace(r);
-}
 
-Renderable& RenderScene::quick_mesh(const string& mesh_name, bool frame_allocated, bool widget) {
-    if (widget)
-        widget_setup();
-    
-    Renderable r;
-    r.mesh_asset_path = mesh_name;
-    r.material_asset_path = widget ? "widget" : "default";
-    r.frame_allocated = frame_allocated;
-    
     return *(widget ? widget_renderables : renderables).emplace(r);
-}
-
-Renderable& RenderScene::quick_mesh(const string& mesh_name, const string& mat_name, bool frame_allocated) {
-    Renderable r;
-    r.mesh_asset_path = mesh_name;
-    r.material_asset_path = mat_name;
-    r.frame_allocated = frame_allocated;
-    
-    return *renderables.emplace(r);
 }
 
 void material_setup() {
@@ -770,8 +753,41 @@ Renderable& RenderScene::quick_material(const MaterialCPU& material_cpu, bool fr
     material_setup();
     
     Renderable r;
-    r.mesh_asset_path = "icosphere_subdivisions:3";
-    r.material_asset_path = upload_material(material_cpu, frame_allocated);
+    r.mesh_id = hash_string("icosphere_subdivisions:3");
+    r.material_id = upload_material(material_cpu, frame_allocated);
+    r.frame_allocated = frame_allocated;
+    
+    return *renderables.emplace(r);
+}
+
+Renderable& RenderScene::quick_renderable(u64 mesh_id, u64 mat_id, bool frame_allocated) {
+    material_setup();
+    
+    Renderable r;
+    r.mesh_id = mesh_id;
+    r.material_id = mat_id;
+    r.frame_allocated = frame_allocated;
+    
+    return *renderables.emplace(r);
+}
+
+Renderable& RenderScene::quick_renderable(const MeshCPU& mesh, u64 mat_id, bool frame_allocated) {
+    material_setup();
+    
+    Renderable r;
+    r.mesh_id = upload_mesh(mesh);
+    r.material_id = mat_id;
+    r.frame_allocated = frame_allocated;
+    
+    return *renderables.emplace(r);
+}
+
+Renderable& RenderScene::quick_renderable(u64 mesh_id, const MaterialCPU& mat, bool frame_allocated) {
+    material_setup();
+    
+    Renderable r;
+    r.mesh_id = mesh_id;
+    r.material_id = upload_material(mat);
     r.frame_allocated = frame_allocated;
     
     return *renderables.emplace(r);

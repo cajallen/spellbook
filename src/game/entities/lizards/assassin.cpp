@@ -13,7 +13,7 @@
 namespace spellbook {
 
 constexpr int poison_max_stacks = 4;
-constexpr float poison_dps = 4.0f;
+constexpr float poison_dps = 1.0f;
 constexpr float poison_duration = 4.0f;
 
 struct AssassinAttack : Attack {

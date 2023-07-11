@@ -74,7 +74,9 @@ bool plus_targeting(int range, Ability& ability, const EntryGatherFunction& gath
     };
 
     for (const v2i& offset : {v2i{-range, 0}, v2i{0, -range}, v2i{range, 0}, v2i{0, range}}) {
-        if (ability.scene->get_tile(caster_pos + v3i(offset.x, offset.y, -1)) == entt::null)
+        bool blocked = ability.scene->map_data.solids.get(caster_pos + v3i(offset.x, offset.y, 0));
+        bool has_floor = ability.scene->map_data.solids.get(caster_pos + v3i(offset.x, offset.y, -1));
+        if (blocked || !has_floor)
             continue;
         add_entry(v3i(offset.x, offset.y, 0)); 
     }

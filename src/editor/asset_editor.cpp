@@ -114,14 +114,14 @@ void AssetEditor::switch_tab(Tab new_tab) {
         case (Tab_Model): {
         } break;
         case (Tab_Mesh): {
-            if (mesh_gpu != nullptr)
-                render_scene.delete_renderable(mesh_gpu);
-            mesh_gpu = nullptr;
+            if (mesh_preview != nullptr)
+                render_scene.delete_renderable(mesh_preview);
+            mesh_preview = nullptr;
         } break;
         case (Tab_Material): {
-            if (material_gpu != nullptr)
-                render_scene.delete_renderable(material_gpu);
-            material_gpu = nullptr;
+            if (material_preview != nullptr)
+                render_scene.delete_renderable(material_preview);
+            material_preview = nullptr;
         } break;
         case (Tab_Lizard): {
             if (background_renderable != nullptr)
@@ -166,16 +166,15 @@ void AssetEditor::switch_tab(Tab new_tab) {
             }
         } break;
         case (Tab_Mesh): {
-            mesh_gpu = &render_scene.quick_mesh(mesh_cpu, false, false);
+            mesh_preview = &render_scene.quick_mesh(mesh_cpu, false, false);
         } break;
         case (Tab_Material): {
-            material_gpu = &render_scene.quick_material(material_cpu, false);
+            material_preview = &render_scene.quick_material(material_cpu, false);
         } break;
         case (Tab_Lizard): {
-            auto cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            auto cube_name = upload_mesh(cube);
-            auto background_mat_name = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
-            background_renderable = &p_scene->render_scene.quick_mesh(cube_name, background_mat_name, false);
+            MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
+            u64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
             
             if (!lizard_prefab.file_path.empty() && lizard_prefab.file_path != "none")
                 instance_prefab(p_scene, lizard_prefab, v3i(0));
@@ -185,10 +184,9 @@ void AssetEditor::switch_tab(Tab new_tab) {
                 instance_prefab(p_scene, tile_prefab, v3i(0));
         } break;
         case (Tab_Enemy): {
-            auto cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            auto cube_name = upload_mesh(cube);
-            auto background_mat_name = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
-            background_renderable = &p_scene->render_scene.quick_mesh(cube_name, background_mat_name, false);
+            MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
+            u64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
             
             if (!enemy_prefab.file_path.empty() && enemy_prefab.file_path != "none")
                 instance_prefab(p_scene, enemy_prefab, v3i(0));
@@ -359,7 +357,7 @@ void AssetEditor::window(bool* p_open) {
             });
             asset_tab(*this, ICON_FA_TINT " Material", Tab_Material, &material_cpu, [this](bool changed) {
                 if (changed)
-                    game.renderer.material_cache[hash_string(material_gpu->material_asset_path)].update_from_cpu(material_cpu);
+                    game.renderer.material_cache[material_preview->material_id].update_from_cpu(material_cpu);
             });
             asset_tab(*this, ICON_FA_USER " Lizard", Tab_Lizard, &lizard_prefab, [this](bool changed) {
                 if (ImGui::Checkbox("Force Target", &force_target)) {

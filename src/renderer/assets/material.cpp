@@ -23,9 +23,11 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     cbuf.bind_image(0, EMISSIVE_BINDING, emissive.global.iv).bind_sampler(0, EMISSIVE_BINDING, emissive.global.sci);
 };
 
-string upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
-    assert_else(!material_cpu.file_path.empty());
-    u64 material_cpu_hash               = hash_data(material_cpu.file_path.data(), material_cpu.file_path.size());
+u64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
+    if (material_cpu.file_path.empty())
+        return 0;
+    
+    u64 material_cpu_hash               = hash_string(material_cpu.file_path);
 
     MaterialGPU material_gpu;
     material_gpu.material_cpu = material_cpu;
@@ -45,7 +47,8 @@ string upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     material_gpu.frame_allocated = frame_allocation;
 
     game.renderer.material_cache[material_cpu_hash] = std::move(material_gpu);
-    return material_cpu.file_path;
+    game.renderer.file_path_cache[material_cpu_hash] = material_cpu.file_path;
+    return material_cpu_hash;
 }
 
 void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
@@ -125,9 +128,14 @@ void inspect(MaterialGPU* material) {
     ImGui::DragFloat("UV Scale", &material->tints.roughness_metallic_normal_scale.w, 0.01f);
 }
 
-void save_material(const MaterialCPU& material_cpu) {
+void save_material(MaterialCPU& material_cpu) {
     auto j = from_jv<json>(to_jv(material_cpu));
-    
+
+    material_cpu.color_asset_path = to_resource_path(material_cpu.color_asset_path).string();
+    material_cpu.orm_asset_path = to_resource_path(material_cpu.orm_asset_path).string();
+    material_cpu.normal_asset_path = to_resource_path(material_cpu.normal_asset_path).string();
+    material_cpu.emissive_asset_path = to_resource_path(material_cpu.emissive_asset_path).string();
+
     string ext = std::filesystem::path(material_cpu.file_path).extension().string();
     assert_else(ext == extension(FileType_Material));
     

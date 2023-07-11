@@ -62,16 +62,12 @@ void ChampionAttack::trigger() {
 
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
-            entt::entity tile = scene->get_tile(target + v3i(x, y, -1));
-            if (tile == entt::null) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_fizzle.sbemt", 0.20f);
-                continue;
-            }
+            bool blocked = scene->map_data.solids.get(target + v3i(x, y, 0));
+            bool has_floor = scene->map_data.solids.get(target + v3i(x, y, -1));
 
-            auto& grid_slot = scene->registry.get<GridSlot>(tile);
-            if ((grid_slot.path || grid_slot.ramp) && x == 0 && y == 0) {
+            if (!blocked && has_floor) {
                 quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_hit.sbemt", 0.20f);
-            } else {
+            } else if (false) {
                 quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_miss.sbemt", 0.20f);
             }
         }

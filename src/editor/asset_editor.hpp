@@ -47,10 +47,10 @@ struct AssetEditor : EditorScene {
     ModelCPU* model_cpu = nullptr;
     
     MeshCPU mesh_cpu;
-    Renderable* mesh_gpu = nullptr;
+    Renderable* mesh_preview = nullptr;
     
     MaterialCPU material_cpu;
-    Renderable* material_gpu = nullptr;
+    Renderable* material_preview = nullptr;
 
     EmitterCPU emitter_cpu;
     EmitterGPU* emitter_gpu = nullptr;

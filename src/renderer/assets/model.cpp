@@ -151,10 +151,15 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool f
         ModelCPU::Node& node           = *node_ptr;
         if (node.mesh_asset_path.empty() || node.material_asset_path.empty())
             continue;
-        
+
+        u64 mesh_id = hash_string(node.mesh_asset_path);
+        u64 material_id = hash_string(node.material_asset_path);
+        game.renderer.file_path_cache[mesh_id] = node.mesh_asset_path;
+        game.renderer.file_path_cache[material_id] = node.material_asset_path;
+
         auto new_renderable = render_scene.add_renderable(Renderable(
-            node.mesh_asset_path,
-            node.material_asset_path,
+            mesh_id,
+            material_id,
             (m44GPU) node.transform,
             model_gpu.skeleton ? &*model_gpu.skeleton : nullptr,
             frame
@@ -163,6 +168,30 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool f
     }
 
     return model_gpu;
+}
+
+vector<StaticRenderable*> instance_static_model(RenderScene& render_scene, const ModelCPU& model) {
+    vector<StaticRenderable*> renderables;
+    for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
+        ModelCPU::Node& node           = *node_ptr;
+        if (node.mesh_asset_path.empty() || node.material_asset_path.empty())
+            continue;
+
+        u64 mesh_id = hash_string(node.mesh_asset_path);
+        u64 material_id = hash_string(node.material_asset_path);
+        game.renderer.file_path_cache[mesh_id] = node.mesh_asset_path;
+        game.renderer.file_path_cache[material_id] = node.material_asset_path;
+
+        game.renderer.get_mesh_or_upload(mesh_id);
+        game.renderer.get_material_or_upload(material_id);
+
+        renderables.push_back(&*render_scene.static_renderables.emplace(StaticRenderable{
+            mesh_id,
+            material_id
+        }));
+    }
+
+    return renderables;
 }
 
 template<>
@@ -247,6 +276,12 @@ ModelCPU& load_asset(const string& input_path, bool assert_exists, bool clear_ca
 
 void deinstance_model(RenderScene& render_scene, const ModelGPU& model) {
     for (auto& [_, r] : model.renderables) {
+        render_scene.delete_renderable(r);
+    }
+}
+
+void deinstance_static_model(RenderScene& render_scene, const vector<StaticRenderable*>& model) {
+    for (auto r : model) {
         render_scene.delete_renderable(r);
     }
 }

@@ -15,6 +15,7 @@ struct PipelineBaseInfo;
 
 namespace spellbook {
 
+// This should really be MaterialPrefab, and we should convert the paths into ids for a MaterialCPU
 struct MaterialCPU {
     string file_path;
     vector<string> dependencies;
@@ -69,8 +70,8 @@ struct MaterialGPU {
 bool inspect(MaterialCPU* material);
 void inspect(MaterialGPU* material);
 
-string upload_material(const MaterialCPU&, bool frame_allocation = false);
-void        save_material(const MaterialCPU&);
+u64         upload_material(const MaterialCPU&, bool frame_allocation = false);
+void        save_material(MaterialCPU&);
 MaterialCPU load_material(const string& file_name);
 
 }

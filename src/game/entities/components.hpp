@@ -25,6 +25,10 @@ struct Model {
     ModelGPU model_gpu = {};
 };
 
+struct StaticModel {
+    vector<StaticRenderable*> renderables;
+};
+
 struct LogicTransform {
     v3 position = v3(0.0f);
     v3 normal = v3::Z;
@@ -134,11 +138,12 @@ void remove_dragging_impair(entt::registry& reg, entt::entity entity);
 
 entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 location, float health_value, const string& hurt_path);
 
+void on_gridslot_create(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_health_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
-void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 
 

@@ -10,10 +10,16 @@ struct MeshGPU;
 struct MaterialGPU;
 struct SkeletonGPU;
 
+struct StaticRenderable {
+    u64 mesh_id;
+    u64 material_id;
+    m44GPU transform = m44GPU(m44::identity());
+};
+
 struct Renderable {
-    string mesh_asset_path;
-    string material_asset_path;
-    m44GPU transform = (m44GPU) m44::identity();
+    u64 mesh_id;
+    u64 material_id;
+    m44GPU transform = m44GPU(m44::identity());
 
     SkeletonGPU* skeleton = nullptr;
     
@@ -28,5 +34,7 @@ void upload_dependencies(Renderable& renderable);
 void render_item(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index);
 void render_widget(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index);
 void render_shadow(Renderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index);
+void render_item(StaticRenderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index);
+void render_shadow(StaticRenderable& renderable, vuk::CommandBuffer& command_buffer, int* item_index);
 
 }

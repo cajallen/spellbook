@@ -16,6 +16,7 @@ namespace spellbook {
 
 struct MeshCPU;
 struct MaterialCPU;
+struct StaticRenderable;
 struct Renderable;
 struct RenderScene;
 struct SkeletonCPU;
@@ -73,7 +74,9 @@ template <>
 ModelCPU& load_asset(const string& input_path, bool assert_exist, bool clear_cache);
 
 ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
+vector<StaticRenderable*> instance_static_model(RenderScene&, const ModelCPU&);
 void     deinstance_model(RenderScene&, const ModelGPU&);
+void     deinstance_static_model(RenderScene&, const vector<StaticRenderable*>&);
 ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_folder, const fs::path& output_name, bool y_up = true, bool replace_existing_poses = false);
 
 ModelCPU quick_model(const string& name, const string& mesh, const string& material);

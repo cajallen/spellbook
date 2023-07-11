@@ -32,11 +32,13 @@ bool Caster::casting() const {
 void caster_system(Scene* scene) {
     ZoneScoped;
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
+        ZoneScoped;
         if (caster.attack && !caster.casting() )
             caster.attack->targeting();
     }
-
+    
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
+        ZoneScoped;
         Tags* tags = scene->registry.try_get<Tags>(entity);
         if (tags)
             if (tags->has_tag("no_cast"_hs))

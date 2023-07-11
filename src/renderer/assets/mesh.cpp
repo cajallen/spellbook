@@ -34,12 +34,12 @@ void MeshCPU::fix_tangents() {
     }
 }
 
-string upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
+u64 upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     if (mesh_cpu.file_path.empty())
-        return mesh_cpu.file_path;
-    u64 mesh_cpu_hash           = hash_data(mesh_cpu.file_path.data(), mesh_cpu.file_path.size());
+        return 0;
+    u64 mesh_cpu_hash           = hash_string(mesh_cpu.file_path);
     if (game.renderer.mesh_cache.contains(mesh_cpu_hash))
-        return mesh_cpu.file_path;
+        return mesh_cpu_hash;
     MeshGPU         mesh_gpu;
     mesh_gpu.frame_allocated = frame_allocation;
     vuk::Allocator& alloc                = frame_allocation ? *game.renderer.frame_allocator : *game.renderer.global_allocator;
@@ -54,7 +54,8 @@ string upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     game.renderer.enqueue_setup(std::move(idx_fut));
 
     game.renderer.mesh_cache[mesh_cpu_hash] = std::move(mesh_gpu);
-    return mesh_cpu.file_path;
+    game.renderer.file_path_cache[mesh_cpu_hash] = mesh_cpu.file_path;
+    return mesh_cpu_hash;
 }
 
 }

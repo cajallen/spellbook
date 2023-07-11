@@ -40,6 +40,6 @@ struct MeshGPU {
     bool frame_allocated;
 };
 
-string upload_mesh(const MeshCPU&, bool frame_allocation = false);
+u64 upload_mesh(const MeshCPU&, bool frame_allocation = false);
 
 }

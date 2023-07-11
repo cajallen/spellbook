@@ -7,6 +7,7 @@
 #include <vuk/RenderGraph.hpp>
 
 #include "extension/icons/font_awesome4.h"
+#include "game/game.hpp"
 #include "general/file.hpp"
 
 namespace spellbook {
@@ -34,8 +35,7 @@ ImGuiData ImGui_ImplVuk_Init(vuk::Allocator& allocator) {
     ImGuiData data;
     auto      [tex, stub] = create_texture(allocator, vuk::Format::eR8G8B8A8Srgb, (vuk::Extent3D) dimensions, pixels, false);
     data.font_texture     = std::move(tex);
-    vuk::Compiler comp;
-    stub.wait(allocator, comp);
+    stub.wait(allocator, game.renderer.compiler);
     ctx.set_name(data.font_texture, "ImGui/font");
     vuk::SamplerCreateInfo sci;
     sci.minFilter    = sci.magFilter = vuk::Filter::eLinear;
@@ -92,16 +92,15 @@ vuk::Future ImGui_ImplVuk_Render(vuk::Allocator& allocator, vuk::Future target, 
     auto   imind       = *allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, index_size, 1});
 
     size_t        vtx_dst = 0, idx_dst = 0;
-    vuk::Compiler comp;
     for (int n = 0; n < draw_data->CmdListsCount; n++) {
         const ImDrawList* cmd_list = draw_data->CmdLists[n];
         auto              imverto  = imvert->add_offset(vtx_dst * sizeof(ImDrawVert));
         auto              imindo   = imind->add_offset(idx_dst * sizeof(ImDrawIdx));
 
         vuk::host_data_to_buffer(allocator, vuk::DomainFlagBits{}, imverto, std::span(cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size))
-            .wait(allocator, comp);
+            .wait(allocator, game.renderer.compiler);
         vuk::host_data_to_buffer(allocator, vuk::DomainFlagBits{}, imindo, std::span(cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size))
-            .wait(allocator, comp);
+            .wait(allocator, game.renderer.compiler);
         vtx_dst += cmd_list->VtxBuffer.Size;
         idx_dst += cmd_list->IdxBuffer.Size;
     }

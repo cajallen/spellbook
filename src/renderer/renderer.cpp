@@ -261,8 +261,7 @@ void Renderer::render() {
     rg_p->release_for_present("_src");
     
     stage    = RenderStage_Presenting;
-    vuk::Compiler compiler;
-    auto erg = *compiler.link(std::span{ &rg_p, 1 }, {});
+    auto erg = *game.renderer.compiler.link(std::span{ &rg_p, 1 }, {});
     bundle = *acquire_one(*context, swapchain, (*present_ready)[context->get_frame_count() % 3], (*render_complete)[context->get_frame_count() % 3]);
     auto result = *execute_submit(*frame_allocator, std::move(erg), std::move(bundle));
     present_to_one(*context, std::move(result));
@@ -337,8 +336,7 @@ Renderer::~Renderer() {
 
 void Renderer::wait_for_futures() {
     ZoneScoped;
-    vuk::Compiler compiler;
-    vuk::wait_for_futures_explicit(*global_allocator, compiler, futures);
+    vuk::wait_for_futures_explicit(*global_allocator, game.renderer.compiler, futures);
     futures.clear();
 }
 
@@ -360,55 +358,43 @@ void Renderer::resize(v2i new_size) {
     swapchain = new_swapchain;
 }
 
-MeshGPU* Renderer::get_mesh(const string& asset_path) {
-    if (asset_path.empty())
-        return nullptr;
-    u64 hash = hash_data(asset_path.data(), asset_path.size());
-    if (mesh_cache.count(hash))
-        return &mesh_cache[hash];
+MeshGPU* Renderer::get_mesh(u64 id) {
+    if (mesh_cache.contains(id))
+        return &mesh_cache[id];
     return nullptr;
 }
 
-MaterialGPU* Renderer::get_material(const string& asset_path) {
-    if (asset_path.empty())
-        return nullptr;
-    u64 hash = hash_data(asset_path.data(), asset_path.size());
-    if (material_cache.count(hash))
-        return &material_cache[hash];
+MaterialGPU* Renderer::get_material(u64 id) {
+    if (material_cache.contains(id))
+        return &material_cache[id];
     return nullptr;
 }
 
-TextureGPU* Renderer::get_texture(const string& asset_path) {
-    if (asset_path.empty())
-        return nullptr;
-
-    u64 hash = hash_data(asset_path.data(), asset_path.size());
-    if (texture_cache.count(hash))
-        return &texture_cache[hash];
+TextureGPU* Renderer::get_texture(u64 id) {
+    if (texture_cache.contains(id))
+        return &texture_cache[id];
     return nullptr;
 }
 
-MeshGPU& Renderer::get_mesh_or_upload(const string& asset_path) {
-    assert_else(!asset_path.empty());
-    u64 hash = hash_data(asset_path.data(), asset_path.size());
-    if (mesh_cache.count(hash))
-        return mesh_cache[hash];
-    upload_mesh(load_mesh(asset_path));
-    return mesh_cache[hash];
+MeshGPU& Renderer::get_mesh_or_upload(u64 id) {
+    if (mesh_cache.contains(id))
+        return mesh_cache[id];
+    assert_else(file_path_cache.contains(id));
+    upload_mesh(load_mesh(file_path_cache[id]));
+    return mesh_cache[id];
 }
 
-MaterialGPU& Renderer::get_material_or_upload(const string& asset_path) {
-    assert_else(!asset_path.empty());
-    u64 hash = hash_data(asset_path.data(), asset_path.size());
-    if (material_cache.count(hash))
-        return material_cache[hash];
-    upload_material(load_material(asset_path));
-    return material_cache[hash];
+MaterialGPU& Renderer::get_material_or_upload(u64 id) {
+    if (material_cache.contains(id))
+        return material_cache[id];
+    assert_else(file_path_cache.contains(id));
+    upload_material(load_material(file_path_cache[id]));
+    return material_cache[id];
 }
 
 TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
     assert_else(!asset_path.empty());
-    u64 hash = hash_data(asset_path.data(), asset_path.size());
+    u64 hash = hash_string(asset_path);
     if (texture_cache.contains(hash))
         return texture_cache[hash];
     upload_texture(load_texture(asset_path));

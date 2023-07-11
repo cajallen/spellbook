@@ -262,6 +262,23 @@ entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 locatio
 }
 
 
+void on_gridslot_create(Scene& scene, entt::registry& registry, entt::entity entity) {
+    scene.map_data.dirty = true;
+}
+
+void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    scene.map_data.dirty = true;
+
+    GridSlot* grid_slot = registry.try_get<GridSlot>(entity);
+    if (!grid_slot)
+        return;
+    for (entt::entity neighbor : grid_slot->linked) {
+        registry.get<GridSlot>(neighbor).linked.clear();
+        if (registry.valid(neighbor))
+            registry.destroy(neighbor);
+    }
+}
+
 void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity) {
     auto tags = registry.try_get<Tags>(entity);
     if (tags) {
@@ -327,22 +344,16 @@ void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entit
     deinstance_model(scene.render_scene, model.model_gpu);
 }
 
+void on_static_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    StaticModel& model = registry.get<StaticModel>(entity);
+    deinstance_static_model(scene.render_scene, model.renderables);
+}
+
 
 void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
     auto& emitter = registry.get<EmitterComponent>(entity);
     for (auto& [id, emitter_gpu] : emitter.emitters)
         deinstance_emitter(*emitter_gpu, true);
-}
-
-void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
-    GridSlot* grid_slot = registry.try_get<GridSlot>(entity);
-    if (!grid_slot)
-        return;
-    for (entt::entity neighbor : grid_slot->linked) {
-        registry.get<GridSlot>(neighbor).linked.clear();
-        if (registry.valid(neighbor))
-            registry.destroy(neighbor);
-    }
 }
 
 }

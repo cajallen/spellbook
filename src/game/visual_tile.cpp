@@ -227,21 +227,21 @@ bool inspect(VisualTileSet* tile_set) {
 
 void visual_tile_widget_system(Scene* scene) {
     ZoneScoped;
-    static string mesh_name;
-    static string mat_off_name;
-    static string mat_on1_name;
-    static string mat_on2_name;
-    static string mat_on3_name;
-    static string mat_on_name;
-    static string mat_err_name;
-    if (mesh_name.empty()) {
-        mesh_name = upload_mesh(generate_icosphere(2), false);
-        mat_off_name = upload_material({.file_path = "mat_off_name", .color_tint = palette::gray_1}, false);
-        mat_on1_name = upload_material({.file_path = "mat_on1_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.60f, 0.3f, 0.8f)}, false);
-        mat_on2_name = upload_material({.file_path = "mat_on2_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.08f, 0.7f, 0.6f)}, false);
-        mat_on3_name = upload_material({.file_path = "mat_on3_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.02f, 0.7f, 0.3f)}, false);
-        mat_on_name = upload_material({.file_path = "mat_on_name", .color_tint = palette::gray_1, .emissive_tint = palette::white}, false);
-        mat_err_name = upload_material({.file_path = "mat_err_name", .color_tint = palette::gray_1, .emissive_tint = palette::red}, false);
+    static u64 mesh_id = 0;
+    static u64 mat_off_id;
+    static u64 mat_on1_id;
+    static u64 mat_on2_id;
+    static u64 mat_on3_id;
+    static u64 mat_on_id;
+    static u64 mat_err_id;
+    if (mesh_id == 0) {
+        mesh_id = upload_mesh(generate_icosphere(2), false);
+        mat_off_id = upload_material({.file_path = "mat_off_name", .color_tint = palette::gray_1}, false);
+        mat_on1_id = upload_material({.file_path = "mat_on1_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.60f, 0.3f, 0.8f)}, false);
+        mat_on2_id = upload_material({.file_path = "mat_on2_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.08f, 0.7f, 0.6f)}, false);
+        mat_on3_id = upload_material({.file_path = "mat_on3_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.02f, 0.7f, 0.3f)}, false);
+        mat_on_id = upload_material({.file_path = "mat_on_name", .color_tint = palette::gray_1, .emissive_tint = palette::white}, false);
+        mat_err_id = upload_material({.file_path = "mat_err_name", .color_tint = palette::gray_1, .emissive_tint = palette::red}, false);
     }
     for (auto [entity, vtsw] : scene->registry.view<VisualTileSetWidget>().each()) {
         if (vtsw.tile_set != nullptr) {
@@ -256,21 +256,21 @@ void visual_tile_widget_system(Scene* scene) {
                 v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;
                 i++;
                 for (int c = 0; c < 8; c++) {
-                    string mat_name;
+                    u64 mat_id;
                     if (tile_entry.corners[c] & (0b1 << vtsw.setting)) {
                         switch (vtsw.setting) {
-                            case 0: mat_name = mat_on1_name; break;
-                            case 1: mat_name = mat_on2_name; break;
-                            case 2: mat_name = mat_on3_name; break;
-                            default: mat_name = mat_on_name; break;
+                            case 0: mat_id = mat_on1_id; break;
+                            case 1: mat_id = mat_on2_id; break;
+                            case 2: mat_id = mat_on3_id; break;
+                            default: mat_id = mat_on_id; break;
                         }
                     } else {
-                        mat_name = mat_off_name;
+                        mat_id = mat_off_id;
                     }
                     if (tile_entry.corners[c] == 0)
-                        mat_name = mat_err_name;
-                    
-                    auto& r = scene->render_scene.quick_mesh(mesh_name, mat_name, true);           
+                        mat_id = mat_err_id;
+
+                    auto& r = scene->render_scene.quick_renderable(mesh_id, mat_id, true);           
                     v3 c_pos = pos + v3(visual_direction_offsets[c]) - v3(0.5f);
                     m44 t = math::translate(c_pos) * math::scale(v3(0.07f));
                     r.transform = m44GPU(t);
