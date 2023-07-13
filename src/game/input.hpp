@@ -43,7 +43,7 @@ typedef bool (*ScrollCallback)(ScrollCallbackArgs);
 template<typename T>
 struct InputCallbackInfo {
     T callback;
-    u32 priority;
+    uint32 priority;
     string name;
     void* data;
 
@@ -79,7 +79,7 @@ struct Input {
     static bool shift;
     static bool alt;
     // keys
-    static umap<u32, bool> key_down;
+    static umap<uint32, bool> key_down;
 
     static void debug_window(bool* p_open);
 
@@ -96,7 +96,7 @@ struct Input {
     static void add_callback(const InputCallbackInfo<T>& callback_info) {
         auto& stack = InputCallbackInfo<T>::stack();
 
-        for (u32 i = 0; i < stack.size(); i++) {
+        for (uint32 i = 0; i < stack.size(); i++) {
             if (callback_info.priority < stack[i].priority) {
                 stack.insert(i, callback_info);
                 return;

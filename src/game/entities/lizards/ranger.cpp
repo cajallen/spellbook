@@ -5,10 +5,11 @@
 #include <entt/entity/entity.hpp>
 #include <entt/core/hashed_string.hpp>
 
-#include "editor/console.hpp"
 #include "extension/fmt.hpp"
-#include "game/game.hpp"
+#include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
+#include "editor/console.hpp"
+#include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/area_trigger.hpp"
@@ -20,7 +21,6 @@
 #include "game/entities/lizard.hpp"
 #include "game/entities/projectile.hpp"
 #include "game/entities/targeting.hpp"
-#include "general/matrix_math.hpp"
 
 namespace spellbook {
 
@@ -109,9 +109,9 @@ void RangerAttack::trigger() {
                 // Vulnerability
                 // Remove existing vulns
                 for (auto [entity, enemy, health] : scene->registry.view<Enemy, Health>().each()) {
-                    health.damage_taken_multiplier->remove_effect(u32("ranger_mark"_hs));
+                    health.damage_taken_multiplier->remove_effect(uint32("ranger_mark"_hs));
                     auto& emitters = scene->registry.get<EmitterComponent>(entity);
-                    emitters.remove_emitter(u32("ranger_mark"_hs));
+                    emitters.remove_emitter(uint32("ranger_mark"_hs));
                 }
                 // Select vuln
                 entt::entity select_enemy = entt::null;
@@ -126,12 +126,12 @@ void RangerAttack::trigger() {
                 // Apply vuln
                 if (scene->registry.valid(select_enemy)) {
                     Health& health = scene->registry.get<Health>(select_enemy);
-                    health.damage_taken_multiplier->add_effect(u64("ranger_mark"_hs), StatEffect{
+                    health.damage_taken_multiplier->add_effect(uint64("ranger_mark"_hs), StatEffect{
                         .type = StatEffect::Type_Multiply,
                         .value = attack_vuln_amount
                     });
                     auto& emitters = scene->registry.get<EmitterComponent>(select_enemy);
-                    emitters.add_emitter(u64("ranger_mark"_hs), load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"));
+                    emitters.add_emitter(uint64("ranger_mark"_hs), load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"));
                 }
             }
         }
@@ -187,7 +187,7 @@ int ranger_attack_entry_eval(Scene* scene, const uset<entt::entity>& units) {
             counter += 1;
         
         Health& health = scene->registry.get<Health>(entity);
-        bool marked = health.damage_taken_multiplier->effects.contains(u64("ranger_mark"_hs));
+        bool marked = health.damage_taken_multiplier->effects.contains(uint64("ranger_mark"_hs));
         if (marked)
             counter += 3;
     }

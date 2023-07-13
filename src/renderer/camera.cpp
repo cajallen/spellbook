@@ -3,9 +3,9 @@
 #include <imgui.h>
 
 #include "extension/imgui_extra.hpp"
-#include "general/math.hpp"
-#include "general/matrix.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/math.hpp"
+#include "general/math/matrix.hpp"
+#include "general/math/matrix_math.hpp"
 
 namespace spellbook {
 

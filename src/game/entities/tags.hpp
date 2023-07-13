@@ -11,7 +11,7 @@ struct Scene;
 
 struct Tags {
     struct Entry {
-        u32 tag;
+        uint32 tag;
         float until;
 
         bool has_dependency;
@@ -19,12 +19,12 @@ struct Tags {
     };
 
     Scene& scene;
-    umap<u64, Entry> entries;
+    umap<uint64, Entry> entries;
     
-    void apply_tag(u32 tag, u64 id, float duration = FLT_MAX);
-    void apply_tag(u32 tag, u64 id, entt::entity dependency, float duration = FLT_MAX);
-    void remove_tag(u64 id);
-    bool has_tag(u32 tag);
+    void apply_tag(uint32 tag, uint64 id, float duration = FLT_MAX);
+    void apply_tag(uint32 tag, uint64 id, entt::entity dependency, float duration = FLT_MAX);
+    void remove_tag(uint64 id);
+    bool has_tag(uint32 tag);
 };
 
 

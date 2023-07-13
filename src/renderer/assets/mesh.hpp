@@ -14,14 +14,14 @@ struct MeshBounds {
     bool valid;
     v3   extents;
     v3   origin;
-    f32  radius;
+    float  radius;
 };
 
 struct MeshCPU {
     string         file_path;
     
     vector<Vertex> vertices;
-    vector<u32>    indices;
+    vector<uint32>    indices;
 
     MeshBounds bounds;
 
@@ -34,12 +34,12 @@ struct MeshGPU {
     vuk::Unique<vuk::Buffer> vertex_buffer;
     vuk::Unique<vuk::Buffer> index_buffer;
 
-    u32 vertex_count;
-    u32 index_count;
+    uint32 vertex_count;
+    uint32 index_count;
 
     bool frame_allocated;
 };
 
-u64 upload_mesh(const MeshCPU&, bool frame_allocation = false);
+uint64 upload_mesh(const MeshCPU&, bool frame_allocation = false);
 
 }

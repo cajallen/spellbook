@@ -52,7 +52,7 @@ bool square_targeting(int range, Ability& ability, const EntryGatherFunction& ga
             closest_entries.push_back(entry);
     }
     if (closest_entries.front().count > 0) {
-        ability.target = caster_pos + closest_entries[math::random_s32(closest_entries.size())].offset;
+        ability.target = caster_pos + closest_entries[math::random_int32(closest_entries.size())].offset;
         ability.has_target = true;
     } else {
         ability.has_target = false;
@@ -64,7 +64,7 @@ bool plus_targeting(int range, Ability& ability, const EntryGatherFunction& gath
     v3i caster_pos = math::round_cast(ability.scene->registry.get<LogicTransform>(ability.caster).position);
     struct Entry {
         v3i offset = {};
-        u32 count;
+        uint32 count;
     };
     vector<Entry> entries;
     auto add_entry = [&ability, &entries, &caster_pos, &gather_func, &eval_func](v3i offset) {
@@ -94,7 +94,7 @@ bool plus_targeting(int range, Ability& ability, const EntryGatherFunction& gath
             closest_entries.push_back(entry);
     }
     if (closest_entries.front().count > 0) {
-        ability.target = caster_pos + closest_entries[math::random_s32(closest_entries.size())].offset;
+        ability.target = caster_pos + closest_entries[math::random_int32(closest_entries.size())].offset;
         ability.has_target = true;
     } else {
         ability.has_target = false;

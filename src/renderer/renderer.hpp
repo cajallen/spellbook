@@ -11,7 +11,7 @@
 
 #include "extension/vuk_imgui.hpp"
 #include "general/vector.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/texture.hpp"
@@ -75,10 +75,10 @@ struct Renderer {
     ImGuiData                      imgui_data;
     plf::colony<vuk::SampledImage> imgui_images;
 
-    umap<u64, MeshGPU>     mesh_cache;
-    umap<u64, MaterialGPU> material_cache;
-    umap<u64, TextureGPU>  texture_cache;
-    umap<u64, string>      file_path_cache;
+    umap<uint64, MeshGPU>     mesh_cache;
+    umap<uint64, MaterialGPU> material_cache;
+    umap<uint64, TextureGPU>  texture_cache;
+    umap<uint64, string>      file_path_cache;
     
     vuk::Unique<std::array<VkSemaphore, 3>> present_ready;
     vuk::Unique<std::array<VkSemaphore, 3>> render_complete;
@@ -98,13 +98,13 @@ struct Renderer {
     void add_scene(RenderScene*);
 
     // Returns an asset given the path of the .sb*** asset, nullptr if not uploaded
-    MeshGPU* get_mesh(u64 id);
-    MaterialGPU* get_material(u64 id);
-    TextureGPU* get_texture(u64 id);
+    MeshGPU* get_mesh(uint64 id);
+    MaterialGPU* get_material(uint64 id);
+    TextureGPU* get_texture(uint64 id);
 
     // Returns an asset given the path of the .sb*** asset, uploads and returns if not uploaded
-    MeshGPU& get_mesh_or_upload(u64 id);
-    MaterialGPU& get_material_or_upload(u64 id);
+    MeshGPU& get_mesh_or_upload(uint64 id);
+    MaterialGPU& get_material_or_upload(uint64 id);
     TextureGPU& get_texture_or_upload(const string& asset_path);
     
     void upload_defaults();

@@ -4,8 +4,8 @@
 
 #include "pose_widget.hpp"
 #include "game/game.hpp"
-#include "general/matrix_math.hpp"
-#include "general/spline.hpp"
+#include "general/math/matrix_math.hpp"
+#include "general/math/spline.hpp"
 #include "renderer/draw_functions.hpp"
 
 namespace spellbook {

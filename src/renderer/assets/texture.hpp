@@ -4,7 +4,7 @@
 #include <vuk/Image.hpp>
 
 #include "general/string.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 
@@ -14,7 +14,7 @@ struct TextureCPU {
 
     v2i         size   = {};
     vuk::Format format = {};
-    vector<u8>  pixels = {};
+    vector<uint8>  pixels = {};
 };
 
 JSON_IMPL(TextureCPU, size, format);

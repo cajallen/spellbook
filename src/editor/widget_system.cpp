@@ -1,15 +1,15 @@
 ﻿#include "widget_system.hpp"
 
+#include "general/math/math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/input.hpp"
-#include "general/math.hpp"
-#include "general/matrix_math.hpp"
 
 namespace spellbook {
 
 bool widget_click(ClickCallbackArgs args) {
     if (args.action != GLFW_RELEASE) {
         float closest_depth = FLT_MAX;
-        u64 closest_id;
+        uint64 closest_id;
         for (auto& [id, depth] : WidgetSystem::depths) {
             if (depth < closest_depth) {
                 closest_depth = depth;
@@ -31,8 +31,8 @@ bool widget_click(ClickCallbackArgs args) {
 
 namespace WidgetSystem {
 
-umap<u64, float> depths;
-u64 pressed_id;
+umap<uint64, float> depths;
+uint64 pressed_id;
 
 void setup() {
     Input::add_callback(InputCallbackInfo{widget_click, 40, "widget_system", nullptr});
@@ -76,7 +76,7 @@ LineProjectInfo mouse_to_3d_line(const Mouse3DInfo& mouse, float radius, int axi
     auto axis_ray = ray3(v3(0.0f), v3(0.0f));
     axis_ray.dir[axis] = 1.0f;
     
-    return_info.axis_value = math::line_intersection_3d(axis_ray, mouse.os_ray);
+    return_info.axis_value = math::line_intersection(axis_ray, mouse.os_ray);
     return_info.visual_axis_value = math::clamp(return_info.axis_value, math::min(0.0f, radius), math::max(0.0f, radius));
     
     v3 axis_projected = v3(0.0f);

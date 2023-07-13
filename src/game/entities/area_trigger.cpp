@@ -1,5 +1,7 @@
 ﻿#include "area_trigger.hpp"
 
+#include <tracy/Tracy.hpp>
+
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/caster.hpp"
@@ -28,10 +30,10 @@ bool area_trigger_simple_targeting(AreaTrigger& area_trigger) {
     v3i trap_pos = math::round_cast(area_trigger.scene->registry.get<LogicTransform>(area_trigger.entity).position);
     struct Entry {
         v3i offset = {};
-        u32 count;
+        uint32 count;
     };
     vector<Entry> entries;
-    entries.emplace_back(v3i(0), (u32) area_trigger.entry_gather(area_trigger, trap_pos).size());
+    entries.emplace_back(v3i(0), (uint32) area_trigger.entry_gather(area_trigger, trap_pos).size());
 
     if (entries.empty()) {
         return false;

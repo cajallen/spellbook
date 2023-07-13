@@ -5,11 +5,11 @@
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
-#include "console.hpp"
-#include "pose_widget.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
+#include "editor/console.hpp"
+#include "editor/pose_widget.hpp"
 #include "editor/game_scene.hpp"
 #include "editor/widget_system.hpp"
 #include "editor/asset_browser.hpp"
@@ -32,9 +32,9 @@ namespace spellbook {
 ADD_EDITOR_SCENE(MapEditor);
 
 template <typename T>
-bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& buttons, u32* selected) {
+bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& buttons, uint32* selected) {
     static umap<string, Button<T>> add_map;
-    static umap<string, u32> edit_map;
+    static umap<string, uint32> edit_map;
 
     bool ret = false;
     
@@ -50,7 +50,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
     
     float  window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     ImVec2 button_size   = ImVec2(100, 30);
-    for (u32 i = 0; i < buttons.size(); i++) {
+    for (uint32 i = 0; i < buttons.size(); i++) {
         Color normal_color  = buttons[i].color;
         Color hovered_color = mix(normal_color, palette::white, 0.2f);
         Color pressed_color = mix(normal_color, palette::white, 0.1f);
@@ -89,7 +89,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
             v2 min = v2(ImGui::GetItemRectMin()) - v2(1);
             v2 max = v2(ImGui::GetItemRectMax()) + v2(1);
 
-            ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (u32) palette::white, 0.0f, 0, 2.0f);
+            ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (uint32) palette::white, 0.0f, 0, 2.0f);
         }
         float last_button_x2 = ImGui::GetItemRectMax().x;
         float next_button_x2 = last_button_x2 + ImGui::GetStyle().ItemSpacing.x + button_size.x;
@@ -192,12 +192,12 @@ bool map_editor_scroll(ScrollCallbackArgs args) {
         return false;
     
     if (Input::shift) {
-        map_editor.z_level += (s32) args.yoffset;
+        map_editor.z_level += (int32) args.yoffset;
         return true;
     }
 
     if (Input::alt) {
-        map_editor.rotation = (map_editor.rotation + 4 + (s32) args.yoffset) % 4;
+        map_editor.rotation = (map_editor.rotation + 4 + (int32) args.yoffset) % 4;
         return true;
     }
     return false;
@@ -423,7 +423,7 @@ void MapEditor::instance_and_write_lizard(const string& path, v3i pos) {
     instance_prefab(p_scene, load_asset<LizardPrefab>(path), pos);
 }
 
-void MapEditor::instance_and_write_tile(const string& path, v3i input_pos, u32 rotation) {
+void MapEditor::instance_and_write_tile(const string& path, v3i input_pos, uint32 rotation) {
     TilePrefab tile_prefab = load_asset<TilePrefab>(path);
     auto type = tile_prefab.type;
     v3i pos;
@@ -556,7 +556,7 @@ void MapEditor::draw_preview(v3i cell) {
     } else if (selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 48; i++) {
-            f32 angle  = i * math::TAU / 48.0f;
+            float angle  = i * math::TAU / 48.0f;
             v3  center = (v3) cell + v3(0.5f, 0.5f, 0.05f);
             vertices.emplace_back(center + 0.4f * v3(math::cos(angle), math::sin(angle), 0.04f), palette::white, line_width);
         }

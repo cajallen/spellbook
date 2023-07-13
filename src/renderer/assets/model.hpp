@@ -7,7 +7,7 @@
 #include "general/vector.hpp"
 #include "general/umap.hpp"
 #include "general/id_ptr.hpp"
-#include "general/matrix.hpp"
+#include "general/math/matrix.hpp"
 #include "game/game_file.hpp"
 
 namespace fs = std::filesystem;

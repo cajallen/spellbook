@@ -4,7 +4,6 @@
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 
-#include "general/var_system.hpp"
 #include "general/file.hpp"
 #include "editor/console.hpp"
 #include "editor/asset_browser.hpp"
@@ -112,8 +111,6 @@ void GUI::update() {
         if (*(p_open = window_open(EditorScenes::values()[i]->p_scene->name)))
             EditorScenes::values()[i]->window(p_open);
     }
-    if (*(p_open = window_open("var_system")))
-        VarSystem::window(p_open);
     if (*(p_open = window_open("console")))
         Console::window(p_open);
     for (auto scene : game.scenes) {

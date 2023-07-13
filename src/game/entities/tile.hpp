@@ -4,7 +4,7 @@
 
 #include "general/string.hpp"
 #include "general/json.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 
@@ -34,6 +34,6 @@ JSON_IMPL(TilePrefab, type, model_path, visual_offset, solids);
 struct Scene;
 
 bool inspect(TilePrefab*);
-entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, u32 rotation = 0);
+entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, uint32 rotation = 0);
 
 }

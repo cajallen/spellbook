@@ -1,11 +1,14 @@
 #pragma once
 
 #include <entt/entity/entity.hpp>
+#include <entt/signal/sigh.hpp>
 
-#include "entt/signal/sigh.hpp"
 #include "general/string.hpp"
 #include "general/umap.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/quaternion.hpp"
+#include "general/math/matrix.hpp"
+
 #include "renderer/assets/model.hpp"
 
 namespace spellbook {
@@ -90,38 +93,38 @@ void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amou
 
 struct Killed {
     bool drop = false;
-    f32 when = -FLT_MAX;
+    float when = -FLT_MAX;
 };
 
 struct Draggable {
     float drag_height;
 };
 struct Dragging {
-    static constexpr u32 magic_number = 0xd2a90000;
+    static constexpr uint32 magic_number = 0xd2a90000;
     float drag_height;
-    f32 start_time = 0.0f;
+    float start_time = 0.0f;
     v3  start_logic_position = v3(0.0f);
     v3  start_intersect = v3(0.0f);
     
     v3 target_position = v3(0.0f);
     v3 potential_logic_position = v3(0.0f);
 
-    static u64 get_drag_tag_id(entt::entity entity) {
-        return u64(Dragging::magic_number) << 32ull | u64(entity);
+    static uint64 get_drag_tag_id(entt::entity entity) {
+        return uint64(Dragging::magic_number) << 32ull | uint64(entity);
     }
 };
 
 struct Collision {
-    f32                radius = 0.0f;
+    float                radius = 0.0f;
     uset<entt::entity> with = {};
 };
 
 struct EmitterComponent {
     Scene* scene;
-    umap<u64, EmitterGPU*> emitters;
+    umap<uint64, EmitterGPU*> emitters;
 
-    void add_emitter(u64 id, const EmitterCPU& emitter_cpu);
-    void remove_emitter(u64 id);
+    void add_emitter(uint64 id, const EmitterCPU& emitter_cpu);
+    void remove_emitter(uint64 id);
 };
 
 struct CastingPlatform {

@@ -20,7 +20,7 @@ namespace spellbook {
 
 FileType file_type_from_path(const fs::path& path) {
     string extension_string = path.extension().string();
-    for (u32 i = 0; i < magic_enum::enum_count<FileType>(); i++) {
+    for (uint32 i = 0; i < magic_enum::enum_count<FileType>(); i++) {
         FileType type = (FileType) i;
         if (extension(type) == extension_string)
             return type;
@@ -209,13 +209,13 @@ bool inspect_dependencies(vector<string>& dependencies, const string& current_pa
         if (ImGui::Button("Auto Populate")) {
             string contents = get_contents(to_resource_path(current_path).string());
 
-            u64 start_at = 0;
+            uint64 start_at = 0;
             while (start_at < contents.size()) {
-                u64 sb_index = contents.find(".sb", start_at);
+                uint64 sb_index = contents.find(".sb", start_at);
                 if (sb_index == string::npos)
                     break;
-                u64 start_quote = contents.rfind('"', sb_index) + 1;
-                u64 end_quote = contents.find_first_of('"', sb_index);
+                uint64 start_quote = contents.rfind('"', sb_index) + 1;
+                uint64 end_quote = contents.find_first_of('"', sb_index);
                 dependencies.push_back(string(contents.data() + start_quote, end_quote - start_quote));
                 
                 start_at = end_quote;
@@ -242,3 +242,15 @@ bool inspect_dependencies(vector<string>& dependencies, const string& current_pa
 
 
 }
+
+namespace ImGui {
+
+bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    return PathSelect(hint, out, base_folder, path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+}
+bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    return PathSelect(hint, out, base_folder, path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+}
+
+}
+

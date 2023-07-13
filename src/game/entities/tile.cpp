@@ -11,7 +11,7 @@
 
 namespace spellbook {
 
-entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, u32 rotation) {
+entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i location, uint32 rotation) {
     static int i      = 0;
     
     auto       entity = scene->registry.create();

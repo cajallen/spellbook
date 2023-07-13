@@ -1,6 +1,6 @@
 #pragma once
 
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "renderer/camera.hpp"
 
 namespace spellbook {
@@ -19,7 +19,7 @@ struct Viewport {
     bool focused        = false;
 
     void pre_render();
-    f32  aspect_xy();
+    float  aspect_xy();
 
     void setup();
     ray3   ray(v2i screen_pos);

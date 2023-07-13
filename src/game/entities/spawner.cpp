@@ -107,9 +107,9 @@ bool inspect(WaveSpawnInfo* wave_info) {
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ENEMY_SPAWN_INFO")) {
-                        assert_else(payload->DataSize == sizeof(u64))
+                        assert_else(payload->DataSize == sizeof(uint64))
                             return;
-                        u64 id = *(const u64*) payload->Data;
+                        uint64 id = *(const uint64*) payload->Data;
                         values.emplace_back(id);
                     }
                     ImGui::EndDragDropTarget();
@@ -135,9 +135,9 @@ bool inspect(RoundSpawnInfo* round_info) {
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_WAVE_SPAWN_INFO")) {
-                        assert_else(payload->DataSize == sizeof(u64))
+                        assert_else(payload->DataSize == sizeof(uint64))
                             return;
-                        u64 id = *(const u64*) payload->Data;
+                        uint64 id = *(const uint64*) payload->Data;
                         values.emplace_back(id);
                     }
                     ImGui::EndDragDropTarget();
@@ -163,9 +163,9 @@ bool inspect(LevelSpawnInfo* level_spawn_info) {
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ROUND_SPAWN_INFO")) {
-                        assert_else(payload->DataSize == sizeof(u64))
+                        assert_else(payload->DataSize == sizeof(uint64))
                             return;
-                        u64 id = *(const u64*) payload->Data;
+                        uint64 id = *(const uint64*) payload->Data;
                         values.emplace_back(id);
                     }
                     ImGui::EndDragDropTarget();
@@ -202,7 +202,7 @@ bool inspect(SpawnerPrefab* spawner_prefab) {
             ImGui::PopID();
             ImGui::EndGroup();
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                ImGui::SetDragDropPayload("DND_ROUND_SPAWN_INFO", &item.id, sizeof(u64));
+                ImGui::SetDragDropPayload("DND_ROUND_SPAWN_INFO", &item.id, sizeof(uint64));
                 ImGui::Text("Round");
                 ImGui::EndDragDropSource();
             }
@@ -229,7 +229,7 @@ bool inspect(SpawnerPrefab* spawner_prefab) {
             ImGui::PopID();
             ImGui::EndGroup();
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                ImGui::SetDragDropPayload("DND_WAVE_SPAWN_INFO", &item.id, sizeof(u64));
+                ImGui::SetDragDropPayload("DND_WAVE_SPAWN_INFO", &item.id, sizeof(uint64));
                 ImGui::Text("Wave");
                 ImGui::EndDragDropSource();
             }
@@ -256,7 +256,7 @@ bool inspect(SpawnerPrefab* spawner_prefab) {
             ImGui::PopID();
             ImGui::EndGroup();
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                ImGui::SetDragDropPayload("DND_ENEMY_SPAWN_INFO", &item.id, sizeof(u64));
+                ImGui::SetDragDropPayload("DND_ENEMY_SPAWN_INFO", &item.id, sizeof(uint64));
                 ImGui::Text("Enemy");
                 ImGui::EndDragDropSource();
             }

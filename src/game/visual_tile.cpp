@@ -7,8 +7,8 @@
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
-#include "general/math.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
 #include "renderer/draw_functions.hpp"
 #include "editor/widget_system.hpp"
@@ -30,7 +30,7 @@ VisualTileCorners apply_rotation(VisualTileCorners corners, VisualTileRotation r
         std::swap(corners[PPN], corners[PPP]);
     }
     while (rotation.yaw > 0) {
-        u8 backup_origin = corners[NNN];
+        uint8 backup_origin = corners[NNN];
         corners[NNN] = corners[NPN];
         corners[NPN] = corners[PPN];
         corners[PPN] = corners[PNN];
@@ -46,12 +46,12 @@ VisualTileCorners apply_rotation(VisualTileCorners corners, VisualTileRotation r
     return corners;
 }
 
-bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, u32 seed, bool flip_z) {
+bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, uint32 seed, bool flip_z) {
     vector<VisualTileRotation> candidate_rotations = {};
 
-    for (u8 i = 0; i <= (flip_z ? 0b1111 : 0b111); i++) {
+    for (uint8 i = 0; i <= (flip_z ? 0b1111 : 0b111); i++) {
         VisualTileRotation rotation {
-            .yaw = u8(i & 0b11),
+            .yaw = uint8(i & 0b11),
             .flip_x = bool(i & 0b0100),
             .flip_z = bool(i & 0b1000),
         };
@@ -63,11 +63,11 @@ bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTil
         return false;
 
     math::random_seed(seed);
-    out_rotation = candidate_rotations[math::random_s32(candidate_rotations.size())];
+    out_rotation = candidate_rotations[math::random_int32(candidate_rotations.size())];
     return true;
 }
 
-umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, u8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile) {
+umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile) {
     umap<v3i, VisualTileEntry> entries;
 
     if (single_tile) {
@@ -92,7 +92,7 @@ umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, u8>& solids, const umap<
 
     // TODO: add support for setting this seed
     // TODO: make the seeds local, rather than relying on the chaining.
-    u32 seed = 0;
+    uint32 seed = 0;
     for (auto& [pos, entry] : entries) {
         VisualTileCorners tile_corners = {};
         for (int i = 0; i < 8; ++i) {
@@ -106,14 +106,14 @@ umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, u8>& solids, const umap<
             bool viable = get_rotation(entry_corners, tile_corners, entry_rotation, seed++);
             if (viable) {
                 math::random_seed(seed++);
-                candidate_entries.emplace_back(entry_model[math::random_s32(entry_model.size())], entry_rotation);
+                candidate_entries.emplace_back(entry_model[math::random_int32(entry_model.size())], entry_rotation);
             }
         }
         if (candidate_entries.empty()) {
             continue;
         }
         math::random_seed(seed++);
-        entry = candidate_entries[math::random_s32(candidate_entries.size())];
+        entry = candidate_entries[math::random_int32(candidate_entries.size())];
     }
     
     return entries;
@@ -227,13 +227,13 @@ bool inspect(VisualTileSet* tile_set) {
 
 void visual_tile_widget_system(Scene* scene) {
     ZoneScoped;
-    static u64 mesh_id = 0;
-    static u64 mat_off_id;
-    static u64 mat_on1_id;
-    static u64 mat_on2_id;
-    static u64 mat_on3_id;
-    static u64 mat_on_id;
-    static u64 mat_err_id;
+    static uint64 mesh_id = 0;
+    static uint64 mat_off_id;
+    static uint64 mat_on1_id;
+    static uint64 mat_on2_id;
+    static uint64 mat_on3_id;
+    static uint64 mat_on_id;
+    static uint64 mat_err_id;
     if (mesh_id == 0) {
         mesh_id = upload_mesh(generate_icosphere(2), false);
         mat_off_id = upload_material({.file_path = "mat_off_name", .color_tint = palette::gray_1}, false);
@@ -250,13 +250,13 @@ void visual_tile_widget_system(Scene* scene) {
                     vtsw.setting = i;
             
             auto& tiles = vtsw.tile_set->tiles;
-            u32 width = u32(math::ceil(math::sqrt(f32(tiles.size()))));
-            u32 i = 0;
+            uint32 width = uint32(math::ceil(math::sqrt(float(tiles.size()))));
+            uint32 i = 0;
             for (VisualTilePrefab& tile_entry : tiles) {
                 v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;
                 i++;
                 for (int c = 0; c < 8; c++) {
-                    u64 mat_id;
+                    uint64 mat_id;
                     if (tile_entry.corners[c] & (0b1 << vtsw.setting)) {
                         switch (vtsw.setting) {
                             case 0: mat_id = mat_on1_id; break;
@@ -275,7 +275,7 @@ void visual_tile_widget_system(Scene* scene) {
                     m44 t = math::translate(c_pos) * math::scale(v3(0.07f));
                     r.transform = m44GPU(t);
                     
-                    u64 corner_id = hash_string(vtsw.tile_set->file_path) ^ hash_string(tile_entry.model_path) + c;
+                    uint64 corner_id = hash_view(vtsw.tile_set->file_path) ^ hash_view(tile_entry.model_path) + c;
                     WidgetSystem::Mouse3DInfo mouse;
                     mouse.model = t;
                     mouse.mvp = scene->render_scene.viewport.camera->vp * mouse.model;
@@ -317,7 +317,7 @@ v3 to_vec(DirectionBits direction) {
     return v;
 }
 DirectionBits to_direction_bits(v3 v) {
-    u32 value = NNN;
+    uint32 value = NNN;
     if (v.x > 0)
         value += 4;
     if (v.y > 0)
@@ -327,10 +327,10 @@ DirectionBits to_direction_bits(v3 v) {
     return DirectionBits(value);
 }
 
-DirectionBits rotate_bits(u32 direction, u32 rotation) {
+DirectionBits rotate_bits(uint32 direction, uint32 rotation) {
     return rotate_bits(DirectionBits(direction), rotation);
 }
-DirectionBits rotate_bits(DirectionBits direction, u32 rotation) {
+DirectionBits rotate_bits(DirectionBits direction, uint32 rotation) {
     if (rotation % 4 == 0)
         return direction;
     return to_direction_bits(math::rotate(to_vec(direction), rotation));

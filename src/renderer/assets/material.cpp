@@ -7,6 +7,7 @@
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"
+#include "game/game_file.hpp"
 #include "renderer/renderer.hpp"
 
 
@@ -23,11 +24,11 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     cbuf.bind_image(0, EMISSIVE_BINDING, emissive.global.iv).bind_sampler(0, EMISSIVE_BINDING, emissive.global.sci);
 };
 
-u64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
+uint64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     if (material_cpu.file_path.empty())
         return 0;
     
-    u64 material_cpu_hash               = hash_string(material_cpu.file_path);
+    uint64 material_cpu_hash = hash_view(material_cpu.file_path);
 
     MaterialGPU material_gpu;
     material_gpu.material_cpu = material_cpu;

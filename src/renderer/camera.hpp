@@ -1,7 +1,7 @@
 #pragma once
 
-#include "general/geometry.hpp"
-#include "general/matrix.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/matrix.hpp"
 #include "general/json.hpp"
 
 namespace spellbook {

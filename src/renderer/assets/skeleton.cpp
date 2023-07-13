@@ -10,7 +10,7 @@
 #include "extension/fmt.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "extension/imgui_extra.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "renderer/render_scene.hpp"
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
@@ -47,7 +47,7 @@ void apply_constraints(IKTarget ik) {
 
     apply_constraints(points, lengths);
     
-    for (s32 i = 0; i < bones.size(); i++) {
+    for (int32 i = 0; i < bones.size(); i++) {
         bool use_z_up = i == 0 || math::dot(math::normalize(points[i] - points[i-1]), math::normalize(points[i+1] - points[i])) > 0.99f;
         bones[i]->ik_transform = math::look_ik(points[i], points[i+1] - points[i], !use_z_up ? math::normalize(points[i] - points[i-1]) : v3(0.0f, 0.0f, 1.0f));
         bones[i]->ik_set_this_frame = true;
@@ -68,8 +68,8 @@ void apply_constraints(vector<v3>& points, const vector<float>& lengths) {
     out_points.front() = points_2d.front();
     in_points.resize(points.size());
     
-    for (u32 iter_idx = 0; iter_idx < iters; iter_idx++) {
-        for (u32 i = 1; i < points.size(); i++) {
+    for (uint32 iter_idx = 0; iter_idx < iters; iter_idx++) {
+        for (uint32 i = 1; i < points.size(); i++) {
             v2 p1 = out_points[i-1];
             // use end if we don't have a previous iter, or if it's the last point
             v2 p2 = iter_idx == 0 || i + 1 == points_2d.size() ? points_2d[i] : in_points[i];
@@ -79,7 +79,7 @@ void apply_constraints(vector<v3>& points, const vector<float>& lengths) {
         if (iter_idx + 1 == iters)
             break;
 
-        for (u32 i = points.size() - 2; i > 0; i--) {
+        for (uint32 i = points.size() - 2; i > 0; i--) {
             // If it's the first step, start from the ending point, otherwise use previous step's point
             v2 p1 = i == points_2d.size() - 2 ? points_2d[i+1] : in_points[i+1];
             v2 p2 = out_points[i];
@@ -87,13 +87,13 @@ void apply_constraints(vector<v3>& points, const vector<float>& lengths) {
             in_points[i] = constr(p1, p2, lengths[i]);
         }
     }
-    for (u32 i = 1; i < points.size(); i++) {
+    for (uint32 i = 1; i < points.size(); i++) {
         points[i] = v3(points.front().xy, 0.0f) + v3(leg_vec, 0.0f) * out_points[i].x + v3(0.0f, 0.0f, 1.0f) * out_points[i].y;
     }
 }
 
 SkeletonCPU instance_prefab(SkeletonPrefab& prefab) {
-    umap<u64, Bone*> bones;
+    umap<uint64, Bone*> bones;
     SkeletonCPU skeleton_cpu;
     skeleton_cpu.prefab = &prefab;
     skeleton_cpu.current_pose = "default";
@@ -108,8 +108,8 @@ SkeletonCPU instance_prefab(SkeletonPrefab& prefab) {
     }
 
     for (const id_ptr<BonePrefab>& bone_prefab : prefab.bones) {
-        u64 this_id = bone_prefab.id;
-        u64 parent_id = bone_prefab->parent.id;
+        uint64 this_id = bone_prefab.id;
+        uint64 parent_id = bone_prefab->parent.id;
         bones[this_id]->parent = bones.contains(parent_id) ? bones[parent_id] : nullptr;
     }
     return skeleton_cpu;
@@ -118,7 +118,7 @@ SkeletonCPU instance_prefab(SkeletonPrefab& prefab) {
 SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu) {
     SkeletonGPU skeleton_gpu;
     vuk::Allocator& alloc = *game.renderer.global_allocator;
-    u32 alloc_size = sizeof(u32) * 4 + sizeof(m44GPU) * skeleton_cpu.bones.size();
+    uint32 alloc_size = sizeof(uint32) * 4 + sizeof(m44GPU) * skeleton_cpu.bones.size();
 
     skeleton_gpu.buffer = *vuk::allocate_buffer(alloc, {vuk::MemoryUsage::eCPUtoGPU, alloc_size, 1});
     return skeleton_gpu;
@@ -287,9 +287,9 @@ void SkeletonCPU::update() {
 }
 
 void SkeletonGPU::update(const SkeletonCPU& skeleton) {
-    vector<u8> bones_data( sizeof(u32) * 4 + sizeof(m44GPU) * skeleton.bones.size());
+    vector<uint8> bones_data( sizeof(uint32) * 4 + sizeof(m44GPU) * skeleton.bones.size());
     bones_data.append_data(skeleton.bones.size());
-    struct { u32 a,b,c; } padding;
+    struct { uint32 a,b,c; } padding;
     bones_data.append_data(padding);
     for (const std::unique_ptr<Bone>& bone : skeleton.bones) {
         bones_data.append_data(m44GPU(bone->ik_set_this_frame ? bone->final_ik_transform() : bone->final_transform()));
@@ -329,7 +329,7 @@ bool inspect(SkeletonCPU* skeleton_cpu) {
 
     struct PoseSetTakeState {
         AnimationState to_type;
-        vector<u8> selected;
+        vector<uint8> selected;
     };
     static umap<SkeletonPrefab*, PoseSetTakeState> take_states;
 

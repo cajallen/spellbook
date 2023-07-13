@@ -7,7 +7,7 @@ namespace spellbook {
 
 struct TestScene {
     vector<v3> control_points;
-    s32 degrees;
+    int32 degrees;
     float t;
     
     Scene* p_scene        = nullptr;

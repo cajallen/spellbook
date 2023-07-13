@@ -18,9 +18,9 @@ namespace spellbook {
 
 struct MeshInfo {
     CompressionMode compression_mode = {};
-    u32             vertices_bsize   = 0;
-    u32             indices_bsize    = 0;
-    u32             index_bsize      = 0;
+    uint32             vertices_bsize   = 0;
+    uint32             indices_bsize    = 0;
+    uint32             index_bsize      = 0;
 };
 
 JSON_IMPL(MeshInfo, compression_mode, vertices_bsize, indices_bsize, index_bsize);

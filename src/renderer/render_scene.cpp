@@ -7,7 +7,7 @@
 #include "extension/fmt_renderer.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/file.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
 #include "editor/console.hpp"
@@ -53,7 +53,7 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     scene_data.water_level           = -0.5f;
 
     MeshCPU cube = generate_cube(v3(0.0f, 0.0f, -3.5f), v3(10000.0f, 10000.0f, 1.0f));
-    u64 background_mat_name = upload_material(MaterialCPU{.file_path = "black_mat", .color_tint = palette::black});
+    uint64 background_mat_name = upload_material(MaterialCPU{.file_path = "black_mat", .color_tint = palette::black});
     quick_renderable(cube, background_mat_name, false);
 }
 
@@ -75,7 +75,7 @@ void RenderScene::settings_gui() {
         ImGui::DragFloat("water_intensity", &scene_data.water_intensity);
         ImGui::DragFloat("water_level", &scene_data.water_intensity);
 
-        u32 id = ImGui::GetID("Sun Direction");
+        uint32 id = ImGui::GetID("Sun Direction");
         PoseWidgetSettings settings {.render_scene = *this, .disabled = 0b1 << Operation_RotateZ};
         pose_widget(id, nullptr, &scene_data.sun_direction, settings);
         ImGui::DragFloat("Sun Intensity", &scene_data.sun_intensity, 0.01f);
@@ -163,10 +163,11 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 }
 
 void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
+    ZoneScoped;
     renderables_built.clear();
     rigged_renderables_built.clear();
 
-    u32 count = 0;
+    uint32 count = 0;
 
     for (auto& renderable : static_renderables) {
         assert_else(game.renderer.material_cache.contains(renderable.material_id))
@@ -199,8 +200,8 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
         }
     }
 
-    u32 model_buffer_size = sizeof(m44GPU) * (count + widget_renderables.size());
-    u32 id_buffer_size = sizeof(u32) * count;
+    uint32 model_buffer_size = sizeof(m44GPU) * (count + widget_renderables.size());
+    uint32 id_buffer_size = sizeof(uint32) * count;
     
     buffer_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, model_buffer_size, 1});
     buffer_ids = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, id_buffer_size, 1});
@@ -209,7 +210,7 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
             for (auto& [id, transform] : mesh_list) {
                 memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(m44GPU));
-                *((u32*) buffer_ids.mapped_ptr + i) = id;
+                *((uint32*) buffer_ids.mapped_ptr + i) = id;
                 i++;
             }
         }
@@ -218,7 +219,7 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
             for (const auto& [id, skeleton, transform] : mesh_list) {
                 memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(m44GPU));
-                *((u32*) buffer_ids.mapped_ptr + i) = id;
+                *((uint32*) buffer_ids.mapped_ptr + i) = id;
                 i++;
             }
         }
@@ -483,7 +484,7 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
         }
     });
 
-    rg->attach_buffer("top_blurred_temp0_input", **vuk::allocate_buffer(*game.renderer.frame_allocator, {.mem_usage = vuk::MemoryUsage::eGPUonly, .size = sizeof(u16) * 1024 * 1024}), vuk::Access::eNone);
+    rg->attach_buffer("top_blurred_temp0_input", **vuk::allocate_buffer(*game.renderer.frame_allocator, {.mem_usage = vuk::MemoryUsage::eGPUonly, .size = sizeof(uint16) * 1024 * 1024}), vuk::Access::eNone);
     rg->attach_and_clear_image("top_blurred_temp1_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
     rg->attach_and_clear_image("top_blurred_temp2_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
     rg->attach_and_clear_image("top_blurred_temp3_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
@@ -679,7 +680,7 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
 
 void RenderScene::add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg) {
     if (math::contains(range2i(v2i(0), v2i(viewport.size)), query)) {
-        auto info_storage_buffer = **vuk::allocate_buffer(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, sizeof(u32), 1});
+        auto info_storage_buffer = **vuk::allocate_buffer(*game.renderer.global_allocator, { vuk::MemoryUsage::eGPUtoCPU, sizeof(uint32), 1});
         rg->attach_buffer("info_storage", info_storage_buffer);
         rg->add_pass({
             .name  = "read",
@@ -735,7 +736,7 @@ Renderable& RenderScene::quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocate
     
     Renderable r;
     r.mesh_id = upload_mesh(mesh_cpu, frame_allocated);
-    r.material_id = hash_string(widget ? "widget" : "default");
+    r.material_id = hash_view(widget ? "widget" : "default");
     r.frame_allocated = frame_allocated;
 
     return *(widget ? widget_renderables : renderables).emplace(r);
@@ -753,14 +754,14 @@ Renderable& RenderScene::quick_material(const MaterialCPU& material_cpu, bool fr
     material_setup();
     
     Renderable r;
-    r.mesh_id = hash_string("icosphere_subdivisions:3");
+    r.mesh_id = hash_view("icosphere_subdivisions:3");
     r.material_id = upload_material(material_cpu, frame_allocated);
     r.frame_allocated = frame_allocated;
     
     return *renderables.emplace(r);
 }
 
-Renderable& RenderScene::quick_renderable(u64 mesh_id, u64 mat_id, bool frame_allocated) {
+Renderable& RenderScene::quick_renderable(uint64 mesh_id, uint64 mat_id, bool frame_allocated) {
     material_setup();
     
     Renderable r;
@@ -771,7 +772,7 @@ Renderable& RenderScene::quick_renderable(u64 mesh_id, u64 mat_id, bool frame_al
     return *renderables.emplace(r);
 }
 
-Renderable& RenderScene::quick_renderable(const MeshCPU& mesh, u64 mat_id, bool frame_allocated) {
+Renderable& RenderScene::quick_renderable(const MeshCPU& mesh, uint64 mat_id, bool frame_allocated) {
     material_setup();
     
     Renderable r;
@@ -782,7 +783,7 @@ Renderable& RenderScene::quick_renderable(const MeshCPU& mesh, u64 mat_id, bool 
     return *renderables.emplace(r);
 }
 
-Renderable& RenderScene::quick_renderable(u64 mesh_id, const MaterialCPU& mat, bool frame_allocated) {
+Renderable& RenderScene::quick_renderable(uint64 mesh_id, const MaterialCPU& mat, bool frame_allocated) {
     material_setup();
     
     Renderable r;

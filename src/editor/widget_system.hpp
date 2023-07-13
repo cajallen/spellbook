@@ -3,15 +3,15 @@
 #include <GLFW/glfw3.h>
 
 #include "general/umap.hpp"
-#include "general/geometry.hpp"
-#include "general/matrix.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/matrix.hpp"
 
 namespace spellbook {
 
 namespace WidgetSystem {
 
-extern umap<u64, float> depths;
-extern u64 pressed_id;
+extern umap<uint64, float> depths;
+extern uint64 pressed_id;
 
 void setup();
 void update();

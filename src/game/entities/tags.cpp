@@ -4,7 +4,7 @@
 
 namespace spellbook {
 
-bool Tags::has_tag(u32 tag) {
+bool Tags::has_tag(uint32 tag) {
     for (auto it = entries.begin(); it != entries.end();) {
         Entry& entry = it->second;
         if (entry.until < scene.time) {
@@ -22,13 +22,13 @@ bool Tags::has_tag(u32 tag) {
     return false;
 }
 
-void Tags::remove_tag(u64 id) {
+void Tags::remove_tag(uint64 id) {
     if (entries.contains(id))
         entries.erase(id);
 }
 
 
-void Tags::apply_tag(u32 tag, u64 id, float duration) {
+void Tags::apply_tag(uint32 tag, uint64 id, float duration) {
     if (entries.contains(id)) {
         if (entries[id].until > scene.time + duration)
             return;
@@ -36,7 +36,7 @@ void Tags::apply_tag(u32 tag, u64 id, float duration) {
     entries[id] = {tag, scene.time + duration};
 }
 
-void Tags::apply_tag(u32 tag, u64 id, entt::entity dependency, float duration) {
+void Tags::apply_tag(uint32 tag, uint64 id, entt::entity dependency, float duration) {
     if (entries.contains(id)) {
         if (entries[id].until > scene.time + duration)
             return;

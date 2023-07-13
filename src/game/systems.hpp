@@ -1,7 +1,7 @@
 #pragma once
 
 #include <entt/entity/fwd.hpp>
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 

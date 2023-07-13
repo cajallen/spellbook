@@ -7,8 +7,8 @@
 #include "general/color.hpp"
 #include "general/string.hpp"
 #include "general/json.hpp"
-#include "general/matrix.hpp"
-#include "general/quaternion.hpp"
+#include "general/math/matrix.hpp"
+#include "general/math/quaternion.hpp"
 #include "renderer/vertex.hpp"
 #include "renderer/image.hpp"
 
@@ -68,12 +68,12 @@ struct EmitterSettings {
     float life_random;
     float falloff;
     
-    u32 max_particles;
+    uint32 max_particles;
 };
 
 struct EmitterGPU {
-    static constexpr u64 cube_mesh = hash_view("emitter_cube");
-    static constexpr u64 sphere_mesh = hash_view("emitter_sphere");
+    static constexpr uint64 cube_mesh = hash_view("emitter_cube");
+    static constexpr uint64 sphere_mesh = hash_view("emitter_sphere");
     // For editing purposes
     EmitterCPU emitter_cpu;
     
@@ -83,8 +83,8 @@ struct EmitterGPU {
     
     Image color;
     vuk::Unique<vuk::Buffer> particles_buffer;
-    u64 mesh;
-    u64 material;
+    uint64 mesh;
+    uint64 material;
 
     bool emitting = true;
     float deinstance_at = FLT_MAX;

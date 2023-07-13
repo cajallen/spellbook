@@ -13,7 +13,7 @@ struct Bitmask3D;
 struct FormattedVertex {
     v3 position;
     Color color;
-    f32 width;
+    float width;
 
     static constexpr FormattedVertex separate() {
         return {v3(0.0f), Color(0.0f, 0.0f, 0.0f, 0.0f), 0.0f};

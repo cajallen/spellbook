@@ -58,7 +58,7 @@ struct Scene {
     Audio          audio;
     
     bool edit_mode = true; // disables certain features
-    u32 frame = 0;
+    uint32 frame = 0;
     float time = 0.0f;
     float delta_time = 0.0f;
     float time_scale = 1.0f;

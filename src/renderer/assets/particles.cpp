@@ -13,7 +13,7 @@
 #include "renderer/assets/mesh_asset.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
 
 namespace spellbook {
@@ -48,7 +48,7 @@ EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu) 
     setup_emitter();
     
     EmitterGPU emitter;
-    u64 mat_id = hash_data(emitter_cpu.material.data(), emitter_cpu.material.size());
+    uint64 mat_id = hash_data(emitter_cpu.material.data(), emitter_cpu.material.size());
     assert_else(game.renderer.material_cache.contains(mat_id));
     game.renderer.material_cache[mat_id].pipeline = game.renderer.context->get_named_pipeline("particle");
     emitter.update_from_cpu(emitter_cpu);
@@ -88,8 +88,8 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
 
     rate = 1.0f / new_emitter.particles_per_second;
 
-    mesh = hash_string(new_emitter.mesh);
-    material = hash_string(new_emitter.material);
+    mesh = hash_view(new_emitter.mesh);
+    material = hash_view(new_emitter.material);
     game.renderer.file_path_cache[mesh] = new_emitter.mesh;
     game.renderer.file_path_cache[material] = new_emitter.material;
 
@@ -126,20 +126,20 @@ void EmitterGPU::update_color() {
     color_texture.size = v2i(8, 8);
     color_texture.format = vuk::Format::eR8G8B8A8Srgb;
     color_texture.pixels.resize(color_texture.size.x * color_texture.size.y * 4);
-    for (u32 y = 0; y < color_texture.size.y; ++y) {
-        for (u32 x = 0; x < color_texture.size.x; ++x) {
+    for (uint32 y = 0; y < color_texture.size.y; ++y) {
+        for (uint32 x = 0; x < color_texture.size.x; ++x) {
             v2 f = v2(x, y) / v2(color_texture.size - v2i(1));
             Color color1 = mix(emitter_cpu.color1_start, emitter_cpu.color1_end, f.y);
             Color color2 = mix(emitter_cpu.color2_start, emitter_cpu.color2_end, f.y);
             Color color = mix(color1, color2, f.x);
-            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 0] = u8(color.r * 255.f);
-            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 1] = u8(color.g * 255.f);
-            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 2] = u8(color.b * 255.f);
-            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 3] = u8(color.a * 255.f);
+            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 0] = uint8(color.r * 255.f);
+            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 1] = uint8(color.g * 255.f);
+            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 2] = uint8(color.b * 255.f);
+            color_texture.pixels[(y * color_texture.size.x + x) * 4 + 3] = uint8(color.a * 255.f);
         }
     }
 
-    u64 tex_id = hash_string(color_texture.file_path);
+    uint64 tex_id = hash_view(color_texture.file_path);
     if (game.renderer.texture_cache.contains(tex_id))
         game.renderer.texture_cache.erase(tex_id);
     upload_texture(color_texture);
@@ -149,7 +149,7 @@ void EmitterGPU::update_color() {
 void EmitterGPU::update_size() {
     calculate_max();
 
-    vector<u8> bytes;
+    vector<uint8> bytes;
     bytes.resize(settings.max_particles * sizeof(v4)*4 + 4);
     auto [buf, fut] = create_buffer(*game.renderer.global_allocator, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(bytes));
     particles_buffer = std::move(buf);
@@ -163,7 +163,7 @@ bool inspect(Scene* scene, EmitterCPU* emitter) {
     changed |= inspect_dependencies(emitter->dependencies, emitter->file_path);
     
     PoseWidgetSettings settings {scene->render_scene};
-    changed |= pose_widget((u64) emitter, &emitter->position, &emitter->rotation, settings);
+    changed |= pose_widget((uint64) emitter, &emitter->position, &emitter->rotation, settings);
     changed |= ImGui::DragFloat3("Offset", emitter->offset.data, 0.01f);
     changed |= ImGui::DragFloat3("Offset Random", emitter->position_random.data, 0.01f);
     changed |= ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
@@ -193,7 +193,7 @@ bool inspect(Scene* scene, EmitterCPU* emitter) {
 
 void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
     struct PC {
-        u32 spawn_count = 0;
+        uint32 spawn_count = 0;
         float dt;
     } pc;
     pc.spawn_count = math::max((Input::time - emitter.next_spawn) / emitter.rate, 0.0f);
@@ -226,7 +226,7 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
         .bind_buffer(0, PARTICLES_BINDING, *emitter.particles_buffer)
         .bind_graphics_pipeline(material->pipeline);
 
-    u64 tex_id = hash_string(emitter.color.texture);
+    uint64 tex_id = hash_view(emitter.color.texture);
     TextureGPU& tex = game.renderer.texture_cache[tex_id];
     command_buffer.bind_image(0, SPARE_BINDING_1, tex.value.view.get()).bind_sampler(0, SPARE_BINDING_1, emitter.color.sampler.get());
     material->bind_parameters(command_buffer);

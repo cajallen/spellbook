@@ -30,15 +30,12 @@ bool Caster::casting() const {
 
 
 void caster_system(Scene* scene) {
-    ZoneScoped;
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
-        ZoneScoped;
         if (caster.attack && !caster.casting() )
             caster.attack->targeting();
     }
     
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
-        ZoneScoped;
         Tags* tags = scene->registry.try_get<Tags>(entity);
         if (tags)
             if (tags->has_tag("no_cast"_hs))
@@ -73,19 +70,19 @@ bool Taunt::try_get(v3i* pos) {
     return false;
 }
 
-bool Taunt::set(u64 id, v3i pos) {
+bool Taunt::set(uint64 id, v3i pos) {
     type = Type_Position;
     source = id;
     position = pos;
     return true;
 }
-bool Taunt::set(u64 id, entt::entity init_unit) {
+bool Taunt::set(uint64 id, entt::entity init_unit) {
     type = Type_UnitPosition;
     source = id;
     unit = init_unit;
     return true;
 }
-bool Taunt::reset(u64 id) {
+bool Taunt::reset(uint64 id) {
     if (source != 0 && source != id)
         return false;
 

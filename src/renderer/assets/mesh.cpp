@@ -4,7 +4,7 @@
 #include <vuk/Partials.hpp>
 
 #include "extension/fmt.hpp"
-#include "general/math.hpp"
+#include "general/math/math.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"
 
@@ -34,10 +34,10 @@ void MeshCPU::fix_tangents() {
     }
 }
 
-u64 upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
+uint64 upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     if (mesh_cpu.file_path.empty())
         return 0;
-    u64 mesh_cpu_hash           = hash_string(mesh_cpu.file_path);
+    uint64 mesh_cpu_hash = hash_view(mesh_cpu.file_path);
     if (game.renderer.mesh_cache.contains(mesh_cpu_hash))
         return mesh_cpu_hash;
     MeshGPU         mesh_gpu;

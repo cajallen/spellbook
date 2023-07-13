@@ -5,8 +5,8 @@
 #include "extension/glfw.hpp"
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/math.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/input.hpp"
 
 namespace spellbook {
@@ -173,8 +173,8 @@ void CameraController::update() {
             ray3 original_camera_ray = viewport->ray((v2i) pivot_state.pan_start_mouse);
             ray3 current_camera_ray  = viewport->ray((v2i) Input::mouse_pos);
 
-            v3 original_position = math::intersect_axis_plane(original_camera_ray, (u32) Z, 0.f);
-            v3 current_position  = math::intersect_axis_plane(current_camera_ray, (u32) Z, 0.f);
+            v3 original_position = math::intersect_axis_plane(original_camera_ray, (uint32) Z, 0.f);
+            v3 current_position  = math::intersect_axis_plane(current_camera_ray, (uint32) Z, 0.f);
 
             pivot_state.arm_pivot = pivot_state.pan_start_world - (current_position - original_position);
         }

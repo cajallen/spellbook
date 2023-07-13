@@ -173,7 +173,7 @@ void AssetEditor::switch_tab(Tab new_tab) {
         } break;
         case (Tab_Lizard): {
             MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            u64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            uint64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
             background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
             
             if (!lizard_prefab.file_path.empty() && lizard_prefab.file_path != "none")
@@ -185,7 +185,7 @@ void AssetEditor::switch_tab(Tab new_tab) {
         } break;
         case (Tab_Enemy): {
             MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            u64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            uint64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
             background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
             
             if (!enemy_prefab.file_path.empty() && enemy_prefab.file_path != "none")
@@ -205,8 +205,8 @@ void AssetEditor::switch_tab(Tab new_tab) {
             p_scene->registry.emplace<Name>(vtsw_entity, fmt_("vtsw"));
             p_scene->registry.emplace<VisualTileSetWidget>(vtsw_entity, &tile_set);
             
-            u32 width = u32(math::ceil(math::sqrt(f32(tile_set.tiles.size()))));
-            u32 i = 0;
+            uint32 width = uint32(math::ceil(math::sqrt(float(tile_set.tiles.size()))));
+            uint32 i = 0;
             for (VisualTilePrefab& tile_entry : tile_set.tiles) {
                 auto entity = p_scene->registry.create();
                 v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;

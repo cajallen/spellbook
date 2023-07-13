@@ -20,7 +20,7 @@ bool inspect(MapPrefab* map_prefab) {
     inspect_dependencies(map_prefab->dependencies, map_prefab->file_path);
     
     ImGui::Text("Lizards");
-    u32 lizard_i = 0;
+    uint32 lizard_i = 0;
     for (auto& [pos, prefab] : map_prefab->lizards) {
         ImGui::Text("%d", lizard_i++);
         ImGui::Indent();
@@ -32,7 +32,7 @@ bool inspect(MapPrefab* map_prefab) {
     ImGui::Separator();
 
     if (ImGui::TreeNode("Tiles")) {
-        u32 tile_i = 0;
+        uint32 tile_i = 0;
         for (auto& [pos, entry] : map_prefab->tiles) {
             ImGui::Text("%d", tile_i++);
             ImGui::Indent();
@@ -49,7 +49,7 @@ bool inspect(MapPrefab* map_prefab) {
     ImGui::Separator();
 
     ImGui::Text("Spawners");
-    u32 spawner_i = 0;
+    uint32 spawner_i = 0;
     for (auto& [pos, prefab] : map_prefab->spawners) {
         ImGui::Text("%d", spawner_i++);
         ImGui::Indent();
@@ -61,7 +61,7 @@ bool inspect(MapPrefab* map_prefab) {
     ImGui::Separator();
 
     ImGui::Text("Consumers");
-    u32 consumer_i = 0;
+    uint32 consumer_i = 0;
     for (auto& [pos, prefab] : map_prefab->consumers) {
         ImGui::Text("%d", consumer_i++);
         ImGui::Indent();

@@ -2,7 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
@@ -46,7 +46,7 @@ void ChampionAttack::trigger() {
         damage(scene, caster, enemy, 2.0f, enemy_tfm.position - logic_tfm.position);
 
         if (enemy_caster) {
-            enemy_caster->taunt.set(u64(this), caster);
+            enemy_caster->taunt.set(uint64(this), caster);
             
             add_timer(scene, "taunt", [enemy_attachment, caster_cap](Timer* timer) {
                 if (!timer->scene->registry.valid(caster_cap))
@@ -55,7 +55,7 @@ void ChampionAttack::trigger() {
                     return;
                 
                 auto& enemy_caster = timer->scene->registry.get<Caster>(enemy_attachment);
-                enemy_caster.taunt.reset(u64(caster_cap) + 1);
+                enemy_caster.taunt.reset(uint64(caster_cap) + 1);
             }, true)->start(2.0f);
         }
     }
@@ -95,8 +95,8 @@ struct ChampionSpell : Spell {
 
     string get_name() const override { return "Champion Spell"; }
 
-    u64 get_buff_id() { return hash_string("Champion Spell Resist"); }
-    u64 get_taunt_id() { return u64(caster) + 1; }
+    constexpr uint64 get_buff_id() { return hash_view("Champion Spell Resist"); }
+    uint64 get_taunt_id() { return uint64(caster) + 1; }
 };
 
 void ChampionSpell::start() {
@@ -115,7 +115,7 @@ void ChampionSpell::trigger() {
     entt::sink sink{health.damage_signal};
     sink.connect<handle_champion_damaged>();
 
-    u64 buff_id = get_buff_id();
+    uint64 buff_id = get_buff_id();
     
     health.damage_taken_multiplier->add_effect(buff_id, StatEffect{
         .type = StatEffect::Type_Multiply,
@@ -172,7 +172,7 @@ void ChampionSpell::trigger() {
             Caster* enemy_caster = timer->scene->registry.try_get<Caster>(enemy_attachment);
 
             if (enemy_caster)
-                enemy_caster->taunt.set(u64(caster_cap) + 1, caster_cap);
+                enemy_caster->taunt.set(uint64(caster_cap) + 1, caster_cap);
         }
         phase++;
         if (phase < math::ceil_cast(4.0f / period)) {

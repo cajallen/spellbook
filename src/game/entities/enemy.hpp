@@ -3,7 +3,7 @@
 #include <entt/entity/fwd.hpp>
 
 #include "general/json.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "general/path.hpp"
 #include "game/game_file.hpp"
 #include "game/shop.hpp"
@@ -42,7 +42,7 @@ struct EnemyPrefab {
 
 struct Traveler {
     struct Target {
-        u32 priority = INT_MAX;
+        uint32 priority = INT_MAX;
         v3i pos;
     };
     

@@ -3,7 +3,7 @@
 #include <imgui.h>
 
 #include "extension/fmt.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
 #include "game/systems.hpp"
 #include "game/entities/components.hpp"

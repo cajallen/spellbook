@@ -3,7 +3,7 @@
 #include <entt/entity/fwd.hpp>
 
 #include "general/string.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "general/color.hpp"
 
 namespace spellbook {

@@ -20,8 +20,8 @@ struct WindowState {
 };
 
 struct GUI {
-    // u64 should come from id_ptr
-    umap<u64, InterfaceInfo> item_state;
+    // uint64 should come from id_ptr
+    umap<uint64, InterfaceInfo> item_state;
     umap<string, WindowState>  windows;
 
     string asset_browser_file;

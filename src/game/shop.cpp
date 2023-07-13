@@ -18,13 +18,13 @@ ShopEntry* Warehouse::get_entry() {
         return &entries.front();
 
     float total_probability = 0.0f;
-    for (u32 i = 0; i < entries.size(); i++) {
+    for (uint32 i = 0; i < entries.size(); i++) {
         total_probability += stock[i] ? probabilities[i] : 0.0f;
     }
 
     float current_probability = 0.0f;
-    float target_probability = math::random_f32();
-    for (u32 i = 0; i < entries.size(); i++) {
+    float target_probability = math::random_float();
+    for (uint32 i = 0; i < entries.size(); i++) {
         float entry_probability = stock[i] ? probabilities[i] / total_probability : 0.0f;
         current_probability += entry_probability;
         if (target_probability <= current_probability) {
@@ -51,7 +51,7 @@ vector<ShopEntry*>* ShopGenerator::generate_shop() {
     log_warning("Attempted to use unenforced virtual ShopGenerator");
     return nullptr;
 }
-void ShopGenerator::purchase(u32 index) {
+void ShopGenerator::purchase(uint32 index) {
     log_warning("Attempted to use unenforced virtual ShopGenerator");
 }
 void ShopGenerator::reset() {
@@ -80,7 +80,7 @@ vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
         return &out_shop;
 
-    for (u32 i = 0; i < shop_size; i++) {
+    for (uint32 i = 0; i < shop_size; i++) {
         auto entry = round_info->round_number >= 0 ? warehouse.get_entry() : first_warehouse.get_entry();
         if (entry == nullptr)
             break;
@@ -88,7 +88,7 @@ vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     }
     return &out_shop;
 }
-void FirstFreeShopGenerator::purchase(u32 index) {
+void FirstFreeShopGenerator::purchase(uint32 index) {
     if (round_info->round_number == -1) {
         reset();
         round_info->advance_round();
@@ -99,8 +99,8 @@ void FirstFreeShopGenerator::purchase(u32 index) {
 
 void FirstFreeShopGenerator::reset() {
     if (round_info->round_number >= 0) {
-        for (u32 i = 0; i < out_shop.size(); i++) {
-            u32 j = warehouse.entries.index(*out_shop[i]);
+        for (uint32 i = 0; i < out_shop.size(); i++) {
+            uint32 j = warehouse.entries.index(*out_shop[i]);
             warehouse.stock[j]++;
         }
     }
@@ -134,7 +134,7 @@ vector<ShopEntry*>* SimpleShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
         return &out_shop;
 
-    for (u32 i = 0; i < shop_size; i++) {
+    for (uint32 i = 0; i < shop_size; i++) {
         auto entry = warehouse.get_entry();
         if (entry == nullptr)
             break;
@@ -142,13 +142,13 @@ vector<ShopEntry*>* SimpleShopGenerator::generate_shop() {
     }
     return &out_shop;
 }
-void SimpleShopGenerator::purchase(u32 index) {
+void SimpleShopGenerator::purchase(uint32 index) {
     out_shop.remove_index(index);
 }
 
 void SimpleShopGenerator::reset() {
-    for (u32 i = 0; i < out_shop.size(); i++) {
-        u32 j = warehouse.entries.index(*out_shop[i]);
+    for (uint32 i = 0; i < out_shop.size(); i++) {
+        uint32 j = warehouse.entries.index(*out_shop[i]);
         warehouse.stock[j]++;
     }
     out_shop.clear();
@@ -182,7 +182,7 @@ void inspect(Warehouse* warehouse) {
         ImGui::TableSetupColumn("Probability");
         ImGui::TableSetupColumn("Stock");
         ImGui::TableHeadersRow();
-        for (u32 i = 0; i < warehouse->entries.size(); i++) {
+        for (uint32 i = 0; i < warehouse->entries.size(); i++) {
             ImGui::PushID(&warehouse->entries[i]);
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -201,7 +201,7 @@ void inspect(Warehouse* warehouse) {
 }
 void show_shop(Shop* shop, Player* player) {
     ImGui::BeginGroup();
-    for (u32 i = 0; i < player->bank.beads.size(); i++) {
+    for (uint32 i = 0; i < player->bank.beads.size(); i++) {
         auto bead_name = string(magic_enum::enum_name((Bead) i));
         ImGui::SetNextItemWidth(70.0f);
         ImGui::InputInt(bead_name.c_str(), &player->bank.beads[i]);
@@ -222,7 +222,7 @@ void show_shop(Shop* shop, Player* player) {
         shop->shop_generator->round_info->advance_round();
     }
     if (shop->entries != nullptr) {
-        for (u32 i = 0; i < shop->entries->size(); i++) {
+        for (uint32 i = 0; i < shop->entries->size(); i++) {
             if (i > 0)
                 ImGui::SameLine();
             Bead bead_type = shop->entries->at(i)->cost_type;

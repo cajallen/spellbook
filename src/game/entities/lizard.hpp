@@ -5,7 +5,7 @@
 #include "ability.hpp"
 #include "general/string.hpp"
 #include "general/json.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "game/game_file.hpp"
 #include "game/entities/stat.hpp"
 #include "general/id_ptr.hpp"
@@ -35,8 +35,8 @@ struct LizardPrefab {
     string model_path;
     
     v3 default_direction = v3(0,1,0);
-    f32 max_health = 1.0f;
-    f32 health_regen = 0.1f;
+    float max_health = 1.0f;
+    float health_regen = 0.1f;
     string hurt_path;
 
     float scale = 1.0f;

@@ -4,7 +4,7 @@
 
 #include "general/string.hpp"
 #include "general/json.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "game/game_file.hpp"
 
 namespace spellbook {

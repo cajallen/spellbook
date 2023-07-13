@@ -1,7 +1,7 @@
 #pragma once
 
 #include "general/string.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/viewport.hpp"
 #include "game/input.hpp"
@@ -36,7 +36,7 @@ struct CameraController {
 
         v3    arm_pivot   = v3(0.f);
         euler arm_heading = euler();
-        f32   arm_length  = -1.f;
+        float   arm_length  = -1.f;
 
     } pivot_state;
 

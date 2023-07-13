@@ -18,7 +18,7 @@ struct AssetFile {
     array<char, 3> type;
     int            version;
     json           asset_json;
-    vector<u8>     binary_blob;
+    vector<uint8>     binary_blob;
 };
 
 enum CompressionMode { CompressionMode_None, CompressionMode_Lz4 };

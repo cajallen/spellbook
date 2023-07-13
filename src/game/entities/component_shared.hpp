@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 

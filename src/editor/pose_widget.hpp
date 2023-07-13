@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include "general/geometry.hpp"
-#include "general/quaternion.hpp"
-#include "general/matrix.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/quaternion.hpp"
+#include "general/math/matrix.hpp"
 
 namespace spellbook {
 
@@ -26,10 +26,10 @@ enum Operation {
 struct PoseWidgetState {
     m44 model;
     
-    u32 enabled = ~0u;
-    u32 hovered =  0u;
-    u32 pressed =  0u;
-    u32 hidden  =  0u;
+    uint32 enabled = ~0u;
+    uint32 hovered =  0u;
+    uint32 pressed =  0u;
+    uint32 hidden  =  0u;
     array<float, Operation_Count> depth;
     
     array<float, Operation_Count> value;
@@ -61,11 +61,11 @@ struct PoseWidgetSettings {
     float color_neutral_hovered = 0.5f;
     float color_axis = 1.0f;
 
-    u32 disabled = 0;
+    uint32 disabled = 0;
     bool widget = true;
 };
 
-bool pose_widget(u64 id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);
+bool pose_widget(uint64 id, v3* location, quat* rotation, const PoseWidgetSettings& settings, m44* model = nullptr, PoseWidgetState* widget_state = nullptr);
 void _pose_widget(PoseWidgetState* widget_state, const PoseWidgetSettings& settings);
 void inspect(PoseWidgetState* state);
 

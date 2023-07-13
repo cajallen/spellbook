@@ -98,7 +98,7 @@
 
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "general/color.hpp"
 #define IM_VEC2_CLASS_EXTRA                   \
 	explicit constexpr ImVec2(const spellbook::v2& f) {  \

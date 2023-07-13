@@ -20,7 +20,7 @@ struct ShopEntry {
 struct Warehouse {
     vector<ShopEntry> entries = {};
     vector<float> probabilities = {};
-    vector<u8> stock = {};
+    vector<uint8> stock = {};
 
     ShopEntry* get_entry();
     void add_entry(ShopEntry&& shop_entry, float probability);
@@ -31,7 +31,7 @@ struct ShopGenerator {
     
     virtual void setup(Scene* scene);
     virtual vector<ShopEntry*>* generate_shop();
-    virtual void purchase(u32 index);
+    virtual void purchase(uint32 index);
     virtual void reset();
     virtual void inspect();
 };
@@ -43,7 +43,7 @@ struct SimpleShopGenerator : ShopGenerator {
     
     void setup(Scene* scene) override;
     vector<ShopEntry*>* generate_shop() override;
-    void purchase(u32 index) override;
+    void purchase(uint32 index) override;
     void reset() override;
     void inspect() override;
 };
@@ -56,7 +56,7 @@ struct FirstFreeShopGenerator : ShopGenerator {
     
     void setup(Scene* scene) override;
     vector<ShopEntry*>* generate_shop() override;
-    void purchase(u32 index) override;
+    void purchase(uint32 index) override;
     void reset() override;
     void inspect() override;
 };

@@ -44,8 +44,8 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.250.1\Include;src;libs;libs\entt\src;libs\fmt\include;libs\lz4;libs\dtoa;libs\tinyobjloader;libs\tinygltf;libs\imgui;libs\GLFW\include;libs\vk-bootstrap\src;libs\vuk\include;libs\vuk\ext\plf_colony;libs\vuk\ext\concurrentqueue;libs\vuk\ext\robin-hood-hashing\src\include;libs\vuk\ext\stb;libs\vuk\ext\VulkanMemoryAllocator\include;libs\vuk\ext\SPIRV-Cross;libs\vuk\ext\doctest;libs\tracy\public;libs\magic_enum\include;libs\miniaudio</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>global.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.250.1\Include;src;src\archive;libs;libs\entt\src;libs\fmt\include;libs\lz4;libs\dtoa;libs\tinyobjloader;libs\tinygltf;libs\imgui;libs\GLFW\include;libs\vk-bootstrap\src;libs\vuk\include;libs\vuk\ext\plf_colony;libs\vuk\ext\concurrentqueue;libs\vuk\ext\robin-hood-hashing\src\include;libs\vuk\ext\stb;libs\vuk\ext\VulkanMemoryAllocator\include;libs\vuk\ext\SPIRV-Cross;libs\vuk\ext\doctest;libs\tracy\public;libs\magic_enum\include;libs\miniaudio</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>general/global.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h";TRACY_ENABLE</PreprocessorDefinitions>
@@ -60,8 +60,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.250.1\Include;src;libs;libs\entt\src;libs\fmt\include;libs\lz4;libs\dtoa;libs\tinyobjloader;libs\tinygltf;libs\imgui;libs\GLFW\include;libs\vk-bootstrap\src;libs\vuk\include;libs\vuk\ext\plf_colony;libs\vuk\ext\concurrentqueue;libs\vuk\ext\robin-hood-hashing\src\include;libs\vuk\ext\stb;libs\vuk\ext\VulkanMemoryAllocator\include;libs\vuk\ext\SPIRV-Cross;libs\vuk\ext\doctest;libs\tracy\public;libs\magic_enum\include;libs\miniaudio</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>global.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.250.1\Include;src;src\archive;libs;libs\entt\src;libs\fmt\include;libs\lz4;libs\dtoa;libs\tinyobjloader;libs\tinygltf;libs\imgui;libs\GLFW\include;libs\vk-bootstrap\src;libs\vuk\include;libs\vuk\ext\plf_colony;libs\vuk\ext\concurrentqueue;libs\vuk\ext\robin-hood-hashing\src\include;libs\vuk\ext\stb;libs\vuk\ext\VulkanMemoryAllocator\include;libs\vuk\ext\SPIRV-Cross;libs\vuk\ext\doctest;libs\tracy\public;libs\magic_enum\include;libs\miniaudio</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>general/global.hpp;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>VUK_USE_SHADERC;IMGUI_USER_CONFIG="imgui_config.h";TRACY_ENABLE</PreprocessorDefinitions>
@@ -118,6 +118,7 @@
     <ClCompile Include="libs\vuk\src\RenderGraph.cpp" />
     <ClCompile Include="libs\vuk\src\RenderGraphUtil.cpp" />
     <ClCompile Include="libs\vuk\src\Util.cpp" />
+    <ClCompile Include="src\archive\extension\vuk_imgui.cpp" />
     <ClCompile Include="src\editor\asset_browser.cpp" />
     <ClCompile Include="src\editor\asset_editor.cpp" />
     <ClCompile Include="src\editor\console.cpp" />
@@ -157,6 +158,7 @@
     <ClCompile Include="src\game\game.cpp" />
     <ClCompile Include="src\game\game_file.cpp" />
     <ClCompile Include="src\game\input.cpp" />
+    <ClCompile Include="src\game\json_cache.cpp" />
     <ClCompile Include="src\game\map.cpp" />
     <ClCompile Include="src\game\map_targeting.cpp" />
     <ClCompile Include="src\game\player.cpp" />
@@ -167,23 +169,21 @@
     <ClCompile Include="src\game\tile_set_generator.cpp" />
     <ClCompile Include="src\game\timer.cpp" />
     <ClCompile Include="src\game\visual_tile.cpp" />
-    <ClCompile Include="src\general\bitmask_3d.cpp" />
-    <ClCompile Include="src\general\json_cache.cpp" />
-    <ClCompile Include="src\general\logger.cpp" />
-    <ClCompile Include="src\general\path.cpp" />
+    <ClCompile Include="src\archive\general\bitmask_3d.cpp" />
+    <ClCompile Include="src\archive\general\logger.cpp" />
+    <ClCompile Include="src\archive\general\math\geometry.cpp" />
+    <ClCompile Include="src\archive\general\math\math.cpp" />
+    <ClCompile Include="src\archive\general\math\matrix.cpp" />
+    <ClCompile Include="src\archive\general\math\matrix_math.cpp" />
+    <ClCompile Include="src\archive\general\math\quaternion.cpp"/>
+    <ClCompile Include="src\archive\general\path.cpp" />
     <ClCompile Include="src\h_impl.cpp" />
-    <ClCompile Include="src\general\astar.cpp" />
-    <ClCompile Include="src\general\color.cpp" />
-    <ClCompile Include="src\general\file.cpp" />
-    <ClCompile Include="src\general\geometry.cpp" />
-    <ClCompile Include="src\general\json.cpp" />
-    <ClCompile Include="src\general\math.cpp" />
-    <ClCompile Include="src\general\matrix.cpp" />
-    <ClCompile Include="src\general\matrix_math.cpp" />
-    <ClCompile Include="src\general\quaternion.cpp" />
-    <ClCompile Include="src\extension\glfw.cpp" />
-    <ClCompile Include="src\extension\imgui_extra.cpp" />
-    <ClCompile Include="src\general\var_system.cpp" />
+    <ClCompile Include="src\archive\general\astar.cpp" />
+    <ClCompile Include="src\archive\general\color.cpp" />
+    <ClCompile Include="src\archive\general\file.cpp" />
+    <ClCompile Include="src\archive\general\json.cpp" />
+    <ClCompile Include="src\archive\extension\glfw.cpp" />
+    <ClCompile Include="src\archive\extension\imgui_extra.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\renderer\assets\asset_loader.cpp" />
     <ClCompile Include="src\renderer\assets\material.cpp" />
@@ -203,7 +203,6 @@
     <ClCompile Include="src\renderer\samplers.cpp" />
     <ClCompile Include="src\renderer\vertex.cpp" />
     <ClCompile Include="src\renderer\viewport.cpp" />
-    <ClCompile Include="src\extension\vuk_imgui.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libs\entt\src\entt\config\config.h" />
@@ -347,6 +346,13 @@
     <ClInclude Include="libs\vuk\src\RenderPass.hpp" />
     <ClInclude Include="libs\vuk\src\ShadercIncluder.hpp" />
     <ClInclude Include="libs\vuk\src\ToIntegral.hpp" />
+    <ClInclude Include="src\archive\extension\fmt.hpp" />
+    <ClInclude Include="src\archive\extension\fmt_geometry.hpp" />
+    <ClInclude Include="src\archive\extension\fmt_renderer.hpp" />
+    <ClInclude Include="src\archive\extension\glfw.hpp" />
+    <ClInclude Include="src\archive\extension\icons\font_awesome4.h" />
+    <ClInclude Include="src\archive\extension\imgui_extra.hpp" />
+    <ClInclude Include="src\archive\extension\vuk_imgui.hpp" />
     <ClInclude Include="src\editor\asset_browser.hpp" />
     <ClInclude Include="src\editor\asset_editor.hpp" />
     <ClInclude Include="src\editor\console.hpp" />
@@ -358,7 +364,7 @@
     <ClInclude Include="src\editor\skeleton_widget.hpp" />
     <ClInclude Include="src\editor\test_scene.hpp" />
     <ClInclude Include="src\editor\widget_system.hpp" />
-    <ClInclude Include="src\extension\fmt.hpp" />
+    <ClInclude Include="src\archive\general\fmt.hpp" />
     <ClInclude Include="src\game\audio.hpp" />
     <ClInclude Include="src\game\camera_controller.hpp" />
     <ClInclude Include="src\game\entities\ability.hpp" />
@@ -381,6 +387,7 @@
     <ClInclude Include="src\game\game.hpp" />
     <ClInclude Include="src\game\game_file.hpp" />
     <ClInclude Include="src\game\input.hpp" />
+    <ClInclude Include="src\game\json_cache.hpp" />
     <ClInclude Include="src\game\map.hpp" />
     <ClInclude Include="src\game\map_targeting.hpp" />
     <ClInclude Include="src\game\player.hpp" />
@@ -391,34 +398,31 @@
     <ClInclude Include="src\game\tile_set_generator.hpp" />
     <ClInclude Include="src\game\visual_tile.hpp" />
     <ClInclude Include="src\game\timer.hpp" />
-    <ClInclude Include="src\general\bitmask_3d.hpp" />
-    <ClInclude Include="src\general\json_cache.hpp" />
-    <ClInclude Include="src\general\logger.hpp" />
-    <ClInclude Include="src\general\path.hpp" />
-    <ClInclude Include="src\global.hpp" />
-    <ClInclude Include="src\general\astar.hpp" />
-    <ClInclude Include="src\general\color.hpp" />
-    <ClInclude Include="src\general\file.hpp" />
-    <ClInclude Include="src\general\geometry.hpp" />
-    <ClInclude Include="src\general\hash.hpp" />
-    <ClInclude Include="src\general\id_ptr.hpp" />
-    <ClInclude Include="src\general\json.hpp" />
-    <ClInclude Include="src\general\math.hpp" />
-    <ClInclude Include="src\general\matrix.hpp" />
-    <ClInclude Include="src\general\matrix_math.hpp" />
-    <ClInclude Include="src\general\quaternion.hpp" />
-    <ClInclude Include="src\general\slotmap.hpp" />
-    <ClInclude Include="src\general\spline.hpp" />
-    <ClInclude Include="src\general\string.hpp" />
-    <ClInclude Include="src\general\umap.hpp" />
-    <ClInclude Include="src\general\var_system.hpp" />
-    <ClInclude Include="src\general\vector.hpp" />
-    <ClInclude Include="src\extension\fmt_geometry.hpp" />
-    <ClInclude Include="src\extension\fmt_renderer.hpp" />
-    <ClInclude Include="src\extension\glfw.hpp" />
-    <ClInclude Include="src\extension\icons\font_awesome4.h" />
-    <ClInclude Include="src\extension\imgui_extra.hpp" />
-    <ClInclude Include="src\extension\vuk_imgui.hpp" />
+    <ClInclude Include="src\archive\general\bitmask_3d.hpp" />
+    <ClInclude Include="src\archive\general\global.hpp" />
+    <ClInclude Include="src\archive\general\logger.hpp" />
+    <ClInclude Include="src\archive\general\math\geometry.hpp" />
+    <ClInclude Include="src\archive\general\math\math.hpp" />
+    <ClInclude Include="src\archive\general\math\matrix.hpp" />
+    <ClInclude Include="src\archive\general\math\matrix_math.hpp" />
+    <ClInclude Include="src\archive\general\math\quaternion.hpp" />
+    <ClInclude Include="src\archive\general\math\spline.hpp" />
+    <ClInclude Include="src\archive\general\path.hpp" />
+    <ClInclude Include="src\archive\general\astar.hpp" />
+    <ClInclude Include="src\archive\general\color.hpp" />
+    <ClInclude Include="src\archive\general\file.hpp" />
+    <ClInclude Include="src\archive\general\hash.hpp" />
+    <ClInclude Include="src\archive\general\id_ptr.hpp" />
+    <ClInclude Include="src\archive\general\json.hpp" />
+    <ClInclude Include="src\archive\general\string.hpp" />
+    <ClInclude Include="src\archive\general\umap.hpp" />
+    <ClInclude Include="src\archive\general\vector.hpp" />
+    <ClInclude Include="src\archive\general\fmt_geometry.hpp" />
+    <ClInclude Include="src\archive\general\fmt_renderer.hpp" />
+    <ClInclude Include="src\archive\general\glfw.hpp" />
+    <ClInclude Include="src\archive\general\icons\font_awesome4.h" />
+    <ClInclude Include="src\archive\general\imgui_extra.hpp" />
+    <ClInclude Include="src\archive\general\vuk_imgui.hpp" />
     <ClInclude Include="src\renderer\assets\animation_state.hpp" />
     <ClInclude Include="src\renderer\assets\asset_loader.hpp" />
     <ClInclude Include="src\renderer\assets\material.hpp" />

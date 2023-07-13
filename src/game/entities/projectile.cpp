@@ -1,6 +1,6 @@
 ﻿#include "projectile.hpp"
 
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 

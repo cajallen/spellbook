@@ -13,19 +13,19 @@ static v3 flip_v3(v3 v, bool hori, bool vert) {
     return v3(v.x, hori ? -v.y : v.y, vert ? -v.z : v.z);
 }
 
-static void add_vert_type(vector<v3>& mesh, const vector<v3>& profile, u32 rotation, v3 offset) {
+static void add_vert_type(vector<v3>& mesh, const vector<v3>& profile, uint32 rotation, v3 offset) {
     for (const v3& v : profile) {
         mesh.push_back(math::rotate(v, rotation) + offset);
     }
 }
 
-static void add_hori_type(vector<v3>& mesh, const vector<v3>& profile, u32 rotation, bool flip, bool top) {
+static void add_hori_type(vector<v3>& mesh, const vector<v3>& profile, uint32 rotation, bool flip, bool top) {
     for (const v3& v : profile) {
         mesh.push_back(math::rotate(flip_v3(v, flip, top), rotation));
     }
 }
 
-VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, u8 clear, u8 type1, u8 type2) {
+VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, uint8 clear, uint8 type1, uint8 type2) {
     VisualTileMesh ret;
 
     for (int i = 0; i <= 0b111; i++) {
@@ -49,9 +49,9 @@ VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, u8
     {
         // top
         for (int top = 0; top < 2; top++) {
-            u32 bot_empty_mask = 0b1 << NNN | 0b1 << NPN | 0b1 << PNN | 0b1 << PPN;
-            u32 top_empty_mask = 0b1 << NNP | 0b1 << NPP | 0b1 << PNP | 0b1 << PPP;
-            s32 empty_spaces = math::csb(clear & (top ? top_empty_mask : bot_empty_mask));
+            uint32 bot_empty_mask = 0b1 << NNN | 0b1 << NPN | 0b1 << PNN | 0b1 << PPN;
+            uint32 top_empty_mask = 0b1 << NNP | 0b1 << NPP | 0b1 << PNP | 0b1 << PPP;
+            int32 empty_spaces = math::csb(clear & (top ? top_empty_mask : bot_empty_mask));
             if (empty_spaces != 0) {
                 if (empty_spaces == 1) {
                     for (int rotation = 0; rotation < 4; rotation++) {
@@ -122,16 +122,16 @@ VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, u8
     }
 
     for (int axis = 0; axis < 4; axis++) {
-        s32 empty_spaces = math::csb(clear & (
+        int32 empty_spaces = math::csb(clear & (
             (0b1 << rotate_bits(NNP, axis)) | (0b1 << rotate_bits(NPP, axis)) |
             (0b1 << rotate_bits(NNN, axis)) | (0b1 << rotate_bits(NPN, axis)))
         );
         if (empty_spaces == 1) {
             for (int flip_v = 0; flip_v < 2; flip_v++) {
                 for (int flip_h = 0; flip_h < 2; flip_h++) {
-                    u32 clear_space_bitidx = rotate_bits(NNN | (flip_v ? NNP : 0) | (flip_h ? NPN : 0), axis);
-                    u32 hori_neighbor_bitidx = rotate_bits(NNN | (flip_v ? NNP : 0) | (!flip_h ? NPN : 0), axis);
-                    u32 vert_neighbor_bitidx = rotate_bits(NNN | (!flip_v ? NNP : 0) | (flip_h ? NPN : 0), axis);
+                    uint32 clear_space_bitidx = rotate_bits(NNN | (flip_v ? NNP : 0) | (flip_h ? NPN : 0), axis);
+                    uint32 hori_neighbor_bitidx = rotate_bits(NNN | (flip_v ? NNP : 0) | (!flip_h ? NPN : 0), axis);
+                    uint32 vert_neighbor_bitidx = rotate_bits(NNN | (!flip_v ? NNP : 0) | (flip_h ? NPN : 0), axis);
                     
                     if ((clear & 0b1 << clear_space_bitidx)) {
                         if ((type1 & 0b1 << hori_neighbor_bitidx) && (type1 & 0b1 << vert_neighbor_bitidx)) {
@@ -157,10 +157,10 @@ VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, u8
         if (empty_spaces == 2) {
             for (int flip_v = 0; flip_v < 2; flip_v++) {
                 for (int flip_h = 0; flip_h < 2; flip_h++) {
-                    u32 nn_bitidx = rotate_bits(DirectionBits(NNN | (flip_v ? NNP : 0) | (flip_h ? NPN : 0)), axis);
-                    u32 pn_bitidx = rotate_bits(DirectionBits(NNN | (flip_v ? NNP : 0) | (!flip_h ? NPN : 0)), axis);
-                    u32 pp_bitidx = rotate_bits(DirectionBits(NNN | (!flip_v ? NNP : 0) | (!flip_h ? NPN : 0)), axis);
-                    u32 np_bitidx = rotate_bits(DirectionBits(NNN | (!flip_v ? NNP : 0) | (flip_h ? NPN : 0)), axis);
+                    uint32 nn_bitidx = rotate_bits(DirectionBits(NNN | (flip_v ? NNP : 0) | (flip_h ? NPN : 0)), axis);
+                    uint32 pn_bitidx = rotate_bits(DirectionBits(NNN | (flip_v ? NNP : 0) | (!flip_h ? NPN : 0)), axis);
+                    uint32 pp_bitidx = rotate_bits(DirectionBits(NNN | (!flip_v ? NNP : 0) | (!flip_h ? NPN : 0)), axis);
+                    uint32 np_bitidx = rotate_bits(DirectionBits(NNN | (!flip_v ? NNP : 0) | (flip_h ? NPN : 0)), axis);
 
                     // corners
                     if ((clear & 0b1 << np_bitidx) && (clear & 0b1 << pn_bitidx)) {
@@ -201,7 +201,7 @@ VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, u8
         if (empty_spaces == 3) {
             for (int top = 0; top < 2; top++) {
                 for (int flip = 0; flip < 2; flip++) {
-                    u32 solid_space_bitidx = rotate_bits(NNN | (top ? NNP : 0) | (flip ? NPN : 0), axis);
+                    uint32 solid_space_bitidx = rotate_bits(NNN | (top ? NNP : 0) | (flip ? NPN : 0), axis);
 
                     if ((type1 & 0b1 << solid_space_bitidx)) {
                         add_hori_type(ret.mesh1, settings.type1_horizontal_outside, axis, flip, top);
@@ -232,34 +232,34 @@ VisualTileMesh generate_visual_tile(const TileSetGeneratorSettings& settings, u8
     return REAL_ret;
 }
 
-static u32 quick_hash( u8 clear, u8 type1, u8 type2) {
-    u32 clear_bits_set = math::csb(clear);
-    u32 type1_bits_set = math::csb(type1);
-    u32 type2_bits_set = math::csb(type2);
+static uint32 quick_hash( uint8 clear, uint8 type1, uint8 type2) {
+    uint32 clear_bits_set = math::csb(clear);
+    uint32 type1_bits_set = math::csb(type1);
+    uint32 type2_bits_set = math::csb(type2);
     return clear_bits_set << 16 | type1_bits_set << 8 | type2_bits_set;
 }
 
 #define CCTS(var) var == 1 ? "E" : var == 2 ? "1" : "2"
 
 void generate_tile_set(const TileSetGeneratorSettings& settings) {
-    umap<u32, vector<VisualTileCorners>> processed_tiles;
-    u32 count = 0;
+    umap<uint32, vector<VisualTileCorners>> processed_tiles;
+    uint32 count = 0;
     vector<VisualTileMesh> meshes;
-    for (u32 clear = 0; clear <= 0b11111111; clear++) {
-        for (u32 type1 = 0; type1 <= 0b11111111; type1++) {
+    for (uint32 clear = 0; clear <= 0b11111111; clear++) {
+        for (uint32 type1 = 0; type1 <= 0b11111111; type1++) {
             if (type1 & clear)
                 continue;
-            for (u32 type2 = 0; type2 <= 0b11111111; type2++) {
+            for (uint32 type2 = 0; type2 <= 0b11111111; type2++) {
                 if (type2 & clear)
                     continue;
                 if (type1 & type2)
                     continue;
-                u8 unset = ~u8(type1 | type2 | clear);
+                uint8 unset = ~uint8(type1 | type2 | clear);
                 if (unset)
                     continue;
 
-                u8 solid = type1 | type2;
-                u8 hidden = 0;
+                uint8 solid = type1 | type2;
+                uint8 hidden = 0;
 
                 // Check that if there's an axis shaped solid set, we make the inner corner ambiguous
                 if (solid & 0b1 << NNN && solid & 0b1 << PNN && solid & 0b1 << NPN && solid & 0b1 << NNP)
@@ -284,16 +284,16 @@ void generate_tile_set(const TileSetGeneratorSettings& settings) {
                 type2 |= hidden;
 
                 VisualTileCorners this_corners;
-                for (u8 i = 0; i < 8; i++) {
+                for (uint8 i = 0; i < 8; i++) {
                     // (0b1 << i)                                    get the bit for our corner
                     // clear & (0b1 << i)                            check if it's set for our type
                     // clear & (0b1 << i) ? 1 : 0                    set it to 1 if so
                     // (clear & (0b1 << i) ? 1 : 0) << clear_index   set our output bit for this type
-                    this_corners[i] = u8((clear & (0b1 << i) ? 1 : 0) << 0 | (type1 & (0b1 << i) ? 1 : 0) << 1 | (type2 & (0b1 << i) ? 1 : 0) << 2);
+                    this_corners[i] = uint8((clear & (0b1 << i) ? 1 : 0) << 0 | (type1 & (0b1 << i) ? 1 : 0) << 1 | (type2 & (0b1 << i) ? 1 : 0) << 2);
                 }
                 
                 bool this_duplicate = false;
-                u32 hashed = quick_hash(clear, type1, type2);
+                uint32 hashed = quick_hash(clear, type1, type2);
 
                 if (!processed_tiles.contains(hashed))
                     processed_tiles[hashed] = {};
@@ -326,7 +326,7 @@ void generate_tile_set(const TileSetGeneratorSettings& settings) {
     tinygltf::Scene scene;
     
     vector<v3> raw_vertex_vector;
-    vector<u16> raw_index_vector;
+    vector<uint16> raw_index_vector;
     for (VisualTileMesh& mesh : meshes) {
         tinygltf::Node node;
         tinygltf::Mesh gltf_mesh;

@@ -7,7 +7,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/math.hpp"
+#include "general/math/math.hpp"
 #include "general/bitmask_3d.hpp"
 #include "renderer/draw_functions.hpp"
 #include "editor/console.hpp"
@@ -201,9 +201,9 @@ void Scene::inspect_entity(entt::entity entity) {
 	if (name.empty())
 		name = "empty";
 	if (ImGui::TreeNode(name.c_str())) {
-		ImGui::PushID((u32) entity);
+		ImGui::PushID((uint32) entity);
 
-        ImGui::Text("ID: %d", (u32) entity);
+        ImGui::Text("ID: %d", (uint32) entity);
 
 	    inspect_components(this, entity);
 

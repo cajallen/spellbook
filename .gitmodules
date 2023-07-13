@@ -28,3 +28,6 @@
 [submodule "libs/miniaudio"]
 	path = libs/miniaudio
 	url = https://github.com/mackron/miniaudio/
+[submodule "src/archive"]
+	path = src/archive
+	url = https://github.com/cajallen/archive.git

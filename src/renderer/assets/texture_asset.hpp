@@ -21,7 +21,7 @@ namespace spellbook {
 
 struct TextureInfo {
     CompressionMode compression_mode = {};
-    u32             pixels_bsize   = 0;
+    uint32             pixels_bsize   = 0;
 };
 
 JSON_IMPL(TextureInfo, compression_mode, pixels_bsize);

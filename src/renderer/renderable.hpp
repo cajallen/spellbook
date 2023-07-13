@@ -2,7 +2,7 @@
 
 #include <vuk/vuk_fwd.hpp>
 
-#include "general/matrix.hpp"
+#include "general/math/matrix.hpp"
 
 namespace spellbook {
 
@@ -11,20 +11,20 @@ struct MaterialGPU;
 struct SkeletonGPU;
 
 struct StaticRenderable {
-    u64 mesh_id;
-    u64 material_id;
+    uint64 mesh_id;
+    uint64 material_id;
     m44GPU transform = m44GPU(m44::identity());
 };
 
 struct Renderable {
-    u64 mesh_id;
-    u64 material_id;
+    uint64 mesh_id;
+    uint64 material_id;
     m44GPU transform = m44GPU(m44::identity());
 
     SkeletonGPU* skeleton = nullptr;
     
     bool   frame_allocated     = false;
-    u32    selection_id        = 0;
+    uint32    selection_id        = 0;
 };
 
 void inspect(Renderable* renderable);

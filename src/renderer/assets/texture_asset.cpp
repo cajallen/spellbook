@@ -30,7 +30,7 @@ TextureCPU load_texture(const string& file_name) {
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(),
         (char*) texture_cpu.pixels.data(),
         asset_file.binary_blob.size(),
-        (s32) texture_cpu.pixels.size());
+        (int32) texture_cpu.pixels.size());
     
     return texture_cpu;
 }
@@ -44,12 +44,12 @@ void save_texture(const TextureCPU& texture_cpu) {
     TextureInfo texture_info;
     texture_info.pixels_bsize = texture_cpu.pixels.size();
 
-    s32 compress_staging = LZ4_compressBound(s32(texture_info.pixels_bsize));
+    int32 compress_staging = LZ4_compressBound(int32(texture_info.pixels_bsize));
     file.binary_blob.resize(compress_staging);
-    s32 compressed_bsize = LZ4_compress_default((char*) texture_cpu.pixels.data(),
+    int32 compressed_bsize = LZ4_compress_default((char*) texture_cpu.pixels.data(),
         (char*) file.binary_blob.data(),
-        s32(texture_cpu.pixels.size()),
-        s32(compress_staging));
+        int32(texture_cpu.pixels.size()),
+        int32(compress_staging));
     file.binary_blob.resize(compressed_bsize);
     texture_info.compression_mode = CompressionMode_Lz4;
 
@@ -75,14 +75,14 @@ TextureCPU convert_to_texture(const string& file_name, const string& output_fold
     int channels;
     if (ext == ".hdr") {
         log_error(".hdr NYI");
-        f32* pixel_data = stbi_loadf(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
+        float* pixel_data = stbi_loadf(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);
             return {};
         }
         texture.format = vuk::Format::eR32G32B32A32Sfloat;
     } else {
-        u8* pixel_data = stbi_load(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
+        uint8* pixel_data = stbi_load(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);
             return {};

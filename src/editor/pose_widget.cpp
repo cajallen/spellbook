@@ -5,7 +5,7 @@
 #include "game/input.hpp"
 #include "general/file.hpp"
 #include "general/logger.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/viewport.hpp"
@@ -23,7 +23,7 @@ void _translation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState
 
     // Lines
     for (int axis = 0; axis < 3; axis++) {
-        u32 operation_index = Operation_TranslateX + axis;
+        uint32 operation_index = Operation_TranslateX + axis;
         if (!(state->enabled & (0b1 << operation_index)))
             continue;
         
@@ -69,7 +69,7 @@ void _translation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState
         int axis1 = (axis + 0) % 3;
         int axis2 = (axis + 1) % 3;
         int axis3 = (axis + 2) % 3;
-        u32 operation_index = Operation_TranslateXY + axis;
+        uint32 operation_index = Operation_TranslateXY + axis;
         if (!(state->enabled & (0b1 << operation_index)))
             continue;
 
@@ -130,18 +130,18 @@ void _rotation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState* s
 
     float dot_aligned_warning = 1.0f;
     for (int axis = 0; axis < 3; axis++) {
-        u32 operation_index = Operation_RotateX + axis;
+        uint32 operation_index = Operation_RotateX + axis;
         if (!(state->enabled & (0b1 << operation_index)))
             continue;
 
         v3 axis_dir = {};
         axis_dir[axis] = 1.0f;
-        f32 dot = math::dot(axis_dir, mouse.os_center_ray.dir);
-        f32 abs_dot = math::abs(dot);
+        float dot = math::dot(axis_dir, mouse.os_center_ray.dir);
+        float abs_dot = math::abs(dot);
         
-        f32 percentage = math::map_range(abs_dot, settings.rotation_flatstep_dot, settings.rotation_flatstep_percentage);
+        float percentage = math::map_range(abs_dot, settings.rotation_flatstep_dot, settings.rotation_flatstep_percentage);
         v2 start_vec = {mouse.os_center_ray.dir[(axis + 1) % 3], mouse.os_center_ray.dir[(axis + 2) % 3]};
-        f32 start_angle = math::atan2(start_vec.y, start_vec.x) + math::PI;
+        float start_angle = math::atan2(start_vec.y, start_vec.x) + math::PI;
         auto angle_range = range(start_angle - percentage * math::PI, start_angle + percentage * math::PI);
         
         auto info = mouse_to_3d_circle(mouse, settings.rotation_size, axis, angle_range);
@@ -160,7 +160,7 @@ void _rotation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState* s
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 48; i++) {
             // We do want to interpolate the long way here
-            f32 angle = math::lerp(f32(i) / 48.0f, angle_range);
+            float angle = math::lerp(float(i) / 48.0f, angle_range);
             v3 pos = v3(0.0f);
             pos[(axis + 1) % 3] = settings.rotation_size * math::cos(angle);
             pos[(axis + 2) % 3] = settings.rotation_size * math::sin(angle);
@@ -180,7 +180,7 @@ void _rotation_widget(const WidgetSystem::Mouse3DInfo& mouse, PoseWidgetState* s
     if (state->enabled & (0b1 << Operation_RotateCamera) && dot_aligned_warning > 0.0f) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 48; i++) {
-            f32 angle = i * math::TAU / 48.0f;
+            float angle = i * math::TAU / 48.0f;
             v3 pos = v3(0.0f);
             v3 normal = math::normalize(math::cross(mouse.os_center_ray.dir, v3::Z));
             v3 tangent = math::normalize(math::cross(normal, mouse.os_center_ray.dir));
@@ -226,8 +226,8 @@ void disable_invalid_operations(v3* position, quat* rotation, PoseWidgetState& s
     state.enabled &= ~(settings.disabled);
 }
 
-bool pose_widget(u64 id, v3* position, quat* rotation, const PoseWidgetSettings& settings, m44* model, PoseWidgetState* out_state) {
-    static umap<u32, PoseWidgetState> widget_states;
+bool pose_widget(uint64 id, v3* position, quat* rotation, const PoseWidgetSettings& settings, m44* model, PoseWidgetState* out_state) {
+    static umap<uint32, PoseWidgetState> widget_states;
     if (widget_states.count(id) == 0)
         widget_states.insert({id, PoseWidgetState{}});
     auto& state = widget_states[id];
@@ -244,9 +244,9 @@ bool pose_widget(u64 id, v3* position, quat* rotation, const PoseWidgetSettings&
 
     _pose_widget(&state, settings);
 
-    u32 closest_index = 0;
-    f32 closest_depth = FLT_MAX;
-    for (u32 i = 0; i < Operation_Count; i++) {
+    uint32 closest_index = 0;
+    float closest_depth = FLT_MAX;
+    for (uint32 i = 0; i < Operation_Count; i++) {
         if (state.hovered & 0b1 << i) {
             if (state.depth[i] < closest_depth) {
                 closest_index = i;
@@ -263,7 +263,7 @@ bool pose_widget(u64 id, v3* position, quat* rotation, const PoseWidgetSettings&
             // If this is the last frame, we need to discard
             if (closest_depth < FLT_MAX) {
                 state.pressed = 0b1 << closest_index;
-                for (u32 i = 0; i < Operation_Count; i++)
+                for (uint32 i = 0; i < Operation_Count; i++)
                     state.clicked_value[i] = state.value[i];
                     
                 if (position)

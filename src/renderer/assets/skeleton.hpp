@@ -4,9 +4,10 @@
 #include <vuk/Buffer.hpp>
 
 #include "game/game_file.hpp"
-#include "general/geometry.hpp"
-#include "general/matrix.hpp"
-#include "general/quaternion.hpp"
+#include "general/math/ease.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/matrix.hpp"
+#include "general/math/quaternion.hpp"
 #include "general/id_ptr.hpp"
 
 #include "renderer/assets/animation_state.hpp"

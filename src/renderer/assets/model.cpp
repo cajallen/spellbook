@@ -10,7 +10,7 @@
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/game.hpp"
 #include "editor/console.hpp"
 #include "renderer/renderer.hpp"
@@ -26,7 +26,7 @@ namespace spellbook {
 ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
     file_path = oth.file_path;
     dependencies = oth.dependencies;
-    umap<u64, u64> old_to_new;
+    umap<uint64, uint64> old_to_new;
     for (id_ptr<Node> old_node : oth.nodes) {
         id_ptr<Node> new_node = id_ptr<Node>::emplace(
             old_node->name,
@@ -73,7 +73,7 @@ vector<ModelCPU> ModelCPU::split() {
 
     vector<ModelCPU> models;
     models.resize(root_node->children.size());
-    u32 i = 0;
+    uint32 i = 0;
     for (id_ptr<Node> child : root_node->children) {
         child->parent = id_ptr<Node>::null();
         child->transform = m44::identity();
@@ -152,8 +152,8 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool f
         if (node.mesh_asset_path.empty() || node.material_asset_path.empty())
             continue;
 
-        u64 mesh_id = hash_string(node.mesh_asset_path);
-        u64 material_id = hash_string(node.material_asset_path);
+        uint64 mesh_id = hash_view(node.mesh_asset_path);
+        uint64 material_id = hash_view(node.material_asset_path);
         game.renderer.file_path_cache[mesh_id] = node.mesh_asset_path;
         game.renderer.file_path_cache[material_id] = node.material_asset_path;
 
@@ -177,8 +177,8 @@ vector<StaticRenderable*> instance_static_model(RenderScene& render_scene, const
         if (node.mesh_asset_path.empty() || node.material_asset_path.empty())
             continue;
 
-        u64 mesh_id = hash_string(node.mesh_asset_path);
-        u64 material_id = hash_string(node.material_asset_path);
+        uint64 mesh_id = hash_view(node.mesh_asset_path);
+        uint64 material_id = hash_view(node.material_asset_path);
         game.renderer.file_path_cache[mesh_id] = node.mesh_asset_path;
         game.renderer.file_path_cache[material_id] = node.material_asset_path;
 
@@ -302,9 +302,9 @@ ModelCPU quick_model(const string& name, const string& mesh, const string& mater
 
 constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
 
-void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer);
+void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<uint8>& output_buffer);
 void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices);
-void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices);
+void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<uint32>& indices);
 string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index);
 string _calculate_gltf_material_name(tinygltf::Model& model, int material_index);
 bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool replace_existing_pose);
@@ -348,12 +348,12 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
     
 
     // calculate parent hierarchies
-    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
+    for (uint32 i = 0; i < gltf_model.nodes.size(); i++) {
         model_cpu.nodes.push_back(id_ptr<ModelCPU::Node>::emplace());
     }
-    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
+    for (uint32 i = 0; i < gltf_model.nodes.size(); i++) {
         auto& children = model_cpu.nodes[i]->children;
-        for (u32 c : gltf_model.nodes[i].children) {
+        for (uint32 c : gltf_model.nodes[i].children) {
             children.push_back(model_cpu.nodes[c]);
             model_cpu.nodes[c]->parent = model_cpu.nodes[i];
         }
@@ -382,8 +382,8 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         root_node->transform = m44::identity();
     }
 
-    vector<u32> multimat_nodes;
-    for (u32 i = 0; i < gltf_model.nodes.size(); i++) {
+    vector<uint32> multimat_nodes;
+    for (uint32 i = 0; i < gltf_model.nodes.size(); i++) {
         auto& gltf_node = gltf_model.nodes[i];
         auto& model_node = *model_cpu.nodes[i];
 
@@ -421,7 +421,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         model_cpu.root_node->transform = gltf_fixup * model_cpu.root_node->transform;
 
     // iterate nodes with multiple materials, convert each submesh into a node
-    for (u32 multimat_node_index : multimat_nodes) {
+    for (uint32 multimat_node_index : multimat_nodes) {
         auto& multimat_node       = gltf_model.nodes[multimat_node_index];
 
         if (multimat_node.mesh < 0)
@@ -429,7 +429,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
 
         auto mesh = gltf_model.meshes[multimat_node.mesh];
 
-        for (u32 i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
+        for (uint32 i_primitive = 0; i_primitive < mesh.primitives.size(); i_primitive++) {
             auto                    primitive = mesh.primitives[i_primitive];
             id_ptr<ModelCPU::Node> model_node_ptr      = id_ptr<ModelCPU::Node>::emplace();
             model_cpu.nodes.push_back(model_node_ptr);
@@ -456,7 +456,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
 
     {
         ZoneScopedN("Remove unused nodes");
-        vector<u8> used;
+        vector<uint8> used;
         used.resize(model_cpu.nodes.size());
         auto traverse = [&model_cpu, &used](id_ptr<ModelCPU::Node>& node, bool& uses, auto&& traverse) -> void {
             bool this_uses = false;
@@ -477,11 +477,11 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
         };
     
         bool any_used = false;
-        u32 root_index = model_cpu.nodes.find(model_cpu.root_node);
+        uint32 root_index = model_cpu.nodes.find(model_cpu.root_node);
         traverse(model_cpu.nodes[root_index], any_used, traverse);
     
-        u32 removed = 0;
-        for (u32 i = 0; i < used.size(); i++) {
+        uint32 removed = 0;
+        for (uint32 i = 0; i < used.size(); i++) {
             if (!used[i]) {
                 auto& this_node = model_cpu.nodes[i - removed];
                 check_else (this_node->parent.valid())
@@ -500,7 +500,7 @@ ModelCPU convert_to_model(const fs::path& input_path, const fs::path& output_fol
 
 bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool replace_existing_pose) {
     ZoneScoped;
-    umap<u32, id_ptr<BonePrefab>> node_index_to_bone;
+    umap<uint32, id_ptr<BonePrefab>> node_index_to_bone;
     assert_else(model.skins.size() <= 1);
 
     if (model.skins.empty())
@@ -515,15 +515,15 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
     SkeletonPrefab& skeleton = load_asset<SkeletonPrefab>(skeleton_path_string, false);
     skeleton.file_path = skeleton_path_string;
     
-    for (u32 i_bone = 0; i_bone < model.skins[0].joints.size(); i_bone++) {
+    for (uint32 i_bone = 0; i_bone < model.skins[0].joints.size(); i_bone++) {
         if (skeleton.bones.size() <= i_bone)
             skeleton.bones.push_back(id_ptr<BonePrefab>::emplace());
-        u32 bone_node_index = model.skins[0].joints[i_bone];
+        uint32 bone_node_index = model.skins[0].joints[i_bone];
         node_index_to_bone[bone_node_index] = skeleton.bones[i_bone];
     }
-    u32 ibm_index = model.skins[0].inverseBindMatrices;
+    uint32 ibm_index = model.skins[0].inverseBindMatrices;
     tinygltf::Accessor& ibm_accessor = model.accessors[ibm_index];
-    vector<u8> pos_data;
+    vector<uint8> pos_data;
     _unpack_gltf_buffer(model, ibm_accessor, pos_data);
         
     for (int i = 0; i < ibm_accessor.count; i++) {
@@ -544,7 +544,7 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
     }
     
     for (auto& [node_index, bone_ptr] : node_index_to_bone) {
-        for (u32 child_index : model.nodes[node_index].children) {
+        for (uint32 child_index : model.nodes[node_index].children) {
             if (node_index_to_bone.contains(child_index))
                 node_index_to_bone[child_index]->parent = bone_ptr;
         }
@@ -553,15 +553,15 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
         
         if (model.nodes[node_index].translation.size() > 0) {
             auto translation = model.nodes[node_index].translation;
-            bone_ptr->position.position.value = v3{(f32) translation[0], (f32) translation[1], (f32) translation[2]};
+            bone_ptr->position.position.value = v3{(float) translation[0], (float) translation[1], (float) translation[2]};
         }
 
         if (model.nodes[node_index].rotation.size() > 0) {
-            bone_ptr->position.rotation.value = quat((f32) model.nodes[node_index].rotation[0], (f32) model.nodes[node_index].rotation[1], (f32) model.nodes[node_index].rotation[2], (f32) model.nodes[node_index].rotation[3]);
+            bone_ptr->position.rotation.value = quat((float) model.nodes[node_index].rotation[0], (float) model.nodes[node_index].rotation[1], (float) model.nodes[node_index].rotation[2], (float) model.nodes[node_index].rotation[3]);
         }
 
         if (model.nodes[node_index].scale.size() > 0) {
-            bone_ptr->position.scale.value = v3{(f32) model.nodes[node_index].scale[0], (f32) model.nodes[node_index].scale[1], (f32) model.nodes[node_index].scale[2]};
+            bone_ptr->position.scale.value = v3{(float) model.nodes[node_index].scale[0], (float) model.nodes[node_index].scale[1], (float) model.nodes[node_index].scale[2]};
         }
     }
     for (auto& [node_index, bone_ptr] : node_index_to_bone) {
@@ -575,7 +575,7 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
         for (auto& channel : animation.channels) {
             auto& sampler = animation.samplers[channel.sampler];
             auto& input_accessor = model.accessors[sampler.input];
-            vector<u8> input_buffer; // The inputs are the times of the keyframes
+            vector<uint8> input_buffer; // The inputs are the times of the keyframes
             _unpack_gltf_buffer(model, input_accessor, input_buffer);
             vector<float> floats;
             key_sets.resize(input_accessor.count);
@@ -585,7 +585,7 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
                 floats[i] = *(input_ptr + i);
             
             auto& output_accessor = model.accessors[sampler.output];
-            vector<u8> output_buffer;
+            vector<uint8> output_buffer;
             _unpack_gltf_buffer(model, output_accessor, output_buffer);
             for (int i = 0; i < floats.size(); i++) {
                 if (!key_sets[i].contains(channel.target_node))
@@ -606,7 +606,7 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
     }
 
     if (replace_existing_pose) {
-        umap<string, u32> name_to_index;
+        umap<string, uint32> name_to_index;
         for (auto& entry : skeleton.pose_catalog) {
             name_to_index[entry.name] = skeleton.pose_catalog.index(entry);
         }
@@ -643,25 +643,25 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
 }
 
 
-void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<u8>& output_buffer) {
+void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<uint8>& output_buffer) {
     ZoneScoped;
     int                   buffer_id     = accessor.bufferView;
-    u64                   element_bsize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
+    uint64                   element_bsize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
     tinygltf::BufferView& buffer_view   = model.bufferViews[buffer_id];
     tinygltf::Buffer&     buffer_data   = model.buffers[buffer_view.buffer];
-    u8*                   dataptr       = buffer_data.data.data() + accessor.byteOffset + buffer_view.byteOffset;
+    uint8*                   dataptr       = buffer_data.data.data() + accessor.byteOffset + buffer_view.byteOffset;
     int                   components    = tinygltf::GetNumComponentsInType(accessor.type);
     element_bsize *= components;
-    u64 stride = buffer_view.byteStride;
+    uint64 stride = buffer_view.byteStride;
     if (stride == 0) {
         stride = element_bsize;
     }
 
     output_buffer.resize(accessor.count * element_bsize);
 
-    for (u32 i = 0; i < accessor.count; i++) {
-        u8* dataindex = dataptr + stride * i;
-        u8* targetptr = output_buffer.data() + element_bsize * i;
+    for (uint32 i = 0; i < accessor.count; i++) {
+        uint8* dataindex = dataptr + stride * i;
+        uint8* targetptr = output_buffer.data() + element_bsize * i;
 
         memcpy(targetptr, dataindex, element_bsize);
     }
@@ -671,7 +671,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
     ZoneScoped;
     tinygltf::Accessor& pos_accessor = model.accessors[primitive.attributes["POSITION"]];
     vertices.resize(pos_accessor.count);
-    vector<u8> pos_data;
+    vector<uint8> pos_data;
     _unpack_gltf_buffer(model, pos_accessor, pos_data);
 
     for (int i = 0; i < vertices.size(); i++) {
@@ -691,7 +691,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
     }
 
     tinygltf::Accessor& normal_accessor = model.accessors[primitive.attributes["NORMAL"]];
-    vector<u8>          normal_data;
+    vector<uint8>          normal_data;
     _unpack_gltf_buffer(model, normal_accessor, normal_data);
     for (int i = 0; i < vertices.size(); i++) {
         if (normal_accessor.type == TINYGLTF_TYPE_VEC3) {
@@ -710,7 +710,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
     }
 
     tinygltf::Accessor& tangent_accessor = model.accessors[primitive.attributes["TANGENT"]];
-    vector<u8>          tangent_data;
+    vector<uint8>          tangent_data;
     _unpack_gltf_buffer(model, tangent_accessor, tangent_data);
     for (int i = 0; i < vertices.size(); i++) {
         if (tangent_accessor.type == TINYGLTF_TYPE_VEC3) {
@@ -743,7 +743,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
     }
 
     tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
-    vector<u8>          uv_data;
+    vector<uint8>          uv_data;
     _unpack_gltf_buffer(model, uv_accessor, uv_data);
     for (int i = 0; i < vertices.size(); i++) {
         if (uv_accessor.type == TINYGLTF_TYPE_VEC2) {
@@ -773,7 +773,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
 
     if (primitive.attributes["COLOR"] != 0) {
         tinygltf::Accessor& color_accessor = model.accessors[primitive.attributes["COLOR"]];
-        vector<u8>          color_data;
+        vector<uint8>          color_data;
         _unpack_gltf_buffer(model, color_accessor, color_data);
         for (int i = 0; i < vertices.size(); i++) {
             if (color_accessor.type == TINYGLTF_TYPE_VEC3) {
@@ -794,10 +794,10 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
 
     if (primitive.attributes["JOINTS_0"] != 0) {
         tinygltf::Accessor& joint_accessor = model.accessors[primitive.attributes["JOINTS_0"]];
-        vector<u8>          joint_data;
+        vector<uint8>          joint_data;
         _unpack_gltf_buffer(model, joint_accessor, joint_data);
         for (int i = 0; i < vertices.size(); i++) {
-            u8 components = 0;
+            uint8 components = 0;
             switch (joint_accessor.type) {
                 case (TINYGLTF_TYPE_VEC3): {
                     components = 3;
@@ -808,30 +808,30 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
                 default:
                     assert_else("NYI" && false);
             }
-            for (u8 c = 0; c < components; c++) {
+            for (uint8 c = 0; c < components; c++) {
                 switch (joint_accessor.componentType) {
                     case (TINYGLTF_COMPONENT_TYPE_INT): {
-                        auto dtf = (s32*) joint_data.data();
+                        auto dtf = (int32*) joint_data.data();
                         vertices[i].bone_ids[c] = *(dtf + i * components + c);
                     } break;
                     case (TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT): {
-                        auto dtf = (u32*) joint_data.data();
+                        auto dtf = (uint32*) joint_data.data();
                         vertices[i].bone_ids[c] = *(dtf + i * components + c);
                     } break;
                     case (TINYGLTF_COMPONENT_TYPE_SHORT): {
-                        auto dtf = (s16*) joint_data.data();
+                        auto dtf = (int16*) joint_data.data();
                         vertices[i].bone_ids[c] = *(dtf + i * components + c);
                     } break;
                     case (TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT): {
-                        auto dtf = (u16*) joint_data.data();
+                        auto dtf = (uint16*) joint_data.data();
                         vertices[i].bone_ids[c] = *(dtf + i * components + c);
                     } break;
                     case (TINYGLTF_COMPONENT_TYPE_BYTE): {
-                        auto dtf = (s8*) joint_data.data();
+                        auto dtf = (int8*) joint_data.data();
                         vertices[i].bone_ids[c] = *(dtf + i * components + c);
                     } break;
                     case (TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE): {
-                        auto dtf = (u8*) joint_data.data();
+                        auto dtf = (uint8*) joint_data.data();
                         vertices[i].bone_ids[c] = *(dtf + i * components + c);
                     } break;
                     default:
@@ -843,10 +843,10 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
 
     if (primitive.attributes["WEIGHTS_0"] != 0) {
         tinygltf::Accessor& weight_accessor = model.accessors[primitive.attributes["WEIGHTS_0"]];
-        vector<u8>          weight_data;
+        vector<uint8>          weight_data;
         _unpack_gltf_buffer(model, weight_accessor, weight_data);
         for (int i = 0; i < vertices.size(); i++) {
-            u8 components = 0;
+            uint8 components = 0;
             switch (weight_accessor.type) {
                 case (TINYGLTF_TYPE_VEC3): {
                     components = 3;
@@ -857,14 +857,14 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
                 default:
                     assert_else("NYI" && false);
             }
-            for (u8 c = 0; c < components; c++) {
+            for (uint8 c = 0; c < components; c++) {
                 switch (weight_accessor.componentType) {
                     case (TINYGLTF_COMPONENT_TYPE_FLOAT): {
-                        auto dtf = (f32*) weight_data.data();
+                        auto dtf = (float*) weight_data.data();
                         vertices[i].bone_weights[c] = *(dtf + i * components + c);
                     } break;
                     case (TINYGLTF_COMPONENT_TYPE_DOUBLE): {
-                        auto dtf = (f64*) weight_data.data();
+                        auto dtf = (double*) weight_data.data();
                         vertices[i].bone_weights[c] = *(dtf + i * components + c);
                     } break;
                     default:
@@ -875,7 +875,7 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
     }
 }
 
-void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<u32>& indices) {
+void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<uint32>& indices) {
     ZoneScoped;
     int index_accessor = primitive.indices;
 
@@ -887,29 +887,29 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
     int                   bufferidx = indexview.buffer;
 
     tinygltf::Buffer& buffindex = (model.buffers[bufferidx]);
-    u8*               dataptr   = buffindex.data.data() + indexview.byteOffset;
-    vector<u8>        unpackedIndices;
+    uint8*               dataptr   = buffindex.data.data() + indexview.byteOffset;
+    vector<uint8>        unpackedIndices;
     _unpack_gltf_buffer(model, model.accessors[index_accessor], unpackedIndices);
     for (int i = 0; i < model.accessors[index_accessor].count; i++) {
-        u32 index;
+        uint32 index;
         switch (component_type) {
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
-                auto bfr = (u16*) unpackedIndices.data();
+                auto bfr = (uint16*) unpackedIndices.data();
                 index    = *(bfr + i);
             }
             break;
             case TINYGLTF_COMPONENT_TYPE_SHORT: {
-                auto bfr = (s16*) unpackedIndices.data();
+                auto bfr = (int16*) unpackedIndices.data();
                 index    = *(bfr + i);
             }
             break;
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
-                auto bfr = (u32*) unpackedIndices.data();
+                auto bfr = (uint32*) unpackedIndices.data();
                 index    = *(bfr + i);
             }
             break;
             case TINYGLTF_COMPONENT_TYPE_INT: {
-                s32* bfr = (s32*) unpackedIndices.data();
+                int32* bfr = (int32*) unpackedIndices.data();
                 index    = *(bfr + i);
             }
             break;
@@ -920,7 +920,7 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
         indices.push_back(index);
     }
 
-    for (u32 i = 0; i < indices.size() / 3; i++) {
+    for (uint32 i = 0; i < indices.size() / 3; i++) {
         // flip the triangle
         std::swap(indices[i * 3 + 1], indices[i * 3 + 2]);
     }
@@ -947,7 +947,7 @@ string _calculate_gltf_material_name(tinygltf::Model& model, int material_index)
 
 bool _convert_gltf_meshes(tinygltf::Model& model, const fs::path& output_folder) {
     ZoneScoped;
-    for (u32 i_mesh = 0; i_mesh < model.meshes.size(); i_mesh++) {
+    for (uint32 i_mesh = 0; i_mesh < model.meshes.size(); i_mesh++) {
         auto& gltf_mesh = model.meshes[i_mesh];
 
         for (auto i_primitive = 0; i_primitive < gltf_mesh.primitives.size(); i_primitive++) {
@@ -986,7 +986,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
                                &material_cpu.emissive_asset_path};
 
         array texture_names = {"baseColor", "metallicRoughness", "normals", "emissive"};
-        for (u32 i = 0; i < 4; i++) {
+        for (uint32 i = 0; i < 4; i++) {
             int texture_index = texture_indices[i];
             if (texture_index < 0)
                 continue;
@@ -1005,16 +1005,16 @@ bool _convert_gltf_materials(tinygltf::Model& model, const fs::path& output_fold
                 {},
                 v2i{baseImage.width, baseImage.height},
                 format,
-                vector<u8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())
+                vector<uint8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())
             };
             save_texture(texture_cpu);
             *texture_files[i] = texture_cpu.file_path;
         }
 
-        material_cpu.color_tint = Color((f32) pbr.baseColorFactor[0],
-            (f32) pbr.baseColorFactor[1],
-            (f32) pbr.baseColorFactor[2],
-            (f32) pbr.baseColorFactor[3]);
+        material_cpu.color_tint = Color((float) pbr.baseColorFactor[0],
+            (float) pbr.baseColorFactor[1],
+            (float) pbr.baseColorFactor[2],
+            (float) pbr.baseColorFactor[3]);
         material_cpu.emissive_tint    = material_cpu.emissive_asset_path == "textures/white.sbtex" ? palette::black : palette::white;
         material_cpu.roughness_factor = pbr.roughnessFactor;
         material_cpu.metallic_factor  = pbr.metallicFactor;
@@ -1039,25 +1039,25 @@ m44 _calculate_matrix(tinygltf::Node& node) {
     // node has a matrix
     if (node.matrix.size() > 0) {
         for (int n = 0; n < 16; n++) {
-            matrix[n] = f32(node.matrix[n]);
+            matrix[n] = float(node.matrix[n]);
         }
     }
     // separate transform
     else {
         m44 translation = m44::identity();
         if (node.translation.size() > 0) {
-            translation = math::translate(v3{(f32) node.translation[0], (f32) node.translation[1], (f32) node.translation[2]});
+            translation = math::translate(v3{(float) node.translation[0], (float) node.translation[1], (float) node.translation[2]});
         }
 
         m44 rotation = m44::identity();
         if (node.rotation.size() > 0) {
-            quat rot((f32) node.rotation[0], (f32) node.rotation[1], (f32) node.rotation[2], (f32) node.rotation[3]);
+            quat rot((float) node.rotation[0], (float) node.rotation[1], (float) node.rotation[2], (float) node.rotation[3]);
             rotation = math::rotation(rot);
         }
 
         m44 scale = m44::identity();
         if (node.scale.size() > 0) {
-            scale = math::scale(v3{(f32) node.scale[0], (f32) node.scale[1], (f32) node.scale[2]});
+            scale = math::scale(v3{(float) node.scale[0], (float) node.scale[1], (float) node.scale[2]});
         }
         matrix = (translation * rotation * scale); // * gltf_fixup;
     }

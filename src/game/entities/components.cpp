@@ -1,21 +1,18 @@
 #include "components.hpp"
 
-#include <cinttypes>
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 #include <entt/core/hashed_string.hpp>
 
-#include "caster.hpp"
-#include "tags.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
-#include "game/game.hpp"
-#include "general/string.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
+
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
-#include "game/entities/tile.hpp"
+#include "game/entities/tags.hpp"
+#include "game/entities/caster.hpp"
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/lizard.hpp"
@@ -112,7 +109,6 @@ void inspect_components(Scene* scene, entt::entity entity) {
     )
     INSPECT_COMPONENT(PoseController,
         ImGui::EnumCombo("State", &component->state);
-        ImGui::Text("Pose set: %16" PRIXPTR, component->animation);
         ImGui::Text("Target index: %d", component->target_index);
         ImGui::Text("Fractional state total: %.2f", component->fractional_state_total);
         ImGui::Text("Time to override: %.2f", component->time_to_override);
@@ -145,8 +141,8 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
 
         v3 center = component->potential_logic_position + v3(0.5f, 0.5f, 0.05f);
         for (int i = 0; i <= 32; i++) {
-            constexpr f32 radius = 0.5f;
-            f32 angle  = i * math::TAU / 32.0f;
+            constexpr float radius = 0.5f;
+            float angle  = i * math::TAU / 32.0f;
             vertices.emplace_back(center + radius * v3(math::cos(angle), math::sin(angle), 0.0f), palette::white, 0.02f);
         }
 
@@ -214,7 +210,7 @@ void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amou
     if (!health.emitter_cpu_path.empty()) {
         EmitterCPU hurt_emitter = load_asset<EmitterCPU>(health.emitter_cpu_path);
         hurt_emitter.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
-        u64 random_id = math::random_u64();
+        uint64 random_id = math::random_uint64();
         EmitterComponent& emitter = scene->registry.get<EmitterComponent>(damagee);
         emitter.add_emitter(random_id, hurt_emitter);
 
@@ -226,11 +222,11 @@ void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amou
     }
 }
 
-void EmitterComponent::add_emitter(u64 id, const EmitterCPU& emitter_cpu) {
+void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu) {
     emitters[id] = &instance_emitter(scene->render_scene, emitter_cpu);
 }
 
-void EmitterComponent::remove_emitter(u64 id) {
+void EmitterComponent::remove_emitter(uint64 id) {
     if (!emitters.contains(id))
         return;
     deinstance_emitter(*emitters[id], true);

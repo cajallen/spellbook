@@ -7,7 +7,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "general/logger.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
@@ -33,11 +33,11 @@ void health_draw_system(Scene* scene) {
     
     // dependencies
     static bool deps = false;
-    static u64 mesh_id;
-    static u64 health_friendly_id;
-    static u64 health_enemy_id;
-    static u64 health_buffer_id;
-    static u64 health_bar_id;
+    static uint64 mesh_id;
+    static uint64 health_friendly_id;
+    static uint64 health_enemy_id;
+    static uint64 health_buffer_id;
+    static uint64 health_bar_id;
     if (!deps) {
         mesh_id = upload_mesh(generate_cube(v3(0), v3(1)));
         
@@ -149,9 +149,9 @@ void disposal_system(Scene* scene) {
     for (auto [entity, transform, drop_chance, killed] : scene->registry.view<LogicTransform, DropChance, Killed>().each()) {
         if (killed.drop) {
             for (auto& entry : drop_chance.entries) {
-                if (math::random_f32(1.0f) < entry.drop_chance) {
-                    float phase = math::random_f32(math::TAU);
-                    float radius = math::random_f32(0.2f);
+                if (math::random_float(1.0f) < entry.drop_chance) {
+                    float phase = math::random_float(math::TAU);
+                    float radius = math::random_float(0.2f);
                     v3 offset = radius * v3(math::cos(phase), math::sin(phase), 0.0f);
                     instance_prefab(scene, load_asset<BeadPrefab>(entry.bead_prefab_path), transform.position + offset);
                 }
@@ -192,7 +192,7 @@ void selection_id_system(Scene* scene) {
     ZoneScoped;
     auto model_view = scene->registry.view<Model>();
     for (auto [entity, model] : model_view.each()) {
-        u32 id = (u32) entity;
+        uint32 id = (uint32) entity;
         for (auto [_, r] : model.model_gpu.renderables) {
             r->selection_id = id;
         }
@@ -206,7 +206,7 @@ void dragging_update_system(Scene* scene) {
     ZoneScoped;
     if (scene->render_scene.fut_query_result.get_control()) {
         auto result_buf = *scene->render_scene.fut_query_result.get<vuk::Buffer>(*game.renderer.global_allocator, game.renderer.compiler);
-        u32 result_int = *((u32*) result_buf.mapped_ptr);
+        uint32 result_int = *((uint32*) result_buf.mapped_ptr);
         scene->render_scene.fut_query_result = {};
 
         if (scene->registry.valid((entt::entity) result_int)) {
@@ -220,7 +220,7 @@ void dragging_system(Scene* scene) {
     Viewport& viewport = scene->render_scene.viewport;
     // v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
     
-    constexpr f32 raise_speed = 0.10f;
+    constexpr float raise_speed = 0.10f;
     auto drags = scene->registry.view<LogicTransform, Dragging, Draggable>();
     
     v3i cell;
@@ -238,7 +238,7 @@ void dragging_system(Scene* scene) {
     
     auto _view = scene->registry.view<Dragging, ModelTransform>();
     for (auto [entity, drag, transform] : _view.each()) {
-        f32 vertical_offset = drag.drag_height * math::smoothstep(drag.start_time, drag.start_time + raise_speed, scene->time);
+        float vertical_offset = drag.drag_height * math::smoothstep(drag.start_time, drag.start_time + raise_speed, scene->time);
         v3 pos = drag.target_position + v3(0.0f, 0.0f, vertical_offset);
         if (scene->registry.all_of<TransformLink>(entity)) {
             pos += scene->registry.get<TransformLink>(entity).offset;

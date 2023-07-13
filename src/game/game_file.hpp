@@ -100,3 +100,9 @@ T& load_asset(const string& file_path, bool assert_exists = false, bool clear_ca
 }
 
 }
+
+namespace ImGui {
+bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType type, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+}
+

@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include "general/color.hpp"
-#include "general/geometry.hpp"
 #include "general/json.hpp"
-#include "general/math.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/math.hpp"
 
 namespace spellbook {
 

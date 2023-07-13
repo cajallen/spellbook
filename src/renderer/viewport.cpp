@@ -5,7 +5,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/input.hpp"
 
 namespace spellbook {
@@ -40,8 +40,8 @@ void Viewport::pre_render() {
 	}
 	camera->pre_render();
 }
-f32 Viewport::aspect_xy() {
-	return size.y == 0.0f ? 1.0f : size.x / (f32) size.y;
+float Viewport::aspect_xy() {
+	return size.y == 0.0f ? 1.0f : size.x / (float) size.y;
 }
 
 void Viewport::setup() {

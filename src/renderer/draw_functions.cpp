@@ -7,6 +7,7 @@
 #include "extension/fmt_geometry.hpp"
 #include "general/hash.hpp"
 #include "general/bitmask_3d.hpp"
+#include "general/math/ease.hpp"
 #include "renderer/render_scene.hpp"
 
 namespace spellbook {
@@ -23,7 +24,7 @@ static const vector<Vertex> vertices = {
     {v3{ IZ, IX, IN}}, {v3{-IZ, IX,  IN}}, {v3{ IZ, -IX,  IN}}, {v3{-IZ, -IX,  IN}}
 };
 
-static const vector<u32> triangles = {
+static const vector<uint32> triangles = {
     0, 4, 1,   0, 9, 4,   9, 5, 4,   4, 5, 8,   4, 8, 1,   8, 10, 1,   8, 3,10, 
     5, 3, 8,   5, 2, 3,   2, 7, 3,   7,10, 3,   7, 6,10,   7, 11, 6,  11, 0, 6, 
     0, 1, 6,   6, 1,10,   9, 0,11,   9,11, 2,   9, 2, 5,   7, 2, 11
@@ -91,17 +92,17 @@ MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
 MeshCPU generate_icosphere(int subdivisions) {
     string name = fmt_("icosphere_subdivisions:{}", subdivisions);
     
-    vector<u32> index_list = icosphere::triangles;
+    vector<uint32> index_list = icosphere::triangles;
     vector<Vertex> vertex_list = icosphere::vertices;
     for (int s = 0; s < subdivisions; s++) {
-        vector<u32> new_index_list;
+        vector<uint32> new_index_list;
         for (int i = 0; i+2 < index_list.size(); i+=3) {
             v3 p1 = vertex_list[index_list[i+0]].position;
             v3 p2 = vertex_list[index_list[i+1]].position;
             v3 p3 = vertex_list[index_list[i+2]].position;
-            u32 new_index1 = vertex_list.size();
-            u32 new_index2 = new_index1 + 1;
-            u32 new_index3 = new_index1 + 2;
+            uint32 new_index1 = vertex_list.size();
+            uint32 new_index2 = new_index1 + 1;
+            uint32 new_index3 = new_index1 + 2;
             vertex_list.emplace_back(math::normalize(p1 + p2));
             vertex_list.emplace_back(math::normalize(p2 + p3));
             vertex_list.emplace_back(math::normalize(p3 + p1));
@@ -176,7 +177,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
     vector<Segment> segments;
     segments.reserve(vertices.size() + (vertices.size() - 2) * 2);
-    for (u32 i = 0; i < vertices.size(); i++) {
+    for (uint32 i = 0; i < vertices.size(); i++) {
         FormattedVertex& vertex = vertices[i];
         v3 cam_vec = math::normalize(vertex.position - camera->position);
 
@@ -299,7 +300,7 @@ Color palette_color(int palette, int x, int y, const PaletteCreateInfo& info) {
 
 void generate_palette(const PaletteCreateInfo& info) {
     TextureCPU out_texture;
-    int palettes_per_row = math::ceil_cast(math::sqrt(f32(info.palettes)));
+    int palettes_per_row = math::ceil_cast(math::sqrt(float(info.palettes)));
     int palette_width = info.saturation_shifts + info.value_shifts + 1;
 
     out_texture.size = {palettes_per_row * (palette_width + 1), palettes_per_row * (info.hue_shifts + 1)};
@@ -314,9 +315,9 @@ void generate_palette(const PaletteCreateInfo& info) {
                 int pixel_x = palette_x * (palette_width + 1) + x;
                 int pixel_y = palette_y * (info.hue_shifts + 1) + y;
                 Color pixel_color = palette_color(palette, x, y, info);
-                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 0] = u8(math::clamp(pixel_color.r * 255.0f, 0.0f, 255.0f));
-                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 1] = u8(math::clamp(pixel_color.g * 255.0f, 0.0f, 255.0f));
-                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 2] = u8(math::clamp(pixel_color.b * 255.0f, 0.0f, 255.0f));
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 0] = uint8(math::clamp(pixel_color.r * 255.0f, 0.0f, 255.0f));
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 1] = uint8(math::clamp(pixel_color.g * 255.0f, 0.0f, 255.0f));
+                out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 2] = uint8(math::clamp(pixel_color.b * 255.0f, 0.0f, 255.0f));
                 out_texture.pixels[(pixel_x + pixel_y * out_texture.size.x) * 4 + 3] = 255;
             }
         }

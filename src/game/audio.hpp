@@ -3,7 +3,7 @@
 #include <miniaudio.h>
 #include <plf_colony.h>
 
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "general/string.hpp"
 
 namespace spellbook {

@@ -2,7 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
@@ -129,9 +129,9 @@ void WarlockSpell::trigger() {
     quick_emitter(scene, "Warlock Aura Ticking", warlock_logic_tfm.position + v3(0.5f), load_asset<EmitterCPU>("emitters/warlock/ability_ticking.sbemt"), buff_duration);
 
     Caster& caster_comp = scene->registry.get<Caster>(caster);
-    caster_comp.attack_speed->add_effect((u64) this, StatEffect(StatEffect::Type_Multiply, -0.4f, INT_MAX, buff_duration));
-    caster_comp.cooldown_reduction->add_effect((u64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
-    caster_comp.lifesteal->add_effect((u64) this, StatEffect(StatEffect::Type_Base, 0.1f, INT_MAX, buff_duration));
+    caster_comp.attack_speed->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.4f, INT_MAX, buff_duration));
+    caster_comp.cooldown_reduction->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
+    caster_comp.lifesteal->add_effect((uint64) this, StatEffect(StatEffect::Type_Base, 0.1f, INT_MAX, buff_duration));
 }
 
 

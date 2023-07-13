@@ -33,14 +33,14 @@ struct MapEditor : EditorScene {
     bool last_paint = false;
     
     bool eraser_selected = false;
-    u32 selected_consumer = ~0u;
-    u32 selected_lizard = ~0u;
-    u32 selected_tile  = ~0u;
-    u32 selected_spawner = ~0u;
+    uint32 selected_consumer = ~0u;
+    uint32 selected_lizard = ~0u;
+    uint32 selected_tile  = ~0u;
+    uint32 selected_spawner = ~0u;
 
-    s32 z_level = 0;
+    int32 z_level = 0;
 
-    u32 rotation = 0;
+    uint32 rotation = 0;
 
     string vts_path;
     umap<VisualTileCorners, vector<string>> visual_tileset;
@@ -60,7 +60,7 @@ struct MapEditor : EditorScene {
     void instance_and_write_consumer(const string& path, v3i input_pos);
     void instance_and_write_spawner(const string& path, v3i input_pos);
     void instance_and_write_lizard(const string& path, v3i input_pos);
-    void instance_and_write_tile(const string& path, v3i input_pos, u32 rotation = 0);
+    void instance_and_write_tile(const string& path, v3i input_pos, uint32 rotation = 0);
 };
 
 JSON_IMPL_TEMPLATE(template <typename T>, Button<T>, text, color, item_path);

@@ -29,7 +29,7 @@ bool            Input::exit_requested       = false;
 bool            Input::exit_accepted        = false;
 bool            Input::cursor_disabled      = false;
 bool            Input::cursor_just_disabled = false;
-umap<u32, bool> Input::key_down;
+umap<uint32, bool> Input::key_down;
 
 void Input::setup() {
     assert_else(game.renderer.window != nullptr)

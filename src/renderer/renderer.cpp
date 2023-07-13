@@ -13,7 +13,7 @@
 #include "extension/imgui_extra.hpp"
 #include "general/file.hpp"
 #include "general/hash.hpp"
-#include "general/math.hpp"
+#include "general/math/math.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
@@ -144,7 +144,7 @@ void Renderer::setup() {
     ImGui::CreateContext();
     ImGui::StyleColorsSpellbook();
     ImGui_ImplGlfw_InitForVulkan(window, false);
-    imgui_data = ImGui_ImplVuk_Init(*global_allocator);
+    imgui_data = ImGui_ImplVuk_Init(*global_allocator, compiler);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::GetIO().ConfigDockingWithShift = true;
 
@@ -253,7 +253,7 @@ void Renderer::render() {
     
     rg->add_pass({.name = "force_transition", .resources = std::move(resources)});
 
-    auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN++"}, imgui_data, ImGui::GetDrawData(), imgui_images);
+    auto fut = ImGui_ImplVuk_Render(*frame_allocator, vuk::Future{rg, "SWAPCHAIN++"}, imgui_data, ImGui::GetDrawData(), imgui_images, compiler);
     
     auto rg_p = std::make_shared<vuk::RenderGraph>("presenter");
     rg_p->attach_in("_src", std::move(fut));
@@ -358,25 +358,25 @@ void Renderer::resize(v2i new_size) {
     swapchain = new_swapchain;
 }
 
-MeshGPU* Renderer::get_mesh(u64 id) {
+MeshGPU* Renderer::get_mesh(uint64 id) {
     if (mesh_cache.contains(id))
         return &mesh_cache[id];
     return nullptr;
 }
 
-MaterialGPU* Renderer::get_material(u64 id) {
+MaterialGPU* Renderer::get_material(uint64 id) {
     if (material_cache.contains(id))
         return &material_cache[id];
     return nullptr;
 }
 
-TextureGPU* Renderer::get_texture(u64 id) {
+TextureGPU* Renderer::get_texture(uint64 id) {
     if (texture_cache.contains(id))
         return &texture_cache[id];
     return nullptr;
 }
 
-MeshGPU& Renderer::get_mesh_or_upload(u64 id) {
+MeshGPU& Renderer::get_mesh_or_upload(uint64 id) {
     if (mesh_cache.contains(id))
         return mesh_cache[id];
     assert_else(file_path_cache.contains(id));
@@ -384,7 +384,7 @@ MeshGPU& Renderer::get_mesh_or_upload(u64 id) {
     return mesh_cache[id];
 }
 
-MaterialGPU& Renderer::get_material_or_upload(u64 id) {
+MaterialGPU& Renderer::get_material_or_upload(uint64 id) {
     if (material_cache.contains(id))
         return material_cache[id];
     assert_else(file_path_cache.contains(id));
@@ -394,7 +394,7 @@ MaterialGPU& Renderer::get_material_or_upload(u64 id) {
 
 TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
     assert_else(!asset_path.empty());
-    u64 hash = hash_string(asset_path);
+    uint64 hash = hash_view(asset_path);
     if (texture_cache.contains(hash))
         return texture_cache[hash];
     upload_texture(load_texture(asset_path));
@@ -418,20 +418,20 @@ void Renderer::upload_defaults() {
         .file_path = "textures/white.sbtex",
         .size = v2i(8, 8),
         .format = vuk::Format::eR8G8B8A8Srgb,
-        .pixels = vector<u8>(8 * 8 * 4, 255)
+        .pixels = vector<uint8>(8 * 8 * 4, 255)
     };
     upload_texture(tex_white_upload);
 
-    constexpr u32 grid_size = 1024;
+    constexpr uint32 grid_size = 1024;
     TextureCPU tex_grid_upload {
         .file_path = "textures/grid.sbtex",
         .size = v2i(grid_size, grid_size),
         .format = vuk::Format::eR8G8B8A8Srgb,
-        .pixels = vector<u8>(grid_size * grid_size * 4, 255)
+        .pixels = vector<uint8>(grid_size * grid_size * 4, 255)
     };
     // do border
-    for (u32 i = 0; i < (grid_size - 1); i++) {
-        for (u32 pixel_pos : vector<u32>{i, i * grid_size + (grid_size - 1), (grid_size - 1) * grid_size + i + 1, i * grid_size + grid_size}) {
+    for (uint32 i = 0; i < (grid_size - 1); i++) {
+        for (uint32 pixel_pos : vector<uint32>{i, i * grid_size + (grid_size - 1), (grid_size - 1) * grid_size + i + 1, i * grid_size + grid_size}) {
             tex_grid_upload.pixels[pixel_pos * 4 + 0] = 0;
             tex_grid_upload.pixels[pixel_pos * 4 + 1] = 0;
             tex_grid_upload.pixels[pixel_pos * 4 + 2] = 0;
@@ -459,7 +459,7 @@ void Renderer::upload_defaults() {
 
 void FrameTimer::update() {
     int last_index   = ptr;
-    f32 last_time    = frame_times[ptr];
+    float last_time    = frame_times[ptr];
     ptr              = (ptr + 1) % 200;
     frame_times[ptr] = Input::time;
 
@@ -469,10 +469,10 @@ void FrameTimer::update() {
 }
 
 void FrameTimer::inspect() {
-    f32 average = 0.0f;
+    float average = 0.0f;
     for (int n = 0; n < filled; n++)
         average += delta_times[n];
-    average /= (f32) filled;
+    average /= (float) filled;
     string overlay = fmt_("FPS: {:.1f}", 1.0f / average);
     ImGui::PlotLines("DT", delta_times.data(), filled, ptr, overlay.c_str(), 0.0f, 0.1f, ImVec2(0, 80.0f));
 }

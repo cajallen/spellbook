@@ -5,7 +5,7 @@
 #include "general/color.hpp"
 #include "general/string.hpp"
 #include "general/umap.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 
@@ -28,7 +28,7 @@ constexpr v3i visual_direction_offsets[8] = {
 };
 
 struct VisualTileRotation {
-    u8 yaw = 0;
+    uint8 yaw = 0;
     bool flip_x = false;
     bool flip_z = false;
 };
@@ -39,14 +39,14 @@ struct VisualTileEntry {
 };
 
 struct VisualTileCorners {
-    std::array<u8, 8> corners;
+    std::array<uint8, 8> corners;
 
     VisualTileCorners() { corners = { 1,1,1,1,1,1,1,1 }; }
     
     bool operator==(const VisualTileCorners& oth) const {
-        u64 this_bits = u64(*(const u64*)corners.data());
-        u64 oth_bits = u64(*(const u64*)oth.corners.data());
-        u64 bitmask = this_bits & oth_bits;
+        uint64 this_bits = uint64(*(const uint64*)corners.data());
+        uint64 oth_bits = uint64(*(const uint64*)oth.corners.data());
+        uint64 bitmask = this_bits & oth_bits;
 
         // Does each corner share a viable value?
         return
@@ -59,8 +59,8 @@ struct VisualTileCorners {
             bitmask & (0xffull << 8*1ull) &&
             bitmask & (0xffull << 8*0ull);
     }
-    u8& operator[](u32 i) { return corners[i]; }
-    const u8& operator[](u32 i) const { return corners[i]; }
+    uint8& operator[](uint32 i) { return corners[i]; }
+    const uint8& operator[](uint32 i) const { return corners[i]; }
 };
 
 struct VisualTilePrefab {
@@ -78,7 +78,7 @@ struct VisualTileSet {
 // Component
 struct VisualTileSetWidget {
     VisualTileSet* tile_set = nullptr;
-    u32 setting = 1;
+    uint32 setting = 1;
 };
 
 JSON_IMPL(VisualTileCorners, corners);
@@ -86,9 +86,9 @@ JSON_IMPL(VisualTilePrefab, corners, model_path);
 JSON_IMPL(VisualTileSet, tiles);
 
 VisualTileCorners apply_rotation(VisualTileCorners corners, VisualTileRotation rotation);
-bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, u32 seed, bool flip_z = true);
+bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, uint32 seed, bool flip_z = true);
 umap<VisualTileCorners, vector<string>> convert_to_entry_pool(const VisualTileSet& tile_set);
-umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, u8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile = nullptr);
+umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile = nullptr);
 
 bool inspect(VisualTileSet* tile_set);
 
@@ -96,17 +96,17 @@ void visual_tile_widget_system(Scene* scene);
 
 v3 to_vec(DirectionBits direction);
 DirectionBits to_direction_bits(v3 v);
-DirectionBits rotate_bits(u32 direction, u32 rotation);
-DirectionBits rotate_bits(DirectionBits direction, u32 rotation);
+DirectionBits rotate_bits(uint32 direction, uint32 rotation);
+DirectionBits rotate_bits(DirectionBits direction, uint32 rotation);
 
 }
 
 namespace std {
 template <>
 struct hash<spellbook::VisualTileCorners> {
-    u64 operator()(const spellbook::VisualTileCorners& value) const {
-        u64 data = u64(*value.corners.data());
-        return std::hash<u64>()(data);
+    uint64 operator()(const spellbook::VisualTileCorners& value) const {
+        uint64 data = uint64(*value.corners.data());
+        return std::hash<uint64>()(data);
     }
 };
 }

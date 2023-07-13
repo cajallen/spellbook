@@ -7,8 +7,8 @@
 #include <vuk/Future.hpp>
 
 #include "general/string.hpp"
-#include "general/geometry.hpp"
-#include "general/quaternion.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/quaternion.hpp"
 #include "general/color.hpp"
 
 #include "renderer/viewport.hpp"
@@ -17,8 +17,8 @@
 
 namespace spellbook {
 
-using mesh_id = u64;
-using mat_id = u64;
+using mesh_id = uint64;
+using mat_id = uint64;
 
 struct MeshCPU;
 struct MaterialCPU;
@@ -27,10 +27,10 @@ struct SkeletonGPU;
 struct SceneData {
     Color ambient;
     Color fog_color;
-    f32 fog_depth;
+    float fog_depth;
     v3  rim_alpha_width_start;
     quat sun_direction;
-    f32 sun_intensity;
+    float sun_intensity;
     v3 water_color1;
     v3 water_color2;
     float water_intensity;
@@ -108,17 +108,17 @@ struct RenderScene {
 
     Renderable& quick_mesh(const MeshCPU& mesh_cpu, bool frame_allocated, bool widget);
     Renderable& quick_material(const MaterialCPU& material_cpu, bool frame_allocated);
-    Renderable& quick_renderable(const MeshCPU& mesh_id, u64 mat_id, bool frame_allocated);
-    Renderable& quick_renderable(u64 mesh_id, u64 mat_id, bool frame_allocated);
-    Renderable& quick_renderable(u64 mesh_id, const MaterialCPU& mat_id, bool frame_allocated);
+    Renderable& quick_renderable(const MeshCPU& mesh_id, uint64 mat_id, bool frame_allocated);
+    Renderable& quick_renderable(uint64 mesh_id, uint64 mat_id, bool frame_allocated);
+    Renderable& quick_renderable(uint64 mesh_id, const MaterialCPU& mat_id, bool frame_allocated);
 
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 
     vuk::Buffer buffer_model_mats;
     vuk::Buffer buffer_ids;
 
-    umap<mat_id, umap<mesh_id, vector<std::tuple<u32, m44GPU*>>>> renderables_built;
-    umap<mat_id, umap<mesh_id, vector<std::tuple<u32, SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
+    umap<mat_id, umap<mesh_id, vector<std::tuple<uint32, m44GPU*>>>> renderables_built;
+    umap<mat_id, umap<mesh_id, vector<std::tuple<uint32, SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
     void setup_renderables_for_passes(vuk::Allocator& allocator);
 };
 

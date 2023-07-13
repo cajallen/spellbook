@@ -13,7 +13,7 @@ float stat_instance_value(Stat* stat, float instance_base) {
     return instance.value();
 }
 
-void Stat::add_effect(u64 id, const StatEffect& init_effect) {
+void Stat::add_effect(uint64 id, const StatEffect& init_effect) {
     if (!effects.contains(id)) {
         effects[id] = init_effect;
         effects[id].stacks = 0;
@@ -32,7 +32,7 @@ void Stat::add_effect(u64 id, const StatEffect& init_effect) {
     effect_value.until = scene->time + init_effect.until;
 }
 
-void Stat::remove_effect(u64 id) {
+void Stat::remove_effect(uint64 id) {
     if (effects.contains(id)) {
         effects.erase(id);
     } 
@@ -40,9 +40,9 @@ void Stat::remove_effect(u64 id) {
 
 
 float Stat::value() {
-    f32 base = 0.0f;
-    f32 mult = 1.0f;
-    f32 add  = 0.0f;
+    float base = 0.0f;
+    float mult = 1.0f;
+    float add  = 0.0f;
 
     for (auto it = effects.begin(); it != effects.end();) {
         auto& [_, effect] = *it;
@@ -59,7 +59,7 @@ float Stat::value() {
                 base += effect.value * effect.stacks;
             } break;
             case (StatEffect::Type_Multiply): {
-                mult *= math::pow(1.0f + effect.value, (f32) effect.stacks);
+                mult *= math::pow(1.0f + effect.value, (float) effect.stacks);
             } break;
             case (StatEffect::Type_Add): {
                 add += effect.value * effect.stacks;
@@ -73,13 +73,13 @@ float Stat::value() {
     return base * mult + add;
 }
 
-f32 StatInstance::value() const {
+float StatInstance::value() const {
     if (stat == nullptr)
         return 0.0f;
     
-    f32 base = instance_base;
-    f32 mult = 1.0f;
-    f32 add  = 0.0f;
+    float base = instance_base;
+    float mult = 1.0f;
+    float add  = 0.0f;
 
     for (auto it = stat->effects.begin(); it != stat->effects.end();) {
         auto& [_, effect] = *it;
@@ -96,7 +96,7 @@ f32 StatInstance::value() const {
                 base += effect.value * effect.stacks;
             } break;
             case (StatEffect::Type_Multiply): {
-                mult *= math::pow(1.0f + effect.value, (f32) effect.stacks);
+                mult *= math::pow(1.0f + effect.value, (float) effect.stacks);
             } break;
             case (StatEffect::Type_Add): {
                 add += effect.value * effect.stacks;

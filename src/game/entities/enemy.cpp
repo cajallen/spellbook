@@ -4,6 +4,7 @@
 #include <entt/entity/registry.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <imgui.h>
+#include <tracy/Tracy.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
@@ -11,7 +12,7 @@
 #include "game/game.hpp"
 #include "general/astar.hpp"
 #include "general/color.hpp"
-#include "general/matrix_math.hpp"
+#include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/pose_controller.hpp"
 #include "game/scene.hpp"
@@ -91,7 +92,7 @@ void EnemyResistorAttack::trigger() {
     uset<entt::entity> enemies = entry_gather_function(*this, target, 0.0f);
     for (entt::entity enemy : enemies) {
         Health& health = scene->registry.get<Health>(enemy);
-        health.damage_taken_multiplier->add_effect((u64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
+        health.damage_taken_multiplier->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
     }
     
     constexpr float duration = 0.25f;
@@ -220,7 +221,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
         if (math::distance(path.path.get_start(), v3(location)) < 0.1f)
             available_paths.push_back(&path);
     }
-    PathInfo* selected_path = !available_paths.empty() ? available_paths[math::random_s32(available_paths.size())] : nullptr;
+    PathInfo* selected_path = !available_paths.empty() ? available_paths[math::random_int32(available_paths.size())] : nullptr;
     entt::entity spawner = selected_path ? selected_path->spawner : entt::null;
     entt::entity selected_consumer = selected_path ? selected_path->consumer : entt::null;
         
@@ -460,8 +461,8 @@ void travel_system(Scene* scene) {
         if (at_target) {
             velocity = v3(0);
         }
-        f32 max_velocity = traveler.max_speed->value() * scene->delta_time;
-        f32 min_velocity = 0.0f;
+        float max_velocity = traveler.max_speed->value() * scene->delta_time;
+        float min_velocity = 0.0f;
         if (!at_target)
             transform.position += math::normalize(velocity) * math::clamp(math::length(velocity), min_velocity, max_velocity);
     }
@@ -480,7 +481,7 @@ void enemy_decollision_system(Scene* scene) {
             float push_amount = scene->delta_time * math::map_range(dist, {0.0f, 0.4f}, {1.0f, 0.0f});
             if (push_amount < scene->delta_time * 0.1f)
                 continue;
-            v2 jitter = {math::random_f32(0.1f), math::random_f32(0.1f)};
+            v2 jitter = {math::random_float(0.1f), math::random_float(0.1f)};
             v3 push_dir = math::normalize(v3(logic_tfm2.position.xy - logic_tfm1.position.xy + jitter, 0.0f));
             logic_tfm2.position += push_amount * push_dir;
         }
@@ -493,7 +494,7 @@ v3 predict_pos(Traveler& traveler, v3 pos, float time) {
         return expected_pos;
     if (traveler.path.waypoints.empty())
         return expected_pos;
-    for (s32 i = traveler.path.reached; i > 0; i--) {
+    for (int32 i = traveler.path.reached; i > 0; i--) {
         // TODO: If we're not using pathing, just return pos
         v3 pos1 = i == traveler.path.reached ? pos : v3(traveler.path.waypoints[i]);
         v3 pos2 = v3(traveler.path.waypoints[i-1]);

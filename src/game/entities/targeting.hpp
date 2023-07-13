@@ -2,7 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "general/umap.hpp"
 
 namespace spellbook {

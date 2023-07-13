@@ -4,7 +4,7 @@
 #include <vuk/SampledImage.hpp>
 
 #include "general/string.hpp"
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 #include "general/color.hpp"
 #include "renderer/samplers.hpp"
 
@@ -22,9 +22,9 @@ struct MaterialCPU {
 
     Color color_tint       = palette::white;
     Color emissive_tint    = palette::black;
-    f32   roughness_factor = 0.5f;
-    f32   metallic_factor  = 0.0f;
-    f32   normal_factor    = 0.0f;
+    float   roughness_factor = 0.5f;
+    float   metallic_factor  = 0.0f;
+    float   normal_factor    = 0.0f;
 
     string color_asset_path    = "textures/white.sbtex";
     string orm_asset_path      = "textures/white.sbtex";
@@ -70,7 +70,7 @@ struct MaterialGPU {
 bool inspect(MaterialCPU* material);
 void inspect(MaterialGPU* material);
 
-u64         upload_material(const MaterialCPU&, bool frame_allocation = false);
+uint64         upload_material(const MaterialCPU&, bool frame_allocation = false);
 void        save_material(MaterialCPU&);
 MaterialCPU load_material(const string& file_name);
 

@@ -2,7 +2,7 @@
 
 #include "general/string.hpp"
 #include "general/vector.hpp"
-#include "general/json_cache.hpp"
+#include "game/json_cache.hpp"
 #include "editor/gui.hpp"
 #include "renderer/renderer.hpp"
 

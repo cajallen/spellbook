@@ -2,7 +2,7 @@
 
 #include <vuk/CommandBuffer.hpp>
 
-#include "general/geometry.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 

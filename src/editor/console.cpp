@@ -11,7 +11,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
-#include "general/math.hpp"
+#include "general/math/math.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"
 
@@ -24,7 +24,7 @@ vector<Message> Console::message_list {};
 bool                     Console::input_reset   = false;
 bool                     Console::added_message = false;
 vector<string>           Console::input_history {};
-u32                      Console::input_history_cursor = 0;
+uint32                   Console::input_history_cursor = 0;
 umap<string, bool>       Console::group_visible {};
 umap<string, bool>       Console::frame_bool {};
 

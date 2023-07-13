@@ -2,9 +2,9 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "general/geometry.hpp"
-#include "general/matrix.hpp"
-#include "general/math.hpp"
+#include "general/math/geometry.hpp"
+#include "general/math/matrix.hpp"
+#include "general/math/math.hpp"
 
 namespace spellbook {
 
@@ -41,7 +41,7 @@ struct SpiderController {
     v3 world_starts[4];
     v3 world_targets[4];
     float lerp_t[4];
-    u8 last_leg_moved;
+    uint8 last_leg_moved;
 
     v3 world_desired[4];
     bool want_move_leg[4];
@@ -61,10 +61,10 @@ struct SpiderController {
                 2.0f * math::sqrt(0.25f - math::pow(t - 0.5f, 2.0f)));
     }
 
-    bool is_moving(u32 i) const {
+    bool is_moving(uint32 i) const {
         return lerp_t[i] >= 0.0f && lerp_t[i] < 1.0f;
     }
-    bool is_set_moving(u32 i) const {
+    bool is_set_moving(uint32 i) const {
         return is_moving(i) || is_moving(i + 2);
     }
 
