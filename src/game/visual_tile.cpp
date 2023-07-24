@@ -132,7 +132,7 @@ umap<VisualTileCorners, vector<string>> convert_to_entry_pool(const VisualTileSe
 
 bool inspect(VisualTileSet* tile_set) {
     bool changed = false;
-    ImGui::PathSelect("File", &tile_set->file_path, "resources/visual_tile_sets", FileType_VisualTileSet);
+    ImGui::PathSelect("File", &tile_set->file_path, FileType_VisualTileSet);
     for (auto& tile : tile_set->tiles) {
         ImGui::Text("Entry");
 
@@ -176,7 +176,7 @@ bool inspect(VisualTileSet* tile_set) {
             ImGui::PopStyleVar();
             ImGui::PopItemWidth();
 
-            changed |= ImGui::PathSelect("Model", &tile.model_path, "resources/models", FileType_Model, true);
+            changed |= ImGui::PathSelect("Model", &tile.model_path, FileType_Model, true);
 
             if (ImGui::Button("Rotate 1")) {
                 tile.corners = apply_rotation(tile.corners, VisualTileRotation{.yaw = 1, .flip_x = false});
@@ -201,8 +201,8 @@ bool inspect(VisualTileSet* tile_set) {
     bool discard = true;
     if (ImGui::BeginPopupModal("Convert Folder", &discard)) {
         static umap<VisualTileSet*, fs::path> convert_paths;
-        fs::path& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = "resources/models/";
-        ImGui::PathSelect("Folder", &convert_path, "resources/models", FileType_Model);
+        fs::path& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = to_resource_path("models");
+        ImGui::PathSelect("Folder", &convert_path, FileType_Model);
         if (ImGui::Button("Convert")) {
             for (auto& dir_entry : fs::directory_iterator(convert_path)) {
                 if (path_filter(FileType_Model)(dir_entry)) {

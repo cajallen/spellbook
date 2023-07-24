@@ -9,6 +9,7 @@
 #include "general/bitmask_3d.hpp"
 #include "general/math/ease.hpp"
 #include "renderer/render_scene.hpp"
+#include "game/game_file.hpp"
 
 namespace spellbook {
 
@@ -323,7 +324,7 @@ void generate_palette(const PaletteCreateInfo& info) {
         }
     }
     stbi_write_png_compression_level = 0;
-    stbi_write_png("resources/palette.png", out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
+    stbi_write_png(to_resource_path("palette.png").string().c_str(), out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
 }
 
 MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) {

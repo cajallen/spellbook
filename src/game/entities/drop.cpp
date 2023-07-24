@@ -28,12 +28,12 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
 
 bool inspect(BeadPrefab* bead_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &bead_prefab->file_path, "resources/drops", FileType_Drop, true);
+    ImGui::PathSelect("File", &bead_prefab->file_path, FileType_Drop, true);
 
     changed |= inspect_dependencies(bead_prefab->dependencies, bead_prefab->file_path);
     
     changed |= ImGui::EnumCombo("Type", &bead_prefab->type);
-    changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, "resources/models", FileType_Model, true);
+    changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, FileType_Model, true);
     changed |= ImGui::DragFloat("Scale", &bead_prefab->scale, 0.01f);
     return changed;
 }
@@ -59,7 +59,7 @@ Color bead_color(Bead bead) {
 
 bool inspect(DropChance::Entry* drop_chance_entry) {
     bool changed = false;
-    changed |= ImGui::PathSelect("Drop", &drop_chance_entry->bead_prefab_path, "resources/drops", FileType_Drop);
+    changed |= ImGui::PathSelect("Drop", &drop_chance_entry->bead_prefab_path, FileType_Drop);
     changed |= ImGui::SliderFloat("Drop Chance", &drop_chance_entry->drop_chance, 0.0f, 1.0f);
     return changed;
 }

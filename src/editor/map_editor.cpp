@@ -102,7 +102,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
     if (ImGui::BeginPopupModal("Add Button", &add_open)) {
         ImGui::InputText("Text", &add_map[name].text);
         ImGui::ColorEdit3("Color", add_map[name].color.data);
-        ImGui::PathSelect("Path", &add_map[name].item_path, "resources", from_typeinfo(typeid(T)), 1);
+        ImGui::PathSelect("Path", &add_map[name].item_path, from_typeinfo(typeid(T)), 1);
         
         if (ImGui::Button("Add")) {
             fs::path as_path = add_map[name].item_path;
@@ -131,7 +131,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
     if (ImGui::BeginPopupModal("Edit Button", &edit_open)) {
         ImGui::InputText("Text", &buttons[edit_map[name]].text);
         ImGui::ColorEdit3("Color", buttons[edit_map[name]].color.data);
-        ImGui::PathSelect("Path", &buttons[edit_map[name]].item_path, "resources", from_typeinfo(typeid(T)), 1);
+        ImGui::PathSelect("Path", &buttons[edit_map[name]].item_path, from_typeinfo(typeid(T)), 1);
 
         if (ImGui::Button("Close")) {
             ImGui::CloseCurrentPopup();
@@ -331,7 +331,7 @@ void MapEditor::window(bool* p_open) {
             build_visuals(game_scene->p_scene, nullptr);
         }
 
-        ImGui::PathSelect("VTS", &vts_path, "resources/visual_tile_sets", FileType_VisualTileSet);
+        ImGui::PathSelect("VTS", &vts_path, FileType_VisualTileSet);
         ImGui::SameLine();
         if (ImGui::Button("Load##VTS")) {
             visual_tileset = convert_to_entry_pool(load_asset<VisualTileSet>(vts_path));
@@ -339,7 +339,7 @@ void MapEditor::window(bool* p_open) {
         }
         
         
-        ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, "resources/maps", FileType_Map, 1);
+        ImGui::PathSelect("Map Prefab Path", &map_prefab.file_path, FileType_Map, 1);
         ImGui::SameLine();
         if (ImGui::Button("Load##Map")) {
             p_scene->cleanup();

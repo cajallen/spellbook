@@ -52,9 +52,9 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
 
 bool inspect(ConsumerPrefab* consumer_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &consumer_prefab->file_path, "resources/consumers", FileType_Consumer);
-    changed |= ImGui::PathSelect("Shrine Model", &consumer_prefab->shrine_model_path, "resources/models", FileType_Model);
-    changed |= ImGui::PathSelect("Egg Model", &consumer_prefab->egg_model_path, "resources/models", FileType_Model);
+    ImGui::PathSelect("File", &consumer_prefab->file_path, FileType_Consumer);
+    changed |= ImGui::PathSelect("Shrine Model", &consumer_prefab->shrine_model_path, FileType_Model);
+    changed |= ImGui::PathSelect("Egg Model", &consumer_prefab->egg_model_path, FileType_Model);
     return changed;
 }
 

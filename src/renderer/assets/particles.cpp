@@ -24,13 +24,13 @@ void setup_emitter() {
     if (!setup) {
         {
             vuk::PipelineBaseCreateInfo pci;
-            pci.add_glsl(get_contents("src/shaders/particle_emitter.comp"), "src/shaders/particle_emitter.comp");
+            pci.add_glsl(get_contents(to_shader_path("particle_emitter.comp")), to_shader_path("particle_emitter.comp"));
             game.renderer.context->create_named_pipeline("emitter", pci);
         }
         {
             vuk::PipelineBaseCreateInfo pci;
-            pci.add_glsl(get_contents("src/shaders/particle.vert"), "src/shaders/particle.vert");
-            pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "src/shaders/textured_3d.frag");
+            pci.add_glsl(get_contents(to_shader_path("particle.vert")), to_shader_path("particle.vert"));
+            pci.add_glsl(get_contents(to_shader_path("textured_3d.frag")), to_shader_path("textured_3d.frag"));
             game.renderer.context->create_named_pipeline("particle", pci);
         }
 
@@ -158,7 +158,7 @@ void EmitterGPU::update_size() {
 
 bool inspect(Scene* scene, EmitterCPU* emitter) {
     bool changed = false;
-    ImGui::PathSelect("File", &emitter->file_path, "resources", FileType_Emitter);
+    ImGui::PathSelect("File", &emitter->file_path, FileType_Emitter);
 
     changed |= inspect_dependencies(emitter->dependencies, emitter->file_path);
     
@@ -186,7 +186,7 @@ bool inspect(Scene* scene, EmitterCPU* emitter) {
     changed |= ImGui::ColorEdit3("Color 2 Start", emitter->color2_start.data);
     changed |= ImGui::ColorEdit3("Color 2 End", emitter->color2_end.data);
     
-    changed |= ImGui::PathSelect("Mesh", &emitter->mesh, "resources/models", FileType_Mesh);
+    changed |= ImGui::PathSelect("Mesh", &emitter->mesh, FileType_Mesh);
 
     return changed;
 }

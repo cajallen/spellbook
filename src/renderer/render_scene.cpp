@@ -89,8 +89,9 @@ void RenderScene::settings_gui() {
 }
 
 void RenderScene::update_size(v2i new_size) {
-    render_target = vuk::allocate_texture(*game.renderer.global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
-    viewport.update_size(new_size);
+    bool changed = viewport.update_size(new_size);
+    if (changed)
+        render_target = vuk::allocate_texture(*game.renderer.global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
 }
 
 Renderable* RenderScene::add_renderable(const Renderable& renderable) {
@@ -722,8 +723,8 @@ void widget_setup() {
         return;
     initialized = true;
     vuk::PipelineBaseCreateInfo pci;
-    pci.add_glsl(get_contents("src/shaders/widget.vert"), "src/shaders/widget.vert");
-    pci.add_glsl(get_contents("src/shaders/widget.frag"), "src/shaders/widget.frag");
+    pci.add_glsl(get_contents(to_shader_path("widget.vert")), to_shader_path("widget.vert"));
+    pci.add_glsl(get_contents(to_shader_path("widget.frag")), to_shader_path("widget.frag"));
     game.renderer.context->create_named_pipeline("widget", pci);
     
     MaterialCPU widget_mat = { .file_path = "widget", .shader_name = "widget" };

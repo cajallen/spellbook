@@ -164,11 +164,7 @@ void handle_console_input(string& input) {
     string             word;
     iss >> word;
     if (word == "help") {
-        console({.str = "None to provide", .group = "console"});
-    } else if (word == "load") {
-        string rest;
-        getline(iss, rest);
-        //assets::convert(rest, "resources", "resources");
+        console({.str = "None to provide :(", .group = "console"});
     } else if (word == "cwd") {
         console({.str = fmt_("{}\n", fs::current_path().string()), .group = "console"});
     } else if (word == "ls") {
@@ -179,9 +175,6 @@ void handle_console_input(string& input) {
         }
         for (const auto& entry : fs::directory_iterator(path))
             console({.str = fmt_("{}\n", entry.path().string()), .group = "console"});
-    } else if (word == "convert") {
-        iss >> word;
-       //assets::convert(fs::path(word), "resources", "resources");
     } else if (word == "call") {
         Console::_handle_call_request(iss);
     } else if (word == "clear") {

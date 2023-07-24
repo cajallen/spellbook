@@ -77,7 +77,7 @@ void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
 
 bool inspect(MaterialCPU* material) {
     bool changed = false;
-    ImGui::PathSelect("File", &material->file_path, "resources", FileType_Material);
+    ImGui::PathSelect("File", &material->file_path, FileType_Material);
 
     changed |= inspect_dependencies(material->dependencies, material->file_path);
     
@@ -87,10 +87,10 @@ bool inspect(MaterialCPU* material) {
     changed |= ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
     changed |= ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
 
-    changed |= ImGui::PathSelect("color_asset_path", &material->color_asset_path, "resources", FileType_Texture);
-    changed |= ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, "resources", FileType_Texture);
-    changed |= ImGui::PathSelect("normal_asset_path", &material->normal_asset_path, "resources", FileType_Texture);
-    changed |= ImGui::PathSelect("emissive_asset_path", &material->emissive_asset_path, "resources", FileType_Texture);
+    changed |= ImGui::PathSelect("color_asset_path", &material->color_asset_path, FileType_Texture);
+    changed |= ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, FileType_Texture);
+    changed |= ImGui::PathSelect("normal_asset_path", &material->normal_asset_path, FileType_Texture);
+    changed |= ImGui::PathSelect("emissive_asset_path", &material->emissive_asset_path, FileType_Texture);
 
     changed |= ImGui::EnumCombo("cull_mode", &material->cull_mode);
     ImGui::InputText("shader", &material->shader_name);

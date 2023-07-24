@@ -11,7 +11,7 @@ struct Viewport {
     v2i     start;
     v2i     size;
     bool    size_dirty = true;
-    void    update_size(v2i new_size);
+    bool    update_size(v2i new_size);
     m44     proj_2d = {};
 
     bool hovered        = false;

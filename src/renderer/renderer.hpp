@@ -114,4 +114,6 @@ struct Renderer {
     void debug_window(bool* p_open);
 };
 
+string to_shader_path(string_view file);
+
 }

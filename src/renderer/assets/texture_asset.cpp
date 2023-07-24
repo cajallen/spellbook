@@ -1,7 +1,7 @@
 #include "texture_asset.hpp"
 
 #include <filesystem>
-#include <lz4.h>
+#include <lz4/lz4.h>
 #include <stb_image.h>
 
 #include "extension/fmt_geometry.hpp"

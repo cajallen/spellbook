@@ -174,7 +174,7 @@ bool button(ShopEntry* shop_entry) {
 void inspect(ShopEntry* shop_entry) {
     ImGui::EnumCombo("Cost Type", &shop_entry->cost_type);
     ImGui::InputInt("Cost Amount", &shop_entry->cost_amount);
-    ImGui::PathSelect("Lizard Path", &shop_entry->lizard_prefab_path, "resources/lizards", FileType_Lizard);
+    ImGui::PathSelect("Lizard Path", &shop_entry->lizard_prefab_path, FileType_Lizard);
 }
 void inspect(Warehouse* warehouse) {
     if (ImGui::BeginTable("Warehouse", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {

@@ -64,6 +64,35 @@ string extension(FileType type) {
     return "NYI";
 }
 
+string resource_folder(FileType type) {
+    switch (type) {
+        case FileType_Consumer:
+            return to_resource_path("consumers").string();
+        case FileType_Drop:
+            return to_resource_path("drops").string();
+        case FileType_Emitter:
+            return to_resource_path("emitters").string();
+        case FileType_Enemy:
+            return to_resource_path("enemies").string();
+        case FileType_Lizard:
+            return to_resource_path("lizards").string();
+        case FileType_Map:
+            return to_resource_path("maps").string();
+        case FileType_Model:
+        case FileType_Skeleton:
+            return to_resource_path("models").string();
+        case FileType_Spawner:
+            return to_resource_path("spawners").string();
+        case FileType_Tile:
+            return to_resource_path("tiles").string();
+        case FileType_VisualTileSet:
+            return to_resource_path("visual_tile_sets").string();
+        default:
+            return game.resource_folder;
+    }
+    return "NYI";
+}
+
 std::function<bool(const fs::path&)> path_filter(FileType type) {
      switch (type) {
          case (FileType_Directory):
@@ -181,11 +210,19 @@ FileCategory file_category(FileType type) {
     }
 }
 
+fs::path root_path() {
+#ifdef RESOURCE_PARENT_DIR
+    return fs::path(RESOURCE_PARENT_DIR);
+#else
+    return fs::current_path();
+#endif
+}
+
 fs::path to_resource_path(const fs::path& path) {
     fs::path ret;
     if (path.is_relative()) {
-        if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(fs::current_path()).string()))
-            return (fs::current_path() / path).string();
+        if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(root_path()).string()))
+            return (root_path() / path).string();
         return (game.resource_folder / path).string();
     }
     return path;
@@ -193,8 +230,8 @@ fs::path to_resource_path(const fs::path& path) {
 
 fs::path from_resource_path(const fs::path& path) {
     if (path.is_relative()) {
-        if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(fs::current_path()).string()))
-            return path.lexically_proximate(fs::path(game.resource_folder).lexically_proximate(fs::current_path()));
+        if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(root_path()).string()))
+            return path.lexically_proximate(fs::path(game.resource_folder).lexically_proximate(root_path()));
         return path;
     }
     else {
@@ -227,7 +264,7 @@ bool inspect_dependencies(vector<string>& dependencies, const string& current_pa
                 float width = ImGui::GetContentRegionAvail().x;
                 float text_width = ImGui::CalcTextSize("Path").x;
                 ImGui::SetNextItemWidth(width - 8.f - text_width);
-                return ImGui::PathSelect("Path", &dep, "resources", FileType_Unknown);
+                return ImGui::PathSelect("Path", &dep, game.resource_folder, FileType_Unknown);
             },
             [](vector<string>& deps, bool pressed) {
                 if (pressed) {
@@ -245,11 +282,18 @@ bool inspect_dependencies(vector<string>& dependencies, const string& current_pa
 
 namespace ImGui {
 
-bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+bool PathSelect(const string& hint, fs::path* out, const string& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     return PathSelect(hint, out, base_folder, path_filter(type), dnd_key(type), open_subdirectories, context_callback);
 }
 bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
     return PathSelect(hint, out, base_folder, path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+}
+
+bool PathSelect(const string& hint, fs::path* out, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    return PathSelect(hint, out, resource_folder(type), path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+}
+bool PathSelect(const string& hint, string* out, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    return PathSelect(hint, out, resource_folder(type), path_filter(type), dnd_key(type), open_subdirectories, context_callback);
 }
 
 }

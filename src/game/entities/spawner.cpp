@@ -87,7 +87,7 @@ void spawner_system(Scene* scene) {
 
 bool inspect(EnemySpawnInfo* enemy_spawn_info) {
     bool changed = false;
-    changed |= ImGui::PathSelect("Path", &enemy_spawn_info->enemy_prefab_path, "resources/enemies", FileType_Enemy);
+    changed |= ImGui::PathSelect("Path", &enemy_spawn_info->enemy_prefab_path, FileType_Enemy);
     changed |= ImGui::DragFloat("Pre Delay", &enemy_spawn_info->pre_delay, 0.01f);
     changed |= ImGui::DragFloat("Post Delay", &enemy_spawn_info->post_delay, 0.01f);
     return changed;
@@ -181,11 +181,11 @@ bool inspect(LevelSpawnInfo* level_spawn_info) {
 bool inspect(SpawnerPrefab* spawner_prefab) {
     bool changed = false;
     
-    ImGui::PathSelect("file_path", &spawner_prefab->file_path, "resources/spawners", FileType_Spawner, true);
+    ImGui::PathSelect("file_path", &spawner_prefab->file_path, FileType_Spawner, true);
 
     changed |= inspect_dependencies(spawner_prefab->dependencies, spawner_prefab->file_path);
     
-    changed |= ImGui::PathSelect("Base Model", &spawner_prefab->model_file_path, "resources/models", FileType_Model);
+    changed |= ImGui::PathSelect("Base Model", &spawner_prefab->model_file_path, FileType_Model);
 
     ImGui::Text("Level Spawn Info");
     changed |= inspect(&spawner_prefab->level_spawn_info);

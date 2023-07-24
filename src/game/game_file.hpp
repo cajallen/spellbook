@@ -45,7 +45,9 @@ std::function<bool(const fs::path&)> path_filter(FileType type);
 string dnd_key(FileType type);
 FileType from_typeinfo(const type_info& input);
 FileCategory file_category(FileType type);
+string resource_folder(FileType type);
 
+fs::path root_path();
 fs::path to_resource_path(const fs::path& path);
 fs::path from_resource_path(const fs::path& path);
 
@@ -102,7 +104,12 @@ T& load_asset(const string& file_path, bool assert_exists = false, bool clear_ca
 }
 
 namespace ImGui {
-bool PathSelect(const string& hint, fs::path* out, const fs::path& base_folder, spellbook::FileType type, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
-bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+
+bool PathSelect(const string& hint, fs::path* out, const string& base_folder, spellbook::FileType type, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType type, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+
+bool PathSelect(const string& hint, fs::path* out, spellbook::FileType type, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+bool PathSelect(const string& hint, string* out, spellbook::FileType type, int open_subdirectories = 1, const std::function<void(const fs::path&)>& context_callback = {});
+
 }
 

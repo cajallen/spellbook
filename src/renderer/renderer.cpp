@@ -17,6 +17,7 @@
 #include "general/logger.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
+#include "game/game_file.hpp"
 #include "editor/console.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
@@ -30,7 +31,7 @@ namespace spellbook {
 Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
-        .request_validation_layers(true)
+        .request_validation_layers(false)
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,
@@ -59,9 +60,14 @@ Renderer::Renderer() : imgui_data() {
     surface = create_surface_glfw(vkbinstance.instance, window);
 
     GLFWimage image;
-    image.pixels = stbi_load("icon.png", &image.width, &image.height, nullptr, 4);
-    glfwSetWindowIcon(window, 1, &image);
-    stbi_image_free(image.pixels);
+
+    fs::path icon_path = root_path() / fs::path("icon.png");
+
+    image.pixels = stbi_load(icon_path.string().c_str(), &image.width, &image.height, nullptr, 4);
+    if (image.pixels != nullptr) {
+        glfwSetWindowIcon(window, 1, &image);
+        stbi_image_free(image.pixels);
+    }
 
     selector.set_surface(surface)
             .set_minimum_version(1, 0)
@@ -139,53 +145,57 @@ void Renderer::add_scene(RenderScene* scene) {
     }
 }
 
+string to_shader_path(string_view file) {
+    return (root_path() / "src/shaders" / fs::path(file)).string();
+}
+
 void Renderer::setup() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsSpellbook();
     ImGui_ImplGlfw_InitForVulkan(window, false);
-    imgui_data = ImGui_ImplVuk_Init(*global_allocator, compiler);
+    imgui_data = ImGui_ImplVuk_Init(*global_allocator, compiler, to_shader_path("imgui.vert.spv"), to_shader_path("imgui.frag.spv"));
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::GetIO().ConfigDockingWithShift = true;
 
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/depth_outline.comp"), "src/shaders/depth_outline.comp");
+        pci.add_glsl(get_contents(to_shader_path("depth_outline.comp")), to_shader_path("depth_outline.comp"));
         game.renderer.context->create_named_pipeline("postprocess", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/blur.comp"), "src/shaders/blur.comp");
+        pci.add_glsl(get_contents(to_shader_path("blur.comp")), to_shader_path("blur.comp"));
         game.renderer.context->create_named_pipeline("blur", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
-        pci.add_glsl(get_contents("src/shaders/textured_3d.frag"), "src/shaders/textured_3d.frag");
+        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
+        pci.add_glsl(get_contents(to_shader_path("textured_3d.frag")), to_shader_path("textured_3d.frag"));
         context->create_named_pipeline("textured_model", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
-        pci.add_glsl(get_contents("src/shaders/desert_rocks.frag"), "src/shaders/desert_rocks.frag");
+        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
+        pci.add_glsl(get_contents(to_shader_path("desert_rocks.frag")), to_shader_path("desert_rocks.frag"));
         context->create_named_pipeline("desert_rocks", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
-        pci.add_glsl(get_contents("src/shaders/point_depth.frag"), "src/shaders/point_depth.frag");
+        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
+        pci.add_glsl(get_contents(to_shader_path("point_depth.frag")), to_shader_path("point_depth.frag"));
         context->create_named_pipeline("point_depth", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/standard_3d.vert"), "src/shaders/standard_3d.vert");
-        pci.add_glsl(get_contents("src/shaders/directional_depth.frag"), "src/shaders/directional_depth.frag");
+        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
+        pci.add_glsl(get_contents(to_shader_path("directional_depth.frag")), to_shader_path("directional_depth.frag"));
         context->create_named_pipeline("directional_depth", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("src/shaders/infinite_plane.vert"), "src/shaders/infinite_plane.vert");
-        pci.add_glsl(get_contents("src/shaders/grid.frag"), "src/shaders/grid.frag");
+        pci.add_glsl(get_contents(to_shader_path("infinite_plane.vert")), to_shader_path("infinite_plane.vert"));
+        pci.add_glsl(get_contents(to_shader_path("grid.frag")), to_shader_path("grid.frag"));
         game.renderer.context->create_named_pipeline("grid_3d", pci);
     }
 

@@ -16,9 +16,9 @@ namespace spellbook {
 Game game;
 
 void Game::startup() {
-    external_resource_folder = (fs::current_path() / "external_resources").string();
-    resource_folder = (fs::current_path() / "resources").string();
-    user_folder = (fs::current_path() / "user").string();
+    external_resource_folder = (root_path() / "external_resources").string();
+    resource_folder = (root_path() / "resources").string();
+    user_folder = (root_path() / "user").string();
 
     Console::setup();
     renderer.setup();

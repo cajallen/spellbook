@@ -86,7 +86,7 @@ vector<ModelCPU> ModelCPU::split() {
 }
 
 bool inspect(ModelCPU* model, RenderScene* render_scene) {
-    ImGui::PathSelect("File", &model->file_path, "resources/models", FileType_Model, false);
+    ImGui::PathSelect("File", &model->file_path, FileType_Model, false);
 
     bool changed = false;
 
@@ -98,8 +98,8 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
             ImGui::Text("Index: %d", model->nodes.find(node));
-            changed |= ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, "resources", FileType_Mesh);
-            changed |= ImGui::PathSelect("material_asset_path", &node->material_asset_path, "resources", FileType_Material);
+            changed |= ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, FileType_Mesh);
+            changed |= ImGui::PathSelect("material_asset_path", &node->material_asset_path, FileType_Material);
             if (ImGui::TreeNode("Transform")) {
                 if (ImGui::DragMat4("##Transform", &node->transform, 0.02f, "%.2f")) {
                     changed = true;

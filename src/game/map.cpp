@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 namespace spellbook {
 
 bool inspect(MapPrefab* map_prefab) {
-    ImGui::PathSelect("File", &map_prefab->file_path, "resources/maps", FileType_Map);
+    ImGui::PathSelect("File", &map_prefab->file_path, FileType_Map);
     inspect_dependencies(map_prefab->dependencies, map_prefab->file_path);
     
     ImGui::Text("Lizards");
@@ -25,7 +25,7 @@ bool inspect(MapPrefab* map_prefab) {
         ImGui::Text("%d", lizard_i++);
         ImGui::Indent();
         ImGui::PushID(prefab.c_str());
-        ImGui::PathSelect("Path", &prefab, "resources/lizards", FileType_Lizard);
+        ImGui::PathSelect("Path", &prefab, FileType_Lizard);
         ImGui::PopID();
         ImGui::Unindent();
     }
@@ -37,7 +37,7 @@ bool inspect(MapPrefab* map_prefab) {
             ImGui::Text("%d", tile_i++);
             ImGui::Indent();
             ImGui::PushID(entry.prefab_path.c_str());
-            ImGui::PathSelect("Path", &entry.prefab_path, "resources/tiles", FileType_Tile);
+            ImGui::PathSelect("Path", &entry.prefab_path, FileType_Tile);
             int rot = entry.rotation;
             if (ImGui::SliderInt("Rotation", &rot, 0, 3))
                 entry.rotation = rot;
@@ -54,7 +54,7 @@ bool inspect(MapPrefab* map_prefab) {
         ImGui::Text("%d", spawner_i++);
         ImGui::Indent();
         ImGui::PushID(prefab.c_str());
-        ImGui::PathSelect("Path", &prefab, "resources/spawners", FileType_Spawner);
+        ImGui::PathSelect("Path", &prefab, FileType_Spawner);
         ImGui::PopID();
         ImGui::Unindent();
     }
@@ -66,7 +66,7 @@ bool inspect(MapPrefab* map_prefab) {
         ImGui::Text("%d", consumer_i++);
         ImGui::Indent();
         ImGui::PushID(prefab.c_str());
-        ImGui::PathSelect("Path", &prefab, "resources/consumers", FileType_Consumer);
+        ImGui::PathSelect("Path", &prefab, FileType_Consumer);
         ImGui::PopID();
         ImGui::Unindent();
     }

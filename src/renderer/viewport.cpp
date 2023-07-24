@@ -27,11 +27,12 @@ bool viewport_cursor(CursorCallbackArgs args) {
 	return false;
 }
 
-void Viewport::update_size(v2i new_size) {
+bool Viewport::update_size(v2i new_size) {
 	if (size != new_size) {
 		size	   = new_size;
 		size_dirty = true;
 	}
+    return size_dirty;
 }
 void Viewport::pre_render() {
 	if (size_dirty) {

@@ -124,8 +124,8 @@ JSON_IMPL(BonePrefab, name, parent, position, inverse_bind_matrix, length);
 JSON_IMPL(Pose, name, bones);
 
 
-inline AnimationFrame from_jv_impl(const json_value& jv, vector<Pose>& pose_catalog, AnimationFrame* _);
-inline json_value to_jv(const AnimationFrame& value);
+AnimationFrame from_jv_impl(const json_value& jv, vector<Pose>& pose_catalog, AnimationFrame* _);
+json_value to_jv(const AnimationFrame& value);
 
 template <>
 bool     save_asset(const SkeletonPrefab& asset_file);

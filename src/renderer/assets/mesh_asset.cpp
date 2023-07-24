@@ -1,6 +1,6 @@
 #include "mesh_asset.hpp"
 
-#include <lz4.h>
+#include <lz4/lz4.h>
 
 #include "game/game.hpp"
 #include "game/game_file.hpp"

@@ -284,12 +284,12 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
 
 bool inspect(EnemyPrefab* enemy_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &enemy_prefab->file_path, "resources/enemies", FileType_Enemy);
+    ImGui::PathSelect("File", &enemy_prefab->file_path, FileType_Enemy);
     changed |= inspect_dependencies(enemy_prefab->dependencies, enemy_prefab->file_path);
     changed |= ImGui::EnumCombo("Type", &enemy_prefab->type);
-    changed |= ImGui::PathSelect("Base Model", &enemy_prefab->base_model_path, "resources/models", FileType_Model);
-    changed |= ImGui::PathSelect("Attachment Model", &enemy_prefab->attachment_model_path, "resources/models", FileType_Model);
-    changed |= ImGui::PathSelect("Hurt", &enemy_prefab->hurt_path, "resources/emitters", FileType_Emitter);
+    changed |= ImGui::PathSelect("Base Model", &enemy_prefab->base_model_path, FileType_Model);
+    changed |= ImGui::PathSelect("Attachment Model", &enemy_prefab->attachment_model_path, FileType_Model);
+    changed |= ImGui::PathSelect("Hurt", &enemy_prefab->hurt_path, FileType_Emitter);
     changed |= ImGui::DragFloat("Max Health", &enemy_prefab->max_health, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Max Speed", &enemy_prefab->max_speed, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Base Scale", &enemy_prefab->base_scale, 0.01f, 0.0f);

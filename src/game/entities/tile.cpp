@@ -96,9 +96,9 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
 
 bool inspect(TilePrefab* tile_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &tile_prefab->file_path, "resources/tiles", FileType_Tile, true);
+    ImGui::PathSelect("File", &tile_prefab->file_path, FileType_Tile, true);
     changed |= ImGui::EnumCombo("Type", &tile_prefab->type);
-    changed |= ImGui::PathSelect("Model", &tile_prefab->model_path, "resources/models", FileType_Model, true);
+    changed |= ImGui::PathSelect("Model", &tile_prefab->model_path, FileType_Model, true);
     changed |= ImGui::DragFloat3("Visual Offset", tile_prefab->visual_offset.data, 0.01f);
 
     ImGui::Text("Extra Solids");
