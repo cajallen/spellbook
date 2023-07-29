@@ -6,7 +6,6 @@
 
 #include "extension/fmt_renderer.hpp"
 #include "extension/imgui_extra.hpp"
-#include "general/file.hpp"
 #include "general/math/matrix_math.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
@@ -53,7 +52,7 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     scene_data.water_level           = -0.5f;
 
     MeshCPU cube = generate_cube(v3(0.0f, 0.0f, -3.5f), v3(10000.0f, 10000.0f, 1.0f));
-    uint64 background_mat_name = upload_material(MaterialCPU{.file_path = "black_mat", .color_tint = palette::black});
+    uint64 background_mat_name = upload_material(MaterialCPU{.file_path = FilePath("black_mat", true), .color_tint = palette::black});
     quick_renderable(cube, background_mat_name, false);
 }
 
@@ -165,8 +164,17 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 
 void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     ZoneScoped;
-    renderables_built.clear();
-    rigged_renderables_built.clear();
+
+    for (auto& [material, material_users] : renderables_built) {
+        for (auto& [mesh, mesh_users] : material_users) {
+            mesh_users.clear();
+        }
+    }
+    for (auto& [material, material_users] : rigged_renderables_built) {
+        for (auto& [mesh, mesh_users] : material_users) {
+            mesh_users.clear();
+        }
+    }
 
     uint32 count = 0;
 
@@ -196,9 +204,42 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
         } else {
             auto& mat_map = rigged_renderables_built.try_emplace(renderable.material_id).first->second;
             auto& mesh_list = mat_map.try_emplace(renderable.mesh_id).first->second;
-            mesh_list.emplace_back(renderable.selection_id, renderable.skeleton, &renderable.transform);
+            mesh_list.emplace_back(renderable.selection_id, &renderable.transform, renderable.skeleton);
             count++;
         }
+    }
+
+    for (auto it = renderables_built.begin(); it != renderables_built.end();) {
+        auto& [material, material_users] = *it;
+
+        for (auto it2 = material_users.begin(); it2 != material_users.end();) {
+            auto& [mesh, mesh_users] = *it2;
+            if (mesh_users.empty())
+                it2 = material_users.erase(it2);
+            else
+                it2++;
+        }
+
+        if (material_users.empty())
+            it = renderables_built.erase(it);
+        else
+            it++;
+    }
+
+    for (auto it = rigged_renderables_built.begin(); it != rigged_renderables_built.end();) {
+        auto& [material, material_users] = *it;
+
+        for (auto it2 = material_users.begin(); it2 != material_users.end();) {
+            auto& [mesh, mesh_users] = *it2;
+            if (mesh_users.empty())
+                it2 = material_users.erase(it2);
+            else
+                it2++;
+        }
+        if (material_users.empty())
+            it = rigged_renderables_built.erase(it);
+        else
+            it++;
     }
 
     uint32 model_buffer_size = sizeof(m44GPU) * (count + widget_renderables.size());
@@ -210,7 +251,7 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     for (const auto& [mat_hash, mat_map] : renderables_built) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
             for (auto& [id, transform] : mesh_list) {
-                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(m44GPU));
+                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(float) * 16);
                 *((uint32*) buffer_ids.mapped_ptr + i) = id;
                 i++;
             }
@@ -218,8 +259,8 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     }
     for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
-            for (const auto& [id, skeleton, transform] : mesh_list) {
-                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(m44GPU));
+            for (const auto& [id, transform, skeleton] : mesh_list) {
+                memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i, transform, sizeof(float) * 16);
                 *((uint32*) buffer_ids.mapped_ptr + i) = id;
                 i++;
             }
@@ -348,7 +389,7 @@ void RenderScene::add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     command_buffer
                         .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
                         .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [id, skeleton, transform] : mesh_list) {
+                    for (auto& [id, transform, skeleton] : mesh_list) {
                         command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
                         command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
                     }
@@ -407,7 +448,7 @@ void RenderScene::add_topdepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     command_buffer
                         .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
                         .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [id, skeleton, transform] : mesh_list) {
+                    for (auto& [id, transform, skeleton] : mesh_list) {
                         command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
                         command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
                     }
@@ -530,7 +571,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
 
             int item_index = 0;
             for (const auto& [mat_hash, mat_map] : renderables_built) {
-                MaterialGPU* material = game.renderer.material_cache.contains(mat_hash) ?& game.renderer.material_cache[mat_hash] : nullptr;
+                MaterialGPU* material = game.renderer.material_cache.contains(mat_hash) ? &game.renderer.material_cache[mat_hash] : nullptr;
                 command_buffer
                     .set_rasterization({.cullMode = material->cull_mode})
                     .bind_graphics_pipeline(material->pipeline);
@@ -557,7 +598,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     command_buffer
                         .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
                         .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [id, skeleton, transform] : mesh_list) {
+                    for (auto& [id, transform, skeleton] : mesh_list) {
                         command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
                         command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
                     }
@@ -568,8 +609,8 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 render_particles(emitter, command_buffer);
             }
             // Render grid
-        if (render_grid) {
-                auto grid_view = game.renderer.get_texture_or_upload("textures/grid.sbtex").value.view.get();
+            if (render_grid) {
+                auto grid_view = game.renderer.get_texture_or_upload(FilePath("grid", true)).value.view.get();
                 command_buffer
                     .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
                         .depthTestEnable  = true,
@@ -723,11 +764,11 @@ void widget_setup() {
         return;
     initialized = true;
     vuk::PipelineBaseCreateInfo pci;
-    pci.add_glsl(get_contents(to_shader_path("widget.vert")), to_shader_path("widget.vert"));
-    pci.add_glsl(get_contents(to_shader_path("widget.frag")), to_shader_path("widget.frag"));
+    pci.add_glsl(get_contents(shader_path("widget.vert")), shader_path("widget.vert").abs_string());
+    pci.add_glsl(get_contents(shader_path("widget.frag")), shader_path("widget.frag").abs_string());
     game.renderer.context->create_named_pipeline("widget", pci);
     
-    MaterialCPU widget_mat = { .file_path = "widget", .shader_name = "widget" };
+    MaterialCPU widget_mat = { .file_path = FilePath("widget", true), .shader_name = "widget" };
     upload_material(widget_mat);
 }
 

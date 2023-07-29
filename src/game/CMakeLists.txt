@@ -2,8 +2,9 @@ add_subdirectory(entities)
 target_sources(spellbook_src PUBLIC
     audio.cpp
     camera_controller.cpp
-    game_file.cpp
     game.cpp
+    game_file.cpp
+    game_path.cpp
     input.cpp
     json_cache.cpp
     map_targeting.cpp

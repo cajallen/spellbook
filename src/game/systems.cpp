@@ -42,26 +42,26 @@ void health_draw_system(Scene* scene) {
         mesh_id = upload_mesh(generate_cube(v3(0), v3(1)));
         
         MaterialCPU health_friendly_material = {
-            .file_path     = "health_friendly_material",
+            .file_path     = FilePath("health_friendly_material", true),
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
         health_friendly_id = upload_material(health_friendly_material);
         MaterialCPU health_enemy_material = {
-            .file_path     = "health_enemy_material",
+            .file_path     = FilePath("health_enemy_material", true),
             .color_tint    = palette::black,
             .emissive_tint = palette::fire_brick
         };
         health_enemy_id = upload_material(health_enemy_material);
         MaterialCPU material3_cpu = {
-            .file_path     = "health_buffer_material",
+            .file_path     = FilePath("health_buffer_material", true),
             .color_tint    = palette::black,
             .emissive_tint = palette::yellow,
             .cull_mode = vuk::CullModeFlagBits::eFront
         };
         health_buffer_id = upload_material(material3_cpu);
         MaterialCPU material2_cpu = {
-            .file_path     = "health_bar_material",
+            .file_path     = FilePath("health_bar_material", true),
             .color_tint    = palette::black,
             .roughness_factor = 1.0f,
             .cull_mode     = vuk::CullModeFlagBits::eFront

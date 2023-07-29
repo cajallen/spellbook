@@ -2,9 +2,9 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "general/string.hpp"
 #include "general/math/geometry.hpp"
 #include "general/color.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -20,17 +20,17 @@ enum Bead {
 };
 
 struct BeadPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
-    string model_path;
+    FilePath model_path;
     Bead type;
     float scale = 1.0f;
 };
 
 struct DropChance {
     struct Entry {
-        string bead_prefab_path;
+        FilePath bead_prefab_path;
         float drop_chance = 1.0f;
     };
 

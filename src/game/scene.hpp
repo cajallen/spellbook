@@ -3,9 +3,7 @@
 #include <entt/entity/fwd.hpp>
 #include <entt/entity/registry.hpp>
 
-#include "general/string.hpp"
-#include "general/vector.hpp"
-#include "general/path.hpp"
+#include "general/navigation_path.hpp"
 #include "general/bitmask_3d.hpp"
 #include "renderer/render_scene.hpp"
 #include "game/camera_controller.hpp"
@@ -101,7 +99,7 @@ struct Scene {
 void update_paths(vector<PathInfo>& paths, Scene& scene);
 void render_paths(vector<PathInfo>& paths, RenderScene& scene, float time);
 
-entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const string& emitter_path, float duration);
+entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const FilePath& emitter_path, float duration);
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, EmitterCPU emitter_cpu, float duration);
 
 }

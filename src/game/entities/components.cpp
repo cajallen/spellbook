@@ -7,10 +7,10 @@
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "general/math/matrix_math.hpp"
-
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
+#include "game/game_path.hpp"
 #include "game/entities/tags.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/spawner.hpp"
@@ -188,14 +188,13 @@ const m44& ModelTransform::get_transform() {
     return transform;
 }
 
-Health::Health(float health_value, Scene* init_scene, const string& hurt_emitter_path) {
+Health::Health(float health_value, Scene* init_scene, const FilePath& hurt_emitter_path) {
     scene = init_scene;
     value = health_value;
     buffer_value = value;
     max_health = std::make_unique<Stat>(scene, value);
     damage_taken_multiplier = std::make_unique<Stat>(scene, 1.0f);
     emitter_cpu_path = hurt_emitter_path;
-
 }
 
 void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction) {
@@ -207,7 +206,7 @@ void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amou
     float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * health.damage_taken_multiplier->value();
     health.value -= hurt_value;
 
-    if (!health.emitter_cpu_path.empty()) {
+    if (health.emitter_cpu_path.is_file()) {
         EmitterCPU hurt_emitter = load_asset<EmitterCPU>(health.emitter_cpu_path);
         hurt_emitter.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
         uint64 random_id = math::random_uint64();
@@ -233,7 +232,7 @@ void EmitterComponent::remove_emitter(uint64 id) {
     emitters.erase(id);
 }
 
-entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 location, float health_value, const string& hurt_path) {
+entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 location, float health_value, const FilePath& hurt_path) {
     auto entity = scene->registry.create();
     scene->registry.emplace<AddToInspect>(entity);
 
@@ -292,7 +291,7 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
     auto& dragging = registry.get<Dragging>(entity);
     auto& logic_tfm = registry.get<LogicTransform>(entity);
     
-    scene.audio.play_sound("audio/step.flac", {.position = logic_tfm.position});
+    scene.audio.play_sound("audio/step.flac"_rp, {.position = logic_tfm.position});
     
     if (registry.any_of<Egg>(entity)) {
         entt::entity shrine_entity = scene.get_shrine(math::round_cast(dragging.potential_logic_position));

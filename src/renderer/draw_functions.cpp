@@ -8,8 +8,9 @@
 #include "general/hash.hpp"
 #include "general/bitmask_3d.hpp"
 #include "general/math/ease.hpp"
+#include "general/logger.hpp"
 #include "renderer/render_scene.hpp"
-#include "game/game_file.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -42,7 +43,7 @@ MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
     ZoneScoped;
     string name = fmt_("cube_center:{:.2f}_extents:{:.2f}", center, extents);
     
-	return MeshCPU{name, vector<Vertex>  {
+	return MeshCPU{FilePath(name, true), vector<Vertex>  {
         // back
         Vertex {center + extents * v3{-1, -1, -1}, {0, 0, -1}, {-1, 0, 0}, vertex_color.rgb, {1, 1}},
         Vertex {center + extents * v3{1, 1, -1}, {0, 0, -1}, {-1, 0, 0}, vertex_color.rgb, {0, 0}},
@@ -136,7 +137,7 @@ MeshCPU generate_icosphere(int subdivisions) {
         v.color = v3(0,0,0);
     }
     
-    return MeshCPU(name, vertex_list, index_list);
+    return MeshCPU(FilePath(name, true), vertex_list, index_list);
 }
 
 MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex) {
@@ -150,7 +151,7 @@ MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex) {
     v3 b = math::normalize(math::cross(cam_vec, t));
 
     MeshCPU mesh_cpu;
-    mesh_cpu.file_path = name;
+    mesh_cpu.file_path = FilePath(name, true);
     
     for (int i = 0; i < 16; i++) {
         float angle1 = float(i) / 16.0f * math::TAU;
@@ -251,7 +252,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
 
     MeshCPU mesh_cpu;
-    mesh_cpu.file_path = name;
+    mesh_cpu.file_path = FilePath(name, true);
     int quad_count = segments.size() - 1;
     mesh_cpu.vertices.reserve(quad_count * 6);
     mesh_cpu.indices.reserve(quad_count * 6);
@@ -324,7 +325,8 @@ void generate_palette(const PaletteCreateInfo& info) {
         }
     }
     stbi_write_png_compression_level = 0;
-    stbi_write_png(to_resource_path("palette.png").string().c_str(), out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
+    sb_assert(false && "NYI");
+    //stbi_write_png(to_resource_path("palette.png").string().c_str(), out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
 }
 
 MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) {

@@ -1,12 +1,12 @@
 ﻿#pragma once
 
-#include "general/string.hpp"
-#include "samplers.hpp"
+#include "renderer/samplers.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
 struct Image {
-    string texture;
+    FilePath texture;
     Sampler sampler;
 };
 

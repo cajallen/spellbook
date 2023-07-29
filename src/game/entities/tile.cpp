@@ -16,7 +16,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     
     auto       entity = scene->registry.create();
 
-    if (!tile_prefab.model_path.empty()) {
+    if (tile_prefab.model_path.is_file()) {
         auto& model_comp = scene->registry.emplace<Model>(entity);
         model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(tile_prefab.model_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);

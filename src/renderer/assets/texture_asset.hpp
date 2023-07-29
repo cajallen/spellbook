@@ -2,11 +2,10 @@
 
 #include <vuk/Types.hpp>
 
-#include "general/string.hpp"
 #include "general/json.hpp"
-
 #include "renderer/assets/texture.hpp"
 #include "renderer/assets/asset_loader.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -21,13 +20,13 @@ namespace spellbook {
 
 struct TextureInfo {
     CompressionMode compression_mode = {};
-    uint32             pixels_bsize   = 0;
+    uint32          pixels_bsize   = 0;
 };
 
 JSON_IMPL(TextureInfo, compression_mode, pixels_bsize);
 
-TextureCPU convert_to_texture(const string& file_name, const string& output_folder, const string& output_name);
-TextureCPU load_texture(const string& file_name);
+TextureCPU convert_to_texture(const FilePath& file_name, const FilePath& output_folder, const string& output_name);
+TextureCPU load_texture(const FilePath& file_name);
 void       save_texture(const TextureCPU& texture_cpu);
 
 }

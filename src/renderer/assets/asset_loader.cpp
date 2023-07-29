@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 void save_asset_file(const AssetFile& asset_file) {
     std::ofstream outfile;
-    outfile.open(to_resource_path(asset_file.file_name), std::ios::binary | std::ios::out);
+    outfile.open(asset_file.file_name.abs_string(), std::ios::binary | std::ios::out);
 
     assert_else(outfile.is_open())
         return;
@@ -31,13 +31,12 @@ void save_asset_file(const AssetFile& asset_file) {
     outfile.close();
 }
 
-AssetFile load_asset_file(const string& file_name) {
-    std::filesystem::path file_path(to_resource_path(file_name));
-    string                ext = file_path.extension().string();
+AssetFile load_asset_file(const FilePath& file_path) {
+    string                ext = file_path.extension();
     assert_else(ext == extension(FileType_Mesh) || ext == extension(FileType_Texture));
     
     std::ifstream infile;
-    infile.open(to_resource_path(file_name), std::ios::binary);
+    infile.open(file_path.abs_string(), std::ios::binary);
 
     assert_else(infile.is_open())
         return {};

@@ -35,6 +35,8 @@ bool game_scene_click_dragging(ClickCallbackArgs args) {
 void GameScene::setup(const MapPrefab& map_prefab) {
     Input::add_callback(InputCallbackInfo{game_scene_on_key, 20, "Game Scene", this});
     Input::add_callback(InputCallbackInfo{game_scene_click_dragging, 50, "Game Scene", this});
+    assert_else(p_scene == nullptr)
+        delete p_scene;
     p_scene = instance_map(map_prefab, "Game Scene");
     p_scene->set_edit_mode(false);
     p_scene->time_scale = 1.0f;

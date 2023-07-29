@@ -25,10 +25,10 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
 };
 
 uint64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
-    if (material_cpu.file_path.empty())
+    if (!material_cpu.file_path.is_file())
         return 0;
     
-    uint64 material_cpu_hash = hash_view(material_cpu.file_path);
+    uint64 material_cpu_hash = hash_path(material_cpu.file_path);
 
     MaterialGPU material_gpu;
     material_gpu.material_cpu = material_cpu;
@@ -132,24 +132,18 @@ void inspect(MaterialGPU* material) {
 void save_material(MaterialCPU& material_cpu) {
     auto j = from_jv<json>(to_jv(material_cpu));
 
-    material_cpu.color_asset_path = to_resource_path(material_cpu.color_asset_path).string();
-    material_cpu.orm_asset_path = to_resource_path(material_cpu.orm_asset_path).string();
-    material_cpu.normal_asset_path = to_resource_path(material_cpu.normal_asset_path).string();
-    material_cpu.emissive_asset_path = to_resource_path(material_cpu.emissive_asset_path).string();
-
-    string ext = std::filesystem::path(material_cpu.file_path).extension().string();
-    assert_else(ext == extension(FileType_Material));
+    assert_else(material_cpu.file_path.extension() == extension(FileType_Material));
     
-    file_dump(j, to_resource_path(material_cpu.file_path).string());
+    file_dump(j, material_cpu.file_path.abs_string());
 }
 
-MaterialCPU load_material(const string& file_path) {
-    string ext = std::filesystem::path(file_path).extension().string();
-    assert_else(ext == extension(FileType_Material));
+MaterialCPU load_material(const FilePath& file_path) {
+    assert_else(file_path.extension() == extension(FileType_Material));
     
-    json j = parse_file(to_resource_path(file_path).string());
+    json j = parse_file(file_path.abs_string());
     auto material_cpu = from_jv<MaterialCPU>(to_jv(j));
     material_cpu.file_path = file_path;
+
     return material_cpu;
 }
 

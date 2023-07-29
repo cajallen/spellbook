@@ -6,13 +6,13 @@
 
 namespace spellbook {
 
-entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const string& particles_path, const string& model_path, float scale) {
+entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const FilePath& particles_path, const FilePath& model_path, float scale) {
     auto       entity = scene->registry.create();
     scene->registry.emplace<Name>(entity, "projectile");
 
     scene->registry.emplace<LogicTransform>(entity, pos);
     
-    if (!model_path.empty()) {
+    if (model_path.is_file()) {
         auto& model_comp = scene->registry.emplace<Model>(entity);
         model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(model_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);

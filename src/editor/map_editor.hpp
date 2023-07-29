@@ -18,7 +18,7 @@ template <typename T>
 struct Button {
     string text;
     Color color;
-    string item_path;
+    FilePath item_path;
 };
 
 struct MapEditor : EditorScene {
@@ -42,8 +42,8 @@ struct MapEditor : EditorScene {
 
     uint32 rotation = 0;
 
-    string vts_path;
-    umap<VisualTileCorners, vector<string>> visual_tileset;
+    FilePath vts_path;
+    umap<VisualTileCorners, vector<FilePath>> visual_tileset;
     
     void setup() override;
     void setup_scene(Scene* scene, bool scene_setup);
@@ -57,10 +57,10 @@ struct MapEditor : EditorScene {
 
     void build_visuals(Scene* scene, v3i* tile);
     
-    void instance_and_write_consumer(const string& path, v3i input_pos);
-    void instance_and_write_spawner(const string& path, v3i input_pos);
-    void instance_and_write_lizard(const string& path, v3i input_pos);
-    void instance_and_write_tile(const string& path, v3i input_pos, uint32 rotation = 0);
+    void instance_and_write_consumer(const FilePath& path, v3i input_pos);
+    void instance_and_write_spawner(const FilePath& path, v3i input_pos);
+    void instance_and_write_lizard(const FilePath& path, v3i input_pos);
+    void instance_and_write_tile(const FilePath& path, v3i input_pos, uint32 rotation = 0);
 };
 
 JSON_IMPL_TEMPLATE(template <typename T>, Button<T>, text, color, item_path);

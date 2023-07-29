@@ -41,7 +41,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     auto       entity = setup_basic_unit(scene, lizard_prefab.model_path, v3(location), lizard_prefab.max_health, lizard_prefab.hurt_path);
 
     static int lizard_i = 0;
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(lizard_prefab.file_path).stem().string(), lizard_i++));
+    scene->registry.emplace<Name>(entity, fmt_("{}_{}", lizard_prefab.file_path.rel_path().stem().string(), lizard_i++));
     
     scene->registry.emplace<Caster>(entity, scene);
     scene->registry.emplace<Draggable>(entity, 0.5f);

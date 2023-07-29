@@ -4,9 +4,9 @@
 
 #include "general/json.hpp"
 #include "general/math/geometry.hpp"
-#include "general/path.hpp"
-#include "game/game_file.hpp"
+#include "general/navigation_path.hpp"
 #include "game/shop.hpp"
+#include "game/game_path.hpp"
 #include "game/entities/stat.hpp"
 
 namespace spellbook {
@@ -23,13 +23,13 @@ enum EnemyType {
 };
 
 struct EnemyPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
     EnemyType type = EnemyType_Empty;
-    string base_model_path = "models/enemy_spider/spider_base.sbmod";
-    string attachment_model_path;
-    string hurt_path;
+    FilePath base_model_path = "models/enemy_spider/spider_base.sbmod"_rp;
+    FilePath attachment_model_path;
+    FilePath hurt_path;
     
     float max_health = 10.0f;
     float max_speed = 0.75f;

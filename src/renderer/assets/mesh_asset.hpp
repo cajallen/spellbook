@@ -1,9 +1,9 @@
 #pragma once
 
-#include "general/string.hpp"
 #include "general/json.hpp"
 #include "renderer/assets/asset_loader.hpp"
 #include "renderer/assets/mesh.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -18,14 +18,14 @@ namespace spellbook {
 
 struct MeshInfo {
     CompressionMode compression_mode = {};
-    uint32             vertices_bsize   = 0;
-    uint32             indices_bsize    = 0;
-    uint32             index_bsize      = 0;
+    uint32          vertices_bsize   = 0;
+    uint32          indices_bsize    = 0;
+    uint32          index_bsize      = 0;
 };
 
 JSON_IMPL(MeshInfo, compression_mode, vertices_bsize, indices_bsize, index_bsize);
 
-MeshCPU load_mesh(const string& file_name);
+MeshCPU load_mesh(const FilePath& file_path);
 void    save_mesh(const MeshCPU& mesh_cpu);
 
 }

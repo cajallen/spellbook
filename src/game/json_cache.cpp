@@ -6,39 +6,35 @@
 
 namespace spellbook {
 
-json& AssetCache::load_json(const string& file_path_input) {
-    string file_path = file_path_input;
-    std::replace(file_path.begin(), file_path.end(), '\\', '/');
+json& DiskCache::load_json(const FilePath& file_path) {
     if (parsed_jsons.contains(file_path))
         return parsed_jsons[file_path];
 
-    console({.str=fmt_("Loading json: {}", file_path), .group = "asset", .save = false});
-    parsed_jsons[file_path] = parse_file(file_path);
+    console({.str=fmt_("Loading json: {}", file_path.rel_string()), .group = "asset", .save = false});
+    parsed_jsons[file_path] = parse_file(file_path.abs_string());
     load_dependencies(parsed_jsons[file_path]);
     return parsed_jsons[file_path];
 }
 
-AssetFile& AssetCache::load_asset(const string& file_path_input) {
-    string file_path = file_path_input;
-    std::replace(file_path.begin(), file_path.end(), '\\', '/');
+AssetFile& DiskCache::load_asset(const FilePath& file_path) {
+    // check for fake file path
     if (parsed_assets.contains(file_path))
         return parsed_assets[file_path];
-
-    console({.str=fmt_("Loading asset: {}", file_path), .group = "asset", .save = false});
+    console({.str=fmt_("Loading asset: {}", file_path.rel_string()), .group = "asset", .save = false});
     return parsed_assets[file_path] = load_asset_file(file_path);
 }
 
-vector<string> AssetCache::load_dependencies(json& j) {
-    vector<string> list;
+vector<FilePath> DiskCache::load_dependencies(json& j) {
+    vector<FilePath> list;
     if (j.contains("dependencies")) {
         for (const json_value& jv : j["dependencies"]->get_list()) {
-            string& file_path = list.push_back(from_jv_impl(jv, (string*) 0));
-            
-            FileCategory category = file_category(file_type_from_path(fs::path(file_path)));
+            FilePath& file_path = list.push_back(FilePath(from_jv_impl(jv, (string*) 0)));
+
+            FileCategory category = get_category(file_path);
             if (category == FileCategory_Asset)
-                this->load_asset(to_resource_path(file_path).string());
+                this->load_asset(file_path);
             if (category == FileCategory_Json)
-                this->load_json(to_resource_path(file_path).string());
+                this->load_json(file_path);
         }
     }
     return list;

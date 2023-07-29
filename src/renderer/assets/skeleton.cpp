@@ -429,28 +429,26 @@ bool     save_asset(const SkeletonPrefab& value) {
     j["pose_catalog"] = make_shared<json_value>(to_jv(value.pose_catalog));
     j["animations"] = make_shared<json_value>(to_jv(value.animations));
     
-    string ext = std::filesystem::path(value.file_path).extension().string();
+    string ext = value.file_path.extension();
     assert_else(ext == extension(FileType_Skeleton))
         return false;
     
-    file_dump(j, to_resource_path(value.file_path).string());
+    file_dump(j, value.file_path.abs_string());
     return true;
 }
 
 template <>
-SkeletonPrefab& load_asset(const string& input_path, bool assert_exists, bool clear_cache) {
-    fs::path absolute_path = to_resource_path(input_path);
-    string absolute_path_string = absolute_path.string();
-    if (clear_cache && asset_cache<SkeletonPrefab>().contains(absolute_path_string))
-        asset_cache<SkeletonPrefab>().erase(absolute_path_string);
-    if (asset_cache<SkeletonPrefab>().contains(absolute_path_string))
-        return *asset_cache<SkeletonPrefab>()[absolute_path_string];
+SkeletonPrefab& load_asset(const FilePath& input_path, bool assert_exists, bool clear_cache) {
+    fs::path absolute_path = input_path.abs_string();
+    if (clear_cache && cpu_asset_cache<SkeletonPrefab>().contains(input_path))
+        cpu_asset_cache<SkeletonPrefab>().erase(input_path);
+    if (cpu_asset_cache<SkeletonPrefab>().contains(input_path))
+        return *cpu_asset_cache<SkeletonPrefab>()[input_path];
 
-    SkeletonPrefab& value = *asset_cache<SkeletonPrefab>().emplace(absolute_path_string, std::make_unique<SkeletonPrefab>()).first->second;
+    SkeletonPrefab& value = *cpu_asset_cache<SkeletonPrefab>().emplace(input_path, std::make_unique<SkeletonPrefab>()).first->second;
 
-    string ext = absolute_path.extension().string();
-    bool exists = fs::exists(absolute_path_string);
-    bool corrext = ext == extension(from_typeinfo(typeid(SkeletonPrefab)));
+    bool exists = fs::exists(absolute_path);
+    bool corrext = input_path.extension() == extension(from_typeinfo(typeid(SkeletonPrefab)));
     if (assert_exists) {
         assert_else(exists && corrext)
             return value;
@@ -459,7 +457,7 @@ SkeletonPrefab& load_asset(const string& input_path, bool assert_exists, bool cl
             return value;
     }
     
-    json      j = parse_file(absolute_path_string);
+    json j = parse_file(absolute_path.string());
     value.file_path = input_path;
     value.dependencies = game.asset_system.load_dependencies(j);
 

@@ -3,7 +3,9 @@
 #include <entt/entity/entity.hpp>
 
 #include "game/scene.hpp"
+#include "general/file_path.hpp"
 #include "game/pose_controller.hpp"
+#include "game/game_path.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/lizard.hpp"
@@ -54,7 +56,7 @@ void AssassinAttack::trigger() {
         health.dots[caster]->add_effect(0, StatEffect{StatEffect::Type_Add, poison_dps, poison_max_stacks, poison_duration});
     }
 
-    EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/assassin/basic_hit.sbemt");
+    EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/assassin/basic_hit.sbemt"_rp);
     emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
     quick_emitter(scene, "Assassin hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
 

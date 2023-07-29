@@ -11,15 +11,15 @@
 #include "general/math/quaternion.hpp"
 #include "renderer/vertex.hpp"
 #include "renderer/image.hpp"
-
+#include "general/file_path.hpp"
 
 namespace spellbook {
 struct Scene;
 struct RenderScene;
 
 struct EmitterCPU {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
     v3 offset = v3(0.0f);
     v3 position = v3(0.0f);
@@ -46,8 +46,8 @@ struct EmitterCPU {
     v3 alignment_vector = v3(0.0f);
     v3 alignment_random = v3(0.0f);
 
-    string mesh;
-    string material;
+    uint64 mesh;
+    uint64 material;
 
     void set_velocity_direction(v3 dir);
 };
@@ -72,8 +72,8 @@ struct EmitterSettings {
 };
 
 struct EmitterGPU {
-    static constexpr uint64 cube_mesh = hash_view("emitter_cube");
-    static constexpr uint64 sphere_mesh = hash_view("emitter_sphere");
+    static constexpr string_view cube_mesh = "emitter_cube";
+    static constexpr string_view sphere_mesh = "emitter_sphere";
     // For editing purposes
     EmitterCPU emitter_cpu;
     

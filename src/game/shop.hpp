@@ -14,7 +14,7 @@ struct SpawnStateInfo;
 struct ShopEntry {
     Bead cost_type = Bead_Oak;
     int cost_amount = 0;
-    string lizard_prefab_path = {};
+    FilePath lizard_prefab_path = {};
 };
 
 struct Warehouse {

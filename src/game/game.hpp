@@ -11,14 +11,14 @@ namespace spellbook {
 struct Scene;
 
 struct Game {
+    constexpr static string_view external_resource_folder = "external_resources/";
+    constexpr static string_view resource_folder = "resources/";
+    constexpr static string_view user_folder = "user/";
+
     vector<Scene*> scenes;
     Renderer       renderer;
     GUI            gui;
-    AssetCache      asset_system;
-    
-    string external_resource_folder;
-    string resource_folder;
-    string user_folder;
+    DiskCache      asset_system;
 
     void startup();
     void run();

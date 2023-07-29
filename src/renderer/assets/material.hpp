@@ -7,7 +7,7 @@
 #include "general/math/geometry.hpp"
 #include "general/color.hpp"
 #include "renderer/samplers.hpp"
-
+#include "general/file_path.hpp"
 
 namespace vuk {
 struct PipelineBaseInfo;
@@ -17,8 +17,8 @@ namespace spellbook {
 
 // This should really be MaterialPrefab, and we should convert the paths into ids for a MaterialCPU
 struct MaterialCPU {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
 
     Color color_tint       = palette::white;
     Color emissive_tint    = palette::black;
@@ -26,10 +26,10 @@ struct MaterialCPU {
     float   metallic_factor  = 0.0f;
     float   normal_factor    = 0.0f;
 
-    string color_asset_path    = "textures/white.sbtex";
-    string orm_asset_path      = "textures/white.sbtex";
-    string normal_asset_path   = "textures/white.sbtex";
-    string emissive_asset_path = "textures/white.sbtex";
+    FilePath color_asset_path    = FilePath("white", true);
+    FilePath orm_asset_path      = FilePath("white", true);
+    FilePath normal_asset_path   = FilePath("white", true);
+    FilePath emissive_asset_path = FilePath("white", true);
 
     Sampler sampler = Sampler().address(Address_Mirrored).anisotropy(true);
 
@@ -72,6 +72,6 @@ void inspect(MaterialGPU* material);
 
 uint64         upload_material(const MaterialCPU&, bool frame_allocation = false);
 void        save_material(MaterialCPU&);
-MaterialCPU load_material(const string& file_name);
+MaterialCPU load_material(const FilePath& file_name);
 
 }

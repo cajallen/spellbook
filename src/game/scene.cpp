@@ -339,7 +339,7 @@ vector<entt::entity> Scene::get_any(v3i pos) {
     return entities;
 }
 
-entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const string& emitter_path, float duration) {
+entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const FilePath& emitter_path, float duration) {
     return quick_emitter(scene, name, position, load_asset<EmitterCPU>(emitter_path), duration);
 }
 

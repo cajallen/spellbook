@@ -18,14 +18,17 @@
 
 namespace spellbook {
 
-FileType file_type_from_path(const fs::path& path) {
-    string extension_string = path.extension().string();
+FileType get_type(const FilePath& path) {
+    string extension_string = path.rel_path().extension().string();
     for (uint32 i = 0; i < magic_enum::enum_count<FileType>(); i++) {
         FileType type = (FileType) i;
-        if (extension(type) == extension_string)
+        if (path.extension() == extension_string)
             return type;
     }
     return FileType_Unknown;
+}
+FileCategory get_category(const FilePath& path) {
+    return file_category(get_type(path));
 }
 
 string extension(FileType type) {
@@ -60,35 +63,6 @@ string extension(FileType type) {
             return ".sbdrp";
         case (FileType_Skeleton):
             return ".sbskl";
-    }
-    return "NYI";
-}
-
-string resource_folder(FileType type) {
-    switch (type) {
-        case FileType_Consumer:
-            return to_resource_path("consumers").string();
-        case FileType_Drop:
-            return to_resource_path("drops").string();
-        case FileType_Emitter:
-            return to_resource_path("emitters").string();
-        case FileType_Enemy:
-            return to_resource_path("enemies").string();
-        case FileType_Lizard:
-            return to_resource_path("lizards").string();
-        case FileType_Map:
-            return to_resource_path("maps").string();
-        case FileType_Model:
-        case FileType_Skeleton:
-            return to_resource_path("models").string();
-        case FileType_Spawner:
-            return to_resource_path("spawners").string();
-        case FileType_Tile:
-            return to_resource_path("tiles").string();
-        case FileType_VisualTileSet:
-            return to_resource_path("visual_tile_sets").string();
-        default:
-            return game.resource_folder;
     }
     return "NYI";
 }
@@ -147,9 +121,38 @@ string dnd_key(FileType type) {
         case (FileType_Drop):
             return "DND_DROP";
         case (FileType_Skeleton):
-            return "DND_SKELETON";    }
+            return "DND_SKELETON";
+    }
     log_error("extension NYI");
     return "DND_UNKNOWN";
+}
+
+string resource_folder(FileType type) {
+    switch (type) {
+        case FileType_Consumer:
+            return FilePath(string(game.resource_folder) + "consumers").abs_string();
+        case FileType_Drop:
+            return FilePath(string(game.resource_folder) + "drops").abs_string();
+        case FileType_Emitter:
+            return FilePath(string(game.resource_folder) + "emitters").abs_string();
+        case FileType_Enemy:
+            return FilePath(string(game.resource_folder) + "enemies").abs_string();
+        case FileType_Lizard:
+            return FilePath(string(game.resource_folder) + "lizards").abs_string();
+        case FileType_Map:
+            return FilePath(string(game.resource_folder) + "maps").abs_string();
+        case FileType_Model:
+        case FileType_Skeleton:
+            return FilePath(string(game.resource_folder) + "models").abs_string();
+        case FileType_Spawner:
+            return FilePath(string(game.resource_folder) + "spawners").abs_string();
+        case FileType_Tile:
+            return FilePath(string(game.resource_folder) + "tiles").abs_string();
+        case FileType_VisualTileSet:
+            return FilePath(string(game.resource_folder) + "visual_tile_sets").abs_string();
+        default:
+            return string(game.resource_folder);
+    }
 }
 
 FileType from_typeinfo(const type_info& input) {
@@ -210,41 +213,12 @@ FileCategory file_category(FileType type) {
     }
 }
 
-fs::path root_path() {
-#ifdef RESOURCE_PARENT_DIR
-    return fs::path(RESOURCE_PARENT_DIR);
-#else
-    return fs::current_path();
-#endif
-}
-
-fs::path to_resource_path(const fs::path& path) {
-    fs::path ret;
-    if (path.is_relative()) {
-        if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(root_path()).string()))
-            return (root_path() / path).string();
-        return (game.resource_folder / path).string();
-    }
-    return path;
-}
-
-fs::path from_resource_path(const fs::path& path) {
-    if (path.is_relative()) {
-        if (path.string().starts_with(fs::path(game.resource_folder).lexically_proximate(root_path()).string()))
-            return path.lexically_proximate(fs::path(game.resource_folder).lexically_proximate(root_path()));
-        return path;
-    }
-    else {
-        return path.lexically_proximate(game.resource_folder);
-    }
-}
-
-bool inspect_dependencies(vector<string>& dependencies, const string& current_path) {
+bool inspect_dependencies(vector<FilePath>& dependencies, const FilePath& current_path) {
     bool changed = false;
     
     if (ImGui::TreeNode("Dependencies")) {
         if (ImGui::Button("Auto Populate")) {
-            string contents = get_contents(to_resource_path(current_path).string());
+            string contents = get_contents(current_path);
 
             uint64 start_at = 0;
             while (start_at < contents.size()) {
@@ -253,20 +227,21 @@ bool inspect_dependencies(vector<string>& dependencies, const string& current_pa
                     break;
                 uint64 start_quote = contents.rfind('"', sb_index) + 1;
                 uint64 end_quote = contents.find_first_of('"', sb_index);
-                dependencies.push_back(string(contents.data() + start_quote, end_quote - start_quote));
+                string quote_contents = string(contents.data() + start_quote, end_quote - start_quote);
+                dependencies.push_back(FilePath(quote_contents));
                 
                 start_at = end_quote;
             }
             
         }
         changed |= ImGui::UnorderedVector(dependencies,
-            [](string& dep) {
+            [](FilePath& dep) {
                 float width = ImGui::GetContentRegionAvail().x;
                 float text_width = ImGui::CalcTextSize("Path").x;
                 ImGui::SetNextItemWidth(width - 8.f - text_width);
-                return ImGui::PathSelect("Path", &dep, game.resource_folder, FileType_Unknown);
+                return ImGui::PathSelect("Path", &dep, FileType_Unknown);
             },
-            [](vector<string>& deps, bool pressed) {
+            [](vector<FilePath>& deps, bool pressed) {
                 if (pressed) {
                     deps.emplace_back();
                 }
@@ -277,23 +252,68 @@ bool inspect_dependencies(vector<string>& dependencies, const string& current_pa
     return changed;
 }
 
+string get_contents(const FilePath& file_name, bool binary) {
+    string path = file_name.abs_string();
+    FILE* f = fopen(path.c_str(), !binary ? "r" : "rb");
+    if (f == nullptr)
+        return {};
+
+    fseek(f, 0, SEEK_END);
+    size_t size = ftell(f) / sizeof(char);
+    string contents;
+    contents.resize(size);
+    rewind(f);
+
+    size_t read_bytes = fread(contents.data(), sizeof(char), size, f);
+
+    fclose(f);
+
+    contents.resize(std::min(strlen(contents.data()), read_bytes));
+    return contents;
+}
+
+vector<uint32> get_contents_uint32(const FilePath& file_name, bool binary) {
+    string path = file_name.abs_string();
+    FILE* f = fopen(path.c_str(), !binary ? "r" : "rb");
+    if (f == nullptr)
+        return {};
+
+    fseek(f, 0, SEEK_END);
+    size_t    size = ftell(f) / sizeof(uint32);
+    vector<uint32> contents;
+    contents.resize(size);
+    rewind(f);
+
+    fread(&contents[0], sizeof(uint32), size, f);
+
+    fclose(f);
+
+    return contents;
+}
+
 
 }
 
 namespace ImGui {
 
-bool PathSelect(const string& hint, fs::path* out, const string& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
-    return PathSelect(hint, out, base_folder, path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+bool PathSelect(const string& hint, spellbook::FilePath* out, const spellbook::FilePath& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    fs::path out_path = out->abs_path();
+    bool changed = PathSelect(hint, &out_path, base_folder.abs_string(), path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+    if (changed) {
+        *out = spellbook::FilePath(out_path);
+        return true;
+    }
+    return false;
 }
-bool PathSelect(const string& hint, string* out, const string& base_folder, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
-    return PathSelect(hint, out, base_folder, path_filter(type), dnd_key(type), open_subdirectories, context_callback);
-}
+bool PathSelect(const string& hint, spellbook::FilePath* out, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
+    fs::path out_path = out->abs_path();
+    bool changed = PathSelect(hint, &out_path, resource_folder(type), path_filter(type), dnd_key(type), open_subdirectories, context_callback);
+    if (changed) {
+        *out = spellbook::FilePath(out_path);
+        return true;
+    }
+    return false;
 
-bool PathSelect(const string& hint, fs::path* out, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
-    return PathSelect(hint, out, resource_folder(type), path_filter(type), dnd_key(type), open_subdirectories, context_callback);
-}
-bool PathSelect(const string& hint, string* out, spellbook::FileType type, int open_subdirectories, const std::function<void(const fs::path&)>& context_callback) {
-    return PathSelect(hint, out, resource_folder(type), path_filter(type), dnd_key(type), open_subdirectories, context_callback);
 }
 
 }

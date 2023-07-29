@@ -5,12 +5,13 @@
 
 #include "general/string.hpp"
 #include "general/math/geometry.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
 struct TextureCPU {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
 
     v2i         size   = {};
     vuk::Format format = {};
@@ -24,6 +25,6 @@ struct TextureGPU {
     bool frame_allocated;
 };
 
-string upload_texture(const TextureCPU& tex_cpu, bool frame_allocation = false);
+FilePath upload_texture(const TextureCPU& tex_cpu, bool frame_allocation = false);
 
 }

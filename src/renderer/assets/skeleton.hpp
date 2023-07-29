@@ -3,13 +3,12 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
-#include "game/game_file.hpp"
 #include "general/math/ease.hpp"
 #include "general/math/geometry.hpp"
 #include "general/math/matrix.hpp"
 #include "general/math/quaternion.hpp"
 #include "general/id_ptr.hpp"
-
+#include "game/game_file.hpp"
 #include "renderer/assets/animation_state.hpp"
 
 namespace spellbook {
@@ -48,8 +47,8 @@ struct BonePrefab {
 };
 
 struct SkeletonPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
 
     vector<id_ptr<BonePrefab>> bones;
     array<vector<AnimationFrame>, AnimationStateCount> animations;
@@ -130,7 +129,7 @@ json_value to_jv(const AnimationFrame& value);
 template <>
 bool     save_asset(const SkeletonPrefab& asset_file);
 template <>
-SkeletonPrefab& load_asset(const string& input_path, bool assert_exist, bool clear_cache);
+SkeletonPrefab& load_asset(const FilePath& input_path, bool assert_exist, bool clear_cache);
 
 bool inspect(SkeletonCPU* skeleton_cpu);
 bool inspect(vector<AnimationFrame>* animation, int* load_pose);

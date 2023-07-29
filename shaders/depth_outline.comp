@@ -1,0 +1,531 @@
+#version 450
+#pragma shader_stage(compute)
+
+#include "include.glsli"
+
+// compositing
+layout(binding = 0) uniform sampler2D s_color;
+layout(binding = 1) uniform sampler2D s_emissive;
+layout(binding = 2) uniform sampler2D s_normal;
+layout(binding = 3) uniform sampler2D s_depth;
+layout(binding = 4) uniform sampler2D s_widget;
+layout(binding = 5) uniform sampler2D s_widget_depth;
+layout(binding = 6) uniform sampler2D s_sun_depth;
+layout(binding = 7) uniform sampler2D s_top_depth;
+layout(binding = 8, rgba16f) uniform writeonly image2D u_target;
+
+layout(constant_id = 0) const int target_width	= 0;
+layout(constant_id = 1) const int target_height = 0;
+
+layout (binding = 9) uniform CompositeData {
+    mat4 inverse_vp;
+    vec4 camera_position;
+    
+    mat4 light_vp;
+    mat4 top_vp;
+    vec4 sun_data;
+    vec4 ambient;
+    vec4 rim_alpha_width_start;
+    
+    vec4 water_color1;
+    vec4 water_color2;
+    float water_intensity;
+    float water_level;
+};
+
+layout(push_constant) uniform uPushConstant {
+	vec4 outline_step;
+	uint mode;
+	float time;
+} pc;
+
+struct SimpleInputRead {
+    vec3 position;
+    vec3 normal;
+    float depth;
+};
+
+struct InputRead {
+    ivec2 coord;
+    vec2 uv;
+    vec3 position;
+    vec3 color;
+    vec3 emissive;
+    vec3 normal;
+    float roughness;
+    float depth;
+    float depth_read;
+    vec4 widget_color;
+    float widget_depth;
+};
+
+const int NUM_TAPS = 20;
+const float TOTAL_TAPS_WEIGHT = 64.0;
+const ivec3 samples[NUM_TAPS] = ivec3[](
+    ivec3(-1, 0, 8),
+    ivec3( 1, 0, 8),
+    ivec3( 0,-1, 8),
+    ivec3( 0, 1, 8),
+
+    ivec3(-1,-1, 4),
+    ivec3( 1, 1, 4),
+    ivec3(-1, 1, 4),
+    ivec3( 1,-1, 4),
+
+    ivec3(-2, 0, 2),
+    ivec3( 2, 0, 2),
+    ivec3( 0,-2, 2),
+    ivec3( 0, 2, 2),
+    
+    ivec3(-2, 1, 1),
+    ivec3( 2, 1, 1),
+    ivec3( 1,-2, 1),
+    ivec3( 1, 2, 1),
+    ivec3(-2,-1, 1),
+    ivec3( 2,-1, 1),
+    ivec3(-1,-2, 1),
+    ivec3(-1, 2, 1)
+);
+
+SimpleInputRead read_simple_inputs(ivec2 coord) {
+    SimpleInputRead data;
+    data.normal = normalize(texelFetch(s_normal, coord, 0).rgb);
+    float depth_read = texelFetch(s_depth, coord, 0).r;
+    
+    vec2 uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
+    vec4 h_position_worldspace = inverse_vp * vec4(uv, depth_read, 1.0);
+    data.position = h_position_worldspace.xyz / h_position_worldspace.w;
+
+    if (depth_read == 0.0)
+        data.depth = 1000.0;
+    else
+        data.depth = distance(camera_position.xyz, data.position);
+    
+    return data;
+}
+
+InputRead read_inputs(ivec2 coord) {
+    InputRead data;
+    data.coord = coord;
+    data.color = texelFetch(s_color, coord, 0).rgb;
+    data.emissive = texelFetch(s_emissive, coord, 0).rgb;
+    data.normal = normalize(texelFetch(s_normal, coord, 0).rgb);
+    data.roughness = texelFetch(s_normal, coord, 0).a;
+    data.depth_read = max(texelFetch(s_depth, coord, 0).r, 0.0001);
+    data.widget_color = texelFetch(s_widget, coord, 0);
+    
+    data.uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
+    vec4 h_position_worldspace = inverse_vp * vec4(data.uv, data.depth_read, 1.0);
+    data.position = h_position_worldspace.xyz / h_position_worldspace.w;
+    if (data.depth_read == 0.0)
+        data.depth = 1000.0;
+    else
+        data.depth = distance(camera_position.xyz, data.position);
+
+    vec4 widget_hpos = inverse_vp * vec4(data.uv, texelFetch(s_widget_depth, coord, 0).r, 1.0);
+    vec3 widget_position = widget_hpos.xyz / widget_hpos.w;
+    data.widget_depth = distance(camera_position.xyz, widget_position);
+    return data;
+}
+
+float calculate_toon_diffuse(float NdotL) {
+    const float transition = 0.02;
+    const float transition1_start = 0.07;
+    const float transition2_start = 0.50;
+    const float range = 0.05;
+    const float mid_out = 0.5;
+
+    float val = 0.0;
+    if (NdotL < transition1_start) {
+        // low
+        float out_min = 0.0;
+        float out_max = 0.0;
+        val = map_range(NdotL, -1.0, transition1_start, out_min, out_max);
+    }
+    else if (NdotL < transition1_start + transition) {
+        // transition1
+        float out_min = 0.0;
+        float out_max = mid_out - 0.5 * range;
+        val = map_range(NdotL, transition1_start, transition1_start + transition, out_min, out_max);
+    }
+    else if (NdotL < transition2_start) {
+        // middle
+        float out_min = mid_out - 0.5 * range;
+        float out_max = mid_out + 0.5 * range;
+        val = map_range(NdotL, transition1_start + transition, transition2_start, out_min, out_max);
+    }
+    else if (NdotL < transition2_start + transition) {
+        // transition2
+        float out_min = mid_out + 0.5 * range;
+        float out_max = 1.0 - range;
+        val = map_range(NdotL, transition2_start, transition2_start + transition, out_min, out_max);
+    }
+    else {
+        // high
+        float out_min = 1.0 - range;
+        float out_max = 1.0;
+        val = map_range(NdotL, transition2_start + transition, 1.0, out_min, out_max);
+    } 
+    return val;
+}
+
+bool check_skip(float value, vec2 coord, ivec2 offset, float comparison) {
+    ivec2 max_coord = textureSize(s_sun_depth, 0);
+    if (coord.x + offset.x < 0 || coord.y + offset.y < 0) {
+        return true;
+    }
+    if (coord.x + offset.x >= max_coord.x|| coord.y + offset.y >= max_coord.y) {
+        return true;
+    }
+
+    float read = texelFetch(s_sun_depth,ivec2(coord)+offset,0).r;
+    float other = comparison < read ? 0.0 : 1.0;
+    return other < 0.5 && (abs(other - value) < 0.5);
+}
+
+bool diag_shadow(inout float sum, vec2 coord, ivec2 offset1, ivec2 offset2, float thickness, float comparison) {
+    ivec2 max_coord = textureSize(s_sun_depth, 0);
+    if (coord.x + offset1.x < 0 || coord.x + offset2.x < 0 || coord.y + offset1.y < 0 || coord.y + offset2.y < 0) {
+        sum = 1.0;
+        return false;
+    }
+    if (coord.x + offset1.x >= max_coord.x || coord.x + offset2.x >= max_coord.x || coord.y + offset1.y >= max_coord.y || coord.y + offset2.y >= max_coord.y) {
+        sum = 1.0;
+        return false;
+    }
+
+    vec4 v1 = texelFetch(s_sun_depth, ivec2(coord)+offset1, 0);
+    vec4 v2 = texelFetch(s_sun_depth, ivec2(coord)+offset2, 0);
+    
+    float f1 = comparison < (v1.r) ? 0.0 : 1.0;
+    float f2 = comparison < (v2.r) ? 0.0 : 1.0;
+    
+    if (abs(f1 - f2) < 0.1) {
+    	vec2 dir = vec2(offset2-offset1);
+        vec2 lp = coord-(floor(coord+vec2(offset1))+0.5);
+    	dir = normalize(vec2(dir.y,-dir.x));
+        float l = clamp((thickness-dot(lp,dir))*15.0,0.0,1.0);
+        sum = mix(sum,f1,l);
+    	return true;
+    }
+    return false;
+}
+
+float max(vec2 v) {
+    return max(v.x, v.y);
+}
+
+float shaded(InputRead data) {
+    vec4 h_position_lightspace = light_vp * vec4(data.position, 1.0);
+    vec3 position_lightspace = h_position_lightspace.xyz / h_position_lightspace.w;
+    vec2 uv = position_lightspace.xy * 0.5 + vec2(0.5);
+    
+    //float slope_bias = 0.05;
+    const float maxBias = 0.04;
+    const float quantize = 1.0 / (1 << 16);
+    float b = length(1.0 / textureSize(s_sun_depth, 0));
+    float bias = quantize + b * length(cross(sun_data.xyz, data.normal)) / clamp(dot(sun_data.xyz, data.normal), 0.01, 1.0);
+
+    if (uv.x < 0.0 || uv.x >= 1.0 || uv.y < 0.0 || uv.y >= 1.0 || position_lightspace.z < 0.01)
+        return 1.0;
+    
+    float world_read_depth = texture(s_sun_depth, uv).r;
+    bias = min(bias, maxBias) + 0.001f * (1.0f - world_read_depth);
+    float world_position_depth = position_lightspace.z + bias;
+
+    float shaded_amount = world_position_depth < world_read_depth ? 0.0 : 1.0;
+
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2(-1, 1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 0), ivec2( 0, 1), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 0), ivec2( 1, 1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1,-1), ivec2( 0, 1), 0.25, world_position_depth);
+        }
+    }
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2( 1, 1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0, 1), ivec2( 1, 0), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0, 1), ivec2( 1,-1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2(-1, 1), ivec2( 1, 0), 0.25, world_position_depth);
+        }
+    }
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2( 1,-1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 0), ivec2( 0,-1), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 0), ivec2(-1,-1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1, 1), ivec2( 0,-1), 0.25, world_position_depth);
+        }
+    }
+    if (!check_skip(shaded_amount, uv * vec2(4096.0), ivec2(-1,-1), world_position_depth)) {
+        if (diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0,-1), ivec2(-1, 0), 0.38197, world_position_depth)) {
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 0,-1), ivec2(-1, 1), 0.25, world_position_depth);
+            diag_shadow(shaded_amount, uv * vec2(4096.0), ivec2( 1,-1), ivec2(-1, 0), 0.25, world_position_depth);
+        } 
+    }
+    return clamp(shaded_amount, 0.0, 1.0);
+}
+
+
+
+vec3 calculate_lighting(InputRead data, float amb_factor, float diff_factor) {
+    float shadow = shaded(data);
+
+    vec3 to_light = normalize(sun_data.xyz);
+    vec3 view_dir = normalize(data.position - camera_position.xyz);
+    vec3 reflection_dir = reflect(to_light, data.normal);
+    float NdotL = dot(data.normal, to_light);
+    float VdotR = dot(view_dir, reflection_dir);
+    float VdotN = dot(view_dir, data.normal);
+
+    float smoothness = clamp(1.0 - data.roughness, 0.001, 1.0);
+
+    float toon_diffuse = calculate_toon_diffuse(NdotL);
+    toon_diffuse = srgb_to_linear(toon_diffuse);
+    float specular_dot = pow(clamp(VdotR, 0.0, 1.0), smoothness * 100.0);
+    float toon_specular = smoothstep(0.4, 0.5, specular_dot);
+
+    float rim_dot = max(1.0 + VdotN, 0.0);
+    float rim_intensity = rim_dot * pow(NdotL, rim_alpha_width_start.y);
+    rim_intensity = smoothstep(rim_alpha_width_start.z - 0.01, rim_alpha_width_start.z + 0.01, rim_intensity);
+
+    vec3 ambient = data.color * ambient.rgb * ambient.a * amb_factor;
+    vec3 diffuse = data.color * clamp(toon_diffuse, 0.0, 1.0) * diff_factor;
+    vec3 specular = toon_specular * mix(vec3(1.0), vec3(0.0), data.roughness);
+    vec3 rim = rim_intensity * mix(vec3(1.0), vec3(0.0), data.roughness) * rim_alpha_width_start.x;
+
+    return shadow * (diffuse + specular + rim) + ambient + data.emissive;
+}
+
+vec3 calculate_water_lighting(InputRead data, float amb_factor, float diff_factor) {
+    float shadow = shaded(data);
+
+    vec3 to_light = normalize(sun_data.xyz);
+    vec3 view_dir = normalize(data.position - camera_position.xyz);
+    vec3 reflection_dir = reflect(to_light, data.normal);
+    float NdotL = dot(data.normal, to_light);
+    float VdotR = dot(view_dir, reflection_dir);
+    float VdotN = dot(view_dir, data.normal);
+
+    float smoothness = clamp(1.0 - data.roughness, 0.001, 1.0);
+
+    float toon_diffuse = 1.0;
+    float specular_dot = pow(clamp(VdotR, 0.0, 1.0), smoothness * 100.0);
+    float toon_specular = smoothstep(0.4, 0.5, specular_dot);
+
+    float rim_dot = max(1.0 + VdotN, 0.0);
+    float rim_intensity = rim_dot * pow(NdotL, rim_alpha_width_start.y);
+    rim_intensity = smoothstep(rim_alpha_width_start.z - 0.01, rim_alpha_width_start.z + 0.01, rim_intensity);
+
+    vec3 ambient = data.color * ambient.rgb * ambient.a;
+    vec3 diffuse = data.color * clamp(toon_diffuse, 0.0, 1.0);
+    vec3 specular = toon_specular * mix(vec3(1.0), vec3(0.0), data.roughness);
+    vec3 rim = rim_intensity * mix(vec3(1.0), vec3(0.0), data.roughness) * rim_alpha_width_start.x;
+
+    return shadow * (diffuse + specular + rim) + ambient + data.emissive;
+}
+
+
+const int NUM_STEPS = 10;
+const float PI	 	= 3.1415;
+const float EPSILON	= 1e-4;
+
+// sea
+const int ITER_GEOMETRY = 3;
+const int ITER_FRAGMENT = 1;
+const float SEA_HEIGHT = 0.8;
+const float SEA_CHOPPY = 4.0;
+const float SEA_SPEED = 0.5;
+const float SEA_FREQ = 1.0;
+const vec3 SEA_WATER_COLOR = vec3(0.8,0.9,0.6);
+
+mat2 octave_m = mat2(1.6,1.2,-1.2,1.6);
+
+float sea_octave(vec2 uv, float choppy) {
+    return pow(1.0 - perlin_noise(uv, 0), choppy);
+
+    uv += (vec2(1.0) - 2.0 * perlin_noise(uv, 0));
+    vec2 wv = 1.0-abs(sin(uv)); 
+    vec2 swv = abs(cos(uv));  
+    wv = mix(wv,swv,wv);
+    return pow(1.0-pow(wv.x * wv.y,0.65),choppy);
+}
+
+float map(vec3 p, int iters) {
+    float freq = SEA_FREQ;
+    float amp = SEA_HEIGHT;
+    float choppy = SEA_CHOPPY;
+    vec2 uv = p.xy;
+    
+    float d, h = 0.0;    
+    for (int i = 0; i < iters; i++) {
+    	d = sea_octave((uv+pc.time * SEA_SPEED)*freq,choppy);
+    	d += sea_octave((uv-pc.time * SEA_SPEED)*freq,choppy);
+        h += d * amp;
+    	uv *= octave_m;
+        
+        freq *= 1.8;
+        amp *= 0.15;
+        choppy = mix(choppy,1.0,0.2);
+    }
+    return p.z - h + 0.7;
+}
+
+vec3 get_normal(vec3 p, float eps) {
+    vec3 n;
+    n.z = map(p, ITER_FRAGMENT);
+    n.x = map(vec3(p.x+eps,p.y,p.z), ITER_FRAGMENT) - n.z;
+    n.y = map(vec3(p.x,p.y+eps,p.z), ITER_FRAGMENT) - n.z;
+    n.z = eps; 
+    return normalize(n);
+}
+
+
+float heightMapTracing(vec3 ori, vec3 dir, out vec3 p) {  
+    float tm = 0.0;
+    float tx = 1000.0;
+    float hx = map(ori + dir * tx, ITER_GEOMETRY);
+    if (hx > 0.0) return tx;   
+    float hm = map(ori + dir * tm, ITER_GEOMETRY); 
+    float tmid = 0.0;
+    for (int i = 0; i < NUM_STEPS; i++) {
+        tmid = mix(tm,tx, hm/(hm-hx));
+        p = ori + dir * tmid;          
+    	float hmid = map(p, ITER_GEOMETRY);
+        if (hmid < 0.0) {
+            tx = tmid;
+            hx = hmid;
+        } else {
+            tm = tmid;
+            hm = hmid;
+        }
+    }
+
+    return tmid;
+}
+
+vec3 water(ivec2 coord, vec3 input_color, InputRead data, out float out_water_depth) {
+    vec4 origin_hpos = inverse_vp * vec4(data.uv.x, data.uv.y, 0.9999f, 1.0f);
+    vec4 end_hpos    = inverse_vp * vec4(data.uv.x, data.uv.y, 0.0001f, 1.0f);
+    vec3 origin      = origin_hpos.xyz / origin_hpos.w;
+    vec3 dir         = normalize(end_hpos.xyz / end_hpos.w - origin);
+
+    //float t     = (water_level - origin.z) / dir.z;
+    //vec3 water_intersect = vec3(origin.x + dir.x * t, origin.y + dir.y * t, water_level);
+    vec3 water_intersect;
+    float trace_dist = heightMapTracing(origin, dir, water_intersect);
+    float water_depth = distance(camera_position.xyz, water_intersect);
+    float water_depth_delta = data.depth - water_depth;
+    if (dir.z < 0.0 && trace_dist < 999.0 && water_depth_delta > 0.0) {
+        vec4 h_position_topspace = top_vp * vec4(water_intersect, 1.0);
+        vec3 position_topspace = h_position_topspace.xyz / h_position_topspace.w;
+        vec2 uv = position_topspace.xy * 0.5 + vec2(0.5);
+        float foam = map_range(texture(s_top_depth, uv).r, 0.0, 0.05, 0.0, 1.0) *
+            map_range(water_intersect.z, -0.3, -0.7, 0.6, 1.0);
+        
+        float EPSILON_NRM	= 0.1 / target_width;
+        vec3 water_normal = get_normal(water_intersect, dot(water_depth, water_depth) * EPSILON_NRM);
+        foam += map_range(dot(water_normal, vec3(0.0, 0.0, 1.0)), 0.975, 1.0, 0.0, 1.0) *
+            map_range(water_intersect.z, -0.65, -0.45, 0.0, 1.0);
+        
+        //map_range(dot(water_normal, vec3(0.0, 0.0, 1.0)), 0.99, 1.0, 0.0, 0.1) * 
+        //    map_range(water_intersect.z, -0.50, -0.40, 0.0, 1.0);
+        //
+        //float foam_min = map_range(water_intersect.z, -0.65, -0.35, 0.001, 0.03);
+        //float foam_max = map_range(water_intersect.z, -0.65, -0.35, 0.002, 0.04);
+        foam = smoothstep(0.55, 0.60, foam) * 0.3;
+        
+        vec3 color = input_color;
+        float amount = 1.0 - pow(water_intensity, -water_depth_delta);
+        vec3 water_color = mix(water_color2.rgb, water_color1.rgb, pow(dot(vec3(0.0, 0.0, -1.0), dir), 0.4));
+        water_color = mix(water_color, vec3(1.0), foam);
+        amount = mix(amount, 1.0, foam);
+        
+        InputRead water_data;
+        water_data.position = water_intersect;
+        water_data.color = water_color;
+        water_data.normal = water_normal;
+        water_data.roughness = 0.05;
+        water_data.emissive = vec3(0.0);
+        
+        
+        water_color = calculate_water_lighting(water_data, 3.0, 0.50);
+        //water_color = vec3(foam);
+
+        color = mix(color, water_color, amount);
+        out_water_depth = water_depth;
+        return color;
+    }
+    out_water_depth = data.depth;
+    return input_color;
+}
+
+vec3 fog(vec3 color, float depth) {
+    color = clamp(color, vec3(0.0), vec3(1.0));
+    float x = 1.0 - exp(-(depth-4.0) / 300.0);
+    return mix(color, vec3(0.4, 0.5, 0.6), x);
+}
+
+layout (local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+	
+	InputRead data = read_inputs(coord);
+	
+    float depth_outline = 0.0;
+    float normal_outline = 0.0;    
+    float closest_depth = 1.0 / 0.0;
+    for (int i = 0; i < NUM_TAPS; i++) {
+        SimpleInputRead offset_data = read_simple_inputs(coord + samples[i].xy);
+        float depth_val = 2.0 / (1.0 + pow(6.0, data.depth - offset_data.depth)) - 1.0;
+        depth_outline += samples[i].z / TOTAL_TAPS_WEIGHT * depth_val;
+
+        if (data.depth < 1000.0) {
+            float normal_val = smoothstep(pc.outline_step.z, pc.outline_step.w, 1.0 - abs(dot(data.normal, offset_data.normal)));
+            normal_outline += samples[i].z / TOTAL_TAPS_WEIGHT * normal_val;
+        }
+    
+        closest_depth = min(closest_depth, offset_data.depth);
+    }
+    depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, abs(depth_outline));
+    float outline = max(depth_outline, 2.0 * normal_outline);
+
+    vec3 color = calculate_lighting(data, 1.0, 1.0);
+    
+    float water_depth;
+    color = water(coord, color, data, water_depth);
+    if (water_depth > closest_depth)
+        color = mix(color, vec3(0.0), outline);
+    
+    
+    if (data.widget_color.a > 0.0) {
+        if (data.widget_depth < data.depth)
+            color = mix(color, data.widget_color.rgb, data.widget_color.a);
+        else {
+            if ((coord.x % 2 == 0) && (coord.y % 2 == 0))
+                color = mix(color, data.widget_color.rgb, 0.5 * data.widget_color.a);
+        }
+    }
+    
+    color = fog(color, min(water_depth, data.depth));
+    
+    switch (pc.mode) {
+        case 0:
+            imageStore(u_target, coord, vec4(linear_to_srgb(color.rgb), 1.0));
+            break;
+        case 1:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.color.rgb), 1.0));
+            break;
+        case 2:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.emissive.rgb), 1.0));
+            break;
+        case 3:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.position), 1.0));
+            break;
+        case 4:
+            imageStore(u_target, coord, vec4(linear_to_srgb(data.normal), 1.0));
+            break;      
+        case 5:
+            imageStore(u_target, coord, vec4(vec3(depth_outline), 1.0));
+            //imageStore(u_target, coord, vec4(vec3(1.0 - data.depth / 20.0), 1.0));
+            break;
+        case 6:
+            break;      
+    }
+}

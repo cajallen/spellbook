@@ -7,6 +7,7 @@
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "renderer/vertex.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -18,10 +19,10 @@ struct MeshBounds {
 };
 
 struct MeshCPU {
-    string         file_path;
+    FilePath file_path;
     
     vector<Vertex> vertices;
-    vector<uint32>    indices;
+    vector<uint32> indices;
 
     MeshBounds bounds;
 

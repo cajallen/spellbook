@@ -21,9 +21,9 @@ void spawner_system(Scene* scene) {
         return;
 
     for (auto [entity, spawner, logic_transform] : scene->registry.view<Spawner, LogicTransform>().each()) {
-        if (!spawner.force_spawn_path.empty()) {
+        if (spawner.force_spawn_path.is_file()) {
             instance_prefab(scene, load_asset<EnemyPrefab>(spawner.force_spawn_path), v3i(logic_transform.position));
-            spawner.force_spawn_path = "";
+            spawner.force_spawn_path = {};
         }
         
         // Advance Round ?
@@ -100,7 +100,7 @@ bool inspect(WaveSpawnInfo* wave_info) {
     changed |= ImGui::DragFloat("Post Delay", &wave_info->post_delay, 0.01f);
     if (ImGui::TreeNode("Enemies")) {
         changed |= ImGui::OrderedVector(wave_info->enemies,
-            [](id_ptr<EnemySpawnInfo>& item) { ImGui::Text("%s", fs::path(item->enemy_prefab_path).stem().string().c_str()); return false; },
+            [](id_ptr<EnemySpawnInfo>& item) { ImGui::Text("%s", item->enemy_prefab_path.stem().c_str()); return false; },
             [](vector<id_ptr<EnemySpawnInfo>>& values, bool pressed) {
                 if (pressed) {
                     values.push_back(id_ptr<EnemySpawnInfo>::emplace());
@@ -292,12 +292,12 @@ bool inspect(Spawner* spawner) {
     ImGui::TableSetupColumn("Enemy");
     ImGui::TableHeadersRow();
 
-    for (const auto& entry : fs::directory_iterator(to_resource_path("enemies"))) {
+    for (const auto& entry : fs::directory_iterator(resource_path("enemies").abs_path())) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         string button_name = fmt_("Spawn {}", entry.path().stem().string());
         if (ImGui::Button(button_name.c_str())) {
-            spawner->force_spawn_path = entry.path().string();
+            spawner->force_spawn_path = FilePath(entry.path());
         }
     }
     ImGui::EndTable();
@@ -310,31 +310,6 @@ bool inspect(SpawnStateInfo* spawn_state_info) {
     return false;
 }
 
-
-void save_spawner(const SpawnerPrefab& spawner_prefab) {
-    auto j = from_jv<json>(to_jv(spawner_prefab));
-
-    string ext = fs::path(spawner_prefab.file_path).extension().string();
-    assert_else(ext == extension(FileType_Spawner));
-
-    file_dump(j, to_resource_path(spawner_prefab.file_path).string());
-}
-
-SpawnerPrefab load_spawner(const string& input_path) {
-    fs::path absolute_path = to_resource_path(input_path);
-    check_else(fs::exists(absolute_path))
-        return {};
-    string ext = absolute_path.extension().string();
-    assert_else(ext == extension(FileType_Spawner))
-        return {};
-
-    json j                   = parse_file(absolute_path.string());
-    auto spawner_prefab      = from_jv<SpawnerPrefab>(to_jv(j));
-    spawner_prefab.file_path = absolute_path.string();
-    return spawner_prefab;
-}
-
-
 entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, v3i location) {
     static int i = 0;
 
@@ -343,7 +318,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     scene->registry.emplace<AddToInspect>(entity);
     scene->registry.emplace<LogicTransform>(entity, v3(location));
 
-    if (!spawner_prefab.model_file_path.empty()) {
+    if (spawner_prefab.model_file_path.is_file()) {
         auto& model_comp = scene->registry.emplace<Model>(entity);
         model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(spawner_prefab.model_file_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
@@ -354,16 +329,6 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     
     scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, scene->spawn_state_info);
     scene->registry.emplace<FloorOccupier>(entity);
-    // // Model
-    // if (!spawner_prefab.enemies.empty()) {
-    //     auto& model_comp     = scene->registry.emplace<Model>(entity);
-    //     model_comp.model_cpu = std::make_unique<ModelCPU>(
-    //         load_asset<ModelCPU>(load_asset<EnemyPrefab>(spawner_prefab.enemies.front()->enemy_prefab_path).model_path));
-    //     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
-    //     
-    //     scene->registry.emplace<ModelTransform>(entity);
-    //     scene->registry.emplace<TransformLink>(entity, v3(0.5f));
-    // }
 
     // Preload all of the enemies
     for (auto& enemy_info : spawner_prefab.enemies) {
@@ -403,7 +368,7 @@ SpawnerPrefab from_jv_impl(const json_value& jv, SpawnerPrefab* _) {
     return value;
 }
 
-inline json_value to_jv(const SpawnerPrefab& value) {
+json_value to_jv(const SpawnerPrefab& value) {
     auto j = json();
 
     vector<json_value> rounds;

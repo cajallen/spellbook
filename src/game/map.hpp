@@ -2,24 +2,24 @@
 
 #include "general/umap.hpp"
 #include "general/math/geometry.hpp"
-#include "game/game_file.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
 struct Scene;
 
 struct MapPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
     struct TileEntry {
-        string prefab_path;
+        FilePath prefab_path;
         uint32 rotation;
     };
     umap<v3i, TileEntry> tiles;
-    umap<v3i, string> spawners;
-    umap<v3i, string> consumers;
-    umap<v3i, string> lizards;
+    umap<v3i, FilePath> spawners;
+    umap<v3i, FilePath> consumers;
+    umap<v3i, FilePath> lizards;
     umap<v3i, uint8> solid_tiles;
 };
 JSON_IMPL(MapPrefab::TileEntry, prefab_path, rotation);

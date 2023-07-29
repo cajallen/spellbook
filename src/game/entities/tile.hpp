@@ -5,6 +5,7 @@
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "general/math/geometry.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -18,11 +19,11 @@ enum TileType {
 };
 
 struct TilePrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
     TileType type;
-    string model_path;
+    FilePath model_path;
     v3 visual_offset = v3(0.5f, 0.5f, 0.0f);
     uset<v3i> solids;
 

@@ -4,8 +4,9 @@
 #include <entt/entity/fwd.hpp>
 
 #include "general/vector.hpp"
-#include "game/entities/stat.hpp"
 #include "general/id_ptr.hpp"
+#include "game/entities/stat.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -25,7 +26,7 @@ struct SpawnStateInfo {
 };
 
 struct EnemySpawnInfo {
-    string enemy_prefab_path;
+    FilePath enemy_prefab_path;
     float pre_delay;
     float post_delay;
 };
@@ -48,15 +49,15 @@ struct LevelSpawnInfo {
 };
 
 struct SpawnerPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
 
     LevelSpawnInfo level_spawn_info;
     vector<id_ptr<RoundSpawnInfo>> rounds;
     vector<id_ptr<WaveSpawnInfo>> waves;
     vector<id_ptr<EnemySpawnInfo>> enemies;
 
-    string model_file_path;
+    FilePath model_file_path;
 };
 
 struct Spawner {
@@ -70,7 +71,7 @@ struct Spawner {
     bool spawn_wave = false;
     bool spawn_enemy = false;
 
-    string force_spawn_path;
+    FilePath force_spawn_path;
 };
 
 JSON_IMPL(EnemySpawnInfo, enemy_prefab_path, pre_delay, post_delay);

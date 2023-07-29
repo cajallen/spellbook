@@ -17,6 +17,8 @@
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/input.hpp"
+#include "game/game_file.hpp"
+#include "game/game_path.hpp"
 #include "game/tile_set_generator.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/tile.hpp"
@@ -105,14 +107,14 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
         ImGui::PathSelect("Path", &add_map[name].item_path, from_typeinfo(typeid(T)), 1);
         
         if (ImGui::Button("Add")) {
-            fs::path as_path = add_map[name].item_path;
+            fs::path as_path = add_map[name].item_path.abs_path();
             if (fs::is_directory(as_path)) {
                 for (auto& dir_entry : fs::directory_iterator(as_path)) {
                     if (path_filter(from_typeinfo(typeid(T)))(dir_entry)) {
                         buttons.emplace_back(
                             dir_entry.path().stem().string(),
                             add_map[name].color,
-                            dir_entry.path().string()
+                            FilePath(dir_entry.path())
                         );
                     } else {
                         log_warning("Directory contents not added as button as it does not match types");
@@ -206,13 +208,12 @@ bool map_editor_scroll(ScrollCallbackArgs args) {
 void MapEditor::setup() {
     ZoneScoped;
     // generate_example_set();
-    
-    fs::path map_file = fs::path(game.user_folder) / ("map_editor" + extension(FileType_General));
 
-    if (!fs::exists(map_file))
+    FilePath map_editor_file = FilePath(string(game.user_folder) + "map_editor" + extension(FileType_General));
+    if (!fs::exists(map_editor_file.abs_path()))
         return;
     
-    json j = parse_file(map_file.string());
+    json j = parse_file(map_editor_file.abs_string());
     FROM_JSON_MEMBER(lizard_buttons);
     FROM_JSON_MEMBER(tile_buttons);
     FROM_JSON_MEMBER(spawner_buttons);
@@ -220,9 +221,9 @@ void MapEditor::setup() {
     FROM_JSON_MEMBER(map_prefab.file_path);
     FROM_JSON_MEMBER(vts_path);
     
-    if (!vts_path.empty())
+    if (vts_path.is_file())
         visual_tileset = convert_to_entry_pool(load_asset<VisualTileSet>(vts_path));
-    if (!map_prefab.file_path.empty()) {
+    if (map_prefab.file_path.is_file()) {
         map_prefab = load_asset<MapPrefab>(map_prefab.file_path);
         setup_scene(instance_map(map_prefab, "Map Edit Scene"), true);
     } else {
@@ -239,7 +240,7 @@ void MapEditor::setup_scene(Scene* scene, bool scene_setup) {
     if (!scene_setup)
         p_scene->setup("Map Edit Scene");
     p_scene->set_edit_mode(true);
-    if (!map_prefab.file_path.empty() && !vts_path.empty())
+    if (map_prefab.file_path.is_file() && vts_path.is_file())
         build_visuals(scene, nullptr);
 }
 
@@ -320,7 +321,7 @@ void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
         if (ImGui::Button("Play")) {
-            p_scene->audio.play_sound("audio/page_flip.flac", {.global = true, .volume = 0.3f});
+            p_scene->audio.play_sound("audio/page_flip.flac"_rp, {.global = true, .volume = 0.3f});
 
             console({.str="Playing map..."});
             
@@ -393,7 +394,7 @@ void MapEditor::shutdown() {
     Input::remove_callback<ClickCallback>("map_editor");
 }
 
-void MapEditor::instance_and_write_consumer(const string& path, v3i pos) {
+void MapEditor::instance_and_write_consumer(const FilePath& path, v3i pos) {
     entt::entity old_tile = p_scene->get_shrine(pos);
     if (old_tile != entt::null) {
         p_scene->registry.destroy(old_tile);
@@ -403,7 +404,7 @@ void MapEditor::instance_and_write_consumer(const string& path, v3i pos) {
     instance_prefab(p_scene, load_asset<ConsumerPrefab>(path), pos);
 }
 
-void MapEditor::instance_and_write_spawner(const string& path, v3i pos) {
+void MapEditor::instance_and_write_spawner(const FilePath& path, v3i pos) {
     entt::entity old_tile = p_scene->get_spawner(pos);
     if (old_tile != entt::null) {
         p_scene->registry.destroy(old_tile);
@@ -413,7 +414,7 @@ void MapEditor::instance_and_write_spawner(const string& path, v3i pos) {
     instance_prefab(p_scene, load_asset<SpawnerPrefab>(path), pos);
 }
 
-void MapEditor::instance_and_write_lizard(const string& path, v3i pos) {
+void MapEditor::instance_and_write_lizard(const FilePath& path, v3i pos) {
     entt::entity old_tile = p_scene->targeting->select_lizard(pos);
     if (old_tile != entt::null) {
         p_scene->registry.destroy(old_tile);
@@ -423,7 +424,7 @@ void MapEditor::instance_and_write_lizard(const string& path, v3i pos) {
     instance_prefab(p_scene, load_asset<LizardPrefab>(path), pos);
 }
 
-void MapEditor::instance_and_write_tile(const string& path, v3i input_pos, uint32 rotation) {
+void MapEditor::instance_and_write_tile(const FilePath& path, v3i input_pos, uint32 rotation) {
     TilePrefab tile_prefab = load_asset<TilePrefab>(path);
     auto type = tile_prefab.type;
     v3i pos;
@@ -462,7 +463,7 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
             scene->visual_map_entities.erase(pos);
         }
 
-        if (tile_entry.model_path.empty())
+        if (!tile_entry.model_path.is_file())
             continue;
         
         auto entity = scene->registry.create();

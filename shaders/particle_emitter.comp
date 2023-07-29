@@ -1,0 +1,88 @@
+#version 450
+#pragma shader_stage(compute)
+
+#include "include.glsli"
+
+layout(binding = 0) buffer Particles {
+    uint head;
+    Particle particles[];
+};
+
+layout(binding = 1) uniform EmitterSettings {
+    mat4 pose_matrix;
+    vec4 velocity_damping;
+
+    vec4 scale_unused;
+    
+    vec4 position_scale_random;
+    vec4 velocity_damping_random;
+    
+    vec4 alignment_vector;
+    vec4 alignment_random;
+    
+    float life;
+    float life_random;
+    float falloff;
+    
+    uint max_particles;
+};
+
+layout(push_constant) uniform uPushConstant {
+    uint spawn_count;
+    float dt;
+} pc;
+
+
+
+layout (local_size_x = 64) in;
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+
+    bool spawn1 = head <= index && index < head + pc.spawn_count;
+    bool spawn2 = (head + pc.spawn_count > max_particles) && index < ((head + pc.spawn_count) % max_particles);
+
+    float pr0 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 0);
+    float pr1 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 1);
+    float pr2 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 2);
+    float pr3 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 3);
+
+    float vr4 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 4);
+    float vr5 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 5);
+    float vr6 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 6);
+    float vr7 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 7);
+
+    float lr8 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 8);
+    
+    float cr9 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 9);
+    
+    float ar10 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 10);
+    float ar11 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 11);
+    float ar12 = float_noise(uint(pc.dt * 43758.5453), index * 13 + 12);
+
+
+    if (spawn1 || spawn2) {
+        vec4 position_hpos = pose_matrix * vec4(vec3(pr0, pr1, pr2) * position_scale_random.xyz, 1.0);
+        vec3 velocity_input = velocity_damping.xyz + vec3(vr4, vr5, vr6) * velocity_damping_random.xyz;
+        vec4 velocity_end_hpos = pose_matrix * vec4(velocity_damping.xyz + vec3(vr4, vr5, vr6) * velocity_damping_random.xyz, 1.0);
+        vec4 velocity_origin_hpos = pose_matrix * vec4(vec3(0.0), 1.0);
+        vec3 velocity = velocity_end_hpos.xyz / velocity_end_hpos.w - velocity_origin_hpos.xyz / velocity_origin_hpos.w;
+        
+        particles[index] = Particle(
+            vec4(position_hpos.xyz / position_hpos.w, scale_unused.x + pr3 * position_scale_random.w),
+            vec4(velocity, velocity_damping.w + vr7 * velocity_damping_random.w),
+            vec4(normalize(alignment_vector.xyz + vec3(ar10, ar11, ar12) * alignment_random.xyz), alignment_vector.w),
+            cr9,
+            life + lr8 * life_random,
+            life + lr8 * life_random,
+            falloff
+        );
+    } else {
+        particles[index].velocity_damping.xyz *= pow(particles[index].velocity_damping.w, pc.dt);
+        particles[index].position_scale.xyz += particles[index].velocity_damping.xyz * pc.dt;
+        particles[index].life -= pc.dt;
+    }
+    
+    if (index == head) {
+        head = (head + pc.spawn_count) % max_particles;
+    }
+}

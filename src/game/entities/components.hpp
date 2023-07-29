@@ -78,7 +78,7 @@ struct Health {
     float value = 0.0f;
     float buffer_value = 0.0f;
     
-    string emitter_cpu_path;
+    FilePath emitter_cpu_path;
 
     std::unique_ptr<Stat> max_health;
     std::unique_ptr<Stat> damage_taken_multiplier;
@@ -87,7 +87,7 @@ struct Health {
 
     entt::sigh<void(Scene*, entt::entity, entt::entity, float)> damage_signal;
     
-    Health(float health_value, Scene* scene, const string& hurt_emitter_path = "");
+    Health(float health_value, Scene* scene, const FilePath& hurt_emitter_path = {});
 };
 void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction);
 
@@ -139,7 +139,7 @@ void preview_3d_components(Scene* scene, entt::entity entity);
 void remove_dragging_impair(Scene* scene, entt::entity entity);
 void remove_dragging_impair(entt::registry& reg, entt::entity entity);
 
-entt::entity setup_basic_unit(Scene* scene, const string& model_path, v3 location, float health_value, const string& hurt_path);
+entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 location, float health_value, const FilePath& hurt_path);
 
 void on_gridslot_create(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity);

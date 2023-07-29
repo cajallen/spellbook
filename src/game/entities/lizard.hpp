@@ -2,13 +2,13 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "ability.hpp"
+#include "game/entities/ability.hpp"
 #include "general/string.hpp"
 #include "general/json.hpp"
 #include "general/math/geometry.hpp"
-#include "game/game_file.hpp"
-#include "game/entities/stat.hpp"
 #include "general/id_ptr.hpp"
+#include "general/file_path.hpp"
+#include "game/entities/stat.hpp"
 
 namespace spellbook {
 
@@ -28,16 +28,16 @@ enum LizardType {
 };
 
 struct LizardPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
     LizardType type = LizardType_Empty;
-    string model_path;
+    FilePath model_path;
     
     v3 default_direction = v3(0,1,0);
     float max_health = 1.0f;
     float health_regen = 0.1f;
-    string hurt_path;
+    FilePath hurt_path;
 
     float scale = 1.0f;
 };

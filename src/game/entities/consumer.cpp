@@ -6,7 +6,6 @@
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "game/scene.hpp"
-#include "game/game_file.hpp"
 #include "game/entities/components.hpp"
 
 namespace spellbook {
@@ -18,7 +17,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     entt::entity egg_entity = scene->registry.create();
     
     static int shrine_i = 0;
-    scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", fs::path(consumer_prefab.shrine_model_path).stem().string(), shrine_i++));
+    scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", consumer_prefab.shrine_model_path.stem(), shrine_i++));
 
     Model& shrine_model = scene->registry.emplace<Model>(shrine_entity);
     shrine_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.shrine_model_path));
@@ -37,7 +36,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     egg_model.model_gpu = instance_model(scene->render_scene, *egg_model.model_cpu);
 
     static int egg_i = 0;
-    scene->registry.emplace<Name>(egg_entity, fmt_("{}_{}", fs::path(consumer_prefab.egg_model_path).stem().string(), egg_i++));
+    scene->registry.emplace<Name>(egg_entity, fmt_("{}_{}", consumer_prefab.egg_model_path.stem(), egg_i++));
     scene->registry.emplace<LogicTransform>(egg_entity, v3(location));
     scene->registry.emplace<ModelTransform>(egg_entity);
     scene->registry.emplace<TransformLink>(egg_entity, v3(0.5f, 0.5f, 0.3f));

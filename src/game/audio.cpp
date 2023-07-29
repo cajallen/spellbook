@@ -2,7 +2,6 @@
 
 #include "extension/fmt.hpp"
 #include "general/logger.hpp"
-#include "game/game_file.hpp"
 #include "game/scene.hpp"
 #include "editor/console.hpp"
 
@@ -41,14 +40,14 @@ void Audio::shutdown() {
 
 
 
-void Audio::play_sound(const string& file_path, SoundSettings settings) {
+void Audio::play_sound(const FilePath& file_path, SoundSettings settings) {
     ma_sound& sound = *sounds.emplace();
     ma_uint32 flags = 0;
     if (settings.global)
         flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
-    ma_result result = ma_sound_init_from_file(&engine, to_resource_path(file_path).string().c_str(), flags, nullptr, nullptr, &sound);
+    ma_result result = ma_sound_init_from_file(&engine, file_path.abs_string().c_str(), flags, nullptr, nullptr, &sound);
     if (result != MA_SUCCESS) {
-        console({.str=fmt_("Playing sound '{}' failed", file_path), .group="audio", .color = palette::orange});
+        console({.str=fmt_("Playing sound '{}' failed", file_path.rel_string()), .group="audio", .color = palette::orange});
         return;
     }
     ma_sound_set_position(&sound, settings.position.x, settings.position.y, settings.position.z);

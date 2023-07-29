@@ -9,11 +9,12 @@
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "editor/pose_widget.hpp"
-#include "game/game.hpp"
 #include "general/astar.hpp"
 #include "general/color.hpp"
 #include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
+#include "game/game.hpp"
+#include "game/game_path.hpp"
 #include "game/pose_controller.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
@@ -38,7 +39,7 @@ struct EnemyLaserAttack : Attack {
 
 void EnemyLaserAttack::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    scene->audio.play_sound("audio/enemy/laser.flac", {.position = logic_tfm.position});
+    scene->audio.play_sound("audio/enemy/laser.flac"_rp, {.position = logic_tfm.position});
     
     uset<entt::entity> lizards = entry_gather_function(*this, target, 0.0f);
     for (entt::entity lizard : lizards) {
@@ -86,7 +87,7 @@ struct EnemyResistorAttack : Attack {
 
 void EnemyResistorAttack::trigger() {
     LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    scene->audio.play_sound("audio/enemy/resistor.flac", {.position = logic_tfm.position, .volume = 0.5f});
+    scene->audio.play_sound("audio/enemy/resistor.flac"_rp, {.position = logic_tfm.position, .volume = 0.5f});
     
     constexpr float buff_duration = 2.0f;
     uset<entt::entity> enemies = entry_gather_function(*this, target, 0.0f);
@@ -196,7 +197,7 @@ void EnemyMortarAttack::trigger() {
         }, false);
         beam2_animate->start(beam_duration);
         
-        EmitterCPU hit_emitter = load_asset<EmitterCPU>("emitters/enemy/mortar_hit.sbemt");
+        const EmitterCPU& hit_emitter = load_asset<EmitterCPU>("emitters/enemy/mortar_hit.sbemt"_rp);
         quick_emitter(scene, "Mortar Hit", v3(position_cap) + v3(0.5f, 0.5f, 0.5f), hit_emitter, 0.1f);
     }, false);
     trigger_timer->start(indicator_duration);
@@ -227,7 +228,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
         
     entt::entity base_entity = setup_basic_unit(scene, prefab.base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
     static int base_i = 0;
-    scene->registry.emplace<Name>(base_entity, fmt_("{}_{}", fs::path(prefab.base_model_path).stem().string(), base_i++));
+    scene->registry.emplace<Name>(base_entity, fmt_("{}_{}", prefab.base_model_path.stem(), base_i++));
     entt::entity attachment_entity = scene->registry.create();
     scene->registry.erase<TransformLink>(base_entity);
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
@@ -245,7 +246,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
     static int attachment_i = 0;
-    scene->registry.emplace<Name>(attachment_entity, fmt_("{}_{}", fs::path(prefab.attachment_model_path).stem().string(), attachment_i++));
+    scene->registry.emplace<Name>(attachment_entity, fmt_("{}_{}", prefab.attachment_model_path.stem(), attachment_i++));
     scene->registry.emplace<AddToInspect>(attachment_entity);
     scene->registry.emplace<Tags>(attachment_entity, *scene);
     scene->registry.emplace<Attachment>(attachment_entity, base_entity);
@@ -333,7 +334,7 @@ void enemy_ik_controller_system(Scene* scene) {
         ik.update_constraints(scene, model, tfm_inv);
 
         if ((set0_moving && !ik.is_set_moving(0)) || (set1_moving && !ik.is_set_moving(1))) {
-            scene->audio.play_sound("audio/enemy/step.wav", {.position = logic_tfm.position});
+            scene->audio.play_sound("audio/enemy/step.wav"_rp, {.position = logic_tfm.position});
         }
     }
 }

@@ -45,32 +45,32 @@ void AssetEditor::setup() {
         external_tab_selection = from_jv<Tab>(*j.at("tab"));
     FROM_JSON_MEMBER(model_cpu->file_path)
     else
-        model_cpu->file_path = "none";
+        model_cpu->file_path = FilePath();
     FROM_JSON_MEMBER(mesh_cpu.file_path)
     else
-        mesh_cpu.file_path = "none";
+        mesh_cpu.file_path = FilePath();
     FROM_JSON_MEMBER(material_cpu.file_path)
     else
-        material_cpu.file_path = "none";
+        material_cpu.file_path = FilePath();
     FROM_JSON_MEMBER(emitter_cpu.file_path)
     else
-        emitter_cpu.file_path = "none";
+        emitter_cpu.file_path = FilePath();
     FROM_JSON_MEMBER(tile_set.file_path)
     else
-        tile_set.file_path = "none";
+        tile_set.file_path = FilePath();
     FROM_JSON_MEMBER(bead_prefab.file_path)
     else
-        bead_prefab.file_path = "none";
+        bead_prefab.file_path = FilePath();
     FROM_JSON_MEMBER(lizard_prefab.file_path)
     else
-        lizard_prefab.file_path = "none";
+        lizard_prefab.file_path = FilePath();
     FROM_JSON_MEMBER(enemy_prefab.file_path)
     else
-        enemy_prefab.file_path = "none";
+        enemy_prefab.file_path = FilePath();
     
     
     emitter_cpu.mesh = upload_mesh(generate_cube(v3(0.0f), v3(1.0f)));
-    emitter_cpu.material = upload_material({.file_path = "emitter_mat", .color_tint = palette::black});
+    emitter_cpu.material = upload_material({.file_path = FilePath("emitter_mat", true), .color_tint = palette::black});
 }
 
 void AssetEditor::shutdown() {
@@ -103,7 +103,7 @@ void AssetEditor::update() {
 void AssetEditor::switch_tab(Tab new_tab) {
     auto& render_scene = p_scene->render_scene;
 
-    string model_path = model_cpu->file_path;
+    FilePath model_path = model_cpu->file_path;
     p_scene->registry.clear();
     if (model_owner == Ownership_From_Instance) {
         set_model(new ModelCPU(), Ownership_Owned);
@@ -173,22 +173,24 @@ void AssetEditor::switch_tab(Tab new_tab) {
         } break;
         case (Tab_Lizard): {
             MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            uint64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            uint64 mat_id = upload_material(MaterialCPU{.file_path = FilePath("background_mat", true), .color_tint = palette::gray});
             background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
             
-            if (!lizard_prefab.file_path.empty() && lizard_prefab.file_path != "none")
+            if (lizard_prefab.file_path.is_file()) {
+                lizard_prefab = load_asset<LizardPrefab>(lizard_prefab.file_path);
                 instance_prefab(p_scene, lizard_prefab, v3i(0));
+            }
         } break;
         case (Tab_Tile): {
-            if (!tile_prefab.file_path.empty() && tile_prefab.file_path != "none")
+            if (tile_prefab.file_path.is_file())
                 instance_prefab(p_scene, tile_prefab, v3i(0));
         } break;
         case (Tab_Enemy): {
             MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            uint64 mat_id = upload_material(MaterialCPU{.file_path = "background_mat", .color_tint = palette::gray});
+            uint64 mat_id = upload_material(MaterialCPU{.file_path = FilePath("background_mat", true), .color_tint = palette::gray});
             background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
             
-            if (!enemy_prefab.file_path.empty() && enemy_prefab.file_path != "none")
+            if (enemy_prefab.file_path.is_file())
                 instance_prefab(p_scene, enemy_prefab, v3i(0));
         } break;
         case (Tab_Spawner): {
@@ -272,9 +274,11 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Mo
             // TODO: verify memory
             vector<ModelCPU> models = (*asset_value)->split();
             for (auto& model : models) {
-                fs::path base_path = fs::path((*asset_value)->file_path).parent_path();
-                model.file_path = (base_path / (model.file_path + extension(FileType_Model))).string();
-                save_asset(model);
+                // TODO
+                sb_assert(false && "NYI");
+                fs::path base_path = (*asset_value)->file_path.abs_path().parent_path();
+//                model.file_path = (base_path / (model.file_path + extension(FileType_Model))).string();
+//                save_asset(model);
             }
             // asset_value = models.front();
         }
@@ -297,7 +301,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Em
         }
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
-            string old_mat = asset_value->material;
+            uint64 old_mat = asset_value->material;
             *asset_value = load_asset<EmitterCPU>(asset_value->file_path, false, true);
             asset_value->material = old_mat;
             asset_editor.switch_tab(type);

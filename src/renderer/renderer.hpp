@@ -15,6 +15,7 @@
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/texture.hpp"
+#include "general/file_path.hpp"
 
 struct GLFWwindow;
 
@@ -78,7 +79,7 @@ struct Renderer {
     umap<uint64, MeshGPU>     mesh_cache;
     umap<uint64, MaterialGPU> material_cache;
     umap<uint64, TextureGPU>  texture_cache;
-    umap<uint64, string>      file_path_cache;
+    umap<uint64, FilePath>    file_path_cache;
     
     vuk::Unique<std::array<VkSemaphore, 3>> present_ready;
     vuk::Unique<std::array<VkSemaphore, 3>> render_complete;
@@ -105,7 +106,7 @@ struct Renderer {
     // Returns an asset given the path of the .sb*** asset, uploads and returns if not uploaded
     MeshGPU& get_mesh_or_upload(uint64 id);
     MaterialGPU& get_material_or_upload(uint64 id);
-    TextureGPU& get_texture_or_upload(const string& asset_path);
+    TextureGPU& get_texture_or_upload(const FilePath& asset_path);
     
     void upload_defaults();
 
@@ -114,6 +115,6 @@ struct Renderer {
     void debug_window(bool* p_open);
 };
 
-string to_shader_path(string_view file);
+FilePath shader_path(string_view file);
 
 }

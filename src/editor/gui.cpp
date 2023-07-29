@@ -4,7 +4,6 @@
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 
-#include "general/file.hpp"
 #include "editor/console.hpp"
 #include "editor/asset_browser.hpp"
 #include "editor/editor_scene.hpp"
@@ -13,14 +12,13 @@
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/game_file.hpp"
-#include "renderer/draw_functions.hpp"
 
 namespace fs = std::filesystem;
 
 namespace spellbook {
 
 void GUI::setup() {
-    fs::path gui_file = fs::path(game.user_folder) / ("gui" + extension(FileType_General));
+    fs::path gui_file = FilePath(string(game.user_folder) + "gui" + extension(FileType_General)).abs_path();
 
     if (!fs::exists(gui_file))
         return;
@@ -37,7 +35,7 @@ void GUI::setup() {
 }
 
 void GUI::shutdown() {
-    fs::path gui_file = fs::path(game.user_folder) / ("gui" + extension(FileType_General));
+    fs::path gui_file = FilePath(string(game.user_folder) + "gui" + extension(FileType_General)).abs_path();
     fs::create_directories(gui_file.parent_path());
     
     auto j = json();

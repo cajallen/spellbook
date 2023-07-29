@@ -2,19 +2,18 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "general/string.hpp"
 #include "general/json.hpp"
 #include "general/math/geometry.hpp"
-#include "game/game_file.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
 struct ConsumerPrefab {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
-    string shrine_model_path;
-    string egg_model_path;
+    FilePath shrine_model_path;
+    FilePath egg_model_path;
 };
 
 JSON_IMPL(ConsumerPrefab, shrine_model_path, egg_model_path);

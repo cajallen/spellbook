@@ -11,7 +11,6 @@
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "extension/imgui_extra.hpp"
-#include "general/file.hpp"
 #include "general/hash.hpp"
 #include "general/math/math.hpp"
 #include "general/logger.hpp"
@@ -61,9 +60,8 @@ Renderer::Renderer() : imgui_data() {
 
     GLFWimage image;
 
-    fs::path icon_path = root_path() / fs::path("icon.png");
-
-    image.pixels = stbi_load(icon_path.string().c_str(), &image.width, &image.height, nullptr, 4);
+    string icon_path = ("icon.png"_fp).abs_string();
+    image.pixels = stbi_load(icon_path.c_str(), &image.width, &image.height, nullptr, 4);
     if (image.pixels != nullptr) {
         glfwSetWindowIcon(window, 1, &image);
         stbi_image_free(image.pixels);
@@ -145,8 +143,8 @@ void Renderer::add_scene(RenderScene* scene) {
     }
 }
 
-string to_shader_path(string_view file) {
-    return (root_path() / "src/shaders" / fs::path(file)).string();
+FilePath shader_path(string_view file) {
+    return FilePath("shaders/"s + string(file));
 }
 
 void Renderer::setup() {
@@ -154,48 +152,56 @@ void Renderer::setup() {
     ImGui::CreateContext();
     ImGui::StyleColorsSpellbook();
     ImGui_ImplGlfw_InitForVulkan(window, false);
-    imgui_data = ImGui_ImplVuk_Init(*global_allocator, compiler, to_shader_path("imgui.vert.spv"), to_shader_path("imgui.frag.spv"));
+
+    FilePath imgui_vert_path = shader_path("imgui.vert.spv");
+    FilePath imgui_frag_path = shader_path("imgui.frag.spv");
+    ImGuiShaderInfo imgui_shaders = {
+        imgui_vert_path.abs_string(), get_contents_uint32(imgui_vert_path),
+        imgui_frag_path.abs_string(), get_contents_uint32(imgui_frag_path)
+    };
+
+    imgui_data = ImGui_ImplVuk_Init(*global_allocator, compiler, imgui_shaders);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::GetIO().ConfigDockingWithShift = true;
 
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("depth_outline.comp")), to_shader_path("depth_outline.comp"));
+        pci.add_glsl(get_contents(shader_path("depth_outline.comp")), shader_path("depth_outline.comp").abs_string());
         game.renderer.context->create_named_pipeline("postprocess", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("blur.comp")), to_shader_path("blur.comp"));
+        pci.add_glsl(get_contents(shader_path("blur.comp")), shader_path("blur.comp").abs_string());
         game.renderer.context->create_named_pipeline("blur", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
-        pci.add_glsl(get_contents(to_shader_path("textured_3d.frag")), to_shader_path("textured_3d.frag"));
+        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
+        pci.add_glsl(get_contents(shader_path("textured_3d.frag")), shader_path("textured_3d.frag").abs_string());
         context->create_named_pipeline("textured_model", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
-        pci.add_glsl(get_contents(to_shader_path("desert_rocks.frag")), to_shader_path("desert_rocks.frag"));
+        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
+        pci.add_glsl(get_contents(shader_path("desert_rocks.frag")), shader_path("desert_rocks.frag").abs_string());
         context->create_named_pipeline("desert_rocks", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
-        pci.add_glsl(get_contents(to_shader_path("point_depth.frag")), to_shader_path("point_depth.frag"));
+        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
+        pci.add_glsl(get_contents(shader_path("point_depth.frag")), shader_path("point_depth.frag").abs_string());
         context->create_named_pipeline("point_depth", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("standard_3d.vert")), to_shader_path("standard_3d.vert"));
-        pci.add_glsl(get_contents(to_shader_path("directional_depth.frag")), to_shader_path("directional_depth.frag"));
+        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
+        pci.add_glsl(get_contents(shader_path("directional_depth.frag")), shader_path("directional_depth.frag").abs_string());
         context->create_named_pipeline("directional_depth", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(to_shader_path("infinite_plane.vert")), to_shader_path("infinite_plane.vert"));
-        pci.add_glsl(get_contents(to_shader_path("grid.frag")), to_shader_path("grid.frag"));
+        pci.add_glsl(get_contents(shader_path("infinite_plane.vert")), shader_path("infinite_plane.vert").abs_string());
+        pci.add_glsl(get_contents(shader_path("grid.frag")), shader_path("grid.frag").abs_string());
         game.renderer.context->create_named_pipeline("grid_3d", pci);
     }
 
@@ -402,9 +408,9 @@ MaterialGPU& Renderer::get_material_or_upload(uint64 id) {
     return material_cache[id];
 }
 
-TextureGPU& Renderer::get_texture_or_upload(const string& asset_path) {
-    assert_else(!asset_path.empty());
-    uint64 hash = hash_view(asset_path);
+TextureGPU& Renderer::get_texture_or_upload(const FilePath& asset_path) {
+    assert_else(asset_path.is_file());
+    uint64 hash = hash_path(asset_path);
     if (texture_cache.contains(hash))
         return texture_cache[hash];
     upload_texture(load_texture(asset_path));
@@ -425,7 +431,7 @@ void Renderer::debug_window(bool* p_open) {
 
 void Renderer::upload_defaults() {
     TextureCPU tex_white_upload {
-        .file_path = "textures/white.sbtex",
+        .file_path = FilePath("white", true),
         .size = v2i(8, 8),
         .format = vuk::Format::eR8G8B8A8Srgb,
         .pixels = vector<uint8>(8 * 8 * 4, 255)
@@ -434,7 +440,7 @@ void Renderer::upload_defaults() {
 
     constexpr uint32 grid_size = 1024;
     TextureCPU tex_grid_upload {
-        .file_path = "textures/grid.sbtex",
+        .file_path = FilePath("grid", true),
         .size = v2i(grid_size, grid_size),
         .format = vuk::Format::eR8G8B8A8Srgb,
         .pixels = vector<uint8>(grid_size * grid_size * 4, 255)
@@ -450,19 +456,19 @@ void Renderer::upload_defaults() {
     upload_texture(tex_grid_upload);
 
     MaterialCPU default_mat = {
-        .file_path = "default",
+        .file_path = FilePath("default", true),
         .color_tint = palette::black,
     };
     upload_material(default_mat);
     TextureCPU default_tex = {
-        .file_path = "default",
+        .file_path = FilePath("default", true),
         .size = {2, 2},
         .format = vuk::Format::eR8G8B8A8Srgb,
         .pixels = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255}
     };
     upload_texture(default_tex);
     MeshCPU default_mesh   = generate_cube(v3(0), v3(1));
-    default_mesh.file_path = "default";
+    default_mesh.file_path = FilePath("default", true);
     upload_mesh(default_mesh);
 }
 

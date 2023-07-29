@@ -4,8 +4,8 @@
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
-#include "general/file.hpp"
 #include "general/logger.hpp"
+#include "general/math/matrix_math.hpp"
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
 #include "renderer/draw_functions.hpp"
@@ -13,8 +13,8 @@
 #include "renderer/assets/mesh_asset.hpp"
 #include "game/game.hpp"
 #include "game/input.hpp"
-#include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
+#include "game/game_file.hpp"
 
 namespace spellbook {
 
@@ -24,20 +24,20 @@ void setup_emitter() {
     if (!setup) {
         {
             vuk::PipelineBaseCreateInfo pci;
-            pci.add_glsl(get_contents(to_shader_path("particle_emitter.comp")), to_shader_path("particle_emitter.comp"));
+            pci.add_glsl(get_contents(shader_path("particle_emitter.comp")), shader_path("particle_emitter.comp").abs_string());
             game.renderer.context->create_named_pipeline("emitter", pci);
         }
         {
             vuk::PipelineBaseCreateInfo pci;
-            pci.add_glsl(get_contents(to_shader_path("particle.vert")), to_shader_path("particle.vert"));
-            pci.add_glsl(get_contents(to_shader_path("textured_3d.frag")), to_shader_path("textured_3d.frag"));
+            pci.add_glsl(get_contents(shader_path("particle.vert")), shader_path("particle.vert").abs_string());
+            pci.add_glsl(get_contents(shader_path("textured_3d.frag")), shader_path("textured_3d.frag").abs_string());
             game.renderer.context->create_named_pipeline("particle", pci);
         }
 
         auto cube_mesh = generate_cube(v3(0.0f), v3(1.0f));
-        cube_mesh.file_path = EmitterGPU::cube_mesh;
+        cube_mesh.file_path = FilePath(EmitterGPU::cube_mesh, true);
         auto sphere_mesh = generate_icosphere(2);
-        sphere_mesh.file_path = EmitterGPU::sphere_mesh;
+        sphere_mesh.file_path = FilePath(EmitterGPU::sphere_mesh, true);
         upload_mesh(cube_mesh);
         upload_mesh(sphere_mesh);
         setup = true;
@@ -48,7 +48,7 @@ EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu) 
     setup_emitter();
     
     EmitterGPU emitter;
-    uint64 mat_id = hash_data(emitter_cpu.material.data(), emitter_cpu.material.size());
+    uint64 mat_id = emitter_cpu.material;
     assert_else(game.renderer.material_cache.contains(mat_id));
     game.renderer.material_cache[mat_id].pipeline = game.renderer.context->get_named_pipeline("particle");
     emitter.update_from_cpu(emitter_cpu);
@@ -88,17 +88,15 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
 
     rate = 1.0f / new_emitter.particles_per_second;
 
-    mesh = hash_view(new_emitter.mesh);
-    material = hash_view(new_emitter.material);
-    game.renderer.file_path_cache[mesh] = new_emitter.mesh;
-    game.renderer.file_path_cache[material] = new_emitter.material;
+    mesh = new_emitter.mesh;
+    material = new_emitter.material;
 
     bool upload_color = false, upload_size = false;
     if (emitter_cpu.color1_start != new_emitter.color1_start ||
         emitter_cpu.color1_end != new_emitter.color1_end ||
         emitter_cpu.color2_start != new_emitter.color2_start ||
         emitter_cpu.color2_end != new_emitter.color2_end ||
-        color.texture.empty()) {
+        !color.texture.is_file()) {
         upload_color = true;
     }
     if (emitter_cpu.particles_per_second != new_emitter.particles_per_second ||
@@ -122,7 +120,7 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
 
 void EmitterGPU::update_color() {
     TextureCPU color_texture;
-    color_texture.file_path = fmt_("{}_tex", emitter_cpu.file_path);
+    color_texture.file_path = FilePath(fmt_("{}_tex", emitter_cpu.file_path.rel_string()), true);
     color_texture.size = v2i(8, 8);
     color_texture.format = vuk::Format::eR8G8B8A8Srgb;
     color_texture.pixels.resize(color_texture.size.x * color_texture.size.y * 4);
@@ -139,7 +137,7 @@ void EmitterGPU::update_color() {
         }
     }
 
-    uint64 tex_id = hash_view(color_texture.file_path);
+    uint64 tex_id = hash_path(color_texture.file_path);
     if (game.renderer.texture_cache.contains(tex_id))
         game.renderer.texture_cache.erase(tex_id);
     upload_texture(color_texture);
@@ -185,8 +183,9 @@ bool inspect(Scene* scene, EmitterCPU* emitter) {
     changed |= ImGui::ColorEdit3("Color 1 End", emitter->color1_end.data);
     changed |= ImGui::ColorEdit3("Color 2 Start", emitter->color2_start.data);
     changed |= ImGui::ColorEdit3("Color 2 End", emitter->color2_end.data);
-    
-    changed |= ImGui::PathSelect("Mesh", &emitter->mesh, FileType_Mesh);
+
+    // TODO
+    //changed |= ImGui::PathSelect("Mesh", &emitter->mesh, FileType_Mesh);
 
     return changed;
 }
@@ -226,7 +225,7 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
         .bind_buffer(0, PARTICLES_BINDING, *emitter.particles_buffer)
         .bind_graphics_pipeline(material->pipeline);
 
-    uint64 tex_id = hash_view(emitter.color.texture);
+    uint64 tex_id = hash_path(emitter.color.texture);
     TextureGPU& tex = game.renderer.texture_cache[tex_id];
     command_buffer.bind_image(0, SPARE_BINDING_1, tex.value.view.get()).bind_sampler(0, SPARE_BINDING_1, emitter.color.sampler.get());
     material->bind_parameters(command_buffer);

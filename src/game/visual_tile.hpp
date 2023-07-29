@@ -6,6 +6,7 @@
 #include "general/string.hpp"
 #include "general/umap.hpp"
 #include "general/math/geometry.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -34,7 +35,7 @@ struct VisualTileRotation {
 };
 
 struct VisualTileEntry {
-    string model_path = {};
+    FilePath model_path = {};
     VisualTileRotation rotation = {};
 };
 
@@ -64,13 +65,13 @@ struct VisualTileCorners {
 };
 
 struct VisualTilePrefab {
-    string model_path;
+    FilePath model_path;
     VisualTileCorners corners;
 };
 
 struct VisualTileSet {
-    string file_path;
-    vector<string> dependencies;
+    FilePath file_path;
+    vector<FilePath> dependencies;
     
     vector<VisualTilePrefab> tiles;
 };
@@ -102,8 +103,8 @@ JSON_IMPL(VisualTileSet, tiles);
 
 VisualTileCorners apply_rotation(VisualTileCorners corners, VisualTileRotation rotation);
 bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTileRotation& out_rotation, uint32 seed, bool flip_z = true);
-umap<VisualTileCorners, vector<string>> convert_to_entry_pool(const VisualTileSet& tile_set);
-umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile = nullptr);
+umap<VisualTileCorners, vector<FilePath>> convert_to_entry_pool(const VisualTileSet& tile_set);
+umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const umap<VisualTileCorners, vector<FilePath>>& entry_pool, v3i* single_tile = nullptr);
 
 bool inspect(VisualTileSet* tile_set);
 

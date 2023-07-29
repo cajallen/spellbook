@@ -24,7 +24,7 @@ bool inspect(MapPrefab* map_prefab) {
     for (auto& [pos, prefab] : map_prefab->lizards) {
         ImGui::Text("%d", lizard_i++);
         ImGui::Indent();
-        ImGui::PushID(prefab.c_str());
+        ImGui::PushID(prefab.rel_c_str());
         ImGui::PathSelect("Path", &prefab, FileType_Lizard);
         ImGui::PopID();
         ImGui::Unindent();
@@ -36,7 +36,7 @@ bool inspect(MapPrefab* map_prefab) {
         for (auto& [pos, entry] : map_prefab->tiles) {
             ImGui::Text("%d", tile_i++);
             ImGui::Indent();
-            ImGui::PushID(entry.prefab_path.c_str());
+            ImGui::PushID(entry.prefab_path.rel_c_str());
             ImGui::PathSelect("Path", &entry.prefab_path, FileType_Tile);
             int rot = entry.rotation;
             if (ImGui::SliderInt("Rotation", &rot, 0, 3))
@@ -53,7 +53,7 @@ bool inspect(MapPrefab* map_prefab) {
     for (auto& [pos, prefab] : map_prefab->spawners) {
         ImGui::Text("%d", spawner_i++);
         ImGui::Indent();
-        ImGui::PushID(prefab.c_str());
+        ImGui::PushID(prefab.rel_c_str());
         ImGui::PathSelect("Path", &prefab, FileType_Spawner);
         ImGui::PopID();
         ImGui::Unindent();
@@ -65,7 +65,7 @@ bool inspect(MapPrefab* map_prefab) {
     for (auto& [pos, prefab] : map_prefab->consumers) {
         ImGui::Text("%d", consumer_i++);
         ImGui::Indent();
-        ImGui::PushID(prefab.c_str());
+        ImGui::PushID(prefab.rel_c_str());
         ImGui::PathSelect("Path", &prefab, FileType_Consumer);
         ImGui::PopID();
         ImGui::Unindent();
@@ -79,22 +79,22 @@ Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     auto scene = new Scene();
     scene->setup(name);
     for (auto& [pos, prefab] : map_prefab.lizards) {
-        if (prefab.empty())
+        if (!prefab.is_file())
             continue;
         instance_prefab(scene, load_asset<LizardPrefab>(prefab), pos);
     }
     for (auto& [pos, entry] : map_prefab.tiles) {
-        if (entry.prefab_path.empty())
+        if (!entry.prefab_path.is_file())
             continue;
         instance_prefab(scene, load_asset<TilePrefab>(entry.prefab_path), pos, entry.rotation);
     }
     for (auto& [pos, prefab] : map_prefab.spawners) {
-        if (prefab.empty())
+        if (!prefab.is_file())
             continue;
         instance_prefab(scene, load_asset<SpawnerPrefab>(prefab), pos);
     }
     for (auto& [pos, prefab] : map_prefab.consumers) {
-        if (prefab.empty())
+        if (!prefab.is_file())
             continue;
         instance_prefab(scene, load_asset<ConsumerPrefab>(prefab), pos);
     }

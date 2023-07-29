@@ -4,7 +4,7 @@
 #include <plf_colony.h>
 
 #include "general/math/geometry.hpp"
-#include "general/string.hpp"
+#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -23,7 +23,7 @@ struct Audio {
     void setup();
     void update(Scene* scene);
     void shutdown();
-    void play_sound(const string& file_path, SoundSettings settings);
+    void play_sound(const FilePath& file_path, SoundSettings settings);
 
     plf::colony<ma_sound> sounds;
 

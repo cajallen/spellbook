@@ -4,7 +4,7 @@
 #include "renderer/renderer.hpp"
 #include "renderer/camera.hpp"
 
-#include "general/path.hpp"
+#include "general/navigation_path.hpp"
 
 namespace spellbook {
 

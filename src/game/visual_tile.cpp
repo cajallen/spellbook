@@ -10,9 +10,10 @@
 #include "general/math/math.hpp"
 #include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
+#include "game/game_file.hpp"
+#include "game/game_path.hpp"
 #include "renderer/draw_functions.hpp"
 #include "editor/widget_system.hpp"
-
 
 namespace spellbook {
 
@@ -67,7 +68,7 @@ bool get_rotation(VisualTileCorners corners, VisualTileCorners target, VisualTil
     return true;
 }
 
-umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const umap<VisualTileCorners, vector<string>>& entry_pool, v3i* single_tile) {
+umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const umap<VisualTileCorners, vector<FilePath>>& entry_pool, v3i* single_tile) {
     umap<v3i, VisualTileEntry> entries;
 
     if (single_tile) {
@@ -119,8 +120,8 @@ umap<v3i, VisualTileEntry> build_visual_tiles(umap<v3i, uint8>& solids, const um
     return entries;
 }
 
-umap<VisualTileCorners, vector<string>> convert_to_entry_pool(const VisualTileSet& tile_set) {
-    umap<VisualTileCorners, vector<string>> entry_pool;
+umap<VisualTileCorners, vector<FilePath>> convert_to_entry_pool(const VisualTileSet& tile_set) {
+    umap<VisualTileCorners, vector<FilePath>> entry_pool;
 
     for (auto& tile : tile_set.tiles) {
         if (!entry_pool.contains(tile.corners))
@@ -176,7 +177,7 @@ bool inspect(VisualTileSet* tile_set) {
             ImGui::PopStyleVar();
             ImGui::PopItemWidth();
 
-            changed |= ImGui::PathSelect("Model", &tile.model_path, FileType_Model, true);
+            changed |= ImGui::PathSelect("Model", &tile.model_path, FileType_Model);
 
             if (ImGui::Button("Rotate 1")) {
                 tile.corners = apply_rotation(tile.corners, VisualTileRotation{.yaw = 1, .flip_x = false});
@@ -200,21 +201,21 @@ bool inspect(VisualTileSet* tile_set) {
     
     bool discard = true;
     if (ImGui::BeginPopupModal("Convert Folder", &discard)) {
-        static umap<VisualTileSet*, fs::path> convert_paths;
-        fs::path& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = to_resource_path("models");
+        static umap<VisualTileSet*, FilePath> convert_paths;
+        FilePath& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = "models"_rp;
         ImGui::PathSelect("Folder", &convert_path, FileType_Model);
         if (ImGui::Button("Convert")) {
-            for (auto& dir_entry : fs::directory_iterator(convert_path)) {
+            for (auto& dir_entry : fs::directory_iterator(convert_path.abs_path())) {
                 if (path_filter(FileType_Model)(dir_entry)) {
                     bool already_exists = false;
                     for (auto& tile : tile_set->tiles) {
-                        if (tile.model_path == dir_entry.path().string()) {
+                        if (tile.model_path == FilePath(dir_entry.path())) {
                             already_exists = true;
                             break;
                         }
                     }
                     if (!already_exists)
-                        tile_set->tiles.emplace_back(dir_entry.path().string(), VisualTileCorners{});
+                        tile_set->tiles.emplace_back(FilePath(dir_entry.path()), VisualTileCorners{});
                 }
             }
             
@@ -236,12 +237,12 @@ void visual_tile_widget_system(Scene* scene) {
     static uint64 mat_err_id;
     if (mesh_id == 0) {
         mesh_id = upload_mesh(generate_icosphere(2), false);
-        mat_off_id = upload_material({.file_path = "mat_off_name", .color_tint = palette::gray_1}, false);
-        mat_on1_id = upload_material({.file_path = "mat_on1_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.60f, 0.3f, 0.8f)}, false);
-        mat_on2_id = upload_material({.file_path = "mat_on2_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.08f, 0.7f, 0.6f)}, false);
-        mat_on3_id = upload_material({.file_path = "mat_on3_name", .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.02f, 0.7f, 0.3f)}, false);
-        mat_on_id = upload_material({.file_path = "mat_on_name", .color_tint = palette::gray_1, .emissive_tint = palette::white}, false);
-        mat_err_id = upload_material({.file_path = "mat_err_name", .color_tint = palette::gray_1, .emissive_tint = palette::red}, false);
+        mat_off_id = upload_material(MaterialCPU{.file_path = FilePath("mat_off_name", true), .color_tint = palette::gray_1}, false);
+        mat_on1_id = upload_material(MaterialCPU{.file_path = FilePath("mat_on1_name", true), .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.60f, 0.3f, 0.8f)}, false);
+        mat_on2_id = upload_material(MaterialCPU{.file_path = FilePath("mat_on2_name", true), .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.08f, 0.7f, 0.6f)}, false);
+        mat_on3_id = upload_material(MaterialCPU{.file_path = FilePath("mat_on3_name", true), .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.02f, 0.7f, 0.3f)}, false);
+        mat_on_id  = upload_material(MaterialCPU{.file_path = FilePath("mat_on_name", true), .color_tint = palette::gray_1, .emissive_tint = palette::white}, false);
+        mat_err_id = upload_material(MaterialCPU{.file_path = FilePath("mat_err_name", true), .color_tint = palette::gray_1, .emissive_tint = palette::red}, false);
     }
     for (auto [entity, vtsw] : scene->registry.view<VisualTileSetWidget>().each()) {
         if (vtsw.tile_set != nullptr) {
@@ -275,7 +276,7 @@ void visual_tile_widget_system(Scene* scene) {
                     m44 t = math::translate(c_pos) * math::scale(v3(0.07f));
                     r.transform = m44GPU(t);
                     
-                    uint64 corner_id = hash_view(vtsw.tile_set->file_path) ^ hash_view(tile_entry.model_path) + c;
+                    uint64 corner_id = hash_path(vtsw.tile_set->file_path) ^ hash_path(tile_entry.model_path) + c;
                     WidgetSystem::Mouse3DInfo mouse;
                     mouse.model = t;
                     mouse.mvp = scene->render_scene.viewport.camera->vp * mouse.model;

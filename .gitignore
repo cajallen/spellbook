@@ -2,6 +2,7 @@ user
 resources
 
 out/
+cmake-build-debug-visual-studio/
 
 external_resources
 imgui.ini

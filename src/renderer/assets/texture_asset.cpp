@@ -4,8 +4,6 @@
 #include <lz4/lz4.h>
 #include <stb_image.h>
 
-#include "extension/fmt_geometry.hpp"
-#include "general/file.hpp"
 #include "general/logger.hpp"
 #include "game/game.hpp"
 #include "game/game_file.hpp"
@@ -14,9 +12,9 @@ namespace fs = std::filesystem;
 
 namespace spellbook {
 
-TextureCPU load_texture(const string& file_name) {
+TextureCPU load_texture(const FilePath& file_path) {
     // TODO: CompressionMode
-    AssetFile& asset_file = game.asset_system.load_asset(to_resource_path(file_name).string());
+    AssetFile& asset_file = game.asset_system.load_asset(file_path);
 
     constexpr array expected_type = {'T', 'E', 'X'};
     assert_else(asset_file.version == 2 && asset_file.type == expected_type)
@@ -24,7 +22,7 @@ TextureCPU load_texture(const string& file_name) {
 
     TextureInfo texture_info = from_jv<TextureInfo>(*asset_file.asset_json["texture_info"]);
     TextureCPU  texture_cpu  = from_jv<TextureCPU>(*asset_file.asset_json["texture_cpu"]);
-    texture_cpu.file_path = file_name;
+    texture_cpu.file_path = file_path;
     
     texture_cpu.pixels.resize(texture_info.pixels_bsize);
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(),
@@ -61,28 +59,23 @@ void save_texture(const TextureCPU& texture_cpu) {
     save_asset_file(file);
 }
 
-TextureCPU convert_to_texture(const string& file_name, const string& output_folder, const string& output_name) {
-    fs::create_directory(game.resource_folder);
-    fs::create_directory(fs::path(game.resource_folder) / output_folder);
-
-    const fs::path file_path = fs::path(file_name);
-
-    const auto& ext = file_path.extension().string();
+TextureCPU convert_to_texture(const FilePath& input_file_path, const FilePath& output_folder, const string& output_name) {
+    fs::create_directory(FilePath(game.resource_folder).abs_path());
+    fs::create_directory(FilePath(output_folder).abs_path());
 
     TextureCPU texture;
-    fs::path   out_path = fs::path(output_folder) / fs::path(output_name + extension(FileType_Texture));
-    texture.file_path   = out_path.string();
+    texture.file_path = FilePath(output_folder.rel_string() + output_name + extension(FileType_Texture));
     int channels;
-    if (ext == ".hdr") {
+    if (texture.file_path.extension() == ".hdr") {
         log_error(".hdr NYI");
-        float* pixel_data = stbi_loadf(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
+        float* pixel_data = stbi_loadf(input_file_path.abs_string().c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);
             return {};
         }
         texture.format = vuk::Format::eR32G32B32A32Sfloat;
     } else {
-        uint8* pixel_data = stbi_load(file_name.c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
+        uint8* pixel_data = stbi_load(input_file_path.abs_string().c_str(), &texture.size.x, &texture.size.y, &channels, STBI_rgb_alpha);
         assert_else(pixel_data) {
             free(pixel_data);
             return {};

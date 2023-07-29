@@ -79,15 +79,28 @@ struct RenderScene {
     vuk::Buffer buffer_sun_camera_data;
     vuk::Buffer buffer_top_camera_data;
     vuk::Buffer buffer_composite_data;
+    vuk::Buffer buffer_model_mats;
+    vuk::Buffer buffer_ids;
     
-    void update_size(v2i new_size);
-    
+    struct BuiltRenderable {
+        uint32 id;
+        m44GPU* mat;
+    };
+    struct BuiltRiggedRenderable {
+        uint32 id;
+        m44GPU* mat;
+        SkeletonGPU* skeleton;
+    };
+    umap<mat_id, umap<mesh_id, vector<BuiltRenderable>>> renderables_built;
+    umap<mat_id, umap<mesh_id, vector<BuiltRiggedRenderable>>> rigged_renderables_built;
+
     void        setup(vuk::Allocator& allocator);
     void        image(v2i size);
     void        settings_gui();
     void        pre_render();
     void        update();
     vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
+    void        update_size(v2i new_size);
 
     void add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_topdepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
@@ -114,11 +127,7 @@ struct RenderScene {
 
     void _upload_buffer_objects(vuk::Allocator& frame_allocator);
 
-    vuk::Buffer buffer_model_mats;
-    vuk::Buffer buffer_ids;
 
-    umap<mat_id, umap<mesh_id, vector<std::tuple<uint32, m44GPU*>>>> renderables_built;
-    umap<mat_id, umap<mesh_id, vector<std::tuple<uint32, SkeletonGPU*, m44GPU*>>>> rigged_renderables_built;
     void setup_renderables_for_passes(vuk::Allocator& allocator);
 };
 

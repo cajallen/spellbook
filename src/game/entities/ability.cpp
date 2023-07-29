@@ -45,9 +45,9 @@ Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float p
     );
 }
 
-Attack::Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cooldown, float cast_range) : Ability(init_scene, init_caster, pre, post, cast_range) {
+Attack::Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cd, float cast_range) : Ability(init_scene, init_caster, pre, post, cast_range) {
     Caster& caster_comp = scene->registry.get<Caster>(caster);
-    cooldown_time = {&*caster_comp.cooldown_reduction, cooldown};
+    cooldown_time = {&*caster_comp.cooldown_reduction, cd};
     cooldown_timer = add_timer(scene, fmt_("{}::cd", get_name()), [this](Timer* timer) {});
 
     pre_trigger_timer = add_timer(scene, fmt_("{}::pre", get_name()),

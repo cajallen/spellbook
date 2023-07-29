@@ -11,7 +11,7 @@ namespace spellbook {
 entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 position) {
     static int i      = 0;
     auto       entity = scene->registry.create();
-    scene->registry.emplace<Name>(entity, fmt_("{}_{}", fs::path(bead_prefab.file_path).stem().string(), i++));
+    scene->registry.emplace<Name>(entity, fmt_("{}_{}", bead_prefab.file_path.stem(), i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
     model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(bead_prefab.model_path));

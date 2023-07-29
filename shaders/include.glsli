@@ -1,0 +1,176 @@
+#define CAMERA_BINDING 0
+#define MODEL_BINDING 1
+#define ID_BINDING 2
+#define BONES_BINDING 3
+#define MATERIAL_BINDING 4
+#define BASE_COLOR_BINDING 5
+#define ORM_BINDING 6
+#define NORMAL_BINDING 7
+#define EMISSIVE_BINDING 8
+#define SPARE_BINDING_1 9
+#define PARTICLES_BINDING MODEL_BINDING
+
+struct Particle {
+    vec4 position_scale;
+    vec4 velocity_damping;
+    vec4 alignment;
+    float color_x;
+    float life;
+    float life_total;
+    float falloff;
+};
+
+vec3 linear_to_srgb(vec3 linear_rgb) {
+	bvec3 cutoff = lessThan(linear_rgb, vec3(0.0031308));
+	vec3  higher = vec3(1.055) * pow(linear_rgb, vec3(1.0 / 2.4)) - vec3(0.055);
+	vec3  lower	 = linear_rgb * vec3(12.92);
+
+	return mix(higher, lower, cutoff);
+}
+
+vec3 srgb_to_linear(vec3 sRGB) {
+	bvec3 cutoff = lessThan(sRGB, vec3(0.04045));
+	vec3  higher = pow((sRGB + vec3(0.055)) / vec3(1.055), vec3(2.4));
+	vec3  lower	 = sRGB / vec3(12.92);
+
+	return mix(higher, lower, cutoff);
+}
+
+float linear_to_srgb(float linear_rgb) {
+    bool cutoff = linear_rgb < 0.0031308;
+    float higher = 1.055 * pow(linear_rgb, 1.0/ 2.4) - 0.055;
+    float lower	 = linear_rgb * 12.92;
+
+    return mix(higher, lower, cutoff);
+}
+
+// Converts a color from sRGB gamma to linear light gamma
+float srgb_to_linear(float sRGB) {
+    bool cutoff = sRGB < 0.04045;
+    float higher = pow((sRGB + 0.055) / 1.055, 2.4);
+    float lower	 = sRGB / 12.92;
+
+    return mix(higher, lower, cutoff);
+}
+
+uint to_uint_seed(ivec2 i)
+{
+    return i.x + i.y * 49213191;
+}
+
+uint to_uint_seed(ivec3 i)
+{
+    return i.x + i.y * 496211 + i.z * 49213191;
+}
+
+uint to_uint_seed(float i)
+{
+    return int(i * 4096.f);
+}
+
+uint to_uint_seed(vec2 i)
+{
+    return to_uint_seed(ivec2(i * 4096.f));
+}
+
+uint to_uint_seed(vec3 i)
+{
+    return to_uint_seed(ivec3(i * 4096.f));
+}
+
+uint uint_noise(uint i, uint seed) {
+    uint mangled = i;
+    mangled *= 0xB5297A4Du;
+    mangled += seed;
+    mangled ^= (mangled >> 8);
+    mangled += 0x68E31DA4u;
+    mangled ^= (mangled << 8);
+    mangled *= 0x1B56C4E9u;
+    mangled ^= (mangled >> 8);
+    return mangled;
+}
+
+float float_noise(uint i, uint seed) {
+    return float(uint_noise(i, seed) & 0xffffffu) / 16777215.0;
+}
+
+vec2 vec2_noise_unsigned(uint i, uint seed) {
+    return vec2(float_noise(i+1, seed), float_noise(i+2, seed));
+}
+
+vec2 vec2_noise_signed(uint i, uint seed) {
+    return -1.0 + 2.0 * vec2_noise_unsigned(i, seed);
+}
+
+vec2 vec2_noise_signed(ivec2 i, uint seed) {
+    return vec2_noise_signed(to_uint_seed(i), seed);
+}
+
+vec3 vec3_noise_unsigned(uint i, uint seed) {
+    return vec3(float_noise(i+1, seed), float_noise(i+2, seed), float_noise(i+3, seed));
+}
+
+vec3 vec3_noise_signed(uint i, uint seed) {
+    return -1.0 + 2.0 * vec3_noise_unsigned(i, seed);
+}
+
+vec3 vec3_noise_signed(ivec3 i, uint seed) {
+    return vec3_noise_signed(to_uint_seed(i), seed);
+}
+
+
+float perlin_noise(vec2 pos, uint seed) {
+    ivec2 cell = ivec2(floor(pos));
+    vec2 cell_pos = fract(pos);
+
+    float val = mix(
+        mix(dot(vec2_noise_signed(cell + ivec2(0,0), seed), cell_pos - vec2(0.0,0.0)),
+            dot(vec2_noise_signed(cell + ivec2(1,0), seed), cell_pos - vec2(1.0,0.0)),
+            smoothstep(0.0, 1.0, cell_pos.x)
+        ),
+        mix(dot(vec2_noise_signed(cell + ivec2(0,1), seed), cell_pos - vec2(0.0,1.0)),
+            dot(vec2_noise_signed(cell + ivec2(1,1), seed), cell_pos - vec2(1.0,1.0)),
+            smoothstep(0.0, 1.0, cell_pos.x)
+        ),
+        smoothstep(0.0, 1.0, cell_pos.y)
+    );
+    return val * 0.5 + 0.5;
+}
+
+float perlin_noise(vec3 pos, uint seed) {
+    ivec3 cell = ivec3(floor(pos));
+    vec3 cell_pos = fract(pos);
+
+    float val = mix(
+        mix(
+            mix(dot(vec3_noise_signed(cell + ivec3(0,0,0), seed), cell_pos - vec3(0.0,0.0,0.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,0,0), seed), cell_pos - vec3(1.0,0.0,0.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            mix(dot(vec3_noise_signed(cell + ivec3(0,1,0), seed), cell_pos - vec3(0.0,1.0,0.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,1,0), seed), cell_pos - vec3(1.0,1.0,0.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            smoothstep(0.0, 1.0, cell_pos.y)
+        ),
+        mix(
+            mix(dot(vec3_noise_signed(cell + ivec3(0,0,1), seed), cell_pos - vec3(0.0,0.0,1.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,0,1), seed), cell_pos - vec3(1.0,0.0,1.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            mix(dot(vec3_noise_signed(cell + ivec3(0,1,1), seed), cell_pos - vec3(0.0,1.0,1.0)),
+                dot(vec3_noise_signed(cell + ivec3(1,1,1), seed), cell_pos - vec3(1.0,1.0,1.0)),
+                smoothstep(0.0, 1.0, cell_pos.x)
+            ),
+            smoothstep(0.0, 1.0, cell_pos.y)
+        ),
+    smoothstep(0.0, 1.0, cell_pos.z));
+    return val * 0.5 + 0.5;
+}
+
+
+float map_range(float value, float min_in, float max_in, float min_out, float max_out) {
+    return clamp(min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in), min_out, max_out);
+}
+
+#define TAU 6.2831853071

@@ -6,6 +6,8 @@
 #include "renderer/render_scene.hpp"
 #include "editor/console.hpp"
 #include "editor/editor_scene.hpp"
+#include "editor/asset_editor.hpp"
+#include "editor/map_editor.hpp"
 #include "game/input.hpp"
 #include "game/scene.hpp"
 
@@ -16,10 +18,6 @@ namespace spellbook {
 Game game;
 
 void Game::startup() {
-    external_resource_folder = (root_path() / "external_resources").string();
-    resource_folder = (root_path() / "resources").string();
-    user_folder = (root_path() / "user").string();
-
     Console::setup();
     renderer.setup();
     Input::setup();
