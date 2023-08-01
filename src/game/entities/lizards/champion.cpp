@@ -42,9 +42,9 @@ void ChampionAttack::trigger() {
     for (auto& enemy : entry_gather_function(*this, target, 0.0f)) {
         entt::entity enemy_attachment = scene->registry.get<Enemy>(enemy).attachment;
         Caster* enemy_caster = scene->registry.try_get<Caster>(enemy_attachment);
-        auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
-        auto& enemy_tfm = scene->registry.get<LogicTransform>(enemy);
-        damage(scene, caster, enemy, 2.0f, enemy_tfm.position - logic_tfm.position);
+        LogicTransform& enemy_tfm = scene->registry.get<LogicTransform>(enemy);
+        Health& health = scene->registry.get<Health>(enemy);
+        health.damage(caster, 2.0f, enemy_tfm.position - logic_tfm.position);
 
         if (enemy_caster) {
             enemy_caster->taunt.set(uint64(this), caster);
@@ -89,7 +89,8 @@ struct ChampionSpell : Spell {
     float damage_amount = 0.0f;
     std::shared_ptr<Timer> periodic_taunt_timer;
     
-    using Spell::Spell;
+    ChampionSpell(Scene* init_scene, entt::entity init_caster, float pre, float post);
+    ~ChampionSpell();
     void targeting() override;
     void start() override;
     void trigger() override;
@@ -100,21 +101,31 @@ struct ChampionSpell : Spell {
     uint64 get_taunt_id() { return uint64(caster) + 1; }
 };
 
-void ChampionSpell::start() {
-    damage_amount = 0.0f;
-}
-
 void handle_champion_damaged(Scene* scene, entt::entity damager, entt::entity champion, float damage_amount) {
     ChampionSpell& champion_spell = (ChampionSpell&) *scene->registry.get<Caster>(champion).spell;
     champion_spell.damage_amount += damage_amount;
 }
+ChampionSpell::ChampionSpell(Scene* init_scene, entt::entity init_caster, float pre, float post) : Spell::Spell(init_scene, init_caster, pre, post) {
+    Health& health = scene->registry.get<Health>(caster);
+    entt::sink sink{health.damage_signal};
+    sink.connect<handle_champion_damaged>();
+}
+
+ChampionSpell::~ChampionSpell() {
+    Health& health = scene->registry.get<Health>(caster);
+    entt::sink sink{health.damage_signal};
+    sink.disconnect<handle_champion_damaged>();
+}
+
+void ChampionSpell::start() {
+    damage_amount = 0.0f;
+}
+
 
 
 void ChampionSpell::trigger() {
     // now
     Health& health = scene->registry.get<Health>(caster);
-    entt::sink sink{health.damage_signal};
-    sink.connect<handle_champion_damaged>();
 
     uint64 buff_id = get_buff_id();
     
@@ -157,7 +168,8 @@ void ChampionSpell::trigger() {
         // do damage
         for (auto& enemy : spell.entry_gather_function(spell, spell.target, 0.0f)) {
             LogicTransform& enemy_tfm = timer->scene->registry.get<LogicTransform>(enemy);
-            damage(timer->scene, caster_cap, enemy, spell.damage_amount, enemy_tfm.position - logic_tfm.position);
+            Health& health = timer->scene->registry.get<Health>(enemy);
+            health.damage(caster_cap, spell.damage_amount, enemy_tfm.position - logic_tfm.position);
         }
 
         spell.damage_amount = 0.0f;

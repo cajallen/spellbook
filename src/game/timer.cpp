@@ -65,6 +65,11 @@ void inspect(Timer* timer) {
 }
 
 void update_timers(Scene* scene) {
+    scene->timer_manager.timers.remove_if([](const shared_ptr<Timer>& it) -> bool {
+        bool unowned_and_done = it->unowned && !it->ticking;
+        bool owned_and_dead = !it->unowned && it.use_count() == 1;
+        return unowned_and_done || owned_and_dead;
+    }, true);
     for (auto timer : scene->timer_manager.timers) {
         timer->update(scene->delta_time);
     }

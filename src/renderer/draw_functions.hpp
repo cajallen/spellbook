@@ -21,6 +21,7 @@ struct FormattedVertex {
 };
 
 MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color = palette::black);
+MeshCPU generate_cylinder(v3 center, uint8 rotations, Color vertex_color = palette::black, v3 cap_axis = v3::Z, v3 axis_1 = v3::X, v3 axis_2 = v3::Y);
 MeshCPU generate_icosphere(int subdivisions);
 MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices);
 MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex);

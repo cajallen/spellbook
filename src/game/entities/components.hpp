@@ -18,6 +18,7 @@ struct EmitterCPU;
 struct EmitterGPU;
 struct Timer;
 struct Stat;
+struct StatEffect;
 
 struct Name {
     string name;
@@ -75,6 +76,7 @@ struct FloorOccupier {
 
 struct Health {
     Scene* scene;
+    entt::entity entity;
     float value = 0.0f;
     float buffer_value = 0.0f;
     
@@ -87,9 +89,10 @@ struct Health {
 
     entt::sigh<void(Scene*, entt::entity, entt::entity, float)> damage_signal;
     
-    Health(float health_value, Scene* scene, const FilePath& hurt_emitter_path = {});
+    Health(float health_value, Scene* scene, entt::entity e, const FilePath& hurt_emitter_path = {});
+    void damage(entt::entity damager, float amount, v3 direction);
+    void apply_dot(entt::entity damager, uint64 id, const StatEffect& effect, EmitterCPU* emitter = nullptr);
 };
-void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction);
 
 struct Killed {
     bool drop = false;

@@ -48,7 +48,8 @@ EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu) 
     setup_emitter();
     
     EmitterGPU emitter;
-    uint64 mat_id = emitter_cpu.material;
+    uint64 mat_id = hash_path(emitter_cpu.material);
+    game.renderer.file_path_cache[mat_id] = emitter_cpu.material;
     assert_else(game.renderer.material_cache.contains(mat_id));
     game.renderer.material_cache[mat_id].pipeline = game.renderer.context->get_named_pipeline("particle");
     emitter.update_from_cpu(emitter_cpu);
@@ -88,8 +89,10 @@ void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter) {
 
     rate = 1.0f / new_emitter.particles_per_second;
 
-    mesh = new_emitter.mesh;
-    material = new_emitter.material;
+    mesh = hash_path(new_emitter.mesh);
+    material = hash_path(new_emitter.material);
+    game.renderer.file_path_cache[mesh] = new_emitter.mesh;
+    game.renderer.file_path_cache[material] = new_emitter.material;
 
     bool upload_color = false, upload_size = false;
     if (emitter_cpu.color1_start != new_emitter.color1_start ||
@@ -138,6 +141,7 @@ void EmitterGPU::update_color() {
     }
 
     uint64 tex_id = hash_path(color_texture.file_path);
+    game.renderer.file_path_cache[tex_id] = color_texture.file_path;
     if (game.renderer.texture_cache.contains(tex_id))
         game.renderer.texture_cache.erase(tex_id);
     upload_texture(color_texture);
@@ -226,6 +230,7 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
         .bind_graphics_pipeline(material->pipeline);
 
     uint64 tex_id = hash_path(emitter.color.texture);
+    game.renderer.file_path_cache[tex_id] = emitter.color.texture;
     TextureGPU& tex = game.renderer.texture_cache[tex_id];
     command_buffer.bind_image(0, SPARE_BINDING_1, tex.value.view.get()).bind_sampler(0, SPARE_BINDING_1, emitter.color.sampler.get());
     material->bind_parameters(command_buffer);

@@ -11,16 +11,16 @@ namespace spellbook {
 
 using namespace entt::literals;
 
-Caster::Caster(Scene* scene) {
-    damage = std::make_unique<Stat>(scene);
-    heal = std::make_unique<Stat>(scene);
-    attack_speed = std::make_unique<Stat>(scene);
-    cooldown_reduction = std::make_unique<Stat>(scene);
-    projectile_speed = std::make_unique<Stat>(scene);
-    range = std::make_unique<Stat>(scene);
-    buff_duration = std::make_unique<Stat>(scene);
-    debuff_duration = std::make_unique<Stat>(scene);
-    lifesteal = std::make_unique<Stat>(scene);
+Caster::Caster(Scene* scene, entt::entity e) {
+    damage = std::make_unique<Stat>(scene, e);
+    heal = std::make_unique<Stat>(scene, e);
+    attack_speed = std::make_unique<Stat>(scene, e);
+    cooldown_reduction = std::make_unique<Stat>(scene, e);
+    projectile_speed = std::make_unique<Stat>(scene, e);
+    range = std::make_unique<Stat>(scene, e);
+    buff_duration = std::make_unique<Stat>(scene, e);
+    debuff_duration = std::make_unique<Stat>(scene, e);
+    lifesteal = std::make_unique<Stat>(scene, e);
     taunt = Taunt(scene);
 }
 

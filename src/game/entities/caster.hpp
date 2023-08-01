@@ -49,7 +49,7 @@ struct Caster {
     std::unique_ptr<Stat> debuff_duration;
     std::unique_ptr<Stat> lifesteal;
 
-    Caster(Scene* scene);
+    Caster(Scene* scene, entt::entity e);
 
     bool casting() const;
 };

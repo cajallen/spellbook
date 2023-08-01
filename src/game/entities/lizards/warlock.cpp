@@ -57,22 +57,19 @@ void WarlockAttack::trigger() {
         .target = target,
         .speed = StatInstance{&*caster_comp.projectile_speed, base_projectile_speed},
         .callback = [this](entt::entity proj_entity) {
-            auto projectile = scene->registry.try_get<Projectile>(proj_entity);
-            if (projectile) {
-                auto this_lt = scene->registry.try_get<LogicTransform>(caster);
-                EmitterCPU hit_emitter = load_asset<EmitterCPU>("emitters/warlock/basic_hit.sbemt"_rp);
-                hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - this_lt->position));
-                quick_emitter(scene, "Warlock Basic Hit", v3(projectile->target) + v3(0.5f), hit_emitter, 0.1f);
-                for (entt::entity enemy : entry_gather_function(*this, projectile->target, 0.0f)) {
-                    auto health = scene->registry.try_get<Health>(enemy);
-                    if (!health)
-                        continue;
-                    auto enemy_lt = scene->registry.try_get<LogicTransform>(enemy);
-                    v3 damage_dir = v3(0.0f);
-                    if (this_lt && enemy_lt)
-                        damage_dir = enemy_lt->position - this_lt->position;
-                    damage(scene, caster, enemy, 2.0f, damage_dir);
-                }
+            Projectile* projectile = scene->registry.try_get<Projectile>(proj_entity);
+            if (!projectile)
+                return;
+            LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
+            EmitterCPU hit_emitter = load_asset<EmitterCPU>("emitters/warlock/basic_hit.sbemt"_rp);
+            hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - logic_tfm.position));
+            quick_emitter(scene, "Warlock Basic Hit", v3(projectile->target) + v3(0.5f), hit_emitter, 0.1f);
+            for (entt::entity enemy : entry_gather_function(*this, projectile->target, 0.0f)) {
+                Health& health = scene->registry.get<Health>(enemy);
+                LogicTransform& enemy_tfm = scene->registry.get<LogicTransform>(enemy);
+                v3 damage_dir = v3(0.0f);
+                damage_dir = enemy_tfm.position - logic_tfm.position;
+                health.damage(caster, 2.0f, damage_dir);
             }
         }
     };

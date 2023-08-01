@@ -91,6 +91,43 @@ MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
     };
 }
 
+MeshCPU generate_cylinder(v3 center, uint8 rotations, Color vertex_color, v3 cap_axis, v3 axis_1, v3 axis_2) {
+    ZoneScoped;
+    string name = fmt_("cylinder:{:.2f}_c{:.2f}1{:.2f}2{:.2f}", center, cap_axis, axis_1, axis_2);
+
+    vector<Vertex> vertices;
+    vector<uint32> indices;
+
+    for (uint8 i = 0; i < rotations; i++) {
+        float ang1 = float(i + 0) / rotations * math::TAU;
+        float ang2 = float(i + 1) / rotations * math::TAU;
+
+        v3 off1 = axis_1 * math::cos(ang1) + axis_2 * math::sin(ang1);
+        v3 off2 = axis_1 * math::cos(ang2) + axis_2 * math::sin(ang2);
+        // bottom
+        vertices.push_back(Vertex {center - cap_axis, {0, 0, -1}, {1, 0, 0}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center - cap_axis + off1, {0, 0, -1}, {1, 0, 0}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center - cap_axis + off2, {0, 0, -1}, {1, 0, 0}, vertex_color.rgb, {0, 0}});
+        // top
+        vertices.push_back(Vertex {center + cap_axis, {0, 0, 1}, {1, 0, 0}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center + cap_axis + off1, {0, 0, 1}, {1, 0, 0}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center + cap_axis + off2, {0, 0, 1}, {1, 0, 0}, vertex_color.rgb, {0, 0}});
+
+        vertices.push_back(Vertex {center - cap_axis + off1, math::normalize(off1), {0, 0, 1}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center - cap_axis + off2, math::normalize(off2), {0, 0, 1}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center + cap_axis + off2, math::normalize(off2), {0, 0, 1}, vertex_color.rgb, {0, 0}});
+
+        vertices.push_back(Vertex {center - cap_axis + off1, math::normalize(off1), {0, 0, 1}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center + cap_axis + off2, math::normalize(off2), {0, 0, 1}, vertex_color.rgb, {0, 0}});
+        vertices.push_back(Vertex {center + cap_axis + off1, math::normalize(off1), {0, 0, 1}, vertex_color.rgb, {0, 0}});
+
+        for (uint8 j = 0; j < 12; j++)
+            indices.push_back(i * 12 + j);
+    }
+
+    return MeshCPU{FilePath(name, true), vertices, indices};
+}
+
 MeshCPU generate_icosphere(int subdivisions) {
     string name = fmt_("icosphere_subdivisions:{}", subdivisions);
     
@@ -408,7 +445,6 @@ MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) 
 }
 
 MeshCPU generate_outline(Camera* camera, const Bitmask3D& bitmask, const vector<v3i>& places, const Color& color, float thickness) {
-    vector<FormattedVertex> vertices;
 
     Bitmask3D new_bitmask;
     for (const v3i& place : places) {
@@ -423,34 +459,94 @@ MeshCPU generate_outline(Camera* camera, const Bitmask3D& bitmask, const vector<
     }
 
     v3i rough_min = new_bitmask.rough_min();
-    v3i rough_max = new_bitmask.rough_max();
+    v3i rough_max = new_bitmask.rough_max() + v3i(1);
 
+    string log;
+
+    log += fmt_("Iterating from {} to {}\n", rough_min, rough_max);
+
+    umap<v3i, uint8> connections;
     v3i v = rough_min;
     do {
-        if (!new_bitmask.get(v))
-            continue;
-        
-        if (!new_bitmask.get(v + v3i::X)) {
-            vertices.emplace_back(v3(v + v3i(1, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(v + v3i(1, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(), palette::clear, 0.0f);
-        }
-        if (!new_bitmask.get(v - v3i::X)) {
-            vertices.emplace_back(v3(v + v3i(0, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(v + v3i(0, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(), palette::clear, 0.0f);
-        }
-        if (!new_bitmask.get(v + v3i::Y)) {
-            vertices.emplace_back(v3(v + v3i(0, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(v + v3i(1, 1, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(), palette::clear, 0.0f);
-        }
-        if (!new_bitmask.get(v - v3i::Y)) {
-            vertices.emplace_back(v3(v + v3i(0, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(v + v3i(1, 0, 0)) + v3(0.0f, 0.0f, thickness), color, thickness);
-            vertices.emplace_back(v3(), palette::clear, 0.0f);
+        uint8 new_connection = 0;
+        if (new_bitmask.get(v) ^ new_bitmask.get(v - v3i::X))
+            new_connection |= Direction_PosY;
+        if (new_bitmask.get(v) ^ new_bitmask.get(v - v3i::Y))
+            new_connection |= Direction_PosX;
+        if (new_bitmask.get(v - v3i::Y) ^ new_bitmask.get(v - v3i::X - v3i::Y))
+            new_connection |= Direction_NegY;
+        if (new_bitmask.get(v - v3i::X) ^ new_bitmask.get(v - v3i::X - v3i::Y))
+            new_connection |= Direction_NegX;
+
+
+
+        if (new_connection != 0) {
+            log += fmt_("{}: connections = {}\n", v, new_connection);
+            connections[v] = new_connection;
         }
     } while (math::iterate(v, rough_min, rough_max));
+
+    log += fmt_("iterating\n");
+
+    vector<FormattedVertex> vertices;
+    uint8 last_direction = 0;
+    v3 connection = {};
+    auto it = connections.begin();
+    while (!connections.empty()) {
+        v3i cur_key = it->first;
+        uint8& cur_connections = it->second;
+
+        log += fmt_("{}: connections = {}\n", cur_key, cur_connections);
+
+        if (cur_connections == 0) {
+            it = connections.erase(it);
+            continue;
+        }
+
+        // figure out incoming and outgoing directions
+        uint8 incoming_direction = 0;
+        switch (last_direction) {
+            case Direction_PosX: incoming_direction = Direction_NegX; break;
+            case Direction_NegX: incoming_direction = Direction_PosX; break;
+            case Direction_PosY: incoming_direction = Direction_NegY; break;
+            case Direction_NegY: incoming_direction = Direction_PosY; break;
+        }
+        // remove incoming direction
+        if (incoming_direction != 0) {
+            cur_connections &= ~incoming_direction;
+        }
+        uint8 decided_direction = 0b1 << math::ffsb(cur_connections);
+
+        // update vertices
+        if (last_direction != 0) {
+            vertices.emplace_back(v3(cur_key) + v3::Z * thickness, color, thickness);
+        }
+
+        // done with current loop
+        if (decided_direction == 0) {
+            vertices.emplace_back(connection, color, thickness);
+            last_direction = 0;
+            it = connections.erase(it);
+            continue;
+        }
+
+        cur_connections &= ~decided_direction;
+        if (cur_connections == 0)
+            connections.erase(cur_key);
+
+        v3i next_key = cur_key + direction_to_vec(Direction(decided_direction));
+
+        if (last_direction == 0) {
+            connection = v3(cur_key + next_key) * 0.5f + v3::Z * thickness;
+            vertices.emplace_back(connection, color, thickness);
+        }
+
+        last_direction = decided_direction;
+        it = connections.find(next_key);
+
+        assert_else (it != connections.end())
+            break;
+    }
 
     return generate_formatted_line(camera, vertices);
 }

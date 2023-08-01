@@ -39,7 +39,7 @@ void health_draw_system(Scene* scene) {
     static uint64 health_buffer_id;
     static uint64 health_bar_id;
     if (!deps) {
-        mesh_id = upload_mesh(generate_cube(v3(0), v3(1)));
+        mesh_id = upload_mesh(generate_cylinder(v3(0.0f), 24, palette::black, v3::X, v3::Y, v3::Z));
         
         MaterialCPU health_friendly_material = {
             .file_path     = FilePath("health_friendly_material", true),
@@ -83,7 +83,7 @@ void health_draw_system(Scene* scene) {
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
 
         float width = friendly ? 0.7f : 0.5f;
-        float vertical_offset = friendly ? 1.5f : 0.6f;
+        float vertical_offset = friendly ? 1.1f : 0.6f;
         float thickness = friendly ? 0.05f : 0.03f;
         
         m44 inner_matrix = math::translate(position) * 
@@ -170,7 +170,7 @@ void health_system(Scene* scene) {
     auto healths = scene->registry.view<Health>();
     for (auto [entity, health] : healths.each()) {
         for (auto& [dotter, dot] : health.dots) {
-            damage(scene, dotter, entity, dot->value() * scene->delta_time, v3(0.0f));
+            health.damage(dotter, dot->value() * scene->delta_time, v3(0.0f));
         }
         float dh = 6.0f * (health.buffer_value - health.value) + 0.3f;
         health.buffer_value = math::max(health.buffer_value - dh * scene->delta_time, health.value);

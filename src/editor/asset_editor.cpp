@@ -68,9 +68,13 @@ void AssetEditor::setup() {
     else
         enemy_prefab.file_path = FilePath();
     
-    
-    emitter_cpu.mesh = upload_mesh(generate_cube(v3(0.0f), v3(1.0f)));
-    emitter_cpu.material = upload_material({.file_path = FilePath("emitter_mat", true), .color_tint = palette::black});
+
+    MeshCPU cube_mesh = generate_cube(v3(0.0f), v3(1.0f));
+    emitter_cpu.mesh = cube_mesh.file_path;
+    upload_mesh(cube_mesh);
+    MaterialCPU emitter_material = {.file_path = FilePath("emitter_mat", true), .color_tint = palette::black};
+    emitter_cpu.material = emitter_material.file_path;
+    upload_material({.file_path = FilePath("emitter_mat", true), .color_tint = palette::black});
 }
 
 void AssetEditor::shutdown() {
@@ -301,7 +305,7 @@ void asset_tab(AssetEditor& asset_editor, string name, AssetEditor::Tab type, Em
         }
         ImGui::SameLine();
         if (ImGui::Button("Load##AssetTab")) {
-            uint64 old_mat = asset_value->material;
+            FilePath old_mat = asset_value->material;
             *asset_value = load_asset<EmitterCPU>(asset_value->file_path, false, true);
             asset_value->material = old_mat;
             asset_editor.switch_tab(type);

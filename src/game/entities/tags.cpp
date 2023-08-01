@@ -11,13 +11,14 @@ bool Tags::has_tag(uint32 tag) {
             it = entries.erase(it);
             continue;
         }
-        if (entry.has_dependency && scene.registry.valid(entry.dependency)) {
+        if (entry.has_dependency && !scene.registry.valid(entry.dependency)) {
             it = entries.erase(it);
             continue;
         }
 
         if (tag == entry.tag)
             return true;
+        it++;
     }
     return false;
 }

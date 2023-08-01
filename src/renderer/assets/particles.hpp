@@ -46,8 +46,8 @@ struct EmitterCPU {
     v3 alignment_vector = v3(0.0f);
     v3 alignment_random = v3(0.0f);
 
-    uint64 mesh;
-    uint64 material;
+    FilePath mesh;
+    FilePath material;
 
     void set_velocity_direction(v3 dir);
 };

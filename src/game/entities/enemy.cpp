@@ -43,21 +43,21 @@ void EnemyLaserAttack::trigger() {
     
     uset<entt::entity> lizards = entry_gather_function(*this, target, 0.0f);
     for (entt::entity lizard : lizards) {
-        auto& liz_lt = scene->registry.get<LogicTransform>(lizard);
-        
-        damage(scene, caster, lizard, 1.0f, liz_lt.position - logic_tfm.position);
+        LogicTransform& liz_tfm = scene->registry.get<LogicTransform>(lizard);
+        Health& health = scene->registry.get<Health>(lizard);
+        health.damage(caster, 1.0f, liz_tfm.position - logic_tfm.position);
 
         constexpr float duration = 0.15f;
         entt::entity caster_cap = caster;
         beam_animate = add_tween_timer(scene, "Enemy laser tick", [lizard, caster_cap](Timer* timer) {
             if (timer->ticking && timer->scene->registry.valid(lizard) && timer->scene->registry.valid(caster_cap)) {
-                auto* this_lt = timer->scene->registry.try_get<LogicTransform>(caster_cap);
-                auto* liz_lt = timer->scene->registry.try_get<LogicTransform>(lizard);
-                if (this_lt && liz_lt) {
+                auto* logic_tfm = timer->scene->registry.try_get<LogicTransform>(caster_cap);
+                auto* liz_tfm = timer->scene->registry.try_get<LogicTransform>(lizard);
+                if (logic_tfm && liz_tfm) {
                     vector<FormattedVertex> vertices;
                     float width = (timer->remaining_time / timer->total_time) * 0.05f + 0.03f;
-                    vertices.emplace_back(this_lt->position + v3(0.5f, 0.5f, 0.19f), palette::light_pink, width + 0.05f);
-                    vertices.emplace_back(liz_lt->position + v3(0.5f), palette::red, width);
+                    vertices.emplace_back(logic_tfm->position + v3(0.5f, 0.5f, 0.19f), palette::light_pink, width + 0.05f);
+                    vertices.emplace_back(liz_tfm->position + v3(0.5f), palette::red, width);
                     timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
                 }
             }
@@ -100,15 +100,15 @@ void EnemyResistorAttack::trigger() {
     entt::entity caster_cap = caster;
     aura_animate = add_tween_timer(scene, "Enemy laser tick", [caster_cap](Timer* timer) {
         if (timer->ticking && timer->scene->registry.valid(caster_cap) && timer->scene->registry.valid(caster_cap)) {
-            auto* this_lt = timer->scene->registry.try_get<LogicTransform>(caster_cap);
-            if (!this_lt) 
+            if (!timer->scene->registry.valid(caster_cap))
                 return;
+            LogicTransform& logic_tfm = timer->scene->registry.get<LogicTransform>(caster_cap);
             float t = 1.0f - timer->remaining_time / timer->total_time;
             vector<FormattedVertex> vertices;
             Color color = mix(palette::red, palette::pink, t);
             float radius = math::mix(0.25f, 1.5f, math::ease(t, math::EaseMode_CubicOut));
             float line_width = 0.05f;
-            add_formatted_square(vertices, this_lt->position + v3(0.5f, 0.5f, 0.0f), v3(radius, 0.f, 0.f), v3(0.f, radius, 0.f), color, line_width);
+            add_formatted_square(vertices, logic_tfm.position + v3(0.5f, 0.5f, 0.0f), v3(radius, 0.f, 0.f), v3(0.f, radius, 0.f), color, line_width);
             if (vertices.empty())
                 return;
             timer->scene->render_scene.quick_mesh(generate_formatted_line(&timer->scene->camera, vertices), true, false);
@@ -177,12 +177,15 @@ void EnemyMortarAttack::trigger() {
     indicator_animate->start(indicator_duration);
 
     trigger_timer = add_timer(scene, "Enemy mortar trigger", [this, position_cap](Timer* timer) {
+        if (!timer->scene->registry.valid(caster))
+            return;
         uset<entt::entity> lizards = entry_gather_function(*this, position_cap, 0.0f);
         for (entt::entity lizard : lizards) {
-            auto& this_lt = scene->registry.get<LogicTransform>(caster);
-            auto& liz_lt = scene->registry.get<LogicTransform>(lizard);
+            LogicTransform& logic_tfm = timer->scene->registry.get<LogicTransform>(caster);
+            LogicTransform& liz_tfm = timer->scene->registry.get<LogicTransform>(lizard);
+            Health& health = timer->scene->registry.get<Health>(lizard);
         
-            damage(timer->scene, caster, lizard, 5.0f, liz_lt.position - this_lt.position);
+            health.damage(caster, 5.0f, liz_tfm.position - logic_tfm.position);
         }
         
         beam2_animate = add_tween_timer(timer->scene, "Enemy mortar beam 2", [position_cap](Timer* timer) {
@@ -235,7 +238,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     scene->registry.emplace<Traveler>(base_entity);
     scene->registry.emplace<SpiderController>(base_entity, settings);
     
-    scene->registry.get<Traveler>(base_entity).max_speed = std::make_unique<Stat>(scene, prefab.max_speed);
+    scene->registry.get<Traveler>(base_entity).max_speed = std::make_unique<Stat>(scene, base_entity, prefab.max_speed);
     scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.base_scale);
 
     if (!prefab.drops.entries.empty())
@@ -259,19 +262,19 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     
     switch (prefab.type) {
         case (EnemyType_Laser): {
-            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene);
+            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene, attachment_entity);
             caster.attack = std::make_unique<EnemyLaserAttack>(scene, attachment_entity, 0.5f, 1.0f, 1.5f, 1.0f);
             caster.attack->entry_gather_function = gather_lizard();
             caster.attack->entry_eval_function = simple_entry_eval;
         } break;
         case (EnemyType_Resistor): {
-            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene);
+            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene, attachment_entity);
             caster.attack = std::make_unique<EnemyResistorAttack>(scene, attachment_entity, 0.1f, 0.1f, 1.5f, 1.0f);
             caster.attack->entry_gather_function = gather_enemies_aoe(1);
             caster.attack->entry_eval_function = simple_entry_eval;
         } break;
         case (EnemyType_Mortar): {
-            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene);
+            Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene, attachment_entity);
             caster.attack = std::make_unique<EnemyMortarAttack>(scene, attachment_entity, 0.75f, 0.75f, 4.0f, 5.0f);
             caster.attack->entry_gather_function = gather_lizard();
             caster.attack->entry_eval_function = simple_entry_eval;

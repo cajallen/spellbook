@@ -70,12 +70,12 @@ void RangerAttack::trigger() {
         .callback = [this](entt::entity proj_entity) {
             auto projectile = scene->registry.try_get<Projectile>(proj_entity);
             if (projectile) {
-                auto logic_tfm = scene->registry.try_get<LogicTransform>(caster);
+                LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
                 
                 scene->audio.play_sound("audio/ranger/arrow_impact.flac"_rp, {.position = v3(projectile->target)});
                 
                 EmitterCPU hit_emitter = load_asset<EmitterCPU>("emitters/ranger/basic_hit.sbemt"_rp);
-                hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - logic_tfm->position));
+                hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - logic_tfm.position));
                 quick_emitter(scene, "Ranger Basic Hit", v3(projectile->target) + v3(0.5f), hit_emitter, 0.1f);
 
                 auto hit_enemies = entry_gather_function(*this, projectile->target, 0.0f);
@@ -85,14 +85,14 @@ void RangerAttack::trigger() {
                 
                 // Apply damage
                 for (entt::entity enemy : hit_enemies) {
-                    auto health = scene->registry.try_get<Health>(enemy);
+                    Health* health = scene->registry.try_get<Health>(enemy);
                     if (!health)
                         continue;
-                    auto enemy_lt = scene->registry.try_get<LogicTransform>(enemy);
+                    LogicTransform* enemy_tfm = scene->registry.try_get<LogicTransform>(enemy);
                     v3 damage_dir = v3(0.0f);
-                    if (logic_tfm && enemy_lt)
-                        damage_dir = enemy_lt->position - logic_tfm->position;
-                    damage(scene, caster, enemy, attack_damage, damage_dir);
+                    if (enemy_tfm)
+                        damage_dir = enemy_tfm->position - logic_tfm.position;
+                    health->damage(caster,attack_damage, damage_dir);
                 }
 
                 v3 pos = v3(projectile->target) + v3(0.5f, 0.5f, 0.05f);
@@ -110,9 +110,7 @@ void RangerAttack::trigger() {
                 // Vulnerability
                 // Remove existing vulns
                 for (auto [entity, enemy, health] : scene->registry.view<Enemy, Health>().each()) {
-                    health.damage_taken_multiplier->remove_effect(uint32("ranger_mark"_hs));
-                    auto& emitters = scene->registry.get<EmitterComponent>(entity);
-                    emitters.remove_emitter(uint32("ranger_mark"_hs));
+                    health.damage_taken_multiplier->remove_effect("ranger_mark"_hs);
                 }
                 // Select vuln
                 entt::entity select_enemy = entt::null;
@@ -130,9 +128,7 @@ void RangerAttack::trigger() {
                     health.damage_taken_multiplier->add_effect(uint64("ranger_mark"_hs), StatEffect{
                         .type = StatEffect::Type_Multiply,
                         .value = attack_vuln_amount
-                    });
-                    auto& emitters = scene->registry.get<EmitterComponent>(select_enemy);
-                    emitters.add_emitter(uint64("ranger_mark"_hs), load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"_rp));
+                    }, &load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"_rp));
                 }
             }
         }
@@ -258,7 +254,8 @@ void RangerSpell::trigger() {
 
                     uset<entt::entity> enemies = area_trigger.entry_gather(area_trigger, math::round_cast(logic_tfm.position));
                     for (entt::entity enemy : enemies) {
-                        damage(timer->scene, caster_entity, enemy, 2.0f, v3(0, 0, 1));
+                        Health& health = timer->scene->registry.get<Health>(enemy);
+                        health.damage(caster_entity, 2.0f, v3(0, 0, 1));
 
                         Tags& tags = timer->scene->registry.get<Tags>(enemy);
                         tags.apply_tag("no_move"_hs, "Ranger Trap Root"_hs, 3.0f);

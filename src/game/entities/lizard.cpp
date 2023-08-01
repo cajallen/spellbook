@@ -43,7 +43,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     static int lizard_i = 0;
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", lizard_prefab.file_path.rel_path().stem().string(), lizard_i++));
     
-    scene->registry.emplace<Caster>(entity, scene);
+    scene->registry.emplace<Caster>(entity, scene, entity);
     scene->registry.emplace<Draggable>(entity, 0.5f);
     
     ModelTransform& model_tfm = scene->registry.get<ModelTransform>(entity);
@@ -53,7 +53,7 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
     if (poser)
         poser->set_state(AnimationState_Idle, 0.0f);
     Health& health = scene->registry.get<Health>(entity);
-    health.regen = std::make_unique<Stat>(scene, lizard_prefab.health_regen);
+    health.regen = std::make_unique<Stat>(scene, entity, lizard_prefab.health_regen);
     
     switch (lizard_prefab.type) {
         case LizardType_Barbarian:

@@ -1,15 +1,20 @@
 ﻿#include "targeting.hpp"
 
-#include "consumer.hpp"
-#include "enemy.hpp"
-#include "spawner.hpp"
+#include <entt/core/hashed_string.hpp>
+
 #include "general/astar.hpp"
 #include "game/scene.hpp"
+#include "game/entities/enemy.hpp"
+#include "game/entities/spawner.hpp"
 #include "game/entities/ability.hpp"
 #include "game/entities/components.hpp"
+#include "game/entities/consumer.hpp"
 #include "game/entities/caster.hpp"
+#include "game/entities/tags.hpp"
 
 namespace spellbook {
+
+using namespace entt::literals;
 
 bool taunted(Ability& ability, Caster& caster) {
     v3i target;
@@ -167,6 +172,12 @@ EntryGatherFunction gather_enemies_floor() {
 EntryGatherFunction gather_lizard() {
     return [](Ability& ability, v3i pos, float time_to) -> uset<entt::entity> {
         entt::entity liz = ability.scene->targeting->select_lizard(pos);
+
+        Tags* liz_tags = ability.scene->registry.try_get<Tags>(liz);
+        if (liz_tags) {
+            if (liz_tags->has_tag("untargetable"_hs))
+                return uset<entt::entity>{};
+        }
         return liz == entt::null ? uset<entt::entity>{} : uset<entt::entity>{liz};
     };
 }
@@ -181,7 +192,7 @@ EntryGatherFunction gather_enemies() {
 }
 
 int simple_entry_eval(Scene* scene, const uset<entt::entity>& units) {
-        return units.size();
+    return units.size();
 }
 
 int basic_lizard_entry_eval(Scene* scene, const uset<entt::entity>& units) {

@@ -188,38 +188,43 @@ const m44& ModelTransform::get_transform() {
     return transform;
 }
 
-Health::Health(float health_value, Scene* init_scene, const FilePath& hurt_emitter_path) {
-    scene = init_scene;
+Health::Health(float health_value, Scene* init_scene, entt::entity init_entity, const FilePath& hurt_emitter_path) : scene(init_scene), entity(init_entity) {
     value = health_value;
     buffer_value = value;
-    max_health = std::make_unique<Stat>(scene, value);
-    damage_taken_multiplier = std::make_unique<Stat>(scene, 1.0f);
+    max_health = std::make_unique<Stat>(scene, entity, value);
+    damage_taken_multiplier = std::make_unique<Stat>(scene, entity, 1.0f);
     emitter_cpu_path = hurt_emitter_path;
 }
 
-void damage(Scene* scene, entt::entity damager, entt::entity damagee, float amount, v3 direction) {
+void Health::damage(entt::entity damager, float amount, v3 direction) {
+    damage_signal.publish(scene, damager, entity, amount);
+
     Caster* caster = scene->registry.try_get<Caster>(damager);
-    Health& health = scene->registry.get<Health>(damagee);
+    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * damage_taken_multiplier->value();
+    value -= hurt_value;
 
-    health.damage_signal.publish(scene, damager, damagee, amount);
-    
-    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * health.damage_taken_multiplier->value();
-    health.value -= hurt_value;
-
-    if (health.emitter_cpu_path.is_file()) {
-        EmitterCPU hurt_emitter = load_asset<EmitterCPU>(health.emitter_cpu_path);
+    if (emitter_cpu_path.is_file()) {
+        EmitterCPU hurt_emitter = load_asset<EmitterCPU>(emitter_cpu_path);
         hurt_emitter.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
         uint64 random_id = math::random_uint64();
-        EmitterComponent& emitter = scene->registry.get<EmitterComponent>(damagee);
+        EmitterComponent& emitter = scene->registry.get<EmitterComponent>(entity);
         emitter.add_emitter(random_id, hurt_emitter);
 
-        float hurt_time = math::map_range(hurt_value / health.max_health->value(), {0.0f, 1.0f}, {0.1f, 0.3f});
-        add_timer(scene, fmt_("hurt_timer"), [scene, damagee, random_id](Timer* timer) {
-            if (scene->registry.valid(damagee))
-                scene->registry.get<EmitterComponent>(damagee).remove_emitter(random_id);
+        float hurt_time = math::map_range(hurt_value / max_health->value(), {0.0f, 1.0f}, {0.1f, 0.3f});
+        add_timer(scene, fmt_("hurt_timer"), [random_id, this](Timer* timer) {
+            if (this->scene->registry.valid(entity))
+                this->scene->registry.get<EmitterComponent>(entity).remove_emitter(random_id);
         }, true)->start(hurt_time);
     }
 }
+
+void Health::apply_dot(entt::entity damager, uint64 id, const StatEffect& effect, EmitterCPU* emitter) {
+    if (!dots.contains(damager))
+        dots[damager] = std::make_unique<Stat>(scene, entity, 0.0f);
+    // different id
+    dots[damager]->add_effect(1, effect, emitter);
+}
+
 
 void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu) {
     emitters[id] = &instance_emitter(scene->render_scene, emitter_cpu);
@@ -246,7 +251,7 @@ entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 locat
     scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     
     scene->registry.emplace<EmitterComponent>(entity, scene);
-    scene->registry.emplace<Health>(entity, health_value, scene, hurt_path);
+    scene->registry.emplace<Health>(entity, health_value, scene, entity, hurt_path);
     scene->registry.emplace<Tags>(entity, *scene);
     
     if (model_comp.model_cpu->skeleton) {
