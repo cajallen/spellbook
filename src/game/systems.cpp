@@ -14,7 +14,7 @@
 #include "editor/console.hpp"
 #include "editor/widget_system.hpp"
 #include "game/game.hpp"
-#include "game/input.hpp"
+#include "general/input.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
@@ -42,30 +42,30 @@ void health_draw_system(Scene* scene) {
         mesh_id = upload_mesh(generate_cylinder(v3(0.0f), 24, palette::black, v3::X, v3::Y, v3::Z));
         
         MaterialCPU health_friendly_material = {
-            .file_path     = FilePath("health_friendly_material", true),
             .color_tint    = palette::black,
             .emissive_tint = palette::green
         };
+        health_friendly_material.file_path     = "health_friendly_material"_symbolic;
         health_friendly_id = upload_material(health_friendly_material);
         MaterialCPU health_enemy_material = {
-            .file_path     = FilePath("health_enemy_material", true),
             .color_tint    = palette::black,
             .emissive_tint = palette::fire_brick
         };
+        health_enemy_material.file_path     = "health_enemy_material"_symbolic;
         health_enemy_id = upload_material(health_enemy_material);
         MaterialCPU material3_cpu = {
-            .file_path     = FilePath("health_buffer_material", true),
             .color_tint    = palette::black,
             .emissive_tint = palette::yellow,
             .cull_mode = vuk::CullModeFlagBits::eFront
         };
+        material3_cpu.file_path     = "health_buffer_material"_symbolic;
         health_buffer_id = upload_material(material3_cpu);
         MaterialCPU material2_cpu = {
-            .file_path     = FilePath("health_bar_material", true),
             .color_tint    = palette::black,
             .roughness_factor = 1.0f,
             .cull_mode     = vuk::CullModeFlagBits::eFront
         };
+        material2_cpu.file_path     = "health_bar_material"_symbolic;
         health_bar_id = upload_material(material2_cpu);
         deps = true;
     }
@@ -153,7 +153,7 @@ void disposal_system(Scene* scene) {
                     float phase = math::random_float(math::TAU);
                     float radius = math::random_float(0.2f);
                     v3 offset = radius * v3(math::cos(phase), math::sin(phase), 0.0f);
-                    instance_prefab(scene, load_asset<BeadPrefab>(entry.bead_prefab_path), transform.position + offset);
+                    instance_prefab(scene, load_resource<BeadPrefab>(entry.bead_prefab_path), transform.position + offset);
                 }
             }
         }
@@ -205,7 +205,7 @@ void selection_id_system(Scene* scene) {
 void dragging_update_system(Scene* scene) {
     ZoneScoped;
     if (scene->render_scene.fut_query_result.get_control()) {
-        auto result_buf = *scene->render_scene.fut_query_result.get<vuk::Buffer>(*game.renderer.global_allocator, game.renderer.compiler);
+        auto result_buf = *scene->render_scene.fut_query_result.get<vuk::Buffer>(*get_renderer().global_allocator, get_renderer().compiler);
         uint32 result_int = *((uint32*) result_buf.mapped_ptr);
         scene->render_scene.fut_query_result = {};
 
@@ -217,11 +217,8 @@ void dragging_update_system(Scene* scene) {
 
 void dragging_system(Scene* scene) {
     ZoneScoped;
-    Viewport& viewport = scene->render_scene.viewport;
-    // v3 intersect = math::intersect_axis_plane(viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
-    
     constexpr float raise_speed = 0.10f;
-    auto drags = scene->registry.view<LogicTransform, Dragging, Draggable>();
+    auto drags = scene->registry.view<LogicTransform, Dragging>(entt::exclude<ForceDragging>);
     
     v3i cell;
     bool has_new_cell = false;
@@ -229,7 +226,7 @@ void dragging_system(Scene* scene) {
         has_new_cell = scene->get_object_placement(cell);
     }
     
-    for (auto [entity, transform, drag, draggable] : drags.each()) {
+    for (auto [entity, transform, drag] : drags.each()) {
         if (has_new_cell) {
             drag.target_position = v3(cell);
             drag.potential_logic_position = v3(cell);
@@ -246,13 +243,23 @@ void dragging_system(Scene* scene) {
         transform.set_translation(pos);
     }
 
-    for (auto [entity, lizard, drag] : scene->registry.view<Lizard, Dragging>().each()) {
+    for (auto [entity, lizard, drag] : scene->registry.view<Lizard, Dragging>(entt::exclude<ForceDragging>).each()) {
         draw_lizard_dragging_preview(scene, entity);
     }
     
     auto posers = scene->registry.view<Dragging, PoseController>();
     for (auto [entity, _, poser] : posers.each()) {
         poser.set_state(AnimationState_Flail);
+    }
+
+    for (auto [entity, drag, forced_drag] : scene->registry.view<Dragging, ForceDragging>().each()) {
+        drag.target_position = forced_drag.target;
+        drag.potential_logic_position = forced_drag.target;
+
+        forced_drag.time -= scene->delta_time;
+        if (forced_drag.time <= 0.0f) {
+            scene->registry.remove<ForceDragging>(entity);
+        }
     }
 }
 
@@ -295,7 +302,7 @@ void emitter_system(Scene* scene) {
         for (auto& [id, emitter_gpu] : emitter_comp.emitters) {
             if (emitter_gpu->emitter_cpu.position != logic_transform.position) {
                 emitter_gpu->emitter_cpu.position = logic_transform.position;
-                emitter_gpu->update_from_cpu(emitter_gpu->emitter_cpu);
+                emitter_gpu->update_from_cpu(emitter_gpu->emitter_cpu, Input::time);
             }
         }
     }

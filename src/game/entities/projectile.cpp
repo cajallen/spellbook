@@ -14,7 +14,7 @@ entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const FileP
     
     if (model_path.is_file()) {
         auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(model_path));
+        model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(model_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
         scene->registry.emplace<ModelTransform>(entity, v3{}, quat{}, v3(scale));
@@ -22,7 +22,7 @@ entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const FileP
     }
 
     auto& emitter_comp = scene->registry.emplace<EmitterComponent>(entity, scene);
-    emitter_comp.add_emitter(0, load_asset<EmitterCPU>(particles_path));
+    emitter_comp.add_emitter(0, load_resource<EmitterCPU>(particles_path));
     
     scene->registry.emplace<Projectile>(entity, proj);
     

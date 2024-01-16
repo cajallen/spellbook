@@ -11,12 +11,9 @@
 #include "extension/icons/font_awesome4.h"
 #include "extension/imgui_extra.hpp"
 #include "general/math/matrix_math.hpp"
+#include "general/input.hpp"
 #include "renderer/render_scene.hpp"
-#include "editor/console.hpp"
-#include "editor/pose_widget.hpp"
-#include "editor/skeleton_widget.hpp"
-#include "game/input.hpp"
-#include "game/game.hpp"
+#include "renderer/renderer.hpp"
 
 namespace spellbook {
 
@@ -117,7 +114,7 @@ SkeletonCPU instance_prefab(SkeletonPrefab& prefab) {
 
 SkeletonGPU upload_skeleton(const SkeletonCPU& skeleton_cpu) {
     SkeletonGPU skeleton_gpu;
-    vuk::Allocator& alloc = *game.renderer.global_allocator;
+    vuk::Allocator& alloc = *get_renderer().global_allocator;
     uint32 alloc_size = sizeof(uint32) * 4 + sizeof(m44GPU) * skeleton_cpu.bones.size();
 
     skeleton_gpu.buffer = *vuk::allocate_buffer(alloc, {vuk::MemoryUsage::eCPUtoGPU, alloc_size, 1});
@@ -418,7 +415,7 @@ json_value to_jv(const AnimationFrame& value) {
 }
 
 template <>
-bool     save_asset(const SkeletonPrefab& value) {
+bool     save_resource(const SkeletonPrefab& value) {
     json j;
     j["dependencies"] = make_shared<json_value>(to_jv(value.dependencies));
     vector<json_value> json_bones;
@@ -430,7 +427,7 @@ bool     save_asset(const SkeletonPrefab& value) {
     j["animations"] = make_shared<json_value>(to_jv(value.animations));
     
     string ext = value.file_path.extension();
-    assert_else(ext == extension(FileType_Skeleton))
+    assert_else(ext == SkeletonPrefab::extension())
         return false;
     
     file_dump(j, value.file_path.abs_string());
@@ -438,17 +435,17 @@ bool     save_asset(const SkeletonPrefab& value) {
 }
 
 template <>
-SkeletonPrefab& load_asset(const FilePath& input_path, bool assert_exists, bool clear_cache) {
+SkeletonPrefab& load_resource(const FilePath& input_path, bool assert_exists, bool clear_cache) {
     fs::path absolute_path = input_path.abs_string();
-    if (clear_cache && cpu_asset_cache<SkeletonPrefab>().contains(input_path))
-        cpu_asset_cache<SkeletonPrefab>().erase(input_path);
-    if (cpu_asset_cache<SkeletonPrefab>().contains(input_path))
-        return *cpu_asset_cache<SkeletonPrefab>()[input_path];
+    if (clear_cache && cpu_resource_cache<SkeletonPrefab>().contains(input_path))
+        cpu_resource_cache<SkeletonPrefab>().erase(input_path);
+    if (cpu_resource_cache<SkeletonPrefab>().contains(input_path))
+        return *cpu_resource_cache<SkeletonPrefab>()[input_path];
 
-    SkeletonPrefab& value = *cpu_asset_cache<SkeletonPrefab>().emplace(input_path, std::make_unique<SkeletonPrefab>()).first->second;
+    SkeletonPrefab& value = *cpu_resource_cache<SkeletonPrefab>().emplace(input_path, std::make_unique<SkeletonPrefab>()).first->second;
 
     bool exists = fs::exists(absolute_path);
-    bool corrext = input_path.extension() == extension(from_typeinfo(typeid(SkeletonPrefab)));
+    bool corrext = input_path.extension() == SkeletonPrefab::extension();
     if (assert_exists) {
         assert_else(exists && corrext)
             return value;
@@ -459,7 +456,7 @@ SkeletonPrefab& load_asset(const FilePath& input_path, bool assert_exists, bool 
     
     json j = parse_file(absolute_path.string());
     value.file_path = input_path;
-    value.dependencies = game.asset_system.load_dependencies(j);
+    value.dependencies = get_file_cache().load_dependencies(j);
 
     if (j.contains("bones")) {
         for (const json_value& jv : j["bones"]->get_list()) {

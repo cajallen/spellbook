@@ -51,9 +51,11 @@ void Scene::setup(const string& input_name) {
     registry.on_destroy<Enemy>().connect<&on_enemy_destroy>(*this);
     registry.on_construct<GridSlot>().connect<&on_gridslot_create>(*this);
     registry.on_destroy<GridSlot>().connect<&on_gridslot_destroy>(*this);
+    registry.on_construct<ForceDragging>().connect<&on_forcedrag_create>(*this);
+    registry.on_destroy<ForceDragging>().connect<&on_forcedrag_destroy>(*this);
 
     game.scenes.push_back(this);
-	game.renderer.add_scene(&render_scene);
+	get_renderer().add_scene(&render_scene);
 
     spawn_state_info = new SpawnStateInfo();
     player.bank.beads[Bead_Quartz] = 2;
@@ -185,7 +187,7 @@ void Scene::cleanup() {
     delete spawn_state_info;
     
     controller.cleanup();
-	render_scene.cleanup(*game.renderer.global_allocator);
+	render_scene.cleanup(*get_renderer().global_allocator);
     game.scenes.remove_value(this);
 }
 
@@ -340,7 +342,7 @@ vector<entt::entity> Scene::get_any(v3i pos) {
 }
 
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const FilePath& emitter_path, float duration) {
-    return quick_emitter(scene, name, position, load_asset<EmitterCPU>(emitter_path), duration);
+    return quick_emitter(scene, name, position, load_resource<EmitterCPU>(emitter_path), duration);
 }
 
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, EmitterCPU emitter_cpu, float duration) {
@@ -393,6 +395,13 @@ bool Scene::get_object_placement(v3i& pos) {
     return get_object_placement(v2i{}, pos);
 }
 
+
+void Scene::release_selected() {
+    Dragging* dragging = registry.try_get<Dragging>(selected_entity);
+    if (dragging)
+        registry.remove<Dragging>(selected_entity);
+    selected_entity = entt::null;
+}
 
 
 }

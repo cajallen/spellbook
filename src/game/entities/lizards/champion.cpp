@@ -5,7 +5,6 @@
 #include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
-#include "game/game_path.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
@@ -30,13 +29,13 @@ void ChampionAttack::start() {
 
     v3 pos_cap = logic_tfm.position;
     add_timer(scene, "taunt", [pos_cap](Timer* timer) {
-        timer->scene->audio.play_sound("audio/champion/axe_fly.wav"_rp, {.position = pos_cap});
+        timer->scene->audio.play_sound("audio/champion/axe_fly.wav"_resource, {.position = pos_cap});
     }, true)->start(0.1f);
 }
 
 void ChampionAttack::trigger() {
     LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    scene->audio.play_sound("audio/champion/axe_hit.wav"_rp, {.position = logic_tfm.position});
+    scene->audio.play_sound("audio/champion/axe_hit.wav"_resource, {.position = logic_tfm.position});
 
     entt::entity caster_cap = caster;
     for (auto& enemy : entry_gather_function(*this, target, 0.0f)) {
@@ -67,9 +66,9 @@ void ChampionAttack::trigger() {
             bool has_floor = scene->map_data.solids.get(target + v3i(x, y, -1));
 
             if (!blocked && has_floor) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_hit.sbemt"_rp, 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_hit.sbemt"_resource, 0.20f);
             } else if (false) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_miss.sbemt"_rp, 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_miss.sbemt"_resource, 0.20f);
             }
         }
     }
@@ -134,7 +133,7 @@ void ChampionSpell::trigger() {
         .value = -0.9f
     });
     auto& emitters = scene->registry.get<EmitterComponent>(caster);
-    emitters.add_emitter(buff_id, load_asset<EmitterCPU>("emitters/champion/spell_buff.sbemt"_rp));
+    emitters.add_emitter(buff_id, load_resource<EmitterCPU>("emitters/champion/spell_buff.sbemt"_resource));
     
     entt::entity caster_cap = caster;
 
@@ -152,7 +151,7 @@ void ChampionSpell::trigger() {
 
         // emit effect
         LogicTransform& logic_tfm = timer->scene->registry.get<LogicTransform>(caster_cap);
-        EmitterCPU trigger_emitter = load_asset<EmitterCPU>("emitters/champion/spell_trigger.sbemt"_rp);
+        EmitterCPU trigger_emitter = load_resource<EmitterCPU>("emitters/champion/spell_trigger.sbemt"_resource);
         quick_emitter(timer->scene, "Champion spell trigger", logic_tfm.position + v3(0.5f), trigger_emitter, 0.2f);
 
         ChampionSpell& spell = (ChampionSpell&) *timer->scene->registry.get<Caster>(caster_cap).spell;

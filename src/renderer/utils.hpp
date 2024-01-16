@@ -12,7 +12,7 @@ inline vuk::Swapchain make_swapchain(vkb::Device vkbdevice, vuk::Swapchain* old 
 	vkb::SwapchainBuilder swb(vkbdevice);
 	swb.set_desired_format(vuk::SurfaceFormatKHR {vuk::Format::eB8G8R8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear});
 	swb.add_fallback_format(vuk::SurfaceFormatKHR {vuk::Format::eB8G8R8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear});
-	swb.set_desired_present_mode((VkPresentModeKHR) vuk::PresentModeKHR::eImmediate);
+	swb.set_desired_present_mode((VkPresentModeKHR) vuk::PresentModeKHR::eFifoRelaxed);
 	swb.set_image_usage_flags(VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_DST_BIT);
     if (old)
         swb.set_old_swapchain(old->swapchain);

@@ -4,7 +4,7 @@
 
 #include "general/math/geometry.hpp"
 #include "general/color.hpp"
-#include "general/file_path.hpp"
+#include "general/file/resource.hpp"
 
 namespace spellbook {
 
@@ -19,13 +19,15 @@ enum Bead {
     Bead_Count
 };
 
-struct BeadPrefab {
-    FilePath file_path;
-    vector<FilePath> dependencies;
-    
+struct BeadPrefab : Resource {
     FilePath model_path;
     Bead type;
     float scale = 1.0f;
+
+    static constexpr string_view extension() { return ".sbjdrp"; }
+    static constexpr string_view dnd_key() { return "DND_DROP"; }
+    static FilePath folder() { return "drops"_resource; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == BeadPrefab::extension(); }; }
 };
 
 struct DropChance {

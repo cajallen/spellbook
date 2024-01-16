@@ -4,7 +4,5 @@
 #include <stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
-#define DOCTEST_CONFIG_IMPLEMENT
-#include <doctest/doctest.h>
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>

@@ -9,8 +9,9 @@
 #include "general/bitmask_3d.hpp"
 #include "general/math/ease.hpp"
 #include "general/logger.hpp"
+#include "general/file/file_path.hpp"
 #include "renderer/render_scene.hpp"
-#include "general/file_path.hpp"
+#include "renderer/vertex.hpp"
 
 namespace spellbook {
 
@@ -43,7 +44,7 @@ MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
     ZoneScoped;
     string name = fmt_("cube_center:{:.2f}_extents:{:.2f}", center, extents);
     
-	return MeshCPU{FilePath(name, true), vector<Vertex>  {
+	return MeshCPU{FilePath(name, FilePathLocation_Symbolic), {}, vector<Vertex>  {
         // back
         Vertex {center + extents * v3{-1, -1, -1}, {0, 0, -1}, {-1, 0, 0}, vertex_color.rgb, {1, 1}},
         Vertex {center + extents * v3{1, 1, -1}, {0, 0, -1}, {-1, 0, 0}, vertex_color.rgb, {0, 0}},
@@ -125,7 +126,7 @@ MeshCPU generate_cylinder(v3 center, uint8 rotations, Color vertex_color, v3 cap
             indices.push_back(i * 12 + j);
     }
 
-    return MeshCPU{FilePath(name, true), vertices, indices};
+    return MeshCPU{FilePath(name, FilePathLocation_Symbolic), {}, vertices, indices};
 }
 
 MeshCPU generate_icosphere(int subdivisions) {
@@ -174,7 +175,7 @@ MeshCPU generate_icosphere(int subdivisions) {
         v.color = v3(0,0,0);
     }
     
-    return MeshCPU(FilePath(name, true), vertex_list, index_list);
+    return MeshCPU{FilePath(name, FilePathLocation_Symbolic), {}, vertex_list, index_list};
 }
 
 MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex) {
@@ -188,7 +189,7 @@ MeshCPU generate_formatted_dot(Camera* camera, FormattedVertex vertex) {
     v3 b = math::normalize(math::cross(cam_vec, t));
 
     MeshCPU mesh_cpu;
-    mesh_cpu.file_path = FilePath(name, true);
+    mesh_cpu.file_path = FilePath(name, FilePathLocation_Symbolic);
     
     for (int i = 0; i < 16; i++) {
         float angle1 = float(i) / 16.0f * math::TAU;
@@ -289,7 +290,7 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
 
 
     MeshCPU mesh_cpu;
-    mesh_cpu.file_path = FilePath(name, true);
+    mesh_cpu.file_path = FilePath(name, FilePathLocation_Symbolic);
     int quad_count = segments.size() - 1;
     mesh_cpu.vertices.reserve(quad_count * 6);
     mesh_cpu.indices.reserve(quad_count * 6);

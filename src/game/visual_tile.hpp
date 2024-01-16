@@ -6,7 +6,7 @@
 #include "general/string.hpp"
 #include "general/umap.hpp"
 #include "general/math/geometry.hpp"
-#include "general/file_path.hpp"
+#include "general/file/resource.hpp"
 
 namespace spellbook {
 
@@ -69,11 +69,13 @@ struct VisualTilePrefab {
     VisualTileCorners corners;
 };
 
-struct VisualTileSet {
-    FilePath file_path;
-    vector<FilePath> dependencies;
-    
+struct VisualTileSet : Resource {
     vector<VisualTilePrefab> tiles;
+
+    static constexpr string_view extension() { return ".sbjvts"; }
+    static constexpr string_view dnd_key() { return "DND_VISUAL_TILE_SET"; }
+    static FilePath folder() { return "visual_tile_sets"_resource; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == VisualTileSet::extension(); }; }
 };
 
 // Component

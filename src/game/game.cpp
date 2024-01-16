@@ -6,9 +6,9 @@
 #include "renderer/render_scene.hpp"
 #include "editor/console.hpp"
 #include "editor/editor_scene.hpp"
-#include "editor/asset_editor.hpp"
+#include "editor/resource_editor.hpp"
 #include "editor/map_editor.hpp"
-#include "game/input.hpp"
+#include "general/input.hpp"
 #include "game/scene.hpp"
 
 namespace fs = std::filesystem;
@@ -19,8 +19,8 @@ Game game;
 
 void Game::startup() {
     Console::setup();
-    renderer.setup();
-    Input::setup();
+    get_renderer().setup();
+    Input::setup(get_renderer().window);
 
     for (auto editor_scene : EditorScenes::values()) {
         editor_scene->setup();
@@ -38,12 +38,12 @@ void Game::run() {
 void Game::step(bool skip_input) {
     if (!skip_input)
         Input::update();
-    renderer.update();
+    get_renderer().update();
     gui.update();
     for (auto editor_scene : EditorScenes::values()) {
         editor_scene->update();
     }
-    renderer.render();
+    get_renderer().render();
     FrameMark;
 }
 
@@ -58,7 +58,7 @@ void Game::shutdown() {
         scene->cleanup();
         delete scene;
     }
-    renderer.cleanup();
+    get_renderer().cleanup();
 }
 
 }

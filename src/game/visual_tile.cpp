@@ -10,9 +10,8 @@
 #include "general/math/math.hpp"
 #include "general/math/matrix_math.hpp"
 #include "game/scene.hpp"
-#include "game/game_file.hpp"
-#include "game/game_path.hpp"
 #include "renderer/draw_functions.hpp"
+#include "renderer/assets/model.hpp"
 #include "editor/widget_system.hpp"
 
 namespace spellbook {
@@ -133,7 +132,7 @@ umap<VisualTileCorners, vector<FilePath>> convert_to_entry_pool(const VisualTile
 
 bool inspect(VisualTileSet* tile_set) {
     bool changed = false;
-    ImGui::PathSelect("File", &tile_set->file_path, FileType_VisualTileSet);
+    ImGui::PathSelect<VisualTileSet>("File", &tile_set->file_path);
     for (auto& tile : tile_set->tiles) {
         ImGui::Text("Entry");
 
@@ -177,7 +176,7 @@ bool inspect(VisualTileSet* tile_set) {
             ImGui::PopStyleVar();
             ImGui::PopItemWidth();
 
-            changed |= ImGui::PathSelect("Model", &tile.model_path, FileType_Model);
+            changed |= ImGui::PathSelect<ModelCPU>("Model", &tile.model_path);
 
             if (ImGui::Button("Rotate 1")) {
                 tile.corners = apply_rotation(tile.corners, VisualTileRotation{.yaw = 1, .flip_x = false});
@@ -202,11 +201,11 @@ bool inspect(VisualTileSet* tile_set) {
     bool discard = true;
     if (ImGui::BeginPopupModal("Convert Folder", &discard)) {
         static umap<VisualTileSet*, FilePath> convert_paths;
-        FilePath& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = "models"_rp;
-        ImGui::PathSelect("Folder", &convert_path, FileType_Model);
+        FilePath& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = "models"_resource;
+        ImGui::PathSelect<ModelCPU>("Folder", &convert_path);
         if (ImGui::Button("Convert")) {
             for (auto& dir_entry : fs::directory_iterator(convert_path.abs_path())) {
-                if (path_filter(FileType_Model)(dir_entry)) {
+                if (ModelCPU::path_filter()(FilePath(dir_entry))) {
                     bool already_exists = false;
                     for (auto& tile : tile_set->tiles) {
                         if (tile.model_path == FilePath(dir_entry.path())) {
@@ -237,12 +236,24 @@ void visual_tile_widget_system(Scene* scene) {
     static uint64 mat_err_id;
     if (mesh_id == 0) {
         mesh_id = upload_mesh(generate_icosphere(2), false);
-        mat_off_id = upload_material(MaterialCPU{.file_path = FilePath("mat_off_name", true), .color_tint = palette::gray_1}, false);
-        mat_on1_id = upload_material(MaterialCPU{.file_path = FilePath("mat_on1_name", true), .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.60f, 0.3f, 0.8f)}, false);
-        mat_on2_id = upload_material(MaterialCPU{.file_path = FilePath("mat_on2_name", true), .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.08f, 0.7f, 0.6f)}, false);
-        mat_on3_id = upload_material(MaterialCPU{.file_path = FilePath("mat_on3_name", true), .color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.02f, 0.7f, 0.3f)}, false);
-        mat_on_id  = upload_material(MaterialCPU{.file_path = FilePath("mat_on_name", true), .color_tint = palette::gray_1, .emissive_tint = palette::white}, false);
-        mat_err_id = upload_material(MaterialCPU{.file_path = FilePath("mat_err_name", true), .color_tint = palette::gray_1, .emissive_tint = palette::red}, false);
+        MaterialCPU mat_off = MaterialCPU{.color_tint = palette::gray_1};
+        mat_off.file_path = "mat_off_name"_symbolic;
+        mat_off_id = upload_material(mat_off, false);
+        MaterialCPU mat_on1 = {.color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.60f, 0.3f, 0.8f)};
+        mat_on1.file_path = "mat_on1_name"_symbolic;
+        mat_on1_id = upload_material(mat_on1, false);
+        MaterialCPU mat_on2 = {.color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.08f, 0.7f, 0.6f)};
+        mat_on2.file_path = "mat_on2_name"_symbolic;
+        mat_on2_id = upload_material(mat_on2, false);
+        MaterialCPU mat_on3 = {.color_tint = palette::gray_1, .emissive_tint = Color::hsvf(0.02f, 0.7f, 0.3f)};
+        mat_on3.file_path = "mat_on3_name"_symbolic;
+        mat_on3_id = upload_material(mat_on3, false);
+        MaterialCPU mat_on = {.color_tint = palette::gray_1, .emissive_tint = palette::white};
+        mat_on.file_path = "mat_on_name"_symbolic;
+        mat_on_id  = upload_material(mat_on, false);
+        MaterialCPU mat_err = {.color_tint = palette::gray_1, .emissive_tint = palette::red};
+        mat_err.file_path = "mat_err_name"_symbolic;
+        mat_err_id = upload_material(mat_err, false);
     }
     for (auto [entity, vtsw] : scene->registry.view<VisualTileSetWidget>().each()) {
         if (vtsw.tile_set != nullptr) {

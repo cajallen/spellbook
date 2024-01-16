@@ -5,8 +5,8 @@
 
 #include "general/vector.hpp"
 #include "general/id_ptr.hpp"
+#include "general/file/resource.hpp"
 #include "game/entities/stat.hpp"
-#include "general/file_path.hpp"
 
 namespace spellbook {
 
@@ -58,6 +58,11 @@ struct SpawnerPrefab {
     vector<id_ptr<EnemySpawnInfo>> enemies;
 
     FilePath model_file_path;
+
+    static constexpr string_view extension() { return ".sbjspw"; }
+    static constexpr string_view dnd_key() { return "DND_SPAWNER"; }
+    static FilePath folder() { return "spawners"_resource; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == SpawnerPrefab::extension(); }; }
 };
 
 struct Spawner {

@@ -2,7 +2,7 @@
 
 #include "general/math/geometry.hpp"
 #include "general/math/matrix.hpp"
-#include "general/json.hpp"
+#include "general/file/json.hpp"
 
 namespace spellbook {
 

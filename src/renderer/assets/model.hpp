@@ -1,14 +1,13 @@
 #pragma once
 
-#include <filesystem>
-
-#include "renderer/assets/skeleton.hpp"
 #include "general/string.hpp"
 #include "general/vector.hpp"
 #include "general/umap.hpp"
+#include "general/memory.hpp"
 #include "general/id_ptr.hpp"
 #include "general/math/matrix.hpp"
-#include "general/file_path.hpp"
+#include "general/file/file_path.hpp"
+#include "renderer/assets/skeleton.hpp"
 
 namespace fs = std::filesystem;
 
@@ -22,10 +21,14 @@ struct RenderScene;
 struct SkeletonCPU;
 struct SkeletonGPU;
 
-struct ModelCPU {
-    FilePath file_path;
-    vector<FilePath> dependencies;
+struct ModelExternal {
+    static constexpr string_view extension() { return "?"; }
+    static constexpr string_view dnd_key() { return "DND_MODEL_EXTERNAL"; }
+    static FilePath folder() { return get_external_resource_folder(); }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return vector<string>{".glb", ".gltf"}.contains(path.extension()); }; }
+};
 
+struct ModelCPU : Resource {
     struct Node {
         string name;
         FilePath mesh_asset_path;
@@ -42,7 +45,7 @@ struct ModelCPU {
     
     vector<id_ptr<Node>> nodes = {};
     id_ptr<Node> root_node = id_ptr<Node>::null();
-    std::unique_ptr<SkeletonCPU> skeleton;
+    unique_ptr<SkeletonCPU> skeleton;
 
     vector<ModelCPU> split();
 
@@ -51,13 +54,18 @@ struct ModelCPU {
     ModelCPU(const ModelCPU& oth);
 
     ModelCPU& operator = (const ModelCPU& oth);
+
+    static constexpr string_view extension() { return ".sbjmod"; }
+    static constexpr string_view dnd_key() { return "DND_MODEL"; }
+    static FilePath folder() { return get_resource_folder() + "models"; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == ModelCPU::extension(); }; }
 };
 
 JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
 
 struct ModelGPU {
     umap<ModelCPU::Node*, Renderable*> renderables;
-    std::unique_ptr<SkeletonGPU> skeleton;
+    unique_ptr<SkeletonGPU> skeleton;
 
     ModelGPU() {
         renderables = {};
@@ -69,9 +77,9 @@ struct ModelGPU {
 };
 
 template <>
-bool     save_asset(const ModelCPU& asset_file);
+bool     save_resource(const ModelCPU& resource_file);
 template <>
-ModelCPU& load_asset(const FilePath& input_path, bool assert_exist, bool clear_cache);
+ModelCPU& load_resource(const FilePath& input_path, bool assert_exist, bool clear_cache);
 
 ModelGPU instance_model(RenderScene&, const ModelCPU&, bool frame = false);
 vector<StaticRenderable*> instance_static_model(RenderScene&, const ModelCPU&);

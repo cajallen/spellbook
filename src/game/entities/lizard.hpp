@@ -4,10 +4,9 @@
 
 #include "game/entities/ability.hpp"
 #include "general/string.hpp"
-#include "general/json.hpp"
-#include "general/math/geometry.hpp"
 #include "general/id_ptr.hpp"
-#include "general/file_path.hpp"
+#include "general/math/geometry.hpp"
+#include "general/file/resource.hpp"
 #include "game/entities/stat.hpp"
 
 namespace spellbook {
@@ -27,10 +26,7 @@ enum LizardType {
     LizardType_Warlock
 };
 
-struct LizardPrefab {
-    FilePath file_path;
-    vector<FilePath> dependencies;
-    
+struct LizardPrefab : Resource {
     LizardType type = LizardType_Empty;
     FilePath model_path;
     
@@ -40,6 +36,11 @@ struct LizardPrefab {
     FilePath hurt_path;
 
     float scale = 1.0f;
+
+    static constexpr string_view extension() { return ".sbjliz"; }
+    static constexpr string_view dnd_key() { return "DND_LIZARD"; }
+    static FilePath folder() { return "lizards"_resource; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == LizardPrefab::extension(); }; }
 };
 
 struct Lizard { // Component

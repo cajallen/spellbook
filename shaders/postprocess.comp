@@ -416,7 +416,7 @@ vec3 water(ivec2 coord, vec3 input_color, InputRead data, out float out_water_de
         vec4 h_position_topspace = top_vp * vec4(water_intersect, 1.0);
         vec3 position_topspace = h_position_topspace.xyz / h_position_topspace.w;
         vec2 uv = position_topspace.xy * 0.5 + vec2(0.5);
-        float foam = map_range(texture(s_top_depth, uv).r, 0.0, 0.05, 0.0, 1.0) *
+        float foam = map_range(texture(s_top_depth, uv).r, 0.02, 0.05, 0.0, 1.0) *
             map_range(water_intersect.z, -0.3, -0.7, 0.6, 1.0);
         
         float EPSILON_NRM	= 0.1 / target_width;

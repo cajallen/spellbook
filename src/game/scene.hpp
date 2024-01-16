@@ -50,10 +50,10 @@ struct Scene {
     CameraController controller;
     entt::registry   registry;
     entt::entity     selected_entity;
-    Shop shop;
-    Player player;
-    SpawnStateInfo* spawn_state_info;
-    Audio          audio;
+    Shop             shop;
+    Player           player;
+    SpawnStateInfo*  spawn_state_info;
+    Audio            audio;
     
     bool edit_mode = true; // disables certain features
     uint32 frame = 0;
@@ -92,6 +92,8 @@ struct Scene {
 
     bool get_object_placement(v3i& pos);
     bool get_object_placement(v2i pixel_offset, v3i& pos);
+
+    void release_selected();
 
     void set_edit_mode(bool to);
 };

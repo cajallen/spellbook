@@ -44,7 +44,7 @@ vector<entt::entity> MapTargeting::select_enemies(v3i pos, float in_future) {
     return enemy_map[pos];
 }
 
-entt::entity MapTargeting::select_lizard(v3i pos) {
+entt::entity MapTargeting::select_lizard(v3i pos, entt::entity exclude) {
     if (lizard_frame_ack < scene->frame) {
         lizard_frame_ack = scene->frame;
         lizard_cache.clear();

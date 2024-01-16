@@ -19,7 +19,7 @@ struct MapTargeting {
     uint32 enemy_frame_ack = 0;
 
     vector<entt::entity> select_enemies(v3i pos, float in_future);
-    entt::entity select_lizard(v3i pos);
+    entt::entity select_lizard(v3i pos, entt::entity exclude = {});
 };
 
 }

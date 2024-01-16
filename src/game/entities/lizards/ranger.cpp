@@ -11,7 +11,6 @@
 #include "editor/console.hpp"
 #include "game/game.hpp"
 #include "game/scene.hpp"
-#include "game/game_path.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/area_trigger.hpp"
 #include "game/entities/caster.hpp"
@@ -51,7 +50,7 @@ void RangerAttack::trigger() {
     auto ranger_model_transform = scene->registry.try_get<ModelTransform>(caster);
     auto& skeleton = model->model_cpu->skeleton;
 
-    scene->audio.play_sound("audio/ranger/bow_trigger.wav"_rp, {.position = logic_tfm.position});
+    scene->audio.play_sound("audio/ranger/bow_trigger.wav"_resource, {.position = logic_tfm.position});
     
     v3 arrow_pos = logic_tfm.position;
     Bone* arrow_bone = skeleton->find_bone("Arrow");
@@ -72,9 +71,9 @@ void RangerAttack::trigger() {
             if (projectile) {
                 LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
                 
-                scene->audio.play_sound("audio/ranger/arrow_impact.flac"_rp, {.position = v3(projectile->target)});
+                scene->audio.play_sound("audio/ranger/arrow_impact.flac"_resource, {.position = v3(projectile->target)});
                 
-                EmitterCPU hit_emitter = load_asset<EmitterCPU>("emitters/ranger/basic_hit.sbemt"_rp);
+                EmitterCPU hit_emitter = load_resource<EmitterCPU>("emitters/ranger/basic_hit.sbemt"_resource);
                 hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - logic_tfm.position));
                 quick_emitter(scene, "Ranger Basic Hit", v3(projectile->target) + v3(0.5f), hit_emitter, 0.1f);
 
@@ -128,12 +127,12 @@ void RangerAttack::trigger() {
                     health.damage_taken_multiplier->add_effect(uint64("ranger_mark"_hs), StatEffect{
                         .type = StatEffect::Type_Multiply,
                         .value = attack_vuln_amount
-                    }, &load_asset<EmitterCPU>("emitters/ranger/basic_mark.sbemt"_rp));
+                    }, &load_resource<EmitterCPU>("emitters/ranger/basic_mark.sbemt"_resource));
                 }
             }
         }
     };
-    quick_projectile(scene, projectile, arrow_pos, "emitters/ranger/basic_proj.sbemt"_rp, "models/hanther/hanther_arrow.sbmod"_rp, 0.5f);
+    quick_projectile(scene, projectile, arrow_pos, "emitters/ranger/basic_proj.sbemt"_resource, "models/hanther/hanther_arrow.sbmod"_resource, 0.5f);
 }
 
 
@@ -160,6 +159,7 @@ struct RangerSpell : Spell {
     void start() override;
     void trigger() override;
     void targeting() override;
+    void end() override;
 
     string get_name() const override { return "Ranger Spell"; }
 };
@@ -227,7 +227,7 @@ void RangerSpell::trigger() {
             scene_ptr->registry.emplace<Name>(trap_entity, fmt_("trap_{}", i++));
 
             auto& model_comp = registry.emplace<Model>(trap_entity);
-            model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>("models/hanther/hanther_trap.sbmod"_rp));
+            model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>("models/hanther/hanther_trap.sbmod"_resource));
             model_comp.model_gpu = instance_model(scene_ptr->render_scene, *model_comp.model_cpu);
             registry.emplace<PoseController>(trap_entity, *model_comp.model_cpu->skeleton);
             
@@ -269,7 +269,10 @@ void RangerSpell::trigger() {
 
         }
     };
-    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt"_rp, "models/hanther/hanther_trap.sbmod"_rp, 0.3f);
+    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt"_resource, "models/hanther/hanther_trap.sbmod"_resource, 0.3f);
+}
+
+void RangerSpell::end() {
 }
 
 void build_ranger(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {

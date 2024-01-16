@@ -3,46 +3,46 @@
 #include <filesystem>
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
+#include <windows.h>
+#include <shellapi.h>
 
+#include "general/input.hpp"
 #include "editor/console.hpp"
-#include "editor/asset_browser.hpp"
+#include "editor/file_browser.hpp"
 #include "editor/editor_scene.hpp"
 #include "editor/widget_system.hpp"
-#include "game/input.hpp"
 #include "game/game.hpp"
 #include "game/scene.hpp"
-#include "game/game_file.hpp"
 
 namespace fs = std::filesystem;
 
 namespace spellbook {
 
 void GUI::setup() {
-    fs::path gui_file = FilePath(string(game.user_folder) + "gui" + extension(FileType_General)).abs_path();
+    FilePath config_path = FilePath("gui" + string(Resource::extension()), FilePathLocation_Config);
 
-    if (!fs::exists(gui_file))
-        return;
-    
-    json j = parse_file(gui_file.string());
-    FROM_JSON_MEMBER(windows);
-    FROM_JSON_MEMBER(item_state);
-    FROM_JSON_MEMBER(asset_browser_file);
-    if (!fs::exists(fs::path(asset_browser_file))) {
-        asset_browser_file = fs::current_path().string();
+    if (fs::exists(config_path.abs_path())) {
+        json j = parse_file(config_path.abs_string());
+        FROM_JSON_MEMBER(windows);
+        FROM_JSON_MEMBER(item_state);
+        FROM_JSON_MEMBER(file_browser_path);
+        if (!fs::exists(file_browser_path.abs_path())) {
+            file_browser_path = FilePath();
+        }
     }
 
     WidgetSystem::setup();
 }
 
 void GUI::shutdown() {
-    fs::path gui_file = FilePath(string(game.user_folder) + "gui" + extension(FileType_General)).abs_path();
-    fs::create_directories(gui_file.parent_path());
+    FilePath config_path = FilePath("gui" + string(Resource::extension()), FilePathLocation_Config);
+    fs::create_directories(config_path.parent_path());
     
     auto j = json();
     TO_JSON_MEMBER(windows);
     TO_JSON_MEMBER(item_state);
-    TO_JSON_MEMBER(asset_browser_file);
-    file_dump(j, gui_file.string());
+    TO_JSON_MEMBER(file_browser_path);
+    file_dump(j, config_path.abs_string());
 }
 
 
@@ -65,6 +65,18 @@ void GUI::_main_menu_bar() {
                     v.opened = !v.opened;
                 v.queried = false;
             }
+            ImGui::EndMenu();
+
+        }
+        if (ImGui::BeginMenu("Open")) {
+            if (ImGui::MenuItem("User settings"))
+                ShellExecute(NULL, "open", (""_config).abs_string().c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+            if (ImGui::MenuItem("Resources"))
+                ShellExecute(NULL, "open", ("resources"_content).abs_string().c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+            if (ImGui::MenuItem("Import Folder"))
+                ShellExecute(NULL, "open", ("external"_content).abs_string().c_str(), NULL, NULL, SW_SHOWNORMAL);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -106,7 +118,9 @@ void GUI::update() {
         ImGui::ShowDemoWindow(p_open);
 
     for (int i = 0; i < EditorScenes::values().size(); i++) {
-        if (*(p_open = window_open(EditorScenes::values()[i]->p_scene->name)))
+        if (EditorScenes::values()[i]->p_scene == nullptr)
+            EditorScenes::values()[i]->window(nullptr);
+        else if (*(p_open = window_open(EditorScenes::values()[i]->p_scene->name)))
             EditorScenes::values()[i]->window(p_open);
     }
     if (*(p_open = window_open("console")))
@@ -122,13 +136,11 @@ void GUI::update() {
     if (*(p_open = window_open("input")))
         Input::debug_window(p_open);
     if (*(p_open = window_open("renderer")))
-        game.renderer.debug_window(p_open);
+        get_renderer().debug_window(p_open);
     if (*(p_open = window_open("colors")))
         color_window(p_open);
     if (*(p_open = window_open("asset_browser"))) {
-        std::filesystem::path asset_browser_path = asset_browser_file.empty() ? game.external_resource_folder : asset_browser_file;
-        asset_browser("Asset Browser", p_open, &asset_browser_path);
-        asset_browser_file = asset_browser_path.string();
+        file_browser("File Browser", p_open, &file_browser_path);
     }
 }
 

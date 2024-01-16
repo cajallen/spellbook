@@ -11,16 +11,13 @@
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
 #include "general/math/matrix_math.hpp"
-#include "game/game.hpp"
-#include "game/game_file.hpp"
-#include "editor/console.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/renderable.hpp"
 #include "renderer/render_scene.hpp"
+#include "renderer/gpu_asset_cache.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
-#include "renderer/assets/mesh_asset.hpp"
-#include "renderer/assets/texture_asset.hpp"
+#include "renderer/assets/skeleton.hpp"
 
 namespace spellbook {
 
@@ -88,7 +85,7 @@ vector<ModelCPU> ModelCPU::split() {
 }
 
 bool inspect(ModelCPU* model, RenderScene* render_scene) {
-    ImGui::PathSelect("File", &model->file_path, FileType_Model, false);
+    ImGui::PathSelect<ModelCPU>("File", &model->file_path, false);
 
     bool changed = false;
 
@@ -100,8 +97,8 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
             ImGui::Text("Index: %d", model->nodes.find(node));
-            changed |= ImGui::PathSelect("mesh_asset_path", &node->mesh_asset_path, FileType_Mesh);
-            changed |= ImGui::PathSelect("material_asset_path", &node->material_asset_path, FileType_Material);
+            changed |= ImGui::PathSelect<MeshCPU>("mesh_asset_path", &node->mesh_asset_path);
+            changed |= ImGui::PathSelect<MaterialCPU>("material_asset_path", &node->material_asset_path);
             if (ImGui::TreeNode("Transform")) {
                 if (ImGui::DragMat4("##Transform", &node->transform, 0.02f, "%.2f")) {
                     changed = true;
@@ -156,8 +153,8 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool f
 
         uint64 mesh_id = hash_path(node.mesh_asset_path);
         uint64 material_id = hash_path(node.material_asset_path);
-        game.renderer.file_path_cache[mesh_id] = node.mesh_asset_path;
-        game.renderer.file_path_cache[material_id] = node.material_asset_path;
+        get_gpu_asset_cache().paths[mesh_id] = node.mesh_asset_path;
+        get_gpu_asset_cache().paths[material_id] = node.material_asset_path;
 
         auto new_renderable = render_scene.add_renderable(Renderable(
             mesh_id,
@@ -181,11 +178,11 @@ vector<StaticRenderable*> instance_static_model(RenderScene& render_scene, const
 
         uint64 mesh_id = hash_path(node.mesh_asset_path);
         uint64 material_id = hash_path(node.material_asset_path);
-        game.renderer.file_path_cache[mesh_id] = node.mesh_asset_path;
-        game.renderer.file_path_cache[material_id] = node.material_asset_path;
+        get_gpu_asset_cache().paths[mesh_id] = node.mesh_asset_path;
+        get_gpu_asset_cache().paths[material_id] = node.material_asset_path;
 
-        game.renderer.get_mesh_or_upload(mesh_id);
-        game.renderer.get_material_or_upload(material_id);
+        get_gpu_asset_cache().get_mesh_or_upload(mesh_id);
+        get_gpu_asset_cache().get_material_or_upload(material_id);
 
         renderables.push_back(&*render_scene.static_renderables.emplace(StaticRenderable{
             mesh_id,
@@ -197,7 +194,7 @@ vector<StaticRenderable*> instance_static_model(RenderScene& render_scene, const
 }
 
 template<>
-bool save_asset(const ModelCPU& model) {
+bool save_resource(const ModelCPU& model) {
     json j;
     j["dependencies"] = make_shared<json_value>(to_jv(model.dependencies));
     j["root_node"] = make_shared<json_value>(to_jv(model.root_node));
@@ -207,37 +204,32 @@ bool save_asset(const ModelCPU& model) {
         json_nodes.push_back(to_jv_full(node));
     }
     j["nodes"] = make_shared<json_value>(to_jv(json_nodes));
-    if (model.skeleton)
+    if (model.skeleton) {
         if (model.skeleton->prefab) {
-            save_asset<SkeletonPrefab>(*model.skeleton->prefab);
+            save_resource<SkeletonPrefab>(*model.skeleton->prefab);
             j["skeleton"] = make_shared<json_value>(to_jv(model.skeleton->prefab->file_path));
         }
+    }
     
     string ext = model.file_path.rel_path().extension().string();
-    assert_else(ext == extension(FileType_Model))
+    assert_else(ext == ModelCPU::extension())
         return false;
     
     file_dump(j, model.file_path.abs_string());
     return true;
 }
 
-fs::path _convert_to_relative(const fs::path& path) {
-    return path.lexically_proximate(game.resource_folder);
-}
-
 template<>
-ModelCPU& load_asset(const FilePath& input_path, bool assert_exists, bool clear_cache) {
-    fs::path absolute_path = input_path.abs_path();
-    if (clear_cache && cpu_asset_cache<ModelCPU>().contains(input_path))
-        cpu_asset_cache<ModelCPU>().erase(input_path);
-    if (cpu_asset_cache<ModelCPU>().contains(input_path))
-        return *cpu_asset_cache<ModelCPU>()[input_path];
+ModelCPU& load_resource(const FilePath& input_path, bool assert_exists, bool clear_cache) {
+    if (clear_cache && cpu_resource_cache<ModelCPU>().contains(input_path))
+        cpu_resource_cache<ModelCPU>().erase(input_path);
+    if (cpu_resource_cache<ModelCPU>().contains(input_path))
+        return *cpu_resource_cache<ModelCPU>()[input_path];
 
-    ModelCPU& model = *cpu_asset_cache<ModelCPU>().emplace(input_path, std::make_unique<ModelCPU>()).first->second;
+    ModelCPU& model = *cpu_resource_cache<ModelCPU>().emplace(input_path, std::make_unique<ModelCPU>()).first->second;
     
-    string ext = absolute_path.extension().string();
-    bool exists = fs::exists(absolute_path);
-    bool corrext = ext == extension(from_typeinfo(typeid(ModelCPU)));
+    bool exists = fs::exists(input_path.abs_path());
+    bool corrext = input_path.extension() == ModelCPU::extension();
     if (assert_exists) {
         assert_else(exists && corrext)
             return model;
@@ -246,9 +238,9 @@ ModelCPU& load_asset(const FilePath& input_path, bool assert_exists, bool clear_
             return model;
     }
 
-    json& j = game.asset_system.load_json(input_path);
+    json& j = get_file_cache().load_json(input_path);
     model.file_path = input_path;
-    model.dependencies = game.asset_system.load_dependencies(j);
+    model.dependencies = get_file_cache().load_dependencies(j);
     
     if (j.contains("nodes")) {
         for (const json_value& jv : j["nodes"]->get_list()) {
@@ -267,7 +259,7 @@ ModelCPU& load_asset(const FilePath& input_path, bool assert_exists, bool clear_
 
     if (j.contains("skeleton")) {
         model.skeleton = std::make_unique<SkeletonCPU>(instance_prefab(
-            load_asset<SkeletonPrefab>(from_jv<FilePath>(*j["skeleton"]), true)
+            load_resource<SkeletonPrefab>(from_jv<FilePath>(*j["skeleton"]), true)
         ));
     }
     model.root_node->cache_transform();
@@ -313,7 +305,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
     fs::path output_folder_path = output_folder.abs_path();
 
     const auto& ext = input_path.rel_path().extension().string();
-    assert_else(path_filter(FileType_ModelAsset)(input_path.abs_path()))
+    assert_else(ModelExternal::path_filter()(input_path))
         return {};
     tinygltf::Model    gltf_model;
     tinygltf::TinyGLTF loader;
@@ -324,15 +316,15 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
        : loader.LoadBinaryFromFile(&gltf_model, &err, &warn, input_path.abs_string());
 
     if (!warn.empty())
-        console_error(fmt_("Conversion warning while loading \"{}\": {}", input_path.abs_string(), warn), "asset.import", ErrorType_Warning);
+        log_warning(fmt_("Conversion warning while loading \"{}\": {}", input_path.abs_string(), warn), "asset.import");
     if (!err.empty())
-        console_error(fmt_("Conversion error while loading \"{}\": {}", input_path.abs_string(), err), "asset.import", ErrorType_Severe);
+        log_error(fmt_("Conversion error while loading \"{}\": {}", input_path.abs_string(), err), "asset.import");
     assert_else(ret)
         return {};
 
     ModelCPU model_cpu;
     fs::path model_fs_path = output_folder_path / output_name;
-    model_fs_path.replace_extension(extension(FileType_Model));
+    model_fs_path.replace_extension(ModelCPU::extension());
     model_cpu.file_path = FilePath(model_fs_path);
     
     _convert_gltf_skeletons(gltf_model, &model_cpu, replace_existing_poses);
@@ -389,8 +381,8 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
             string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0);
             string material_name = _calculate_gltf_material_name(gltf_model, material);
 
-            fs::path mesh_path     = output_folder_path / (mesh_name + extension(FileType_Mesh));
-            fs::path material_path = output_folder_path / (material_name + extension(FileType_Material));
+            fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
+            fs::path material_path = output_folder_path / (material_name + string(MaterialCPU::extension()));
 
             model_node.name                = gltf_node.name;
             model_node.mesh_asset_path     = FilePath(mesh_path);
@@ -435,8 +427,8 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
             string material_name = _calculate_gltf_material_name(gltf_model, material);
             string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive);
 
-            fs::path material_path = output_folder_path / (material_name + extension(FileType_Material));
-            fs::path mesh_path     = output_folder_path / (mesh_name + extension(FileType_Mesh));
+            fs::path material_path = output_folder_path / (material_name + string(MaterialCPU::extension()));
+            fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
 
             model_node_ptr->name      = model_cpu.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
             model_node_ptr->mesh_asset_path      = FilePath(mesh_path);
@@ -500,9 +492,9 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
         return true;
     
     fs::path skeleton_fs_path = model_cpu->file_path.abs_path();
-    skeleton_fs_path.replace_extension(extension(FileType_Skeleton));
+    skeleton_fs_path.replace_extension(SkeletonPrefab::extension());
     FilePath skeleton_path = FilePath(skeleton_fs_path);
-    SkeletonPrefab& skeleton = load_asset<SkeletonPrefab>(skeleton_path, false);
+    SkeletonPrefab& skeleton = load_resource<SkeletonPrefab>(skeleton_path, false);
     skeleton.file_path = skeleton_path;
     
     for (uint32 i_bone = 0; i_bone < model.skins[0].joints.size(); i_bone++) {
@@ -944,7 +936,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const FilePath& output_folder)
             MeshCPU mesh_cpu;
 
             string name = _calculate_gltf_mesh_name(model, i_mesh, i_primitive);
-            mesh_cpu.file_path = FilePath(output_folder.abs_path() / (name + extension(FileType_Mesh)));
+            mesh_cpu.file_path = FilePath(output_folder.abs_path() / (name + string(MeshCPU::extension())));
 
             auto& primitive = gltf_mesh.primitives[i_primitive];
             _extract_gltf_indices(primitive, model, mesh_cpu.indices);
@@ -988,7 +980,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const FilePath& output_fold
                 baseImage.name = texture_names[i];
 
             fs::path color_path = (output_folder_path / baseImage.name).string();
-            color_path.replace_extension(extension(FileType_Texture));
+            color_path.replace_extension(TextureCPU::extension());
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
             TextureCPU texture_cpu = {
@@ -1002,15 +994,17 @@ bool _convert_gltf_materials(tinygltf::Model& model, const FilePath& output_fold
             *texture_files[i] = texture_cpu.file_path;
         }
 
-        material_cpu.color_tint = Color((float) pbr.baseColorFactor[0],
-            (float) pbr.baseColorFactor[1],
-            (float) pbr.baseColorFactor[2],
-            (float) pbr.baseColorFactor[3]);
-        material_cpu.emissive_tint    = material_cpu.emissive_asset_path == FilePath("white", true) ? palette::black : palette::white;
+        material_cpu.color_tint = Color(
+            float(pbr.baseColorFactor[0]),
+            float(pbr.baseColorFactor[1]),
+            float(pbr.baseColorFactor[2]),
+            float(pbr.baseColorFactor[3])
+        );
+        material_cpu.emissive_tint    = material_cpu.emissive_asset_path == "white"_symbolic ? palette::black : palette::white;
         material_cpu.roughness_factor = pbr.roughnessFactor;
         material_cpu.metallic_factor  = pbr.metallicFactor;
-        material_cpu.normal_factor    = material_cpu.normal_asset_path == FilePath("white", true) ? 0.0f : 0.5f;
-        fs::path material_path        = output_folder_path / (matname + extension(FileType_Material));
+        material_cpu.normal_factor    = material_cpu.normal_asset_path == "white"_symbolic ? 0.0f : 0.5f;
+        fs::path material_path        = output_folder_path / (matname + string(MaterialCPU::extension()));
         material_cpu.file_path        = FilePath(material_path);
 
         if (glmat.alphaMode.compare("BLEND") == 0) {

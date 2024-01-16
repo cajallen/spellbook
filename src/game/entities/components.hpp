@@ -117,6 +117,11 @@ struct Dragging {
     }
 };
 
+struct ForceDragging {
+    v3 target;
+    float time;
+};
+
 struct Collision {
     float                radius = 0.0f;
     uset<entt::entity> with = {};
@@ -148,9 +153,11 @@ void on_gridslot_create(Scene& scene, entt::registry& registry, entt::entity ent
 void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
-void on_health_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+
+void on_forcedrag_create(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_forcedrag_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 
 
 }

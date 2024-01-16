@@ -26,8 +26,7 @@ bool game_scene_click_dragging(ClickCallbackArgs args) {
         return true;
     }
     if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
-        game_scene.p_scene->registry.clear<Dragging>();
-        game_scene.p_scene->selected_entity = entt::null;
+        game_scene.p_scene->release_selected();
     }
     return false;
 }
@@ -47,8 +46,7 @@ void GameScene::update() {
     p_scene->update();
 
     if (Input::mouse_release[GLFW_MOUSE_BUTTON_LEFT]) {
-        p_scene->registry.clear<Dragging>();
-        p_scene->selected_entity = entt::null;
+        p_scene->release_selected();
     }
 }
 

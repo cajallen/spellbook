@@ -14,18 +14,19 @@
 #include "general/hash.hpp"
 #include "general/math/math.hpp"
 #include "general/logger.hpp"
-#include "game/game.hpp"
-#include "game/input.hpp"
-#include "game/game_file.hpp"
-#include "editor/console.hpp"
+#include "general/input.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/samplers.hpp"
 #include "renderer/utils.hpp"
-#include "renderer/assets/texture_asset.hpp"
-#include "renderer/assets/mesh_asset.hpp"
+#include "renderer/gpu_asset_cache.hpp"
 
 namespace spellbook {
+
+Renderer& get_renderer() {
+    static Renderer renderer;
+    return renderer;
+}
 
 Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
@@ -37,7 +38,7 @@ Renderer::Renderer() : imgui_data() {
             void*                                                     pUserData) -> VkBool32 {
                 auto ms = vkb::to_string_message_severity(messageSeverity);
                 auto mt = vkb::to_string_message_type(messageType);
-                console({.str = fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), .group = "vulkan", .color = palette::crimson});
+                log_error(fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), "renderer");
                 __debugbreak();
                 return VK_FALSE;
             })
@@ -60,7 +61,7 @@ Renderer::Renderer() : imgui_data() {
 
     GLFWimage image;
 
-    string icon_path = ("icon.png"_fp).abs_string();
+    string icon_path = ("icon.png"_distributed).abs_string();
     image.pixels = stbi_load(icon_path.c_str(), &image.width, &image.height, nullptr, 4);
     if (image.pixels != nullptr) {
         glfwSetWindowIcon(window, 1, &image);
@@ -143,69 +144,70 @@ void Renderer::add_scene(RenderScene* scene) {
     }
 }
 
-FilePath shader_path(string_view file) {
-    return FilePath("shaders/"s + string(file));
-}
-
 void Renderer::setup() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsSpellbook();
+    imgui_ini_path = new char[256];
+    strcpy(imgui_ini_path, ("imgui.ini"_config).abs_string().c_str());
+    ImGui::GetIO().IniFilename = imgui_ini_path;
+
     ImGui_ImplGlfw_InitForVulkan(window, false);
 
-    FilePath imgui_vert_path = shader_path("imgui.vert.spv");
-    FilePath imgui_frag_path = shader_path("imgui.frag.spv");
+    FilePath imgui_vert_path = "shaders/imgui.vert.spv"_distributed;
+    FilePath imgui_frag_path = "shaders/imgui.frag.spv"_distributed;
     ImGuiShaderInfo imgui_shaders = {
         imgui_vert_path.abs_string(), get_contents_uint32(imgui_vert_path),
         imgui_frag_path.abs_string(), get_contents_uint32(imgui_frag_path)
     };
 
     imgui_data = ImGui_ImplVuk_Init(*global_allocator, compiler, imgui_shaders);
+
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::GetIO().ConfigDockingWithShift = true;
 
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("depth_outline.comp")), shader_path("depth_outline.comp").abs_string());
-        game.renderer.context->create_named_pipeline("postprocess", pci);
+        pci.add_glsl(get_contents("shaders/postprocess.comp"_distributed), "shaders/postprocess.comp"_distributed.abs_string());
+        context->create_named_pipeline("postprocess", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("blur.comp")), shader_path("blur.comp").abs_string());
-        game.renderer.context->create_named_pipeline("blur", pci);
+        pci.add_glsl(get_contents("shaders/blur.comp"_distributed), "shaders/blur.comp"_distributed.abs_string());
+        context->create_named_pipeline("blur", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
-        pci.add_glsl(get_contents(shader_path("textured_3d.frag")), shader_path("textured_3d.frag").abs_string());
+        pci.add_glsl(get_contents("shaders/standard_3d.vert"_distributed), "shaders/standard_3d.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/textured_3d.frag"_distributed), "shaders/textured_3d.frag"_distributed.abs_string());
         context->create_named_pipeline("textured_model", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
-        pci.add_glsl(get_contents(shader_path("desert_rocks.frag")), shader_path("desert_rocks.frag").abs_string());
+        pci.add_glsl(get_contents("shaders/standard_3d.vert"_distributed), "shaders/standard_3d.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/desert_rocks.frag"_distributed), "shaders/desert_rocks.frag"_distributed.abs_string());
         context->create_named_pipeline("desert_rocks", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
-        pci.add_glsl(get_contents(shader_path("point_depth.frag")), shader_path("point_depth.frag").abs_string());
+        pci.add_glsl(get_contents("shaders/standard_3d.vert"_distributed), "shaders/standard_3d.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/point_depth.frag"_distributed), "shaders/point_depth.frag"_distributed.abs_string());
         context->create_named_pipeline("point_depth", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("standard_3d.vert")), shader_path("standard_3d.vert").abs_string());
-        pci.add_glsl(get_contents(shader_path("directional_depth.frag")), shader_path("directional_depth.frag").abs_string());
+        pci.add_glsl(get_contents("shaders/standard_3d.vert"_distributed), "shaders/standard_3d.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/directional_depth.frag"_distributed), "shaders/directional_depth.frag"_distributed.abs_string());
         context->create_named_pipeline("directional_depth", pci);
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents(shader_path("infinite_plane.vert")), shader_path("infinite_plane.vert").abs_string());
-        pci.add_glsl(get_contents(shader_path("grid.frag")), shader_path("grid.frag").abs_string());
-        game.renderer.context->create_named_pipeline("grid_3d", pci);
+        pci.add_glsl(get_contents("shaders/infinite_plane.vert"_distributed), "shaders/infinite_plane.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/grid.frag"_distributed), "shaders/grid.frag"_distributed.abs_string());
+        context->create_named_pipeline("grid_3d", pci);
     }
 
-    upload_defaults();
+    get_gpu_asset_cache().upload_defaults();
 
     {
         // OPTIMIZATION: can thread
@@ -217,6 +219,15 @@ void Renderer::setup() {
     wait_for_futures();
 
     stage = RenderStage_Inactive;
+
+    Input::add_callback<ResizeCallback>(InputCallbackInfo<ResizeCallback>{
+        .callback = [](ResizeCallbackArgs args)-> bool {
+            get_renderer().resize({args.x, args.y});
+            return false;
+        },
+        .priority = 0,
+        .name = "framebuffer_resize"
+    });
 }
 
 void Renderer::update() {
@@ -247,7 +258,7 @@ void Renderer::render() {
 
     stage = RenderStage_BuildingRG;
     
-    std::shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
+    shared_ptr<vuk::RenderGraph> rg = std::make_shared<vuk::RenderGraph>("renderer");
     std::vector resources{"SWAPCHAIN+"_image >> vuk::eColorWrite >> "SWAPCHAIN++"};
     for (auto scene : scenes) {
         ZoneScoped;
@@ -277,7 +288,7 @@ void Renderer::render() {
     rg_p->release_for_present("_src");
     
     stage    = RenderStage_Presenting;
-    auto erg = *game.renderer.compiler.link(std::span{ &rg_p, 1 }, {});
+    auto erg = *compiler.link(std::span{ &rg_p, 1 }, {});
     bundle = *acquire_one(*context, swapchain, (*present_ready)[context->get_frame_count() % 3], (*render_complete)[context->get_frame_count() % 3]);
     auto result = *execute_submit(*frame_allocator, std::move(erg), std::move(bundle));
     present_to_one(*context, std::move(result));
@@ -298,28 +309,7 @@ void Renderer::render() {
         }
     }
 
-    auto mesh_it = mesh_cache.begin();
-    while (mesh_it != mesh_cache.end()) {
-        if (mesh_it->second.frame_allocated)
-            mesh_it = mesh_cache.erase(mesh_it);
-        else
-            mesh_it++;
-    }
-    auto tex_it = texture_cache.begin();
-    while (tex_it != texture_cache.end()) {
-        if (tex_it->second.frame_allocated)
-            tex_it = texture_cache.erase(tex_it);
-        else
-            tex_it++;
-    }
-    auto mat_it = material_cache.begin();
-    
-    while (mat_it != material_cache.end()) {
-        if (mat_it->second.frame_allocated)
-            mat_it = material_cache.erase(mat_it);
-        else
-            mat_it++;
-    }
+    get_gpu_asset_cache().clear_frame_allocated_assets();
     frame_allocator.reset();
 
     stage = RenderStage_Inactive;
@@ -330,11 +320,10 @@ void Renderer::cleanup() {
     for (auto scene : scenes) {
         scene->cleanup(*global_allocator);
     }
-    mesh_cache.clear();
-    material_cache.clear();
-    texture_cache.clear();
+    get_gpu_asset_cache().clear();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+    delete imgui_ini_path;
 }
 
 Renderer::~Renderer() {
@@ -352,7 +341,7 @@ Renderer::~Renderer() {
 
 void Renderer::wait_for_futures() {
     ZoneScoped;
-    vuk::wait_for_futures_explicit(*global_allocator, game.renderer.compiler, futures);
+    vuk::wait_for_futures_explicit(*global_allocator, compiler, futures);
     futures.clear();
 }
 
@@ -374,50 +363,6 @@ void Renderer::resize(v2i new_size) {
     swapchain = new_swapchain;
 }
 
-MeshGPU* Renderer::get_mesh(uint64 id) {
-    if (mesh_cache.contains(id))
-        return &mesh_cache[id];
-    return nullptr;
-}
-
-MaterialGPU* Renderer::get_material(uint64 id) {
-    if (material_cache.contains(id))
-        return &material_cache[id];
-    return nullptr;
-}
-
-TextureGPU* Renderer::get_texture(uint64 id) {
-    if (texture_cache.contains(id))
-        return &texture_cache[id];
-    return nullptr;
-}
-
-MeshGPU& Renderer::get_mesh_or_upload(uint64 id) {
-    if (mesh_cache.contains(id))
-        return mesh_cache[id];
-    assert_else(file_path_cache.contains(id));
-    upload_mesh(load_mesh(file_path_cache[id]));
-    return mesh_cache[id];
-}
-
-MaterialGPU& Renderer::get_material_or_upload(uint64 id) {
-    if (material_cache.contains(id))
-        return material_cache[id];
-    assert_else(file_path_cache.contains(id));
-    upload_material(load_material(file_path_cache[id]));
-    return material_cache[id];
-}
-
-TextureGPU& Renderer::get_texture_or_upload(const FilePath& asset_path) {
-    assert_else(asset_path.is_file());
-    uint64 hash = hash_path(asset_path);
-    if (texture_cache.contains(hash))
-        return texture_cache[hash];
-    upload_texture(load_texture(asset_path));
-    return texture_cache[hash];
-}
-
-
 void Renderer::debug_window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Renderer", p_open)) {
@@ -427,51 +372,6 @@ void Renderer::debug_window(bool* p_open) {
     }
     ImGui::End();
 }
-
-
-void Renderer::upload_defaults() {
-    TextureCPU tex_white_upload {
-        .file_path = FilePath("white", true),
-        .size = v2i(8, 8),
-        .format = vuk::Format::eR8G8B8A8Srgb,
-        .pixels = vector<uint8>(8 * 8 * 4, 255)
-    };
-    upload_texture(tex_white_upload);
-
-    constexpr uint32 grid_size = 1024;
-    TextureCPU tex_grid_upload {
-        .file_path = FilePath("grid", true),
-        .size = v2i(grid_size, grid_size),
-        .format = vuk::Format::eR8G8B8A8Srgb,
-        .pixels = vector<uint8>(grid_size * grid_size * 4, 255)
-    };
-    // do border
-    for (uint32 i = 0; i < (grid_size - 1); i++) {
-        for (uint32 pixel_pos : vector<uint32>{i, i * grid_size + (grid_size - 1), (grid_size - 1) * grid_size + i + 1, i * grid_size + grid_size}) {
-            tex_grid_upload.pixels[pixel_pos * 4 + 0] = 0;
-            tex_grid_upload.pixels[pixel_pos * 4 + 1] = 0;
-            tex_grid_upload.pixels[pixel_pos * 4 + 2] = 0;
-        }
-    }
-    upload_texture(tex_grid_upload);
-
-    MaterialCPU default_mat = {
-        .file_path = FilePath("default", true),
-        .color_tint = palette::black,
-    };
-    upload_material(default_mat);
-    TextureCPU default_tex = {
-        .file_path = FilePath("default", true),
-        .size = {2, 2},
-        .format = vuk::Format::eR8G8B8A8Srgb,
-        .pixels = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255}
-    };
-    upload_texture(default_tex);
-    MeshCPU default_mesh   = generate_cube(v3(0), v3(1));
-    default_mesh.file_path = FilePath("default", true);
-    upload_mesh(default_mesh);
-}
-
 
 void FrameTimer::update() {
     int last_index   = ptr;

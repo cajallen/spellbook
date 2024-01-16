@@ -4,7 +4,7 @@
 #include "general/math/geometry.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/viewport.hpp"
-#include "game/input.hpp"
+#include "general/input.hpp"
 
 struct GLFWwindow;
 

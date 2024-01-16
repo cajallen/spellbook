@@ -4,7 +4,6 @@
 
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
-#include "game/game_file.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/tile.hpp"
@@ -16,7 +15,7 @@ namespace fs = std::filesystem;
 namespace spellbook {
 
 bool inspect(MapPrefab* map_prefab) {
-    ImGui::PathSelect("File", &map_prefab->file_path, FileType_Map);
+    ImGui::PathSelect<MapPrefab>("File", &map_prefab->file_path);
     inspect_dependencies(map_prefab->dependencies, map_prefab->file_path);
     
     ImGui::Text("Lizards");
@@ -25,7 +24,7 @@ bool inspect(MapPrefab* map_prefab) {
         ImGui::Text("%d", lizard_i++);
         ImGui::Indent();
         ImGui::PushID(prefab.rel_c_str());
-        ImGui::PathSelect("Path", &prefab, FileType_Lizard);
+        ImGui::PathSelect<LizardPrefab>("Path", &prefab);
         ImGui::PopID();
         ImGui::Unindent();
     }
@@ -37,7 +36,7 @@ bool inspect(MapPrefab* map_prefab) {
             ImGui::Text("%d", tile_i++);
             ImGui::Indent();
             ImGui::PushID(entry.prefab_path.rel_c_str());
-            ImGui::PathSelect("Path", &entry.prefab_path, FileType_Tile);
+            ImGui::PathSelect<TilePrefab>("Path", &entry.prefab_path);
             int rot = entry.rotation;
             if (ImGui::SliderInt("Rotation", &rot, 0, 3))
                 entry.rotation = rot;
@@ -54,7 +53,7 @@ bool inspect(MapPrefab* map_prefab) {
         ImGui::Text("%d", spawner_i++);
         ImGui::Indent();
         ImGui::PushID(prefab.rel_c_str());
-        ImGui::PathSelect("Path", &prefab, FileType_Spawner);
+        ImGui::PathSelect<SpawnerPrefab>("Path", &prefab);
         ImGui::PopID();
         ImGui::Unindent();
     }
@@ -66,7 +65,7 @@ bool inspect(MapPrefab* map_prefab) {
         ImGui::Text("%d", consumer_i++);
         ImGui::Indent();
         ImGui::PushID(prefab.rel_c_str());
-        ImGui::PathSelect("Path", &prefab, FileType_Consumer);
+        ImGui::PathSelect<ConsumerPrefab>("Path", &prefab);
         ImGui::PopID();
         ImGui::Unindent();
     }
@@ -81,22 +80,22 @@ Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     for (auto& [pos, prefab] : map_prefab.lizards) {
         if (!prefab.is_file())
             continue;
-        instance_prefab(scene, load_asset<LizardPrefab>(prefab), pos);
+        instance_prefab(scene, load_resource<LizardPrefab>(prefab), pos);
     }
     for (auto& [pos, entry] : map_prefab.tiles) {
         if (!entry.prefab_path.is_file())
             continue;
-        instance_prefab(scene, load_asset<TilePrefab>(entry.prefab_path), pos, entry.rotation);
+        instance_prefab(scene, load_resource<TilePrefab>(entry.prefab_path), pos, entry.rotation);
     }
     for (auto& [pos, prefab] : map_prefab.spawners) {
         if (!prefab.is_file())
             continue;
-        instance_prefab(scene, load_asset<SpawnerPrefab>(prefab), pos);
+        instance_prefab(scene, load_resource<SpawnerPrefab>(prefab), pos);
     }
     for (auto& [pos, prefab] : map_prefab.consumers) {
         if (!prefab.is_file())
             continue;
-        instance_prefab(scene, load_asset<ConsumerPrefab>(prefab), pos);
+        instance_prefab(scene, load_resource<ConsumerPrefab>(prefab), pos);
     }
     return scene;
 }

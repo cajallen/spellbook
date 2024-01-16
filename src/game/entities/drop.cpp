@@ -14,7 +14,7 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", bead_prefab.file_path.stem(), i++));
     
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(bead_prefab.model_path));
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(bead_prefab.model_path));
     model_comp.model_gpu = std::move(instance_model(scene->render_scene, *model_comp.model_cpu));
 
     scene->registry.emplace<LogicTransform>(entity, position);
@@ -28,12 +28,12 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
 
 bool inspect(BeadPrefab* bead_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &bead_prefab->file_path, FileType_Drop, true);
+    ImGui::PathSelect<BeadPrefab>("File", &bead_prefab->file_path, true);
 
     changed |= inspect_dependencies(bead_prefab->dependencies, bead_prefab->file_path);
     
     changed |= ImGui::EnumCombo("Type", &bead_prefab->type);
-    changed |= ImGui::PathSelect("Model", &bead_prefab->model_path, FileType_Model, true);
+    changed |= ImGui::PathSelect<ModelCPU>("Model", &bead_prefab->model_path, true);
     changed |= ImGui::DragFloat("Scale", &bead_prefab->scale, 0.01f);
     return changed;
 }
@@ -59,7 +59,7 @@ Color bead_color(Bead bead) {
 
 bool inspect(DropChance::Entry* drop_chance_entry) {
     bool changed = false;
-    changed |= ImGui::PathSelect("Drop", &drop_chance_entry->bead_prefab_path, FileType_Drop);
+    changed |= ImGui::PathSelect<BeadPrefab>("Drop", &drop_chance_entry->bead_prefab_path);
     changed |= ImGui::SliderFloat("Drop Chance", &drop_chance_entry->drop_chance, 0.0f, 1.0f);
     return changed;
 }

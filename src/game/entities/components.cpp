@@ -10,7 +10,6 @@
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
-#include "game/game_path.hpp"
 #include "game/entities/tags.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/spawner.hpp"
@@ -204,7 +203,7 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
     value -= hurt_value;
 
     if (emitter_cpu_path.is_file()) {
-        EmitterCPU hurt_emitter = load_asset<EmitterCPU>(emitter_cpu_path);
+        EmitterCPU hurt_emitter = load_resource<EmitterCPU>(emitter_cpu_path);
         hurt_emitter.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
         uint64 random_id = math::random_uint64();
         EmitterComponent& emitter = scene->registry.get<EmitterComponent>(entity);
@@ -227,7 +226,7 @@ void Health::apply_dot(entt::entity damager, uint64 id, const StatEffect& effect
 
 
 void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu) {
-    emitters[id] = &instance_emitter(scene->render_scene, emitter_cpu);
+    emitters[id] = &instance_emitter(scene->render_scene, emitter_cpu, Input::time);
 }
 
 void EmitterComponent::remove_emitter(uint64 id) {
@@ -242,7 +241,7 @@ entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 locat
     scene->registry.emplace<AddToInspect>(entity);
 
     auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(model_path));
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(model_path));
     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
@@ -295,8 +294,20 @@ void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity ent
 void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
     auto& dragging = registry.get<Dragging>(entity);
     auto& logic_tfm = registry.get<LogicTransform>(entity);
-    
-    scene.audio.play_sound("audio/step.flac"_rp, {.position = logic_tfm.position});
+
+    // we can't rely on select lizard, because the mapping breaks down while dragging
+    entt::entity potential_swap = entt::null;
+    for (auto [potential_entity, potential_lizard, potential_logic_tfm] : scene.registry.view<Lizard, LogicTransform>().each()) {
+        if (entity == potential_entity)
+            continue;
+        if (math::distance(dragging.potential_logic_position, potential_logic_tfm.position) < 0.1f)
+            potential_swap = potential_entity;
+    }
+    if (scene.registry.valid(potential_swap)) {
+        scene.registry.emplace<ForceDragging>(potential_swap, dragging.start_logic_position, 0.2f);
+    }
+
+    scene.audio.play_sound("audio/step.flac"_resource, {.position = logic_tfm.position});
     
     if (registry.any_of<Egg>(entity)) {
         entt::entity shrine_entity = scene.get_shrine(math::round_cast(dragging.potential_logic_position));
@@ -306,7 +317,7 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
         shrine->egg_attached = true;
     }
     
-    if (math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
+    if (!registry.any_of<ForceDragging>(entity) && math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
         scene.player.bank.beads[Bead_Quartz]--;
     
     logic_tfm.position = math::round(dragging.potential_logic_position);
@@ -354,6 +365,20 @@ void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::
     auto& emitter = registry.get<EmitterComponent>(entity);
     for (auto& [id, emitter_gpu] : emitter.emitters)
         deinstance_emitter(*emitter_gpu, true);
+}
+
+void on_forcedrag_create(Scene& scene, entt::registry& registry, entt::entity entity) {
+    if (registry.all_of<Draggable>(entity)) {
+        Draggable& draggable = registry.get<Draggable>(entity);
+        LogicTransform& logic_tfm = registry.get<LogicTransform>(entity);
+        registry.emplace<Dragging>(entity, draggable.drag_height, scene.time, logic_tfm.position);
+    } else {
+        log_error("Force Drag on undraggable");
+    }
+}
+
+void on_forcedrag_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    registry.remove<Dragging>(entity);
 }
 
 }

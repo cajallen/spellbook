@@ -3,11 +3,10 @@
 #include <entt/entity/entity.hpp>
 #include <entt/core/hashed_string.hpp>
 
-#include "general/file_path.hpp"
+#include "general/file/file_path.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
-#include "game/game_path.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/lizard.hpp"
@@ -45,7 +44,7 @@ void handle_assassin_damaged(Scene* scene, entt::entity damager, entt::entity as
     tags.apply_tag("untargetable"_hs, "assassin_passive"_hs, assassin, untargetable_duration);
 
     LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(assassin);
-    EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/assassin/evasion.sbemt"_rp);
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/assassin/evasion.sbemt"_resource);
     quick_emitter(scene, "Assassin evade", logic_tfm.position + v3(0.5f), emitter_cpu, untargetable_duration);
 }
 
@@ -86,11 +85,11 @@ void AssassinAttack::trigger() {
         health.damage(caster, 3.0f / enemies.size(), enemy_tfm.position - logic_tfm.position);
 
         StatEffect poison_effect = {StatEffect::Type_Add, poison_dps, poison_max_stacks, poison_duration};
-        health.apply_dot(caster, "assassin_poison_ability"_hs, poison_effect, &load_asset<EmitterCPU>("emitters/assassin/poison.sbemt"_rp));
+        health.apply_dot(caster, "assassin_poison_ability"_hs, poison_effect, &load_resource<EmitterCPU>("emitters/assassin/poison.sbemt"_resource));
         enemy_tags.apply_tag("assassin_poison"_hs, "assassin_attack"_hs, caster, poison_duration);
     }
 
-    EmitterCPU emitter_cpu = load_asset<EmitterCPU>("emitters/assassin/basic_hit.sbemt"_rp);
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/assassin/basic_hit.sbemt"_resource);
     emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
     quick_emitter(scene, "Assassin hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
 
@@ -182,7 +181,7 @@ void AssassinSpell::trigger() {
                     spread_squares.push_back(enemy_square);
 
                     StatEffect poison_effect = {StatEffect::Type_Add, poison_dps, poison_max_stacks, poison_duration};
-                    health.apply_dot(caster, "assassin_poison_ability"_hs, poison_effect, &load_asset<EmitterCPU>("emitters/assassin/poison.sbemt"_rp));
+                    health.apply_dot(caster, "assassin_poison_ability"_hs, poison_effect, &load_resource<EmitterCPU>("emitters/assassin/poison.sbemt"_resource));
                     enemy_tags.apply_tag("assassin_poison"_hs, "assassin_ability"_hs, caster, poison_duration);
                 }
             }

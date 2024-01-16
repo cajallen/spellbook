@@ -20,7 +20,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", consumer_prefab.shrine_model_path.stem(), shrine_i++));
 
     Model& shrine_model = scene->registry.emplace<Model>(shrine_entity);
-    shrine_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.shrine_model_path));
+    shrine_model.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(consumer_prefab.shrine_model_path));
     shrine_model.model_gpu = instance_model(scene->render_scene, *shrine_model.model_cpu);
     
     scene->registry.emplace<LogicTransform>(shrine_entity, v3(location));
@@ -32,7 +32,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
 
     
     Model& egg_model = scene->registry.emplace<Model>(egg_entity);
-    egg_model.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(consumer_prefab.egg_model_path));
+    egg_model.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(consumer_prefab.egg_model_path));
     egg_model.model_gpu = instance_model(scene->render_scene, *egg_model.model_cpu);
 
     static int egg_i = 0;
@@ -51,9 +51,9 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
 
 bool inspect(ConsumerPrefab* consumer_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &consumer_prefab->file_path, FileType_Consumer);
-    changed |= ImGui::PathSelect("Shrine Model", &consumer_prefab->shrine_model_path, FileType_Model);
-    changed |= ImGui::PathSelect("Egg Model", &consumer_prefab->egg_model_path, FileType_Model);
+    ImGui::PathSelect<ConsumerPrefab>("File", &consumer_prefab->file_path);
+    changed |= ImGui::PathSelect<ModelCPU>("Shrine Model", &consumer_prefab->shrine_model_path);
+    changed |= ImGui::PathSelect<ModelCPU>("Egg Model", &consumer_prefab->egg_model_path);
     return changed;
 }
 

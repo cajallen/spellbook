@@ -3,12 +3,12 @@
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
 
+#include "general/id_ptr.hpp"
 #include "general/math/ease.hpp"
 #include "general/math/geometry.hpp"
 #include "general/math/matrix.hpp"
 #include "general/math/quaternion.hpp"
-#include "general/id_ptr.hpp"
-#include "game/game_file.hpp"
+#include "general/file/resource.hpp"
 #include "renderer/assets/animation_state.hpp"
 
 namespace spellbook {
@@ -46,7 +46,7 @@ struct BonePrefab {
     float length = 0.1f;
 };
 
-struct SkeletonPrefab {
+struct SkeletonPrefab : Resource {
     FilePath file_path;
     vector<FilePath> dependencies;
 
@@ -54,6 +54,11 @@ struct SkeletonPrefab {
     array<vector<AnimationFrame>, AnimationStateCount> animations;
 
     vector<Pose> pose_catalog;
+
+    static constexpr string_view extension() { return ".sbjskl"; }
+    static constexpr string_view dnd_key() { return "DND_SKELETON"; }
+    static FilePath folder() { return get_resource_folder() + "models"; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == SkeletonPrefab::extension(); }; }
 };
 
 struct Bone {
@@ -127,9 +132,9 @@ AnimationFrame from_jv_impl(const json_value& jv, vector<Pose>& pose_catalog, An
 json_value to_jv(const AnimationFrame& value);
 
 template <>
-bool     save_asset(const SkeletonPrefab& asset_file);
+bool     save_resource(const SkeletonPrefab& asset_file);
 template <>
-SkeletonPrefab& load_asset(const FilePath& input_path, bool assert_exist, bool clear_cache);
+SkeletonPrefab& load_resource(const FilePath& input_path, bool assert_exist, bool clear_cache);
 
 bool inspect(SkeletonCPU* skeleton_cpu);
 bool inspect(vector<AnimationFrame>* animation, int* load_pose);

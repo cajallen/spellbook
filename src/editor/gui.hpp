@@ -2,8 +2,9 @@
 
 #include "general/string.hpp"
 #include "general/umap.hpp"
-#include "general/json.hpp"
 #include "general/color.hpp"
+#include "general/file/json.hpp"
+#include "general/file/file_path.hpp"
 
 namespace spellbook {
 
@@ -24,7 +25,7 @@ struct GUI {
     umap<uint64, InterfaceInfo> item_state;
     umap<string, WindowState>  windows;
 
-    string asset_browser_file;
+    FilePath file_browser_path;
     
     void setup();
     void _main_menu_bar();

@@ -1,6 +1,6 @@
 target_sources(spellbook_src PUBLIC
-    asset_browser.cpp
-    asset_editor.cpp
+    file_browser.cpp
+    resource_editor.cpp
     console.cpp
     editor_scene.cpp
     game_scene.cpp

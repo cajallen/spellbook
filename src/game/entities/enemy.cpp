@@ -14,7 +14,6 @@
 #include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/game.hpp"
-#include "game/game_path.hpp"
 #include "game/pose_controller.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
@@ -39,7 +38,7 @@ struct EnemyLaserAttack : Attack {
 
 void EnemyLaserAttack::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    scene->audio.play_sound("audio/enemy/laser.flac"_rp, {.position = logic_tfm.position});
+    scene->audio.play_sound("audio/enemy/laser.flac"_resource, {.position = logic_tfm.position});
     
     uset<entt::entity> lizards = entry_gather_function(*this, target, 0.0f);
     for (entt::entity lizard : lizards) {
@@ -87,7 +86,7 @@ struct EnemyResistorAttack : Attack {
 
 void EnemyResistorAttack::trigger() {
     LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    scene->audio.play_sound("audio/enemy/resistor.flac"_rp, {.position = logic_tfm.position, .volume = 0.5f});
+    scene->audio.play_sound("audio/enemy/resistor.flac"_resource, {.position = logic_tfm.position, .volume = 0.5f});
     
     constexpr float buff_duration = 2.0f;
     uset<entt::entity> enemies = entry_gather_function(*this, target, 0.0f);
@@ -200,7 +199,7 @@ void EnemyMortarAttack::trigger() {
         }, false);
         beam2_animate->start(beam_duration);
         
-        const EmitterCPU& hit_emitter = load_asset<EmitterCPU>("emitters/enemy/mortar_hit.sbemt"_rp);
+        const EmitterCPU& hit_emitter = load_resource<EmitterCPU>("emitters/enemy/mortar_hit.sbemt"_resource);
         quick_emitter(scene, "Mortar Hit", v3(position_cap) + v3(0.5f, 0.5f, 0.5f), hit_emitter, 0.1f);
     }, false);
     trigger_timer->start(indicator_duration);
@@ -245,7 +244,7 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
         scene->registry.emplace<DropChance>(base_entity, prefab.drops);
     
     auto& model_comp = scene->registry.emplace<Model>(attachment_entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(prefab.attachment_model_path));
+    model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(prefab.attachment_model_path));
     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
 
     static int attachment_i = 0;
@@ -288,12 +287,12 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
 
 bool inspect(EnemyPrefab* enemy_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &enemy_prefab->file_path, FileType_Enemy);
+    ImGui::PathSelect<EnemyPrefab>("File", &enemy_prefab->file_path);
     changed |= inspect_dependencies(enemy_prefab->dependencies, enemy_prefab->file_path);
     changed |= ImGui::EnumCombo("Type", &enemy_prefab->type);
-    changed |= ImGui::PathSelect("Base Model", &enemy_prefab->base_model_path, FileType_Model);
-    changed |= ImGui::PathSelect("Attachment Model", &enemy_prefab->attachment_model_path, FileType_Model);
-    changed |= ImGui::PathSelect("Hurt", &enemy_prefab->hurt_path, FileType_Emitter);
+    changed |= ImGui::PathSelect<ModelCPU>("Base Model", &enemy_prefab->base_model_path);
+    changed |= ImGui::PathSelect<ModelCPU>("Attachment Model", &enemy_prefab->attachment_model_path);
+    changed |= ImGui::PathSelect<EmitterCPU>("Hurt", &enemy_prefab->hurt_path);
     changed |= ImGui::DragFloat("Max Health", &enemy_prefab->max_health, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Max Speed", &enemy_prefab->max_speed, 0.01f, 0.0f);
     changed |= ImGui::DragFloat("Base Scale", &enemy_prefab->base_scale, 0.01f, 0.0f);
@@ -337,7 +336,7 @@ void enemy_ik_controller_system(Scene* scene) {
         ik.update_constraints(scene, model, tfm_inv);
 
         if ((set0_moving && !ik.is_set_moving(0)) || (set1_moving && !ik.is_set_moving(1))) {
-            scene->audio.play_sound("audio/enemy/step.wav"_rp, {.position = logic_tfm.position});
+            scene->audio.play_sound("audio/enemy/step.wav"_resource, {.position = logic_tfm.position});
         }
     }
 }
@@ -464,6 +463,7 @@ void travel_system(Scene* scene) {
         bool at_target       = math::length(velocity) < 0.05f;
         if (at_target) {
             velocity = v3(0);
+            traveler.path.reached--;
         }
         float max_velocity = traveler.max_speed->value() * scene->delta_time;
         float min_velocity = 0.0f;

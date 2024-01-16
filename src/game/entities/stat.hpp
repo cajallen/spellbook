@@ -2,7 +2,7 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "game/input.hpp"
+#include "general/input.hpp"
 #include "general/umap.hpp"
 #include "general/math/math.hpp"
 

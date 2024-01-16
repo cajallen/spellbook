@@ -89,12 +89,12 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
 
 bool inspect(LizardPrefab* lizard_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &lizard_prefab->file_path, FileType_Lizard);
+    ImGui::PathSelect<LizardPrefab>("File", &lizard_prefab->file_path);
 
     changed |= inspect_dependencies(lizard_prefab->dependencies, lizard_prefab->file_path);
     
     changed |= ImGui::EnumCombo("Type", &lizard_prefab->type);
-    changed |= ImGui::PathSelect("Model", &lizard_prefab->model_path, FileType_Model);
+    changed |= ImGui::PathSelect<ModelCPU>("Model", &lizard_prefab->model_path);
     changed |= ImGui::DragFloat3("Default Direction", lizard_prefab->default_direction.data, 0.1f);
     changed |= ImGui::DragFloat("Health", &lizard_prefab->max_health, 0.5f, 0.5f, 0.0f, "%.1f");
     changed |= ImGui::DragFloat("Health Regen", &lizard_prefab->health_regen, 0.02f);

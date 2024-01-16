@@ -18,7 +18,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
 
     if (tile_prefab.model_path.is_file()) {
         auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(tile_prefab.model_path));
+        model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(tile_prefab.model_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
         scene->registry.emplace<ModelTransform>(entity, v3(location), quat(v3::Z, math::PI * 0.5f * float(rotation)));
         scene->registry.emplace<TransformLink>(entity, tile_prefab.visual_offset);
@@ -96,9 +96,9 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
 
 bool inspect(TilePrefab* tile_prefab) {
     bool changed = false;
-    ImGui::PathSelect("File", &tile_prefab->file_path, FileType_Tile, true);
+    ImGui::PathSelect<TilePrefab>("File", &tile_prefab->file_path);
     changed |= ImGui::EnumCombo("Type", &tile_prefab->type);
-    changed |= ImGui::PathSelect("Model", &tile_prefab->model_path, FileType_Model, true);
+    changed |= ImGui::PathSelect<ModelCPU>("Model", &tile_prefab->model_path);
     changed |= ImGui::DragFloat3("Visual Offset", tile_prefab->visual_offset.data, 0.01f);
 
     ImGui::Text("Extra Solids");

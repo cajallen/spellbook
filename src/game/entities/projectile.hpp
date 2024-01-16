@@ -2,8 +2,8 @@
 
 #include <entt/entity/entity.hpp>
 
+#include "general/file/file_path.hpp"
 #include "game/entities/stat.hpp"
-#include "general/file_path.hpp"
 
 namespace spellbook {
 

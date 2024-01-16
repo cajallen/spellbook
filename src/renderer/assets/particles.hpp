@@ -6,21 +6,19 @@
 
 #include "general/color.hpp"
 #include "general/string.hpp"
-#include "general/json.hpp"
 #include "general/math/matrix.hpp"
 #include "general/math/quaternion.hpp"
+#include "general/file/json.hpp"
+#include "general/file/file_path.hpp"
+#include "general/file/resource.hpp"
 #include "renderer/vertex.hpp"
 #include "renderer/image.hpp"
-#include "general/file_path.hpp"
 
 namespace spellbook {
-struct Scene;
+
 struct RenderScene;
 
-struct EmitterCPU {
-    FilePath file_path;
-    vector<FilePath> dependencies;
-    
+struct EmitterCPU : Resource {
     v3 offset = v3(0.0f);
     v3 position = v3(0.0f);
     v3 velocity = v3(0.0f);
@@ -50,6 +48,11 @@ struct EmitterCPU {
     FilePath material;
 
     void set_velocity_direction(v3 dir);
+
+    static constexpr string_view extension() { return ".sbjpcl"; }
+    static constexpr string_view dnd_key() { return "DND_PARTICLES"; }
+    static FilePath folder() { return "particles"_resource; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EmitterCPU::extension(); }; }
 };
 
 struct EmitterSettings {
@@ -93,17 +96,17 @@ struct EmitterGPU {
         settings.max_particles = (settings.life + settings.life_random) / rate + 1;
     }
 
-    void update_from_cpu(const EmitterCPU& new_emitter);
+    void update_from_cpu(const EmitterCPU& new_emitter, float current_time);
     void update_color();
     void update_size();
 };
 
-EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu);
-void deinstance_emitter(EmitterGPU& emitter, bool wait_despawn = true);
+EmitterGPU& instance_emitter(RenderScene& scene, const EmitterCPU& emitter_cpu, float current_time);
+void deinstance_emitter(EmitterGPU& emitter, float current_time, bool wait_despawn = true);
 
-bool inspect(Scene* scene, EmitterCPU* emitter);
+bool inspect(RenderScene& scene, EmitterCPU* emitter);
 
-void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
+void update_emitter(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer, float current_time, float delta_time);
 void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 
 void upload_dependencies(EmitterGPU& emitter);

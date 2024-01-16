@@ -9,7 +9,7 @@
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
 #include "game/scene.hpp"
-#include "game/input.hpp"
+#include "general/input.hpp"
 #include "game/game.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
@@ -22,7 +22,7 @@ void spawner_system(Scene* scene) {
 
     for (auto [entity, spawner, logic_transform] : scene->registry.view<Spawner, LogicTransform>().each()) {
         if (spawner.force_spawn_path.is_file()) {
-            instance_prefab(scene, load_asset<EnemyPrefab>(spawner.force_spawn_path), v3i(logic_transform.position));
+            instance_prefab(scene, load_resource<EnemyPrefab>(spawner.force_spawn_path), v3i(logic_transform.position));
             spawner.force_spawn_path = {};
         }
         
@@ -78,7 +78,7 @@ void spawner_system(Scene* scene) {
             continue;
         EnemySpawnInfo& enemy_info = *wave.enemies[spawner.state.enemy_number];
         if (spawner.cooldown <= -enemy_info.pre_delay) {
-            instance_prefab(scene, load_asset<EnemyPrefab>(enemy_info.enemy_prefab_path), v3i(logic_transform.position));
+            instance_prefab(scene, load_resource<EnemyPrefab>(enemy_info.enemy_prefab_path), v3i(logic_transform.position));
             spawner.cooldown = enemy_info.post_delay;
             spawner.state.enemy_number++;
         }
@@ -87,7 +87,7 @@ void spawner_system(Scene* scene) {
 
 bool inspect(EnemySpawnInfo* enemy_spawn_info) {
     bool changed = false;
-    changed |= ImGui::PathSelect("Path", &enemy_spawn_info->enemy_prefab_path, FileType_Enemy);
+    changed |= ImGui::PathSelect<EnemyPrefab>("Path", &enemy_spawn_info->enemy_prefab_path);
     changed |= ImGui::DragFloat("Pre Delay", &enemy_spawn_info->pre_delay, 0.01f);
     changed |= ImGui::DragFloat("Post Delay", &enemy_spawn_info->post_delay, 0.01f);
     return changed;
@@ -181,11 +181,11 @@ bool inspect(LevelSpawnInfo* level_spawn_info) {
 bool inspect(SpawnerPrefab* spawner_prefab) {
     bool changed = false;
     
-    ImGui::PathSelect("file_path", &spawner_prefab->file_path, FileType_Spawner, true);
+    ImGui::PathSelect<SpawnerPrefab>("file_path", &spawner_prefab->file_path, 1);
 
     changed |= inspect_dependencies(spawner_prefab->dependencies, spawner_prefab->file_path);
     
-    changed |= ImGui::PathSelect("Base Model", &spawner_prefab->model_file_path, FileType_Model);
+    changed |= ImGui::PathSelect<ModelCPU>("Base Model", &spawner_prefab->model_file_path);
 
     ImGui::Text("Level Spawn Info");
     changed |= inspect(&spawner_prefab->level_spawn_info);
@@ -320,7 +320,7 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
 
     if (spawner_prefab.model_file_path.is_file()) {
         auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(load_asset<ModelCPU>(spawner_prefab.model_file_path));
+        model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(spawner_prefab.model_file_path));
         model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
         
         scene->registry.emplace<ModelTransform>(entity);
@@ -332,8 +332,8 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
 
     // Preload all of the enemies
     for (auto& enemy_info : spawner_prefab.enemies) {
-        load_asset<ModelCPU>(load_asset<EnemyPrefab>(enemy_info->enemy_prefab_path).base_model_path);
-        load_asset<ModelCPU>(load_asset<EnemyPrefab>(enemy_info->enemy_prefab_path).attachment_model_path);
+        load_resource<ModelCPU>(load_resource<EnemyPrefab>(enemy_info->enemy_prefab_path).base_model_path);
+        load_resource<ModelCPU>(load_resource<EnemyPrefab>(enemy_info->enemy_prefab_path).attachment_model_path);
     }
 
     return entity;

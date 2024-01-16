@@ -2,11 +2,11 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "general/json.hpp"
+#include "general/memory.hpp"
+#include "general/file/json.hpp"
 #include "general/math/geometry.hpp"
 #include "general/navigation_path.hpp"
 #include "game/shop.hpp"
-#include "game/game_path.hpp"
 #include "game/entities/stat.hpp"
 
 namespace spellbook {
@@ -22,12 +22,9 @@ enum EnemyType {
     EnemyType_Bomb
 };
 
-struct EnemyPrefab {
-    FilePath file_path;
-    vector<FilePath> dependencies;
-    
+struct EnemyPrefab : Resource {
     EnemyType type = EnemyType_Empty;
-    FilePath base_model_path = "models/enemy_spider/spider_base.sbmod"_rp;
+    FilePath base_model_path = "models/enemy_spider/spider_base.sbmod"_resource;
     FilePath attachment_model_path;
     FilePath hurt_path;
     
@@ -38,6 +35,11 @@ struct EnemyPrefab {
 
     // just use the component directly lol
     DropChance drops;
+
+    static constexpr string_view extension() { return ".sbjenm"; }
+    static constexpr string_view dnd_key() { return "DND_ENEMY"; }
+    static FilePath folder() { return "enemies"_resource; }
+    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EnemyPrefab::extension(); }; }
 };
 
 struct Traveler {
@@ -46,7 +48,7 @@ struct Traveler {
         v3i pos;
     };
     
-    std::unique_ptr<Stat> max_speed;
+    unique_ptr<Stat> max_speed;
 
     Target target = {};
     Path path = {};

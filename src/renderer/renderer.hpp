@@ -15,7 +15,6 @@
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/texture.hpp"
-#include "general/file_path.hpp"
 
 struct GLFWwindow;
 
@@ -38,8 +37,8 @@ namespace spellbook {
 struct FrameTimer {
     int               ptr         = 0;
     int               filled      = 0;
-    std::array<float, 200> frame_times = {};
-    std::array<float, 200> delta_times = {};
+    array<float, 200> frame_times = {};
+    array<float, 200> delta_times = {};
 
     void update();
     void inspect();
@@ -75,14 +74,10 @@ struct Renderer {
 
     ImGuiData                      imgui_data;
     plf::colony<vuk::SampledImage> imgui_images;
+    char* imgui_ini_path;
 
-    umap<uint64, MeshGPU>     mesh_cache;
-    umap<uint64, MaterialGPU> material_cache;
-    umap<uint64, TextureGPU>  texture_cache;
-    umap<uint64, FilePath>    file_path_cache;
-    
-    vuk::Unique<std::array<VkSemaphore, 3>> present_ready;
-    vuk::Unique<std::array<VkSemaphore, 3>> render_complete;
+    vuk::Unique<array<VkSemaphore, 3>> present_ready;
+    vuk::Unique<array<VkSemaphore, 3>> render_complete;
 
     bool suspend = false;
     
@@ -98,23 +93,11 @@ struct Renderer {
 
     void add_scene(RenderScene*);
 
-    // Returns an asset given the path of the .sb*** asset, nullptr if not uploaded
-    MeshGPU* get_mesh(uint64 id);
-    MaterialGPU* get_material(uint64 id);
-    TextureGPU* get_texture(uint64 id);
-
-    // Returns an asset given the path of the .sb*** asset, uploads and returns if not uploaded
-    MeshGPU& get_mesh_or_upload(uint64 id);
-    MaterialGPU& get_material_or_upload(uint64 id);
-    TextureGPU& get_texture_or_upload(const FilePath& asset_path);
-    
-    void upload_defaults();
-
     void resize(v2i new_size);
 
     void debug_window(bool* p_open);
 };
 
-FilePath shader_path(string_view file);
+Renderer& get_renderer();
 
 }

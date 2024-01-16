@@ -1,7 +1,7 @@
 ﻿#pragma once
 
+#include "general/file/file_path.hpp"
 #include "renderer/samplers.hpp"
-#include "general/file_path.hpp"
 
 namespace spellbook {
 

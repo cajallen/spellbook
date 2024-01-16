@@ -2,12 +2,11 @@
 
 #include <imgui.h>
 
-#include "game.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
+#include "game/game.hpp"
 #include "game/player.hpp"
 #include "game/scene.hpp"
-#include "game/game_path.hpp"
 #include "game/entities/drop.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/spawner.hpp"
@@ -64,18 +63,18 @@ void ShopGenerator::inspect() {
 
 void FirstFreeShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbliz"_rp}, 1.0f);
-    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbliz"}, 1.0f);
-    first_warehouse.add_entry({Bead_Oak, 0, "lizards/assassin.sbliz"_rp}, 1.0f);
-    first_warehouse.add_entry({Bead_Oak, 0, "lizards/ranger.sbliz"_rp}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/champion.sbjliz"_resource}, 1.0f);
+    // first_warehouse.add_entry({Bead_Oak, 0, "lizards/warlock.sbjliz"}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/assassin.sbjliz"_resource}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, "lizards/ranger.sbjliz"_resource}, 1.0f);
 
-    warehouse.add_entry({Bead_Oak, 3, "lizards/champion.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 5, "lizards/warlock.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 4, "lizards/assassin.sbliz"_rp}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 3, "lizards/champion.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 5, "lizards/warlock.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 4, "lizards/assassin.sbjliz"_resource}, 1.0f);
 
-    warehouse.add_entry({Bead_Malachite, 3, "lizards/champion.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Malachite, 1, "lizards/warlock.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Malachite, 2, "lizards/assassin.sbliz"_rp}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 3, "lizards/champion.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 1, "lizards/warlock.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 2, "lizards/assassin.sbjliz"_resource}, 1.0f);
 }
 vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -92,7 +91,7 @@ vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
 void FirstFreeShopGenerator::purchase(uint32 index) {
     if (round_info->round_number == -1) {
         reset();
-        round_info->advance_round();
+        //round_info->advance_round();
     } else {
         out_shop.remove_index(index);
     }
@@ -118,18 +117,18 @@ void FirstFreeShopGenerator::inspect() {
 
 void SimpleShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    warehouse.add_entry({Bead_Oak, 4, "lizards/zord.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 6, "lizards/rokko.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 6, "lizards/merque.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 8, "lizards/azura.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 8, "lizards/sauria.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Oak, 6, "lizards/rafaj.sbliz"_rp}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 4, "lizards/zord.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 6, "lizards/rokko.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 6, "lizards/merque.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 8, "lizards/azura.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 8, "lizards/sauria.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 6, "lizards/rafaj.sbjliz"_resource}, 1.0f);
 
-    warehouse.add_entry({Bead_Malachite, 4, "lizards/rokko.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Malachite, 3, "lizards/merque.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Malachite, 3, "lizards/azura.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Malachite, 3, "lizards/sauria.sbliz"_rp}, 1.0f);
-    warehouse.add_entry({Bead_Malachite, 4, "lizards/rafaj.sbliz"_rp}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 4, "lizards/rokko.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 3, "lizards/merque.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 3, "lizards/azura.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 3, "lizards/sauria.sbjliz"_resource}, 1.0f);
+    warehouse.add_entry({Bead_Malachite, 4, "lizards/rafaj.sbjliz"_resource}, 1.0f);
 }
 vector<ShopEntry*>* SimpleShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -175,7 +174,7 @@ bool button(ShopEntry* shop_entry) {
 void inspect(ShopEntry* shop_entry) {
     ImGui::EnumCombo("Cost Type", &shop_entry->cost_type);
     ImGui::InputInt("Cost Amount", &shop_entry->cost_amount);
-    ImGui::PathSelect("Lizard Path", &shop_entry->lizard_prefab_path, FileType_Lizard);
+    ImGui::PathSelect<LizardPrefab>("Lizard Path", &shop_entry->lizard_prefab_path);
 }
 void inspect(Warehouse* warehouse) {
     if (ImGui::BeginTable("Warehouse", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
@@ -213,7 +212,7 @@ void show_shop(Shop* shop, Player* player) {
     
     ImGui::BeginGroup();
     if (ImGui::Button("Get Shop")) {
-        player->scene->audio.play_sound("audio/reroll.flac"_rp, {.global = true, .volume = 0.3f});
+        player->scene->audio.play_sound("audio/reroll.flac"_resource, {.global = true, .volume = 0.3f});
         shop->shop_generator->reset();
         shop->entries = shop->shop_generator->generate_shop();
     }
@@ -241,10 +240,10 @@ void show_shop(Shop* shop, Player* player) {
                     
                     entt::entity lizard = instance_prefab(
                         player->scene,
-                        load_asset<LizardPrefab>(shop->entries->at(i)->lizard_prefab_path, true),
+                        load_resource<LizardPrefab>(shop->entries->at(i)->lizard_prefab_path, true),
                         math::round_cast(intersect)
                     );
-                    player->scene->audio.play_sound("audio/drop.flac"_rp, {.global = true, .volume = 0.3f});
+                    player->scene->audio.play_sound("audio/drop.flac"_resource, {.global = true, .volume = 0.3f});
                     player->scene->select_entity(lizard);
                     player->bank.beads[bead_type] -= shop->entries->at(i)->cost_amount;
                     shop->shop_generator->purchase(i);

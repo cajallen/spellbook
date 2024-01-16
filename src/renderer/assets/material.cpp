@@ -1,15 +1,12 @@
 #include "material.hpp"
 
-#include <filesystem>
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include "extension/imgui_extra.hpp"
 #include "general/logger.hpp"
-#include "game/game.hpp"
-#include "game/game_file.hpp"
 #include "renderer/renderer.hpp"
-
+#include "renderer/gpu_asset_cache.hpp"
 
 namespace spellbook {
 
@@ -33,11 +30,12 @@ uint64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     MaterialGPU material_gpu;
     material_gpu.material_cpu = material_cpu;
     material_gpu.frame_allocated = frame_allocation;
-    material_gpu.pipeline      = game.renderer.context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
-    material_gpu.color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.color_asset_path).value.view.get(), material_cpu.sampler.get());
-    material_gpu.normal = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.normal_asset_path).value.view.get(), material_cpu.sampler.get());
-    material_gpu.orm = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.orm_asset_path).value.view.get(), material_cpu.sampler.get());
-    material_gpu.emissive = vuk::make_sampled_image(game.renderer.get_texture_or_upload(material_cpu.emissive_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.pipeline      = get_renderer().context->get_named_pipeline(vuk::Name(material_cpu.shader_name));
+    assert_else(material_gpu.pipeline != nullptr);
+    material_gpu.color = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(material_cpu.color_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.normal = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(material_cpu.normal_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.orm = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(material_cpu.orm_asset_path).value.view.get(), material_cpu.sampler.get());
+    material_gpu.emissive = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(material_cpu.emissive_asset_path).value.view.get(), material_cpu.sampler.get());
 
     material_gpu.tints         = {
         (v4) material_cpu.color_tint,
@@ -47,13 +45,13 @@ uint64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     material_gpu.cull_mode = material_cpu.cull_mode;
     material_gpu.frame_allocated = frame_allocation;
 
-    game.renderer.material_cache[material_cpu_hash] = std::move(material_gpu);
-    game.renderer.file_path_cache[material_cpu_hash] = material_cpu.file_path;
+    get_gpu_asset_cache().materials[material_cpu_hash] = std::move(material_gpu);
+    get_gpu_asset_cache().paths[material_cpu_hash] = material_cpu.file_path;
     return material_cpu_hash;
 }
 
 void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
-    pipeline      = game.renderer.context->get_named_pipeline(vuk::Name(new_material.shader_name));
+    pipeline      = get_renderer().context->get_named_pipeline(vuk::Name(new_material.shader_name));
     tints         = {
         (v4) new_material.color_tint,
         (v4) new_material.emissive_tint,
@@ -62,13 +60,13 @@ void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
     cull_mode = new_material.cull_mode;
 
     if (material_cpu.color_asset_path != new_material.color_asset_path)
-        color = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.color_asset_path).value.view.get(), new_material.sampler.get());
+        color = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(new_material.color_asset_path).value.view.get(), new_material.sampler.get());
     if (material_cpu.normal_asset_path != new_material.normal_asset_path)
-        normal = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.normal_asset_path).value.view.get(), new_material.sampler.get());
+        normal = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(new_material.normal_asset_path).value.view.get(), new_material.sampler.get());
     if (material_cpu.orm_asset_path != new_material.orm_asset_path)
-        orm = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.orm_asset_path).value.view.get(), new_material.sampler.get());
+        orm = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(new_material.orm_asset_path).value.view.get(), new_material.sampler.get());
     if (material_cpu.emissive_asset_path != new_material.emissive_asset_path)
-        emissive = vuk::make_sampled_image(game.renderer.get_texture_or_upload(new_material.emissive_asset_path).value.view.get(), new_material.sampler.get());
+        emissive = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(new_material.emissive_asset_path).value.view.get(), new_material.sampler.get());
 
     material_cpu = new_material;
 }
@@ -77,7 +75,7 @@ void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
 
 bool inspect(MaterialCPU* material) {
     bool changed = false;
-    ImGui::PathSelect("File", &material->file_path, FileType_Material);
+    ImGui::PathSelect<MaterialCPU>("File", &material->file_path);
 
     changed |= inspect_dependencies(material->dependencies, material->file_path);
     
@@ -87,10 +85,10 @@ bool inspect(MaterialCPU* material) {
     changed |= ImGui::DragFloat("metallic_factor", &material->metallic_factor, 0.01f);
     changed |= ImGui::DragFloat("normal_factor", &material->normal_factor, 0.01f);
 
-    changed |= ImGui::PathSelect("color_asset_path", &material->color_asset_path, FileType_Texture);
-    changed |= ImGui::PathSelect("orm_asset_path", &material->orm_asset_path, FileType_Texture);
-    changed |= ImGui::PathSelect("normal_asset_path", &material->normal_asset_path, FileType_Texture);
-    changed |= ImGui::PathSelect("emissive_asset_path", &material->emissive_asset_path, FileType_Texture);
+    changed |= ImGui::PathSelect<TextureCPU>("color_asset_path", &material->color_asset_path);
+    changed |= ImGui::PathSelect<TextureCPU>("orm_asset_path", &material->orm_asset_path);
+    changed |= ImGui::PathSelect<TextureCPU>("normal_asset_path", &material->normal_asset_path);
+    changed |= ImGui::PathSelect<TextureCPU>("emissive_asset_path", &material->emissive_asset_path);
 
     changed |= ImGui::EnumCombo("cull_mode", &material->cull_mode);
     ImGui::InputText("shader", &material->shader_name);
@@ -102,24 +100,24 @@ bool inspect(MaterialCPU* material) {
 
 void inspect(MaterialGPU* material) {
     ImGui::Text("Base Color");
-    ImGui::Image(&*game.renderer.imgui_images.emplace(material->color), {100, 100});
+    ImGui::Image(&*get_renderer().imgui_images.emplace(material->color), {100, 100});
     ImGui::ColorEdit4("Tint##BaseColor", material->tints.color_tint.data);
     
     ImGui::BeginGroup();
     ImGui::Text("ORM");
-    ImGui::Image(&*game.renderer.imgui_images.emplace(material->orm), {100, 100});
+    ImGui::Image(&*get_renderer().imgui_images.emplace(material->orm), {100, 100});
     ImGui::EndGroup();
     ImGui::SameLine();
 
     ImGui::BeginGroup();
     ImGui::Text("Normals");
-    ImGui::Image(&*game.renderer.imgui_images.emplace(material->normal), {100, 100});
+    ImGui::Image(&*get_renderer().imgui_images.emplace(material->normal), {100, 100});
     ImGui::EndGroup();
     ImGui::SameLine();
 
     ImGui::BeginGroup();
     ImGui::Text("Emissive");
-    ImGui::Image(&*game.renderer.imgui_images.emplace(material->emissive), {100, 100});
+    ImGui::Image(&*get_renderer().imgui_images.emplace(material->emissive), {100, 100});
     ImGui::EndGroup();
     ImGui::ColorEdit4("Emissive Tint", material->tints.emissive_tint.data);
 
@@ -132,13 +130,13 @@ void inspect(MaterialGPU* material) {
 void save_material(MaterialCPU& material_cpu) {
     auto j = from_jv<json>(to_jv(material_cpu));
 
-    assert_else(material_cpu.file_path.extension() == extension(FileType_Material));
+    assert_else(material_cpu.file_path.extension() == MaterialCPU::extension());
     
     file_dump(j, material_cpu.file_path.abs_string());
 }
 
 MaterialCPU load_material(const FilePath& file_path) {
-    assert_else(file_path.extension() == extension(FileType_Material));
+    assert_else(file_path.extension() == MaterialCPU::extension());
     
     json j = parse_file(file_path.abs_string());
     auto material_cpu = from_jv<MaterialCPU>(to_jv(j));

@@ -7,7 +7,7 @@
 #include "extension/fmt_geometry.hpp"
 #include "general/math/math.hpp"
 #include "general/math/matrix_math.hpp"
-#include "game/input.hpp"
+#include "general/input.hpp"
 
 namespace spellbook {
 
