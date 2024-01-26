@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
+#include <stb_image.h>
 
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
@@ -32,6 +33,14 @@ void file_browser(const string& window_name, bool* p_open, FilePath* out) {
                 popup_open = true;
             }
         }
+        if (TextureExternal::path_filter()(path)) {
+            if (ImGui::Selectable("Convert")) {
+                popup_set_input = FilePath(path);
+                popup_set_folder = TextureCPU::folder();
+                popup_set_name = popup_set_input.stem();
+                popup_open = true;
+            }
+        }
     };
 
     // Header
@@ -58,6 +67,9 @@ void file_browser(const string& window_name, bool* p_open, FilePath* out) {
     if (popup_open) {
         if (ModelExternal::path_filter()(popup_set_input))
             ImGui::OpenPopup("Convert Model Asset");
+        if (TextureExternal::path_filter()(popup_set_input))
+            ImGui::OpenPopup("Convert Texture Asset");
+
     }
 
     if (ImGui::BeginPopupModal("Convert Model Asset")) {
@@ -89,6 +101,49 @@ void file_browser(const string& window_name, bool* p_open, FilePath* out) {
         }
         ImGui::EndPopup();
     }
+
+    if (ImGui::BeginPopupModal("Convert Texture Asset")) {
+        struct TextureConvertInfo {
+            FilePath input;
+            FilePath folder_path;
+            string name;
+        };
+        static umap<string, TextureConvertInfo> tex_convert_map;
+
+        if (!tex_convert_map.contains(window_name))
+            tex_convert_map[window_name] = {};
+
+        if (popup_open) {
+            tex_convert_map[window_name].input = popup_set_input;
+            tex_convert_map[window_name].folder_path = popup_set_folder;
+            tex_convert_map[window_name].name = popup_set_name;
+        }
+
+        ImGui::PathSelect<ModelCPU>("Input", &tex_convert_map[window_name].input);
+        ImGui::PathSelect<Directory>("Output folder", &tex_convert_map[window_name].folder_path);
+        ImGui::InputText("Output name", &tex_convert_map[window_name].name);
+
+
+        if (ImGui::Button("Convert")) {
+            auto& convert_info = tex_convert_map[window_name];
+
+            string abs_path = convert_info.input.abs_string();
+            v2i size;
+            auto pixels = stbi_load(abs_path.c_str(), &size.x, &size.y, nullptr, 4);
+
+            TextureCPU texture_cpu = {
+                FilePath(convert_info.folder_path.rel_string() + convert_info.name + string(TextureCPU::extension())),
+                {},
+                v2i{size.x, size.y},
+                vuk::Format::eR8G8B8A8Srgb,
+                vector<uint8>(pixels, pixels + size.x * size.y * 4)
+            };
+            save_texture(texture_cpu);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
 
     ImGui::End();
 }

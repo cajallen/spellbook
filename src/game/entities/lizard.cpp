@@ -80,6 +80,18 @@ entt::entity instance_prefab(Scene* scene, const LizardPrefab& lizard_prefab, v3
         case LizardType_Warlock:
             build_warlock(scene, entity, lizard_prefab);
             break;
+        case LizardType_Thief:
+            build_thief(scene, entity, lizard_prefab);
+            break;
+        case LizardType_Druid:
+            build_druid(scene, entity, lizard_prefab);
+            break;
+        case LizardType_LaserMage:
+            build_laser_mage(scene, entity, lizard_prefab);
+            break;
+        case LizardType_Treasurer:
+            build_treasurer(scene, entity, lizard_prefab);
+            break;
         default:
             console_error(fmt_("Unknown lizard type: {}", magic_enum::enum_name(lizard_prefab.type)), "game.lizard", ErrorType_Warning);
     }

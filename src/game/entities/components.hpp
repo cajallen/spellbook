@@ -8,8 +8,8 @@
 #include "general/math/geometry.hpp"
 #include "general/math/quaternion.hpp"
 #include "general/math/matrix.hpp"
-
 #include "renderer/assets/model.hpp"
+#include "game/entities/drop.hpp"
 
 namespace spellbook {
 
@@ -104,13 +104,15 @@ struct Draggable {
 };
 struct Dragging {
     static constexpr uint32 magic_number = 0xd2a90000;
+    Beads commited_cost;
     float drag_height;
     float start_time = 0.0f;
     v3  start_logic_position = v3(0.0f);
     v3  start_intersect = v3(0.0f);
-    
+
     v3 target_position = v3(0.0f);
     v3 potential_logic_position = v3(0.0f);
+
 
     static uint64 get_drag_tag_id(entt::entity entity) {
         return uint64(Dragging::magic_number) << 32ull | uint64(entity);

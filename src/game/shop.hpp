@@ -10,11 +10,13 @@ namespace spellbook {
 struct Scene;
 struct Player;
 struct SpawnStateInfo;
+struct Item;
 
 struct ShopEntry {
     Bead cost_type = Bead_Oak;
     int cost_amount = 0;
     FilePath lizard_prefab_path = {};
+    Item* item = nullptr;
 };
 
 struct Warehouse {

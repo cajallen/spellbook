@@ -47,7 +47,7 @@ void WarlockAttack::trigger() {
         pot_dir = math::normalize(end_vec - pot_pos);
         pot_pos -= v3(0.5f);
     }
-    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/warlock/pot_spray.sbemt"_resource);
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/warlock/pot_spray.sbjemt"_resource);
     emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), pot_dir);
     quick_emitter(scene, "Warlock Pot Spray", pot_pos + v3(0.5f), emitter_cpu, 0.3f);
     
@@ -59,7 +59,7 @@ void WarlockAttack::trigger() {
             if (!projectile)
                 return;
             LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
-            EmitterCPU hit_emitter = load_resource<EmitterCPU>("emitters/warlock/basic_hit.sbemt"_resource);
+            EmitterCPU hit_emitter = load_resource<EmitterCPU>("emitters/warlock/basic_hit.sbjemt"_resource);
             hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - logic_tfm.position));
             quick_emitter(scene, "Warlock Basic Hit", v3(projectile->target) + v3(0.5f), hit_emitter, 0.1f);
             for (entt::entity enemy : entry_gather_function(*this, projectile->target, 0.0f)) {
@@ -71,7 +71,7 @@ void WarlockAttack::trigger() {
             }
         }
     };
-    quick_projectile(scene, projectile, pot_pos, "emitters/warlock/basic_proj.sbemt"_resource);
+    quick_projectile(scene, projectile, pot_pos, "emitters/warlock/basic_proj.sbjemt"_resource);
 }
 
 void WarlockAttack::targeting() {
@@ -118,11 +118,11 @@ void WarlockSpell::trigger() {
         pot_dir = math::normalize(end_vec - pot_pos);
         pot_pos -= v3(0.5f);
     }
-    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/warlock/ability_pot_spray.sbemt"_resource);
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/warlock/ability_pot_spray.sbjemt"_resource);
     emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), pot_dir);
     quick_emitter(scene, "Warlock Ability Pot Spray", pot_pos + v3(0.5f), emitter_cpu, 0.3f);
-    quick_emitter(scene, "Warlock Aura Burst", warlock_logic_tfm.position + v3(0.5f, 0.5f, 0.0f), load_resource<EmitterCPU>("emitters/warlock/ability_base.sbemt"_resource), 0.2f);
-    quick_emitter(scene, "Warlock Aura Ticking", warlock_logic_tfm.position + v3(0.5f), load_resource<EmitterCPU>("emitters/warlock/ability_ticking.sbemt"_resource), buff_duration);
+    quick_emitter(scene, "Warlock Aura Burst", warlock_logic_tfm.position + v3(0.5f, 0.5f, 0.0f), load_resource<EmitterCPU>("emitters/warlock/ability_base.sbjemt"_resource), 0.2f);
+    quick_emitter(scene, "Warlock Aura Ticking", warlock_logic_tfm.position + v3(0.5f), load_resource<EmitterCPU>("emitters/warlock/ability_ticking.sbjemt"_resource), buff_duration);
 
     Caster& caster_comp = scene->registry.get<Caster>(caster);
     caster_comp.attack_speed->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.4f, INT_MAX, buff_duration));
@@ -137,9 +137,12 @@ void build_warlock(Scene* scene, entt::entity entity, const LizardPrefab& lizard
 
     caster.attack = std::make_unique<WarlockAttack>(scene, entity, 1.0f, 1.0f, 1.0f, 3.0f);
     caster.attack->entry_gather_function = gather_enemies();
+    caster.attack->entry_eval_function = basic_lizard_entry_eval;
+
 
     caster.spell = std::make_unique<WarlockSpell>(scene, entity, 0.8f, 0.6f);
     caster.spell->entry_gather_function = gather_enemies();
+    caster.spell->entry_eval_function = basic_lizard_entry_eval;
 }
 
 void draw_warlock_dragging_preview(Scene* scene, entt::entity entity) {

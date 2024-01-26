@@ -15,6 +15,9 @@ struct Bank {
 struct Player {
     Scene* scene = nullptr;
     Bank bank = {};
+
+    bool can_drag();
+    Beads get_drag_cost();
 };
 
 void inspect(Bank* bank);

@@ -72,6 +72,8 @@ struct RenderScene {
     bool cull_pause = false;
     vuk::Texture render_target;
 
+    vuk::ImageView metallic_refl_iv = {};
+
     bool render_grid = false;
     bool render_widgets = true;
 

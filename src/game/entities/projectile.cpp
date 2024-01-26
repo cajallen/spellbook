@@ -22,7 +22,7 @@ entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const FileP
     }
 
     auto& emitter_comp = scene->registry.emplace<EmitterComponent>(entity, scene);
-    emitter_comp.add_emitter(0, load_resource<EmitterCPU>(particles_path));
+    emitter_comp.add_emitter(0, load_resource<EmitterCPU>(particles_path, true));
     
     scene->registry.emplace<Projectile>(entity, proj);
     

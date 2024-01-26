@@ -20,7 +20,20 @@ void spawner_system(Scene* scene) {
     if (scene->edit_mode)
         return;
 
+    const bool no_enemies = scene->registry.view<Enemy>(entt::exclude<Killed>).size_hint() == 0;
+
+    bool any_active = false;
     for (auto [entity, spawner, logic_transform] : scene->registry.view<Spawner, LogicTransform>().each()) {
+        if (spawner.state.round_active)
+            any_active = true;
+
+        if (!spawner.is_active()) {
+            if (no_enemies) {
+                spawner.state.round_active = false;
+            }
+        }
+
+
         if (spawner.force_spawn_path.is_file()) {
             instance_prefab(scene, load_resource<EnemyPrefab>(spawner.force_spawn_path), v3i(logic_transform.position));
             spawner.force_spawn_path = {};
@@ -28,6 +41,7 @@ void spawner_system(Scene* scene) {
         
         // Advance Round ?
         while (spawner.state.round_number < spawner.level_state->round_number) {
+            any_active = true;
             spawner.state.advance_round();
             spawner.cooldown = 0.0f;
         }
@@ -83,6 +97,13 @@ void spawner_system(Scene* scene) {
             spawner.state.enemy_number++;
         }
     }
+    if (!any_active) {
+        scene->spawn_state_info->round_active = false;
+    }
+}
+
+bool Spawner::is_active() {
+    return wave_spawning || enemy_spawning || spawn_wave || spawn_enemy;
 }
 
 bool inspect(EnemySpawnInfo* enemy_spawn_info) {
@@ -306,7 +327,12 @@ bool inspect(Spawner* spawner) {
 }
 
 bool inspect(SpawnStateInfo* spawn_state_info) {
-    ImGui::Text("Round: %d,  Wave: %d,  Enemy: %d", spawn_state_info->round_number, spawn_state_info->wave_number, spawn_state_info->enemy_number);
+    ImGui::Text("Live: %s,  Round: %d,  Wave: %d,  Enemy: %d",
+        spawn_state_info->round_active ? "true" : "false",
+        spawn_state_info->round_number,
+        spawn_state_info->wave_number,
+        spawn_state_info->enemy_number
+    );
     return false;
 }
 

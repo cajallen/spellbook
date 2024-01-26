@@ -73,7 +73,7 @@ void RangerAttack::trigger() {
                 
                 scene->audio.play_sound("audio/ranger/arrow_impact.flac"_resource, {.position = v3(projectile->target)});
                 
-                EmitterCPU hit_emitter = load_resource<EmitterCPU>("emitters/ranger/basic_hit.sbemt"_resource);
+                EmitterCPU hit_emitter = load_resource<EmitterCPU>("emitters/ranger/basic_hit.sbjemt"_resource);
                 hit_emitter.set_velocity_direction(math::normalize(v3(projectile->target) - logic_tfm.position));
                 quick_emitter(scene, "Ranger Basic Hit", v3(projectile->target) + v3(0.5f), hit_emitter, 0.1f);
 
@@ -127,12 +127,12 @@ void RangerAttack::trigger() {
                     health.damage_taken_multiplier->add_effect(uint64("ranger_mark"_hs), StatEffect{
                         .type = StatEffect::Type_Multiply,
                         .value = attack_vuln_amount
-                    }, &load_resource<EmitterCPU>("emitters/ranger/basic_mark.sbemt"_resource));
+                    }, &load_resource<EmitterCPU>("emitters/ranger/basic_mark.sbjemt"_resource));
                 }
             }
         }
     };
-    quick_projectile(scene, projectile, arrow_pos, "emitters/ranger/basic_proj.sbemt"_resource, "models/hanther/hanther_arrow.sbmod"_resource, 0.5f);
+    quick_projectile(scene, projectile, arrow_pos, "emitters/ranger/basic_proj.sbjemt"_resource, "models/hanther/hanther_arrow.sbmod"_resource, 0.5f);
 }
 
 
@@ -269,7 +269,7 @@ void RangerSpell::trigger() {
 
         }
     };
-    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbemt"_resource, "models/hanther/hanther_trap.sbmod"_resource, 0.3f);
+    quick_projectile(scene, projectile, trap_pos, "emitters/ranger/basic_proj.sbjemt"_resource, "models/hanther/hanther_trap.sbmod"_resource, 0.3f);
 }
 
 void RangerSpell::end() {

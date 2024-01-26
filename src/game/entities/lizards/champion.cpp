@@ -66,9 +66,9 @@ void ChampionAttack::trigger() {
             bool has_floor = scene->map_data.solids.get(target + v3i(x, y, -1));
 
             if (!blocked && has_floor) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_hit.sbemt"_resource, 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_hit.sbjemt"_resource, 0.20f);
             } else if (false) {
-                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_miss.sbemt"_resource, 0.20f);
+                quick_emitter(scene, "Champion Basic", v3(target + v3i(x, y, 0)), "emitters/champion/basic_miss.sbjemt"_resource, 0.20f);
             }
         }
     }
@@ -111,8 +111,10 @@ ChampionSpell::ChampionSpell(Scene* init_scene, entt::entity init_caster, float 
 }
 
 ChampionSpell::~ChampionSpell() {
-    Health& health = scene->registry.get<Health>(caster);
-    entt::sink sink{health.damage_signal};
+    Health* health = scene->registry.try_get<Health>(caster);
+    if (!health)
+        return;
+    entt::sink sink{health->damage_signal};
     sink.disconnect<handle_champion_damaged>();
 }
 
@@ -133,7 +135,7 @@ void ChampionSpell::trigger() {
         .value = -0.9f
     });
     auto& emitters = scene->registry.get<EmitterComponent>(caster);
-    emitters.add_emitter(buff_id, load_resource<EmitterCPU>("emitters/champion/spell_buff.sbemt"_resource));
+    emitters.add_emitter(buff_id, load_resource<EmitterCPU>("emitters/champion/spell_buff.sbjemt"_resource));
     
     entt::entity caster_cap = caster;
 
@@ -151,7 +153,7 @@ void ChampionSpell::trigger() {
 
         // emit effect
         LogicTransform& logic_tfm = timer->scene->registry.get<LogicTransform>(caster_cap);
-        EmitterCPU trigger_emitter = load_resource<EmitterCPU>("emitters/champion/spell_trigger.sbemt"_resource);
+        EmitterCPU trigger_emitter = load_resource<EmitterCPU>("emitters/champion/spell_trigger.sbjemt"_resource);
         quick_emitter(timer->scene, "Champion spell trigger", logic_tfm.position + v3(0.5f), trigger_emitter, 0.2f);
 
         ChampionSpell& spell = (ChampionSpell&) *timer->scene->registry.get<Caster>(caster_cap).spell;

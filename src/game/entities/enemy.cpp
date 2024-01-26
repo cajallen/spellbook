@@ -199,7 +199,7 @@ void EnemyMortarAttack::trigger() {
         }, false);
         beam2_animate->start(beam_duration);
         
-        const EmitterCPU& hit_emitter = load_resource<EmitterCPU>("emitters/enemy/mortar_hit.sbemt"_resource);
+        const EmitterCPU& hit_emitter = load_resource<EmitterCPU>("emitters/enemy/mortar_hit.sbjemt"_resource);
         quick_emitter(scene, "Mortar Hit", v3(position_cap) + v3(0.5f, 0.5f, 0.5f), hit_emitter, 0.1f);
     }, false);
     trigger_timer->start(indicator_duration);

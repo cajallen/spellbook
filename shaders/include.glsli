@@ -173,4 +173,14 @@ float map_range(float value, float min_in, float max_in, float min_out, float ma
     return clamp(min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in), min_out, max_out);
 }
 
+float interpolate_magic(float x, float sharpness, float mid) {
+    float c = 2.0 / (1.0 - sharpness) - 1.0;
+    if (x < 0)
+        return 0.0;
+    if (x <= mid)
+        return (pow(x, c) / pow(mid, c - 1.0));
+    if (x < 1.0)
+        return 1.0 - (pow(1.0 - x, c) / pow(1.0 - mid, c - 1.0));
+    return 1.0;
+}
 #define TAU 6.2831853071

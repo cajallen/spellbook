@@ -318,7 +318,8 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
     }
     
     if (!registry.any_of<ForceDragging>(entity) && math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
-        scene.player.bank.beads[Bead_Quartz]--;
+        if (dragging.commited_cost.amount > 0)
+            scene.player.bank.beads[dragging.commited_cost.type] -= dragging.commited_cost.amount;
     
     logic_tfm.position = math::round(dragging.potential_logic_position);
 
@@ -371,7 +372,7 @@ void on_forcedrag_create(Scene& scene, entt::registry& registry, entt::entity en
     if (registry.all_of<Draggable>(entity)) {
         Draggable& draggable = registry.get<Draggable>(entity);
         LogicTransform& logic_tfm = registry.get<LogicTransform>(entity);
-        registry.emplace<Dragging>(entity, draggable.drag_height, scene.time, logic_tfm.position);
+        registry.emplace<Dragging>(entity, Beads{Bead_Quartz, 0}, draggable.drag_height, scene.time, logic_tfm.position);
     } else {
         log_error("Force Drag on undraggable");
     }

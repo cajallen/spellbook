@@ -13,17 +13,20 @@ namespace spellbook {
 
 enum LizardType {
     LizardType_Empty,
-    LizardType_Bulwark,
     LizardType_Barbarian,
     LizardType_Champion,
-    LizardType_Thief,
     LizardType_Assassin,
     LizardType_Ranger,
-    LizardType_SacrificeSupport,
     LizardType_IllusionMage,
     LizardType_MindMage,
     LizardType_WaterMage,
-    LizardType_Warlock
+    LizardType_Warlock,
+    LizardType_Thief,
+    LizardType_Druid,
+    LizardType_LaserMage,
+    LizardType_Treasurer,
+    LizardType_SacrificeSupport,
+    LizardType_Bulwark
 };
 
 struct LizardPrefab : Resource {

@@ -317,7 +317,7 @@ void MapEditor::window(bool* p_open) {
     ZoneScoped;
     if (ImGui::Begin("Map Editor", p_open)) {
         if (ImGui::Button("Play")) {
-            p_scene->audio.play_sound("audio/page_flip.flac"_resource, {.global = true, .volume = 0.3f});
+            //p_scene->audio.play_sound("audio/page_flip.flac"_resource, {.global = true, .volume = 0.3f});
 
             console({.str="Playing map..."});
             

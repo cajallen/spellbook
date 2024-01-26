@@ -49,9 +49,9 @@ struct EmitterCPU : Resource {
 
     void set_velocity_direction(v3 dir);
 
-    static constexpr string_view extension() { return ".sbjpcl"; }
-    static constexpr string_view dnd_key() { return "DND_PARTICLES"; }
-    static FilePath folder() { return "particles"_resource; }
+    static constexpr string_view extension() { return ".sbjemt"; }
+    static constexpr string_view dnd_key() { return "DND_EMITTERS"; }
+    static FilePath folder() { return "emitters"_resource; }
     static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EmitterCPU::extension(); }; }
 };
 

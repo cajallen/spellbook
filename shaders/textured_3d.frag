@@ -39,6 +39,7 @@ void main() {
     fout_normal = vec4(normalize(fin.TBN * normal_input), texture(s_metallic_roughness, uv).g * roughness_metallic_normals_scale.r);
 
     vec4 emissive_input = texture(s_emissive, uv);
-    fout_emissive = vec4(emissive_input.rgb * emissive_input.a * emissive_tint.rgb * emissive_tint.a + fin.color, 1.0);
+    fout_emissive = vec4(emissive_input.rgb * emissive_input.a * emissive_tint.rgb * emissive_tint.a + fin.color,
+                         texture(s_metallic_roughness, uv).r * roughness_metallic_normals_scale.g);
     fout_id = uvec4(fin.id, fin.id, fin.id, fin.id);
 }

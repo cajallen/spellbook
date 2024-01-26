@@ -59,7 +59,7 @@ void MaterialGPU::update_from_cpu(const MaterialCPU& new_material) {
     };
     cull_mode = new_material.cull_mode;
 
-    if (material_cpu.color_asset_path != new_material.color_asset_path)
+    if (material_cpu.color_asset_path != new_material.color_asset_path && get_gpu_asset_cache().get_texture(hash_path(new_material.color_asset_path)))
         color = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(new_material.color_asset_path).value.view.get(), new_material.sampler.get());
     if (material_cpu.normal_asset_path != new_material.normal_asset_path)
         normal = vuk::make_sampled_image(get_gpu_asset_cache().get_texture_or_upload(new_material.normal_asset_path).value.view.get(), new_material.sampler.get());

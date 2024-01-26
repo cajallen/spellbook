@@ -10,6 +10,7 @@
 #include "game/entities/drop.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/spawner.hpp"
+#include "game/entities/items/basic_stat_items.hpp"
 
 namespace spellbook {
 
@@ -91,7 +92,6 @@ vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
 void FirstFreeShopGenerator::purchase(uint32 index) {
     if (round_info->round_number == -1) {
         reset();
-        //round_info->advance_round();
     } else {
         out_shop.remove_index(index);
     }
@@ -217,7 +217,7 @@ void show_shop(Shop* shop, Player* player) {
         shop->entries = shop->shop_generator->generate_shop();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Close")) {
+    if (ImGui::Button("Ready")) {
         shop->shop_generator->reset();
         shop->shop_generator->round_info->advance_round();
     }

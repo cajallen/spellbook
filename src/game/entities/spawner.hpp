@@ -14,11 +14,13 @@ struct Scene;
 struct Spawner;
 
 struct SpawnStateInfo {
+    bool round_active = false;
     int round_number = -1;
     int wave_number = -1;
     int enemy_number = -1;
 
     void advance_round() {
+        round_active = true;
         round_number++;
         wave_number = -1;
         enemy_number = -1;
@@ -77,6 +79,8 @@ struct Spawner {
     bool spawn_enemy = false;
 
     FilePath force_spawn_path;
+
+    bool is_active();
 };
 
 JSON_IMPL(EnemySpawnInfo, enemy_prefab_path, pre_delay, post_delay);

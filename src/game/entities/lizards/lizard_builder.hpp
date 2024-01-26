@@ -15,6 +15,10 @@ void build_warlock(Scene* scene, entt::entity entity, const LizardPrefab& lizard
 void build_illusion_mage(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
 void build_mind_mage(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
 void build_water_mage(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
+void build_druid(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
+void build_laser_mage(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
+void build_thief(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
+void build_treasurer(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab);
 
 void draw_champion_dragging_preview(Scene* scene, entt::entity entity);
 void draw_warlock_dragging_preview(Scene* scene, entt::entity entity);

@@ -379,9 +379,9 @@ void Scene::select_entity(entt::entity entity) {
         if (tags->has_tag("no_move"_hs))
             return;
     
-    if (registry.all_of<Draggable>(selected_entity) && player.bank.beads[Bead_Quartz] > 0) {
+    if (registry.all_of<Draggable>(selected_entity) && player.can_drag()) {
         Draggable& draggable = registry.get<Draggable>(selected_entity);
-        registry.emplace<Dragging>(selected_entity, draggable.drag_height, time, logic_tfm->position, intersect);
+        registry.emplace<Dragging>(selected_entity, player.get_drag_cost(), draggable.drag_height, time, logic_tfm->position, intersect);
     }
 }
 

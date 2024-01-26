@@ -54,6 +54,8 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     background_mat.file_path = "black_mat"_symbolic;
     uint64 background_mat_name = upload_material(std::move(background_mat));
     quick_renderable(cube, background_mat_name, false);
+
+    metallic_refl_iv = get_gpu_asset_cache().get_texture_or_upload("metallic_refl.sbatex"_distributed).value.view.get();
 }
 
 void RenderScene::image(v2i size) {
@@ -131,7 +133,8 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     struct CompositeData {
         m44GPU inverse_vp;
         v4 camera_position;
-        
+        v4 camera_normal;
+
         m44GPU light_vp;
         m44GPU top_vp;
         v4 sun_data;
@@ -145,6 +148,7 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     } composite_data;
     composite_data.inverse_vp = (m44GPU) math::inverse(viewport.camera->vp);
     composite_data.camera_position = v4(viewport.camera->position, 1.0f);
+    composite_data.camera_normal = v4(math::euler2vector(viewport.camera->heading), 1.0f);
     composite_data.light_vp = sun_cam_data.vp;
     composite_data.top_vp = top_cam_data.vp;
     composite_data.sun_data = v4(sun_vec, scene_data.sun_intensity);
@@ -554,7 +558,7 @@ void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 })
                 .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
                 .set_color_blend("base_color_input", vuk::BlendPreset::eAlphaBlend)
-                .set_color_blend("emissive_input", vuk::BlendPreset::eAlphaBlend)
+                .set_color_blend("emissive_input", vuk::BlendPreset::eOff)
                 .set_color_blend("normal_input", vuk::BlendPreset::eOff)
                 .set_color_blend("info_input", vuk::BlendPreset::eOff);
             
@@ -690,6 +694,7 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             cmd.bind_compute_pipeline("postprocess");
 
             auto sampler = Sampler().filter(Filter_Linear).get();
+            auto linear_clamp_sampler = Sampler().filter(Filter_Linear).address(Address_Clamp).get();
             auto sun_sampler = Sampler().filter(Filter_Nearest).address(Address_Border).get();
             sun_sampler.borderColor = vuk::BorderColor::eFloatTransparentBlack;
             cmd.bind_image(0, 0, "base_color_output").bind_sampler(0, 0, sampler);
@@ -699,7 +704,8 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             cmd.bind_image(0, 4, "widget_output").bind_sampler(0, 4, sampler);
             cmd.bind_image(0, 5, "widget_depth_output").bind_sampler(0, 5, sampler);
             cmd.bind_image(0, 6, "sun_depth_output").bind_sampler(0, 6, sun_sampler);
-            cmd.bind_image(0, 7, "top_blurred").bind_sampler(0, 7, Sampler().filter(Filter_Linear).address(Address_Clamp).get());
+            cmd.bind_image(0, 7, "top_blurred").bind_sampler(0, 7, linear_clamp_sampler);
+            cmd.bind_image(0, 10, metallic_refl_iv).bind_sampler(0, 10, linear_clamp_sampler);
             cmd.bind_image(0, 8, "target_input");
 
             cmd.bind_buffer(0, 9, buffer_composite_data);

@@ -22,4 +22,8 @@ target_sources(spellbook_src PUBLIC
     lizards/ranger.cpp
     lizards/warlock.cpp
     lizards/water_mage.cpp
+    lizards/thief.cpp
+    lizards/druid.cpp
+    lizards/laser_mage.cpp
+    lizards/treasurer.cpp
 )

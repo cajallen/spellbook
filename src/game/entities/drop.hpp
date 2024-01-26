@@ -19,6 +19,11 @@ enum Bead {
     Bead_Count
 };
 
+struct Beads {
+    Bead type;
+    int32 amount;
+};
+
 struct BeadPrefab : Resource {
     FilePath model_path;
     Bead type;
