@@ -1,5 +1,5 @@
 # Saurian Sorcery
-A tower defense game where you assemble a tribe of lizards to defend against robot invaders attempting to steal sacred dragon eggs from your village.
+A tower defense game where you assemble a tribe of lizards to defend against robot invaders attempting to steal sacred dragon eggs from your village. All assets and code (outside of library usage from the libs folder) are done by me.
 
 ### Gameplay
 https://github.com/cajallen/spellbook/assets/56494731/4aab2316-10f5-4500-9de9-d5967427b537
