@@ -367,7 +367,7 @@ void attachment_transform_system(Scene* scene) {
 
         if (model && model_tfm) {
             m44 tfm = model_tfm->get_transform();
-            Bone* anchor_bone = model->model_cpu->skeleton->find_bone("anchor");
+            Bone* anchor_bone = model->model_cpu->skeleton ? model->model_cpu->skeleton->find_bone("anchor") : nullptr;
             if (anchor_bone) {
                 m44 t =  tfm * model->model_cpu->root_node->cached_transform * anchor_bone->transform();
                 attachment_model_tfm.set_translation(math::apply_transform(t, v3(0.0f, 0.0f, 0.0f)));
