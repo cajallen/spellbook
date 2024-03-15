@@ -1,4 +1,6 @@
 add_subdirectory(entities)
+add_subdirectory(effects)
+add_subdirectory(gui)
 target_sources(spellbook_src PUBLIC
     audio.cpp
     camera_controller.cpp

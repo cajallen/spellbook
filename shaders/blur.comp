@@ -6,11 +6,10 @@
 layout(binding = 0, rgba16f) uniform image2D u_source;
 layout(binding = 1, rgba16f) uniform writeonly image2D u_target;
 
-layout(constant_id = 0) const int target_width	= 0;
-layout(constant_id = 1) const int target_height = 0;
-
 layout(push_constant) uniform uPushConstant {
     int axis;
+    int target_width;
+    int target_height;
 } pc;
 
 const int NUM_TAPS = 31;
@@ -59,9 +58,9 @@ void main() {
     
     for (int i = -NUM_TAPS; i < NUM_TAPS; i++) {
         ivec2 sample_coord = coord + axis * i;
-        if (sample_coord.x < 0 || sample_coord.x >= target_width)
+        if (sample_coord.x < 0 || sample_coord.x >= pc.target_width)
             continue;
-        if (sample_coord.y < 0 || sample_coord.y >= target_height)
+        if (sample_coord.y < 0 || sample_coord.y >= pc.target_height)
             continue;
         
         float weight = samples[abs(i)];

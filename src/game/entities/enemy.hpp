@@ -15,6 +15,7 @@ struct Scene;
 
 enum EnemyType {
     EnemyType_Empty,
+    EnemyType_InnateBot,
     EnemyType_Laser,
     EnemyType_Resistor,
     EnemyType_Mortar,
@@ -78,9 +79,17 @@ struct Attachment {
     bool requires_base = true;
 };
 
+struct InnateBot {
+    float interior_rotation;
+    float exterior_rotation;
+    static constexpr float interior_speed = 16.0f;
+    static constexpr float exterior_speed = -64.0f;
+};
+
 JSON_IMPL(EnemyPrefab, type, base_model_path, attachment_model_path, hurt_path, max_health, max_speed, base_scale, attachment_scale, drops);
 
 entt::entity instance_prefab(Scene*, const EnemyPrefab&, v3i location);
+entt::entity instance_innate_bot(Scene*, const EnemyPrefab&, v3i location);
 bool inspect(EnemyPrefab*);
 void enemy_aggro_system(Scene* scene);
 void traveler_reset_system(Scene* scene);

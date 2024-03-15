@@ -28,6 +28,9 @@ add_library(imgui
 target_include_directories(imgui PUBLIC imgui imgui/backends)
 target_link_libraries(imgui PRIVATE glfw)
 
+add_library(ft INTERFACE)
+target_include_directories(ft INTERFACE freetype/include)
+
 add_library(lz4 lz4/lz4.cpp lz4/lz4hc.cpp lz4/xxhash.cpp)
 
 add_library(stb INTERFACE)
@@ -51,6 +54,8 @@ target_link_libraries(libs INTERFACE
     fmt
     miniaudio
     stb
+    ft
+    ${FREETYPE_PATH}/freetype.lib
 )
 target_include_directories(libs INTERFACE 
     tracy/public

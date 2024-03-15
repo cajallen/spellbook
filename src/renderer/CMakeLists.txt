@@ -16,6 +16,7 @@ add_library(renderer
     samplers.cpp
     vertex.cpp
     viewport.cpp
+	font_manager.cpp
 )
 
 target_include_directories(renderer PRIVATE ..)

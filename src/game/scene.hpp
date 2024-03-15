@@ -16,7 +16,6 @@
 
 namespace spellbook {
 
-struct LizardPrefab;
 struct TilePrefab;
 struct SpawnerPrefab;
 struct ConsumerPrefab;

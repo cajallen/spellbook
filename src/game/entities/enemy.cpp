@@ -48,7 +48,7 @@ void EnemyLaserAttack::trigger() {
 
         constexpr float duration = 0.15f;
         entt::entity caster_cap = caster;
-        beam_animate = add_tween_timer(scene, "Enemy laser tick", [lizard, caster_cap](Timer* timer) {
+        beam_animate = add_tween_timer(scene, [lizard, caster_cap](Timer* timer) {
             if (timer->ticking && timer->scene->registry.valid(lizard) && timer->scene->registry.valid(caster_cap)) {
                 auto* logic_tfm = timer->scene->registry.try_get<LogicTransform>(caster_cap);
                 auto* liz_tfm = timer->scene->registry.try_get<LogicTransform>(lizard);
@@ -97,7 +97,7 @@ void EnemyResistorAttack::trigger() {
     
     constexpr float duration = 0.25f;
     entt::entity caster_cap = caster;
-    aura_animate = add_tween_timer(scene, "Enemy laser tick", [caster_cap](Timer* timer) {
+    aura_animate = add_tween_timer(scene, [caster_cap](Timer* timer) {
         if (timer->ticking && timer->scene->registry.valid(caster_cap) && timer->scene->registry.valid(caster_cap)) {
             if (!timer->scene->registry.valid(caster_cap))
                 return;
@@ -145,7 +145,7 @@ struct EnemyMortarAttack : Attack {
 void EnemyMortarAttack::trigger() {
     constexpr float beam_duration = 0.2f;
     entt::entity caster_cap = caster;
-    beam1_animate = add_tween_timer(scene, "Enemy mortar beam 1", [caster_cap](Timer* timer) {
+    beam1_animate = add_tween_timer(scene, [caster_cap](Timer* timer) {
         if (timer->ticking && timer->scene->registry.valid(caster_cap)) {
             LogicTransform& caster_logic_tfm = timer->scene->registry.get<LogicTransform>(caster_cap);
             vector<FormattedVertex> vertices;
@@ -159,7 +159,7 @@ void EnemyMortarAttack::trigger() {
 
     v3i position_cap = target;
     constexpr float indicator_duration = 1.5f;
-    indicator_animate = add_tween_timer(scene, "Enemy mortar indicator", [position_cap](Timer* timer) {
+    indicator_animate = add_tween_timer(scene, [position_cap](Timer* timer) {
         if (timer->ticking) {
             float t = 1.0f - timer->remaining_time / timer->total_time;
             
@@ -175,7 +175,7 @@ void EnemyMortarAttack::trigger() {
     }, false);
     indicator_animate->start(indicator_duration);
 
-    trigger_timer = add_timer(scene, "Enemy mortar trigger", [this, position_cap](Timer* timer) {
+    trigger_timer = add_timer(scene, [this, position_cap](Timer* timer) {
         if (!timer->scene->registry.valid(caster))
             return;
         uset<entt::entity> lizards = entry_gather_function(*this, position_cap, 0.0f);
@@ -187,7 +187,7 @@ void EnemyMortarAttack::trigger() {
             health.damage(caster, 5.0f, liz_tfm.position - logic_tfm.position);
         }
         
-        beam2_animate = add_tween_timer(timer->scene, "Enemy mortar beam 2", [position_cap](Timer* timer) {
+        beam2_animate = add_tween_timer(timer->scene, [position_cap](Timer* timer) {
             if (timer->ticking) {
                 vector<FormattedVertex> vertices;
                 float width = (timer->remaining_time / timer->total_time) * 0.1f + 0.1f;
@@ -219,6 +219,9 @@ void EnemyMortarAttack::targeting() {
 entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i location) {
     static SpiderControllerSettings settings;
 
+    if (prefab.type == EnemyType_InnateBot)
+        return instance_innate_bot(scene, prefab, location);
+
     vector<PathInfo*> available_paths;
     for (PathInfo& path : scene->paths) {
         if (math::distance(path.path.get_start(), v3(location)) < 0.1f)
@@ -231,18 +234,19 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     entt::entity base_entity = setup_basic_unit(scene, prefab.base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
     static int base_i = 0;
     scene->registry.emplace<Name>(base_entity, fmt_("{}_{}", prefab.base_model_path.stem(), base_i++));
-    entt::entity attachment_entity = scene->registry.create();
+    entt::entity attachment_entity = prefab.type != EnemyType_InnateBot ? scene->registry.create() : entt::null;
+
     scene->registry.erase<TransformLink>(base_entity);
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
     scene->registry.emplace<Traveler>(base_entity);
     scene->registry.emplace<SpiderController>(base_entity, settings);
-    
+
     scene->registry.get<Traveler>(base_entity).max_speed = std::make_unique<Stat>(scene, base_entity, prefab.max_speed);
     scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.base_scale);
 
     if (!prefab.drops.entries.empty())
         scene->registry.emplace<DropChance>(base_entity, prefab.drops);
-    
+
     auto& model_comp = scene->registry.emplace<Model>(attachment_entity);
     model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(prefab.attachment_model_path));
     model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
@@ -258,23 +262,28 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     if (model_comp.model_cpu->skeleton) {
         scene->registry.emplace<PoseController>(attachment_entity, *model_comp.model_cpu->skeleton);
     }
-    
     switch (prefab.type) {
         case (EnemyType_Laser): {
             Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene, attachment_entity);
-            caster.attack = std::make_unique<EnemyLaserAttack>(scene, attachment_entity, 0.5f, 1.0f, 1.5f, 1.0f);
+            caster.attack = std::make_unique<EnemyLaserAttack>(scene, attachment_entity);
+            caster.attack->setup_time(0.5f, 1.0f);
+            caster.attack->setup_cd(1.5f);
             caster.attack->entry_gather_function = gather_lizard();
             caster.attack->entry_eval_function = simple_entry_eval;
         } break;
         case (EnemyType_Resistor): {
             Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene, attachment_entity);
-            caster.attack = std::make_unique<EnemyResistorAttack>(scene, attachment_entity, 0.1f, 0.1f, 1.5f, 1.0f);
+            caster.attack = std::make_unique<EnemyResistorAttack>(scene, attachment_entity);
+            caster.attack->setup_time(0.05f, 0.05f);
+            caster.attack->setup_cd(1.5f);
             caster.attack->entry_gather_function = gather_enemies_aoe(1);
             caster.attack->entry_eval_function = simple_entry_eval;
         } break;
         case (EnemyType_Mortar): {
             Caster& caster = scene->registry.emplace<Caster>(attachment_entity, scene, attachment_entity);
-            caster.attack = std::make_unique<EnemyMortarAttack>(scene, attachment_entity, 0.75f, 0.75f, 4.0f, 5.0f);
+            caster.attack = std::make_unique<EnemyMortarAttack>(scene, attachment_entity);
+            caster.attack->setup_time(0.75f, 0.75f);
+            caster.attack->setup_cd(4.0f);
             caster.attack->entry_gather_function = gather_lizard();
             caster.attack->entry_eval_function = simple_entry_eval;
         } break;
@@ -283,6 +292,27 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     }
     
     return base_entity;  
+}
+
+entt::entity instance_innate_bot(Scene* scene, const EnemyPrefab& prefab, v3i location) {
+    entt::entity spawner = entt::null;
+    entt::entity selected_consumer = entt::null;
+
+    entt::entity base_entity = setup_basic_unit(scene, prefab.base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
+    static int base_i = 0;
+    scene->registry.emplace<Name>(base_entity, fmt_("{}_{}", prefab.base_model_path.stem(), base_i++));
+    entt::entity attachment_entity = prefab.type != EnemyType_InnateBot ? scene->registry.create() : entt::null;
+
+    scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
+    scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.base_scale);
+    scene->registry.get<TransformLink>(base_entity).offset.z = 0.5f;
+
+    if (!prefab.drops.entries.empty())
+        scene->registry.emplace<DropChance>(base_entity, prefab.drops);
+
+    scene->registry.emplace<InnateBot>(base_entity, 0.0f, 0.0f);
+
+    return base_entity;
 }
 
 bool inspect(EnemyPrefab* enemy_prefab) {
@@ -341,6 +371,18 @@ void enemy_ik_controller_system(Scene* scene) {
     }
 }
 
+void enemy_innate_bot_system(Scene* scene) {
+    for (auto [entity, model, model_transform, innate_bot] : scene->registry.view<Model, ModelTransform, InnateBot>().each()) {
+        innate_bot.interior_rotation += innate_bot.interior_speed * Input::delta_time;
+        innate_bot.exterior_rotation += innate_bot.exterior_speed * Input::delta_time;
+
+        model.model_cpu->root_node->transform = math::rotation(euler{.yaw = math::d2r(innate_bot.interior_rotation)});
+        model.model_cpu->root_node->children.front()->transform = math::rotation(euler{.yaw = math::d2r(innate_bot.exterior_rotation)});
+        model.model_cpu->root_node->cache_transform();
+        model_transform.renderable_dirty = true;
+    }
+}
+
 void attachment_transform_system(Scene* scene) {
     ZoneScoped;
     for (auto [base_entity, logic_tfm, enemy] : scene->registry.view<LogicTransform, Enemy>().each()) {
@@ -378,6 +420,7 @@ void attachment_transform_system(Scene* scene) {
             attachment_model_tfm.set_rotation(logic_quat);
         }
     }
+    enemy_innate_bot_system(scene);
 }
 
 void enemy_aggro_system(Scene* scene) {
@@ -387,7 +430,7 @@ void enemy_aggro_system(Scene* scene) {
     // manage movement requests from attachment
     for (auto [entity, attachment, caster] : scene->registry.view<Attachment, Caster>().each()) {
         Attack* attack = (Attack*) &*caster.attack;
-        if (!caster.attack->has_target || caster.attack->in_range() || attack->cooldown_timer->ticking)
+        if (!caster.attack->has_target || attack->cooldown_timer->ticking)
             continue;
 
         if (!scene->registry.valid(attachment.base))
@@ -416,7 +459,10 @@ void enemy_aggro_system(Scene* scene) {
 
     // Pick up egg if possible
     for (auto [entity, enemy, traveler, logic_tfm] : scene->registry.view<Enemy, Traveler, LogicTransform>().each()) {
-        entt::entity egg_entity = scene->registry.get<Shrine>(enemy.target_consumer).egg_entity;
+        Shrine* shrine = scene->registry.try_get<Shrine>(enemy.target_consumer);
+        if (!shrine)
+            continue;
+        entt::entity egg_entity = shrine->egg_entity;
         Attachment& egg_attachment = scene->registry.get<Attachment>(egg_entity);
         // another enemy is carrying the egg
         if (scene->registry.valid(egg_attachment.base) && egg_attachment.base != enemy.target_consumer)

@@ -1,4 +1,4 @@
-﻿#include "game/entities/lizards/lizard_builder.hpp"
+﻿#include "game/entities/lizards/lizard.hpp"
 
 #include <entt/entity/entity.hpp>
 
@@ -126,7 +126,7 @@ void WarlockSpell::trigger() {
 
     Caster& caster_comp = scene->registry.get<Caster>(caster);
     caster_comp.attack_speed->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.4f, INT_MAX, buff_duration));
-    caster_comp.cooldown_reduction->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
+    caster_comp.cooldown_speed->add_effect((uint64) this, StatEffect(StatEffect::Type_Multiply, -0.3f, INT_MAX, buff_duration));
     caster_comp.lifesteal->add_effect((uint64) this, StatEffect(StatEffect::Type_Base, 0.1f, INT_MAX, buff_duration));
 }
 

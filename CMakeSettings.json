@@ -9,7 +9,24 @@
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
-      "ctestCommandArgs": ""
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "FREETYPE_PATH",
+          "value": "C:/spellbook/libs/bin/freetype",
+          "type": "PATH"
+        },
+        {
+          "name": "CMAKE_CXX_FLAGS",
+          "value": "/DWIN32 /D_WINDOWS /GR /EHsc",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_C_FLAGS",
+          "value": "/DWIN32 /D_WINDOWS",
+          "type": "STRING"
+        }
+      ]
     },
     {
       "name": "x64-Release",

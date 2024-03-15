@@ -44,21 +44,18 @@ struct MaterialCPU : Resource {
 JSON_IMPL(MaterialCPU, color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, color_asset_path,
         orm_asset_path, normal_asset_path, emissive_asset_path, sampler, cull_mode, shader_name);
 
-struct MaterialDataGPU {
+struct BasicMaterialDataGPU {
     v4 color_tint;
     v4 emissive_tint;
     v4 roughness_metallic_normal_scale;
 };
 
 struct MaterialGPU {
-    MaterialCPU material_cpu;
     // uses master shader
     vuk::PipelineBaseInfo* pipeline;
-    vuk::SampledImage      color    = vuk::SampledImage(vuk::SampledImage::Global{});
-    vuk::SampledImage      orm      = vuk::SampledImage(vuk::SampledImage::Global{});
-    vuk::SampledImage      normal   = vuk::SampledImage(vuk::SampledImage::Global{});
-    vuk::SampledImage      emissive = vuk::SampledImage(vuk::SampledImage::Global{});
-    MaterialDataGPU        tints;
+
+    umap<uint32, vuk::SampledImage> images;
+    vector<uint8> extra_material_data;
 
     vuk::CullModeFlags cull_mode;
 
@@ -69,6 +66,8 @@ struct MaterialGPU {
 
     void update_from_cpu(const MaterialCPU& new_material);
 };
+
+void make_ui_material(uint64 id, vuk::SampledImage& image);
 
 bool inspect(MaterialCPU* material);
 void inspect(MaterialGPU* material);

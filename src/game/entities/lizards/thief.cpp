@@ -1,4 +1,4 @@
-﻿#include "game/entities/lizards/lizard_builder.hpp"
+﻿#include "game/entities/lizards/lizard.hpp"
 
 #include <entt/entity/entity.hpp>
 

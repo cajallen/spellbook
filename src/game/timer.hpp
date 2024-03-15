@@ -16,7 +16,6 @@ struct TimerCallback {
 };
 
 struct Timer {
-    string name;
     Scene* scene;
     TimerCallback callback;
     bool trigger_every_tick = false;
@@ -38,13 +37,12 @@ struct Timer {
 struct TimerManager {
     vector<std::shared_ptr<Timer>> timers;
     vector<TimerCallback> timer_callbacks;
-    
 };
 
 void update_timers(Scene* scene);
 
-std::shared_ptr<Timer> add_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool unowned_oneshot = false);
-std::shared_ptr<Timer> add_tween_timer(Scene* scene, const string& name, std::function<void(Timer*)> callback = {}, bool unowned_oneshot = false);
+std::shared_ptr<Timer> add_timer(Scene* scene, std::function<void(Timer*)> callback = {}, bool unowned_oneshot = false);
+std::shared_ptr<Timer> add_tween_timer(Scene* scene, std::function<void(Timer*)> callback = {}, bool unowned_oneshot = false);
 void inspect(Timer* timer);
 
 // To get rid of a timer, just drop references to it

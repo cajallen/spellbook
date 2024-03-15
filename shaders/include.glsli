@@ -1,3 +1,4 @@
+// standard
 #define CAMERA_BINDING 0
 #define MODEL_BINDING 1
 #define ID_BINDING 2
@@ -9,6 +10,10 @@
 #define EMISSIVE_BINDING 8
 #define SPARE_BINDING_1 9
 #define PARTICLES_BINDING MODEL_BINDING
+
+// font
+#define VIEW_BINDING 0
+#define TEXTURE_BINDING 1
 
 struct Particle {
     vec4 position_scale;
@@ -53,28 +58,23 @@ float srgb_to_linear(float sRGB) {
     return mix(higher, lower, cutoff);
 }
 
-uint to_uint_seed(ivec2 i)
-{
+uint to_uint_seed(ivec2 i) {
     return i.x + i.y * 49213191;
 }
 
-uint to_uint_seed(ivec3 i)
-{
+uint to_uint_seed(ivec3 i) {
     return i.x + i.y * 496211 + i.z * 49213191;
 }
 
-uint to_uint_seed(float i)
-{
+uint to_uint_seed(float i) {
     return int(i * 4096.f);
 }
 
-uint to_uint_seed(vec2 i)
-{
+uint to_uint_seed(vec2 i) {
     return to_uint_seed(ivec2(i * 4096.f));
 }
 
-uint to_uint_seed(vec3 i)
-{
+uint to_uint_seed(vec3 i) {
     return to_uint_seed(ivec3(i * 4096.f));
 }
 

@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(DISTRIBUTED_DIR ${CMAKE_SOURCE_DIR} CACHE PATH "Root directory for resources")
 set(FA_PATH "${CMAKE_SOURCE_DIR}/fa.ttf" CACHE PATH "Font Awesome path" FORCE)
+set(FREETYPE_PATH ${CMAKE_SOURCE_DIR}/libs/bin/freetype CACHE PATH "FreeType Path")
 
 add_subdirectory(libs)
 add_subdirectory(src)

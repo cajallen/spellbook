@@ -59,6 +59,23 @@ uint64 upload_mesh(const MeshCPU& mesh_cpu, bool frame_allocation) {
     return mesh_cpu_hash;
 }
 
+void upload_mesh(const MeshUICPU& mesh_cpu, bool frame_allocation) {
+    MeshGPU         mesh_gpu;
+    mesh_gpu.frame_allocated = frame_allocation;
+    vuk::Allocator& alloc                = frame_allocation ? *get_renderer().frame_allocator : *get_renderer().global_allocator;
+    auto            [vert_buf, vert_fut] = vuk::create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.vertices));
+    mesh_gpu.vertex_buffer               = std::move(vert_buf);
+    auto [idx_buf, idx_fut]              = vuk::create_buffer(alloc, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(mesh_cpu.indices));
+    mesh_gpu.index_buffer                = std::move(idx_buf);
+    mesh_gpu.index_count                 = mesh_cpu.indices.size();
+    mesh_gpu.vertex_count                = mesh_cpu.vertices.size();
+
+    get_renderer().enqueue_setup(std::move(vert_fut));
+    get_renderer().enqueue_setup(std::move(idx_fut));
+
+    get_gpu_asset_cache().meshes[mesh_cpu.id] = std::move(mesh_gpu);
+}
+
 MeshCPU load_mesh(const FilePath& file_path) {
     AssetFile& asset_file = get_file_cache().load_asset(file_path);
 

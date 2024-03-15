@@ -3,11 +3,12 @@
 #include <vuk/CommandBuffer.hpp>
 
 #include "general/math/geometry.hpp"
+#include "general/color.hpp"
 
 namespace spellbook {
 
 struct Vertex {
-	v3 position;
+	v3 position = {};
 	v3 normal = {};
 	v3 tangent = {};
 	v3 color = {};
@@ -33,6 +34,20 @@ struct Vertex {
             vuk::Ignore{ sizeof(Vertex::normal)  + sizeof(Vertex::tangent) }, // normal
             vuk::Format::eR32G32B32Sfloat, // color
             vuk::Ignore{ sizeof(Vertex::uv)  + sizeof(Vertex::bone_ids) + sizeof(bone_weights) }
+        };
+    }
+};
+
+struct VertexUI {
+    v3 position = {0.0f, 0.0f, 0.0f};
+    v2 uv = {0.0f, 0.0f};
+    Color32 color = Color32(255, 255, 255, 255);
+
+    static inline vuk::Packed get_format() {
+        return vuk::Packed {
+            vuk::Format::eR32G32B32Sfloat, // position
+            vuk::Format::eR32G32Sfloat,    // uv
+            vuk::Format::eR8G8B8A8Uint     // color
         };
     }
 };

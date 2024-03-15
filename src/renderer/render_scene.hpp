@@ -48,7 +48,7 @@ enum DebugDrawMode {
 };
 
 struct PostProcessData {
-    v4 outline = v4(0.01f, 0.20f, 0.01f, 0.10f);
+    v4 outline = v4(0.01f, 0.20f, 0.01f, 0.20f);
     DebugDrawMode debug_mode = DebugDrawMode_Lit;
     float time;
 };
@@ -59,8 +59,10 @@ struct RenderScene {
     plf::colony<StaticRenderable> static_renderables;
     plf::colony<Renderable> renderables;
     plf::colony<Renderable> widget_renderables;
+    vector<Renderable> ui_renderables;
     plf::colony<EmitterGPU> emitters;
     Viewport                viewport;
+    uint64 widget_model_start = 0;
 
     SceneData       scene_data;
     PostProcessData post_process_data;
@@ -83,7 +85,8 @@ struct RenderScene {
     vuk::Buffer buffer_composite_data;
     vuk::Buffer buffer_model_mats;
     vuk::Buffer buffer_ids;
-    
+    vuk::Buffer buffer_ui_view;
+
     struct BuiltRenderable {
         uint32 id;
         m44GPU* mat;
@@ -112,6 +115,7 @@ struct RenderScene {
     void add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg);
     void add_emitter_update_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg);
 
     void prune_emitters();
 

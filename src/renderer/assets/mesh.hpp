@@ -42,6 +42,12 @@ JSON_IMPL(MeshInfo, vertices_bsize, indices_bsize, index_bsize);
 JSON_IMPL(MeshBounds, valid, extents, origin, radius);
 JSON_IMPL(MeshCPU, bounds);
 
+struct MeshUICPU {
+    uint64 id;
+    vector<VertexUI> vertices;
+    vector<uint32> indices;
+};
+
 struct MeshGPU {
     vuk::Unique<vuk::Buffer> vertex_buffer;
     vuk::Unique<vuk::Buffer> index_buffer;
@@ -55,5 +61,6 @@ struct MeshGPU {
 MeshCPU load_mesh(const FilePath& file_path);
 void    save_mesh(const MeshCPU& mesh_cpu);
 uint64 upload_mesh(const MeshCPU&, bool frame_allocation = false);
+void upload_mesh(const MeshUICPU&, bool frame_allocation = false);
 
 }

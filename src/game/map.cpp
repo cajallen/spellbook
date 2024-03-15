@@ -17,18 +17,6 @@ namespace spellbook {
 bool inspect(MapPrefab* map_prefab) {
     ImGui::PathSelect<MapPrefab>("File", &map_prefab->file_path);
     inspect_dependencies(map_prefab->dependencies, map_prefab->file_path);
-    
-    ImGui::Text("Lizards");
-    uint32 lizard_i = 0;
-    for (auto& [pos, prefab] : map_prefab->lizards) {
-        ImGui::Text("%d", lizard_i++);
-        ImGui::Indent();
-        ImGui::PushID(prefab.rel_c_str());
-        ImGui::PathSelect<LizardPrefab>("Path", &prefab);
-        ImGui::PopID();
-        ImGui::Unindent();
-    }
-    ImGui::Separator();
 
     if (ImGui::TreeNode("Tiles")) {
         uint32 tile_i = 0;
@@ -77,11 +65,6 @@ bool inspect(MapPrefab* map_prefab) {
 Scene* instance_map(const MapPrefab& map_prefab, const string& name) {
     auto scene = new Scene();
     scene->setup(name);
-    for (auto& [pos, prefab] : map_prefab.lizards) {
-        if (!prefab.is_file())
-            continue;
-        instance_prefab(scene, load_resource<LizardPrefab>(prefab), pos);
-    }
     for (auto& [pos, entry] : map_prefab.tiles) {
         if (!entry.prefab_path.is_file())
             continue;

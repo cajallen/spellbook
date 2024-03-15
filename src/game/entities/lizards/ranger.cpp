@@ -1,6 +1,6 @@
 ﻿#include <miniaudio.h>
 
-#include "game/entities/lizards/lizard_builder.hpp"
+#include "game/entities/lizards/lizard.hpp"
 
 #include <entt/entity/entity.hpp>
 #include <entt/core/hashed_string.hpp>
@@ -18,7 +18,6 @@
 #include "game/entities/consumer.hpp"
 #include "game/entities/enemy.hpp"
 #include "game/entities/tags.hpp"
-#include "game/entities/lizard.hpp"
 #include "game/entities/projectile.hpp"
 #include "game/entities/targeting.hpp"
 
@@ -32,12 +31,26 @@ constexpr float attack_vuln_amount = 1.0f;
 
 struct RangerAttack : Attack {
     using Attack::Attack;
+
+    RangerAttack() {}
     void targeting() override;
     void start() override;
     void trigger() override;
     float time_to_hit(v3i pos) override;
 
     string get_name() const override { return "Ranger Attack"; }
+};
+
+struct RangerSpell : Spell {
+    using Spell::Spell;
+
+    RangerSpell() {}
+    void start() override;
+    void trigger() override;
+    void targeting() override;
+    void end() override;
+
+    string get_name() const override { return "Ranger Spell"; }
 };
 
 void RangerAttack::start() {
@@ -153,17 +166,6 @@ float RangerAttack::time_to_hit(v3i pos) {
     return pre_trigger_time.value() + travel_time;
 }
 
-
-struct RangerSpell : Spell {
-    using Spell::Spell;
-    void start() override;
-    void trigger() override;
-    void targeting() override;
-    void end() override;
-
-    string get_name() const override { return "Ranger Spell"; }
-};
-
 void RangerSpell::start() {
     lizard_turn_to_target();
 }
@@ -192,8 +194,8 @@ int ranger_attack_entry_eval(Scene* scene, const uset<entt::entity>& units) {
 }
 
 
-
-void RangerSpell::trigger() {
+template<>
+void trigger<LizardType_Ranger, AbilityType_Spell>(void* data, v3i target) {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
     auto model = scene->registry.try_get<Model>(caster);
     auto ranger_model_transform = scene->registry.try_get<ModelTransform>(caster);
@@ -275,8 +277,9 @@ void RangerSpell::trigger() {
 void RangerSpell::end() {
 }
 
-void build_ranger(Scene* scene, entt::entity entity, const LizardPrefab& lizard_prefab) {
-    scene->registry.emplace<Lizard>(entity, lizard_prefab.type, lizard_prefab.default_direction);
+template<>
+void build<LizardType_Ranger>(Scene* scene, entt::entity entity) {
+    scene->registry.emplace<Lizard>(entity, LizardType_Ranger, v3(1.0f, 0.0f, 0.0f));
     Caster& caster = scene->registry.get<Caster>(entity);
 
     caster.attack = std::make_unique<RangerAttack>(scene, entity, 0.8f, 1.3f, 1.0f, 4.0f);
@@ -288,7 +291,8 @@ void build_ranger(Scene* scene, entt::entity entity, const LizardPrefab& lizard_
     caster.spell->entry_eval_function = basic_lizard_entry_eval;
 }
 
-void draw_ranger_dragging_preview(Scene* scene, entt::entity entity) {
+template<>
+void draw_dragging_preview<LizardType_Ranger>(Scene* scene, entt::entity entity) {
     v3 logic_pos = scene->registry.get<Dragging>(entity).potential_logic_position;
     
     vector<FormattedVertex> vertices;

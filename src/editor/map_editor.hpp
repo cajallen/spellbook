@@ -8,7 +8,6 @@
 #include "game/map.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/spawner.hpp"
-#include "game/entities/lizard.hpp"
 #include "game/entities/tile.hpp"
 #include "game/visual_tile.hpp"
 
@@ -25,7 +24,6 @@ struct MapEditor : EditorScene {
     MapPrefab map_prefab;
 
     vector<Button<ConsumerPrefab>> consumer_buttons;
-    vector<Button<LizardPrefab>> lizard_buttons;
     vector<Button<TilePrefab>>  tile_buttons;
     vector<Button<SpawnerPrefab>> spawner_buttons;
 
@@ -34,7 +32,6 @@ struct MapEditor : EditorScene {
     
     bool eraser_selected = false;
     uint32 selected_consumer = ~0u;
-    uint32 selected_lizard = ~0u;
     uint32 selected_tile  = ~0u;
     uint32 selected_spawner = ~0u;
 
@@ -59,7 +56,6 @@ struct MapEditor : EditorScene {
     
     void instance_and_write_consumer(const FilePath& path, v3i input_pos);
     void instance_and_write_spawner(const FilePath& path, v3i input_pos);
-    void instance_and_write_lizard(const FilePath& path, v3i input_pos);
     void instance_and_write_tile(const FilePath& path, v3i input_pos, uint32 rotation = 0);
 };
 

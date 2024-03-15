@@ -25,6 +25,7 @@ struct TextureCPU : Resource {
     v2i         size   = {};
     vuk::Format format = {};
     vector<uint8>  pixels = {};
+    bool needs_mips = true;
 
     static constexpr string_view extension() { return ".sbatex"; }
     static constexpr string_view dnd_key() { return "DND_TEXTURE"; }

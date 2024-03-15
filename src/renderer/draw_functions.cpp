@@ -7,6 +7,7 @@
 #include "extension/fmt_geometry.hpp"
 #include "general/hash.hpp"
 #include "general/bitmask_3d.hpp"
+#include "general/math/noise.hpp"
 #include "general/math/ease.hpp"
 #include "general/logger.hpp"
 #include "general/file/file_path.hpp"
@@ -39,6 +40,18 @@ v2 position2uv(v3 v) {
 
 } // namespace icosphere
 
+MeshUICPU generate_quad(v2i top_left, v2i bottom_right, Color color) {
+    uint64 id = uint64(top_left.x) << 32 | top_left.y;
+    id = id ^ (uint64(bottom_right.x) << 32 | bottom_right.y);
+    return MeshUICPU{id, vector<VertexUI> {
+            VertexUI {v3(top_left.x,     top_left.y, 0.0f), v2{0.0f, 0.0f},     Color32(color)},
+            VertexUI {v3(bottom_right.x, top_left.y, 0.0f), v2{1.0f, 0.0f},     Color32(color)},
+            VertexUI {v3(bottom_right.x, bottom_right.y, 0.0f), v2{1.0f, 1.0f}, Color32(color)},
+            VertexUI {v3(top_left.x,     bottom_right.y, 0.0f), v2{0.0f, 1.0f}, Color32(color)}
+        },
+        {0, 1, 2, 0, 2, 3}
+    };
+}
 
 MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
     ZoneScoped;
@@ -318,6 +331,117 @@ MeshCPU generate_formatted_line(Camera* camera, vector<FormattedVertex> vertices
     return mesh_cpu;
 }
 
+MeshUICPU generate_formatted_line_2d(vector<FormattedVertex2D> vertices) {
+    string name = fmt_("2d_line_hash:{:#x}", hash_data(vertices.data(), vertices.bsize()));
+
+    if (!(vertices.size() >= 2))
+        return {};
+    struct Segment {
+        v2 left;
+        v2 right;
+        Color color;
+        bool separate = false;
+    };
+
+    vector<Segment> segments;
+    segments.reserve(vertices.size() + (vertices.size() - 2) * 2);
+    for (uint32 i = 0; i < vertices.size(); i++) {
+        FormattedVertex2D& vertex = vertices[i];
+        if (vertex.color.a == 0.0f) {
+            segments.push_back({.separate = true});
+            continue;
+        }
+
+        // none_before/none_after is to skip the corner smoothing
+        bool none_before = i == 0;
+        bool none_after = (i + 1) == vertices.size();
+        if (!none_before && !none_after) {
+            FormattedVertex2D& vertex1 = vertices[i-1];
+            FormattedVertex2D& vertex3 = vertices[i+1];
+            none_before |= vertex1.color.a == 0.0f;
+            none_after |= vertex3.color.a == 0.0f;
+        }
+
+        if (none_before && none_after)
+            continue;
+
+        if (none_before || none_after) {
+            int index1 = none_after ? i-1 : i+0;
+            int index2 = none_after ? i+0 : i+1;
+
+            v2 line_vec = math::normalize(vertices[index2].position - vertices[index1].position);
+            if (line_vec == v2(0))
+                line_vec = v2(1,0);
+
+            v2 perp = {-line_vec.y, line_vec.x};
+
+            segments.emplace_back(
+                vertex.position + (perp * vertex.width),
+                vertex.position - (perp * vertex.width),
+                vertex.color
+            );
+        }
+        // Take both rights of corner, use middle
+        else {
+            FormattedVertex2D& vertex1 = vertices[i-1];
+            FormattedVertex2D& vertex3 = vertices[i+1];
+            v2 vec1 = (vertex.position - vertex1.position);
+            v2 vec2 = (vertex3.position - vertex.position);
+            if (vec1 == v2(0)) vec1 = v2(1,0);
+            if (vec2 == v2(0)) vec2 = v2(1,0);
+            v2 right1 = math::normalize(v2(-vec1.y, vec1.x));
+            v2 right2 = math::normalize(v2(-vec2.y, vec2.x));
+            v2 right = math::normalize(right1 + right2);
+
+            segments.emplace_back(
+                vertex.position + (right1 * vertex.width),
+                vertex.position - (right1 * vertex.width),
+
+                vertex.color
+            );
+            segments.emplace_back(
+                vertex.position + (right * vertex.width),
+                vertex.position - (right * vertex.width),
+
+                vertex.color
+            );
+            segments.emplace_back(
+                vertex.position + (right2 * vertex.width),
+                vertex.position - (right2 * vertex.width),
+
+                vertex.color
+            );
+        }
+    }
+
+
+    MeshUICPU mesh_cpu;
+    mesh_cpu.id = hash_view(name);
+    int quad_count = segments.size() - 1;
+    mesh_cpu.vertices.reserve(quad_count * 6);
+    mesh_cpu.indices.reserve(quad_count * 6);
+
+    for (int i = 0, j = 0; i < segments.size() - 1; i++) {
+        Segment& seg1 = segments[i+0];
+        Segment& seg2 = segments[i+1];
+        if (seg1.separate || seg2.separate)
+            continue;
+
+        mesh_cpu.vertices.emplace_back(v3(seg1.left, 0.0f), v2(0), Color32(seg1.color));
+        mesh_cpu.vertices.emplace_back(v3(seg1.right, 0.0f), v2(0), Color32(seg1.color));
+        mesh_cpu.vertices.emplace_back(v3(seg2.right, 0.0f), v2(0), Color32(seg2.color));
+        mesh_cpu.vertices.emplace_back(v3(seg2.left, 0.0f), v2(0), Color32(seg2.color));
+        mesh_cpu.indices.push_back(j*4+0);
+        mesh_cpu.indices.push_back(j*4+1);
+        mesh_cpu.indices.push_back(j*4+2);
+        mesh_cpu.indices.push_back(j*4+0);
+        mesh_cpu.indices.push_back(j*4+2);
+        mesh_cpu.indices.push_back(j*4+3);
+        j++;
+    }
+    return mesh_cpu;
+}
+
 void add_formatted_square(vector<FormattedVertex>& vertices, v3 center, v3 axis_1, v3 axis_2, Color color, float width) {
     vertices.emplace_back(center - axis_2, color, width);
     vertices.emplace_back(center + axis_1 - axis_2, color, width);
@@ -365,6 +489,95 @@ void generate_palette(const PaletteCreateInfo& info) {
     stbi_write_png_compression_level = 0;
     sb_assert(false && "NYI");
     //stbi_write_png(to_resource_path("palette.png").string().c_str(), out_texture.size.x, out_texture.size.y, 4, out_texture.pixels.data(), 0);
+}
+
+static vector<v2> generate_rounded_shape(range2i region, int32 rounded_size, int32 corner_vertices, Color color, float distortion_amount, float distortion_time) {
+    vector<v2> vertices;
+
+    constexpr int32 straight_divisions = 3;
+    v2i region_center = (region.start + region.end) / v2i(2, 2);
+
+    for (uint8 quadrant = 0; quadrant < 4; quadrant++) {
+        v2i chosen_corner = {(quadrant == 0 || quadrant == 3) ? region.end.x : region.start.x, (quadrant == 0 || quadrant == 1) ? region.end.y : region.start.y};
+        v2i corner_offset = {(quadrant == 0 || quadrant == 3) ? -rounded_size : rounded_size, (quadrant == 0 || quadrant == 1) ? -rounded_size : rounded_size};
+        v2i circle_center = chosen_corner + corner_offset;
+
+        for (uint32 i = 0; i <= corner_vertices; i++) {
+            float ang = (quadrant * math::TAU / 4.0f) + float(i) / corner_vertices * math::TAU / 4.0f;
+
+            v2 pos = v2(circle_center) + v2{math::cos(ang), math::sin(ang)} * rounded_size;
+            vertices.emplace_back(pos);
+        }
+
+        v2i start, end;
+        switch (quadrant) {
+            case 0:
+                start = {region.end.x   - rounded_size, region.end.y};
+                end   = {region.start.x + rounded_size, region.end.y};
+                break;
+            case 1:
+                start = {region.start.x, region.end.y   - rounded_size};
+                end   = {region.start.x, region.start.y + rounded_size};
+                break;
+            case 2:
+                start = {region.start.x + rounded_size, region.start.y};
+                end   = {region.end.x   - rounded_size, region.start.y};
+                break;
+            case 3:
+                start = {region.end.x, region.start.y + rounded_size};
+                end   = {region.end.x, region.end.y   - rounded_size};
+                break;
+        }
+        for (uint32 i = 0; i < straight_divisions; i++) {
+            float start_fract = 1.0f - float(i + 1) / float(straight_divisions + 1);
+            float end_fract = 1.0f - start_fract;
+            vertices.emplace_back(v2(start) * start_fract + v2(end) * end_fract);
+        }
+    }
+
+    for (v2& vertex : vertices) {
+        v3 pos = v3(vertex.x, vertex.y, distortion_time);
+        vertex.x += distortion_amount * (1.0f - 2.0f * fractal_perlin_noise(pos, 0.02f, 2, 0.5f, 0));
+        vertex.y += distortion_amount * (1.0f - 2.0f * fractal_perlin_noise(pos, 0.02f, 2, 0.5f, 1));
+    }
+
+    vertices.emplace_back(vertices.front());
+
+    return vertices;
+}
+
+MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounded_corners, Color color, float distortion_amount, float distortion_time) {
+    string name = fmt_("rounded_quad: {} {} {} {}", region.start, region.end, rounded_size, rounded_corners);
+    MeshUICPU mesh_cpu;
+    mesh_cpu.id = hash_view(name);
+
+    vector<v2> positions = generate_rounded_shape(region, rounded_size, rounded_corners, color, distortion_amount, distortion_time);
+
+    v2 region_center = v2(region.start + region.end) * 0.5f;
+    mesh_cpu.vertices.emplace_back(v3(region_center.x, region_center.y, 0.0f), v2(0.0f), Color32(color));
+
+    for (uint32 i = 0; i < positions.size(); i++) {
+        uint32 start_index = mesh_cpu.vertices.size();
+        mesh_cpu.vertices.emplace_back(v3(positions[i].x, positions[i].y, 0.0f), v2(0), Color32(color));
+        if (i == 0) // We've only added two vertices, wait
+            continue;
+        mesh_cpu.indices.push_back(0);
+        mesh_cpu.indices.push_back(start_index);
+        mesh_cpu.indices.push_back(start_index-1);
+    }
+
+    return mesh_cpu;
+}
+MeshUICPU generate_rounded_outline(range2i region, int32 rounded_size, int32 rounded_corners, float width, Color color, float distortion_amount, float distortion_time) {
+    vector<FormattedVertex2D> vertices;
+
+    vector<v2> positions = generate_rounded_shape(region, rounded_size, rounded_corners, color, distortion_amount, distortion_time);
+
+    for (const v2& pos : positions) {
+        vertices.emplace_back(pos, color, width);
+    }
+
+    return generate_formatted_line_2d(vertices);
 }
 
 MeshCPU generate_formatted_3d_bitmask(Camera* camera, const Bitmask3D& bitmask) {
@@ -573,6 +786,7 @@ void draw_path(RenderScene& render_scene, Path& path, const v3& pos) {
     if (!line_mesh2.vertices.empty())
         render_scene.quick_mesh(line_mesh2, true, true);
 }
+
 
 
 }

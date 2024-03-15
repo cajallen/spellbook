@@ -15,9 +15,6 @@ layout(binding = 7) uniform sampler2D s_top_depth;
 layout(binding = 10) uniform sampler2D s_metallic_reflection;
 layout(binding = 8, rgba16f) uniform writeonly image2D u_target;
 
-layout(constant_id = 0) const int target_width	= 0;
-layout(constant_id = 1) const int target_height = 0;
-
 layout (binding = 9) uniform CompositeData {
     mat4 inverse_vp;
     vec4 camera_position;
@@ -36,9 +33,12 @@ layout (binding = 9) uniform CompositeData {
 };
 
 layout(push_constant) uniform uPushConstant {
-	vec4 outline_step;
+    vec4 outline_step;
 	uint mode;
 	float time;
+
+    int target_width;
+    int target_height;
 } pc;
 
 struct SimpleInputRead {
@@ -95,7 +95,7 @@ SimpleInputRead read_simple_inputs(ivec2 coord) {
     data.normal = normalize(texelFetch(s_normal, coord, 0).rgb);
     float depth_read = texelFetch(s_depth, coord, 0).r;
     
-    vec2 uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
+    vec2 uv = vec2(coord) / vec2(pc.target_width, pc.target_height) * 2.0 - vec2(1.0);
     vec4 h_position_worldspace = inverse_vp * vec4(uv, depth_read, 1.0);
     data.position = h_position_worldspace.xyz / h_position_worldspace.w;
 
@@ -118,7 +118,7 @@ InputRead read_inputs(ivec2 coord) {
     data.depth_read = max(texelFetch(s_depth, coord, 0).r, 0.0001);
     data.widget_color = texelFetch(s_widget, coord, 0);
     
-    data.uv = vec2(coord) / vec2(target_width, target_height) * 2.0 - vec2(1.0);
+    data.uv = vec2(coord) / vec2(pc.target_width, pc.target_height) * 2.0 - vec2(1.0);
     vec4 h_position_worldspace = inverse_vp * vec4(data.uv, data.depth_read, 1.0);
     data.position = h_position_worldspace.xyz / h_position_worldspace.w;
     if (data.depth_read == 0.0)
@@ -429,7 +429,7 @@ vec3 water(ivec2 coord, vec3 input_color, InputRead data, out float out_water_de
         float foam = map_range(texture(s_top_depth, uv).r, 0.02, 0.05, 0.0, 1.0) *
             map_range(water_intersect.z, -0.3, -0.7, 0.6, 1.0);
         
-        float EPSILON_NRM	= 0.1 / target_width;
+        float EPSILON_NRM	= 0.1 / pc.target_width;
         vec3 water_normal = get_normal(water_intersect, dot(water_depth, water_depth) * EPSILON_NRM);
         foam += map_range(dot(water_normal, vec3(0.0, 0.0, 1.0)), 0.975, 1.0, 0.0, 1.0) *
             map_range(water_intersect.z, -0.65, -0.45, 0.0, 1.0);
@@ -462,7 +462,7 @@ vec3 water(ivec2 coord, vec3 input_color, InputRead data, out float out_water_de
         out_water_depth = water_depth;
         return color;
     }
-    out_water_depth = data.depth;
+    out_water_depth = 1000.0;
     return input_color;
 }
 
@@ -488,21 +488,22 @@ void main() {
 
         if (data.depth < 1000.0) {
             float normal_val = smoothstep(pc.outline_step.z, pc.outline_step.w, 1.0 - abs(dot(data.normal, offset_data.normal)));
-            normal_outline += samples[i].z / TOTAL_TAPS_WEIGHT * normal_val;
+            normal_outline += (float(samples[i].z) / TOTAL_TAPS_WEIGHT) * normal_val;
         }
-    
+
         closest_depth = min(closest_depth, offset_data.depth);
     }
     depth_outline = smoothstep(pc.outline_step.x, pc.outline_step.y, abs(depth_outline));
-    float outline = max(depth_outline, 2.0 * normal_outline);
+    float outline = max(depth_outline, 3.0 * normal_outline);
 
     vec3 color = calculate_lighting(data, 1.0, 1.0);
     
     float water_depth;
     color = water(coord, color, data, water_depth);
-    if (water_depth > closest_depth)
+
+    if (water_depth + 0.001 > closest_depth)
         color = mix(color, vec3(0.0), outline);
-    
+
     
     if (data.widget_color.a > 0.0) {
         if (data.widget_depth < data.depth)
@@ -532,10 +533,10 @@ void main() {
             imageStore(u_target, coord, vec4(linear_to_srgb(data.normal), 1.0));
             break;      
         case 5:
-            imageStore(u_target, coord, vec4(vec3(depth_outline), 1.0));
-            //imageStore(u_target, coord, vec4(vec3(1.0 - data.depth / 20.0), 1.0));
+            imageStore(u_target, coord, vec4(vec3(1.0 - data.depth / 20.0), 1.0));
             break;
         case 6:
-            break;      
+            imageStore(u_target, coord, vec4(vec3(1.0 - water_depth / 20.0), 1.0));
+            break;
     }
 }

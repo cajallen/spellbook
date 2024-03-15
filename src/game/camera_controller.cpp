@@ -68,6 +68,7 @@ bool cc_on_cursor(CursorCallbackArgs args) {
             v2 delta                         = Input::mouse_pos - cc.pivot_state.rotate_start_mouse;
             cc.pivot_state.arm_heading.yaw   = cc.pivot_state.rotate_start_heading.yaw - delta.x * math::d2r(cc.pivot_state.sensitivity);
             cc.pivot_state.arm_heading.pitch = cc.pivot_state.rotate_start_heading.pitch - delta.y * math::d2r(cc.pivot_state.sensitivity);
+            cc.pivot_state.arm_heading.pitch = math::clamp(cc.pivot_state.arm_heading.pitch, range{-math::PI / 2.0 + 0.01f, -math::PI / 10.0f});
         }
     }
 

@@ -42,6 +42,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+data/
 
 # We keep these because GLFW distributes them annoyingly
 !libs/GLFW/bin

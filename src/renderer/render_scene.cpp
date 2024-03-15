@@ -13,6 +13,7 @@
 #include "renderer/draw_functions.hpp"
 #include "renderer/fmt_renderer.hpp"
 #include "renderer/gpu_asset_cache.hpp"
+#include "renderer/font_manager.hpp"
 #include "renderer/assets/particles.hpp"
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
@@ -161,6 +162,11 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
 
     auto [pubo_composite, fubo_composite] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&composite_data, 1));
     buffer_composite_data             = *pubo_composite;
+
+    m44 ui_view = math::translate(v3(-1.0f, -1.0f, 0.0f)) * math::scale(v3(2.0f, 2.0f, 1.0f)) * math::scale(v3(1.0f / viewport.size.x, 1.0f / viewport.size.y, 1.0f / 1000.0f));
+    m44GPU ui_view_gpu = m44GPU(ui_view);
+    auto [pubo_ui_view, fubo_ui_view] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&ui_view_gpu, 1));
+    buffer_ui_view              = *pubo_ui_view;
 }
 
 void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
@@ -243,6 +249,7 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
             it++;
     }
 
+    widget_model_start = count;
     uint32 model_buffer_size = sizeof(m44GPU) * (count + widget_renderables.size());
     uint32 id_buffer_size = sizeof(uint32) * count;
     
@@ -325,6 +332,7 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     add_forward_pass(rg);
     add_widget_pass(rg);
     add_postprocess_pass(rg);
+    add_ui_pass(rg);
     add_info_read_pass(rg);
     
     return vuk::Future {rg, "target_output"};
@@ -495,10 +503,11 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
 
             auto target      = *cmd.get_resource_image_attachment("top_blurred_temp1_output");
             auto target_size = target.extent.extent;
-            cmd.specialize_constants(0, target_size.width);
-            cmd.specialize_constants(1, target_size.height);
 
             cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, 0);
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 1 * sizeof(int32), target_size.width);
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 2 * sizeof(int32), target_size.height);
+
             cmd.dispatch_invocations(target_size.width, target_size.height);
         }
     });
@@ -517,10 +526,11 @@ void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
 
             auto target      = *cmd.get_resource_image_attachment("top_blurred_temp2_output");
             auto target_size = target.extent.extent;
-            cmd.specialize_constants(0, target_size.width);
-            cmd.specialize_constants(1, target_size.height);
                 
             cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, 1);
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 1 * sizeof(int32), target_size.width);
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 2 * sizeof(int32), target_size.height);
+
             cmd.dispatch_invocations(target_size.width, target_size.height);
         }
     });
@@ -660,7 +670,7 @@ void RenderScene::add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
                 .bind_buffer(0, MODEL_BINDING, buffer_model_mats);
             // Render items
-            int item_index = 0 + renderables.size();
+            int item_index = widget_model_start;
             for (Renderable& renderable : widget_renderables) {
                 render_widget(renderable, command_buffer, &item_index);
             }
@@ -686,7 +696,7 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
         "widget_depth_output"_image >> vuk::eComputeSampled,
         "sun_depth_output"_image >> vuk::eComputeSampled,
         "top_blurred"_image >> vuk::eComputeSampled,
-        "target_input"_image   >> vuk::eComputeWrite >> "target_output",
+        "target_input"_image   >> vuk::eComputeWrite >> "composited",
     },
     .execute =
         [this](vuk::CommandBuffer& cmd) {
@@ -712,13 +722,62 @@ void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
             
             auto target      = *cmd.get_resource_image_attachment("target_input");
             auto target_size = target.extent.extent;
-            cmd.specialize_constants(0, target_size.width);
-            cmd.specialize_constants(1, target_size.height);
-
             cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, post_process_data);
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, sizeof(PostProcessData), target_size.width);
+            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, sizeof(PostProcessData) + sizeof(int32), target_size.height);
 
             cmd.dispatch_invocations(target_size.width, target_size.height);
         },
+    });
+}
+
+void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
+    rg->add_pass(vuk::Pass {
+        .name = "ui_apply",
+        .resources = {
+            "composited"_image   >> vuk::eColorWrite >> "target_output",
+        },
+        .execute =
+            [this](vuk::CommandBuffer& cmd) {
+                ZoneScoped;
+
+                cmd.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+                    .set_viewport(0, vuk::Rect2D::framebuffer())
+                    .set_scissor(0, vuk::Rect2D::framebuffer())
+                    .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
+                    .set_color_blend("composited", vuk::BlendPreset::eAlphaBlend);
+
+                cmd
+                    .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                        .depthTestEnable  = false,
+                        .depthWriteEnable = false,
+                        .depthCompareOp   = vuk::CompareOp::eNever,
+                    });
+                cmd.bind_buffer(0, VIEW_BINDING, buffer_ui_view);
+
+                vector<Renderable> sorted_ui_renderables;
+
+                for (const Renderable& r : ui_renderables) {
+                    sorted_ui_renderables.insert_search(r);
+                }
+
+                uint64 current_mat = 0;
+                for (const auto& renderable : sorted_ui_renderables) {
+                    if (current_mat != renderable.material_id) {
+                        MaterialGPU& mat = get_gpu_asset_cache().materials.at(renderable.material_id);
+                        cmd.bind_graphics_pipeline(mat.pipeline);
+                        mat.bind_parameters(cmd);
+                        mat.bind_textures(cmd);
+                    }
+
+                    MeshGPU& mesh = get_gpu_asset_cache().meshes.at(renderable.mesh_id);
+                    cmd
+                        .bind_vertex_buffer(0, mesh.vertex_buffer.get(), 0, VertexUI::get_format())
+                        .bind_index_buffer(mesh.index_buffer.get(), vuk::IndexType::eUint32);
+                    cmd.draw_indexed(mesh.index_count, 1, 0, 0, 0);
+                }
+            },
     });
 }
 

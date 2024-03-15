@@ -5,7 +5,6 @@
 #include "game/scene.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
-#include "game/entities/lizard.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/spawner.hpp"
 #include "game/visual_tile.hpp"
@@ -21,7 +20,6 @@ struct ResourceEditor : EditorScene {
         Tab_Model,
         Tab_Mesh,
         Tab_Material,
-        Tab_Lizard,
         Tab_Tile,
         Tab_Enemy,
         Tab_Spawner,
@@ -29,7 +27,8 @@ struct ResourceEditor : EditorScene {
         Tab_Emitter,
         Tab_TileSet,
         Tab_Drop,
-        Tab_Map
+        Tab_Map,
+        Tab_Font
     };
 
     // 3 modes, owned, cache, instanced
@@ -51,7 +50,6 @@ struct ResourceEditor : EditorScene {
     EmitterCPU emitter_cpu;
     EmitterGPU* emitter_gpu = nullptr;
     
-    LizardPrefab lizard_prefab;
     bool force_target = false;
     TilePrefab tile_prefab;
     EnemyPrefab enemy_prefab;

@@ -19,7 +19,7 @@
 
 namespace spellbook {
 
-ADD_EDITOR_SCENE(ResourceEditor);
+//ADD_EDITOR_SCENE(ResourceEditor);
 
 void ResourceEditor::set_model(ModelCPU* model, Ownership ownership) {
     if (model_owner == Ownership_Owned)
@@ -62,9 +62,6 @@ void ResourceEditor::setup() {
     FROM_JSON_MEMBER(bead_prefab.file_path)
     else
         bead_prefab.file_path = FilePath();
-    FROM_JSON_MEMBER(lizard_prefab.file_path)
-    else
-        lizard_prefab.file_path = FilePath();
     FROM_JSON_MEMBER(enemy_prefab.file_path)
     else
         enemy_prefab.file_path = FilePath();
@@ -92,7 +89,6 @@ void ResourceEditor::shutdown() {
     TO_JSON_MEMBER(emitter_cpu.file_path);
     TO_JSON_MEMBER(tile_set.file_path);
     TO_JSON_MEMBER(bead_prefab.file_path);
-    TO_JSON_MEMBER(lizard_prefab.file_path);
     TO_JSON_MEMBER(enemy_prefab.file_path);
     file_dump(j, config_path.abs_string());
     p_scene->cleanup();
@@ -130,10 +126,6 @@ void ResourceEditor::switch_tab(Tab new_tab) {
             if (material_preview != nullptr)
                 render_scene.delete_renderable(material_preview);
             material_preview = nullptr;
-        } break;
-        case (Tab_Lizard): {
-            if (background_renderable != nullptr)
-                render_scene.delete_renderable(background_renderable);    
         } break;
         case (Tab_Tile): {
         
@@ -178,18 +170,6 @@ void ResourceEditor::switch_tab(Tab new_tab) {
         } break;
         case (Tab_Material): {
             material_preview = &render_scene.quick_material(material_cpu, false);
-        } break;
-        case (Tab_Lizard): {
-            MeshCPU cube = generate_cube(v3(0.5f, 0.5f, -1.0f), v3(3.0f, 3.0f, 1.0f));
-            MaterialCPU mat = MaterialCPU{.color_tint = palette::gray};
-            mat.file_path = "background_mat"_symbolic;
-            uint64 mat_id = upload_material(mat);
-            background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
-            
-            if (lizard_prefab.file_path.is_file()) {
-                lizard_prefab = load_resource<LizardPrefab>(lizard_prefab.file_path);
-                instance_prefab(p_scene, lizard_prefab, v3i(0));
-            }
         } break;
         case (Tab_Tile): {
             if (tile_prefab.file_path.is_file())
@@ -347,6 +327,7 @@ void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab ty
     }
 }
 
+
 void ResourceEditor::window(bool* p_open) {
     ZoneScoped;
     
@@ -376,35 +357,35 @@ void ResourceEditor::window(bool* p_open) {
                 if (changed)
                     get_gpu_asset_cache().materials.at(material_preview->material_id).update_from_cpu(material_cpu);
             });
-            asset_tab(*this, ICON_FA_USER " Lizard", Tab_Lizard, &lizard_prefab, [this](bool changed) {
-                if (ImGui::Checkbox("Force Target", &force_target)) {
-                    if (force_target) {
-                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
-                            caster.taunt.set(0, v3i(3,0,0));
-                        }
-                    } else {
-                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
-                            caster.taunt.reset(0);
-                        }
-                    }
-                }
-                if (!force_target) {
-                    if (ImGui::Button("Cast")) {
-                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
-                            caster.spell->request_cast();
-                        }
-                    }
-                }
-                auto camera = p_scene->render_scene.viewport.camera;
-                auto line_mesh = generate_formatted_line(camera,
-                {
-                    {v3(0.f, 0.f, 0.f), palette::gray_4, 0.03f},
-                    {lizard_prefab.default_direction, palette::gray_4, 0.03f}
-                });
-
-                
-                p_scene->render_scene.quick_mesh(line_mesh, true, true);
-            });
+//            asset_tab(*this, ICON_FA_USER " Lizard", Tab_Lizard, &lizard_prefab, [this](bool changed) {
+//                if (ImGui::Checkbox("Force Target", &force_target)) {
+//                    if (force_target) {
+//                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
+//                            caster.taunt.set(0, v3i(3,0,0));
+//                        }
+//                    } else {
+//                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
+//                            caster.taunt.reset(0);
+//                        }
+//                    }
+//                }
+//                if (!force_target) {
+//                    if (ImGui::Button("Cast")) {
+//                        for (auto [entity, caster] : p_scene->registry.view<Caster>().each()) {
+//                            caster.spell->request_cast();
+//                        }
+//                    }
+//                }
+//                auto camera = p_scene->render_scene.viewport.camera;
+//                auto line_mesh = generate_formatted_line(camera,
+//                {
+//                    {v3(0.f, 0.f, 0.f), palette::gray_4, 0.03f},
+//                    {lizard_prefab.default_direction, palette::gray_4, 0.03f}
+//                });
+//
+//
+//                p_scene->render_scene.quick_mesh(line_mesh, true, true);
+//            });
             asset_tab(*this, ICON_FA_CUBE " Tile", Tab_Tile, &tile_prefab, [this](bool changed) {
                 Bitmask3D bitmask;
                 bitmask.set(v3i(0));

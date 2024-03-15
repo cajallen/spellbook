@@ -2,7 +2,7 @@
 
 #include "general/string.hpp"
 #include "general/vector.hpp"
-#include "editor/gui.hpp"
+#include "editor/debug_ui.hpp"
 #include "renderer/renderer.hpp"
 
 namespace spellbook {
@@ -11,7 +11,7 @@ struct Scene;
 
 struct Game {
     vector<Scene*> scenes;
-    GUI            gui;
+    DebugUI debug_ui;
 
     void startup();
     void run();

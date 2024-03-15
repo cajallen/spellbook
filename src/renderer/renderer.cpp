@@ -20,6 +20,7 @@
 #include "renderer/samplers.hpp"
 #include "renderer/utils.hpp"
 #include "renderer/gpu_asset_cache.hpp"
+#include "renderer/font_manager.hpp"
 
 namespace spellbook {
 
@@ -94,8 +95,10 @@ Renderer::Renderer() : imgui_data() {
     VkPhysicalDeviceVulkan11Features vk11features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
     vk11features.shaderDrawParameters = true;
     VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR, .synchronization2 = true};
-    
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR,
+        .synchronization2 = true
+    };
+
     device_builder = device_builder.add_pNext(&vk12features).add_pNext(&vk11features).add_pNext(&sync_feat);
     auto dev_ret   = device_builder.build();
     assert_else(dev_ret.has_value());
@@ -196,7 +199,7 @@ void Renderer::setup() {
     }
     {
         vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("shaders/standard_3d.vert"_distributed), "shaders/standard_3d.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/directional_depth.vert"_distributed), "shaders/directional_depth.vert"_distributed.abs_string());
         pci.add_glsl(get_contents("shaders/directional_depth.frag"_distributed), "shaders/directional_depth.frag"_distributed.abs_string());
         context->create_named_pipeline("directional_depth", pci);
     }
@@ -304,6 +307,13 @@ void Renderer::render() {
         for (auto it = scene->widget_renderables.begin(); it != scene->widget_renderables.end();) {
             if (it->frame_allocated)
                 it = scene->widget_renderables.erase(it);
+            else
+                ++it;
+        }
+
+        for (auto it = scene->ui_renderables.begin(); it != scene->ui_renderables.end();) {
+            if (it->frame_allocated)
+                it = scene->ui_renderables.remove(it);
             else
                 ++it;
         }

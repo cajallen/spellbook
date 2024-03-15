@@ -31,3 +31,6 @@
 [submodule "src/archive"]
 	path = src/archive
 	url = https://github.com/cajallen/archive.git
+[submodule "libs/freetype"]
+	path = libs/freetype
+	url = https://github.com/freetype/freetype.git

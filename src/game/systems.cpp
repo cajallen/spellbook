@@ -49,7 +49,7 @@ void health_draw_system(Scene* scene) {
         health_friendly_id = upload_material(health_friendly_material);
         MaterialCPU health_enemy_material = {
             .color_tint    = palette::black,
-            .emissive_tint = palette::fire_brick
+            .emissive_tint = palette::red
         };
         health_enemy_material.file_path     = "health_enemy_material"_symbolic;
         health_enemy_id = upload_material(health_enemy_material);
@@ -244,7 +244,8 @@ void dragging_system(Scene* scene) {
     }
 
     for (auto [entity, lizard, drag] : scene->registry.view<Lizard, Dragging>(entt::exclude<ForceDragging>).each()) {
-        draw_lizard_dragging_preview(scene, entity);
+        if (lizard.dragging_preview_function)
+            lizard.dragging_preview_function(scene, entity);
     }
     
     auto posers = scene->registry.view<Dragging, PoseController>();

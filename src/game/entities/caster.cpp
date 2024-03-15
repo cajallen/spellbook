@@ -15,7 +15,7 @@ Caster::Caster(Scene* scene, entt::entity e) {
     damage = std::make_unique<Stat>(scene, e);
     heal = std::make_unique<Stat>(scene, e);
     attack_speed = std::make_unique<Stat>(scene, e);
-    cooldown_reduction = std::make_unique<Stat>(scene, e);
+    cooldown_speed = std::make_unique<Stat>(scene, e);
     projectile_speed = std::make_unique<Stat>(scene, e);
     range = std::make_unique<Stat>(scene, e);
     buff_duration = std::make_unique<Stat>(scene, e);

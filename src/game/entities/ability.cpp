@@ -3,27 +3,27 @@
 #include <imgui/imgui.h>
 #include <entt/core/hashed_string.hpp>
 
-#include "components.hpp"
-#include "tags.hpp"
 #include "extension/fmt.hpp"
 #include "game/pose_controller.hpp"
 #include "game/scene.hpp"
+#include "game/entities/components.hpp"
+#include "game/entities/tags.hpp"
 #include "game/entities/caster.hpp"
+#include "game/entities/lizards/lizard.hpp"
 
 namespace spellbook {
 
 using namespace entt::literals;
 
-Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float post, float init_range) {
-    scene = init_scene;
-    caster = init_caster;
-    Caster& caster_comp = scene->registry.get<Caster>(caster);
+Ability::Ability(Scene* _scene, entt::entity _caster) : scene(_scene), caster(_caster) {}
+Attack::Attack(Scene* _scene, entt::entity _caster) : Ability(_scene, _caster) {}
+Spell::Spell(Scene* _scene, entt::entity _caster) : Ability(_scene, _caster) {}
 
-    range = {&*caster_comp.range, init_range};
-    
-    pre_trigger_time = {&*caster_comp.attack_speed, pre};
-    post_trigger_time = {&*caster_comp.attack_speed, post};
-    pre_trigger_timer = add_timer(scene, fmt_("{}::pre", get_name()),
+void Ability::setup_time(float base_pre, float base_post) {
+    Caster& caster_comp = scene->registry.get<Caster>(caster);
+    pre_trigger_time = {&*caster_comp.attack_speed, base_pre};
+    post_trigger_time = {&*caster_comp.attack_speed, base_post};
+    pre_trigger_timer = add_timer(scene,
         [this](Timer* timer) {
             post_trigger_timer->start(post_trigger_time.value());
             if (set_anims)
@@ -32,7 +32,7 @@ Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float p
             trigger();
         }, false
     );
-    post_trigger_timer = add_timer(scene, fmt_("{}::post", get_name()),
+    post_trigger_timer = add_timer(scene,
         [this](Timer* timer) {
             end();
             if (set_anims) {
@@ -45,12 +45,12 @@ Ability::Ability(Scene* init_scene, entt::entity init_caster, float pre, float p
     );
 }
 
-Attack::Attack(Scene* init_scene, entt::entity init_caster, float pre, float post, float cd, float cast_range) : Ability(init_scene, init_caster, pre, post, cast_range) {
+void Attack::setup_cd(float base_cd) {
     Caster& caster_comp = scene->registry.get<Caster>(caster);
-    cooldown_time = {&*caster_comp.cooldown_reduction, cd};
-    cooldown_timer = add_timer(scene, fmt_("{}::cd", get_name()), [this](Timer* timer) {});
+    cooldown_time = {&*caster_comp.cooldown_speed, base_cd};
+    cooldown_timer = add_timer(scene, [](Timer* timer) {});
 
-    pre_trigger_timer = add_timer(scene, fmt_("{}::pre", get_name()),
+    pre_trigger_timer = add_timer(scene,
         [this](Timer* timer) {
             post_trigger_timer->start(post_trigger_time.value());
             cooldown_timer->start(cooldown_time.value());
@@ -109,23 +109,13 @@ void Ability::lizard_turn_to_target() {
     }
 }
 
-bool Ability::in_range() const {
-    LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    bool out_of_range = math::abs(float(target.z) - logic_tfm.position.z) > 0.2f ||
-        math::abs(float(target.x) - logic_tfm.position.x) > range.value() ||
-        math::abs(float(target.y) - logic_tfm.position.y) > range.value();
-    return !out_of_range;
-}
-
 bool Ability::can_cast() const {
     Tags& tags = scene->registry.get<Tags>(caster);
     if (tags.has_tag("no_cast"_hs))
         return false;
     if (!has_target)
         return false;
-    
-    if (!in_range())
-        return false;
+
     if (casting())
         return false;
     return true;

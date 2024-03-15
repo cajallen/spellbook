@@ -22,6 +22,7 @@ using std::optional;
 
 namespace spellbook {
 
+// standard
 #define CAMERA_BINDING 0
 #define MODEL_BINDING 1
 #define ID_BINDING 2
@@ -34,6 +35,10 @@ namespace spellbook {
 #define SPARE_BINDING_1 9
 #define PARTICLES_BINDING MODEL_BINDING
 
+// font
+#define VIEW_BINDING 0
+#define ATLAS_BINDING 1
+
 struct FrameTimer {
     int               ptr         = 0;
     int               filled      = 0;
@@ -45,6 +50,7 @@ struct FrameTimer {
 };
 
 struct RenderScene;
+struct FontManager;
 
 enum RenderStage { RenderStage_Inactive, RenderStage_Setup, RenderStage_BuildingRG, RenderStage_Presenting };
 

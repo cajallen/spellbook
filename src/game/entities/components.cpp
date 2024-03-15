@@ -14,7 +14,6 @@
 #include "game/entities/caster.hpp"
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
-#include "game/entities/lizard.hpp"
 #include "game/entities/enemy.hpp"
 #include "game/entities/enemy_ik.hpp"
 
@@ -210,7 +209,7 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
         emitter.add_emitter(random_id, hurt_emitter);
 
         float hurt_time = math::map_range(hurt_value / max_health->value(), {0.0f, 1.0f}, {0.1f, 0.3f});
-        add_timer(scene, fmt_("hurt_timer"), [random_id, this](Timer* timer) {
+        add_timer(scene, [random_id, this](Timer* timer) {
             if (this->scene->registry.valid(entity))
                 this->scene->registry.get<EmitterComponent>(entity).remove_emitter(random_id);
         }, true)->start(hurt_time);
@@ -335,7 +334,7 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
         auto caster = registry.try_get<Caster>(entity);
         if (caster) {
             Ability* ability = &*caster->spell;
-            add_timer(caster->spell->scene, "drag_cast_delay",
+            add_timer(caster->spell->scene,
                 [ability](Timer* timer) {
                     ability->targeting();
                     ability->request_cast();

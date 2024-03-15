@@ -360,7 +360,7 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
     // we destroy all emitters on death, so we don't need ids
     emitter_comp.add_emitter(0, emitter_cpu);
     
-    add_timer(scene, fmt_("{}_timer", name), [scene, e](Timer* timer) {
+    add_timer(scene, [scene, e](Timer* timer) {
         scene->registry.destroy(e);
     }, true)->start(duration);
     

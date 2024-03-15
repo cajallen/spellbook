@@ -3,7 +3,7 @@
 #include "general/string.hpp"
 #include "general/vector.hpp"
 #include "game/entities/drop.hpp"
-#include "game/entities/lizard.hpp"
+#include "game/entities/lizards/lizard.hpp"
 
 namespace spellbook {
 
@@ -15,7 +15,7 @@ struct Item;
 struct ShopEntry {
     Bead cost_type = Bead_Oak;
     int cost_amount = 0;
-    FilePath lizard_prefab_path = {};
+    LizardType lizard_type;
     Item* item = nullptr;
 };
 

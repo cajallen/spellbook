@@ -99,7 +99,7 @@ void Console::show_message(Message& msg) {
 }
 
 void Console::show_messages(v2i size) {
-    ImGui::BeginChild("Messages", (ImVec2) size, true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+    ImGui::BeginChild("Messages", ImVec2(size), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     for (Message& msg : message_list) {
         show_message(msg);
     }

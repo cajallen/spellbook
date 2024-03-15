@@ -4,10 +4,11 @@ target_sources(spellbook_src PUBLIC
     console.cpp
     editor_scene.cpp
     game_scene.cpp
-    gui.cpp
+        debug_ui.cpp
     map_editor.cpp
     pose_widget.cpp
     widget_system.cpp
     skeleton_widget.cpp
     test_scene.cpp
+    hit_test_scene.cpp
 )

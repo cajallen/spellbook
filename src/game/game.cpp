@@ -26,7 +26,7 @@ void Game::startup() {
         editor_scene->setup();
     }
     
-    gui.setup();
+    debug_ui.setup();
 }
 
 void Game::run() {
@@ -39,7 +39,7 @@ void Game::step(bool skip_input) {
     if (!skip_input)
         Input::update();
     get_renderer().update();
-    gui.update();
+    debug_ui.update();
     for (auto editor_scene : EditorScenes::values()) {
         editor_scene->update();
     }
@@ -48,7 +48,7 @@ void Game::step(bool skip_input) {
 }
 
 void Game::shutdown() {
-    gui.shutdown();
+    debug_ui.shutdown();
     for (auto editor_scene : EditorScenes::values()) {
         editor_scene->shutdown();
     }

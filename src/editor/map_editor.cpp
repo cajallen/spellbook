@@ -23,13 +23,12 @@
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/enemy.hpp"
-#include "game/entities/lizard.hpp"
 
 #include "general/astar.hpp"
 
 namespace spellbook {
 
-ADD_EDITOR_SCENE(MapEditor);
+//ADD_EDITOR_SCENE(MapEditor);
 
 template <typename T>
 bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& buttons, uint32* selected) {
@@ -170,7 +169,6 @@ bool map_editor_click_painting(ClickCallbackArgs args) {
     
     if (args.action == GLFW_PRESS && args.button == GLFW_MOUSE_BUTTON_LEFT) {
         if (map_editor.selected_consumer != ~0u ||
-            map_editor.selected_lizard != ~0u ||
             map_editor.selected_tile != ~0u ||
             map_editor.selected_spawner != ~0u ||
             map_editor.eraser_selected) {
@@ -210,7 +208,6 @@ void MapEditor::setup() {
     FilePath map_editor_file = "map_editor.sbjgen"_config;
     if (fs::exists(map_editor_file.abs_path())) {
         json j = parse_file(map_editor_file.abs_string());
-        FROM_JSON_MEMBER(lizard_buttons);
         FROM_JSON_MEMBER(tile_buttons);
         FROM_JSON_MEMBER(spawner_buttons);
         FROM_JSON_MEMBER(consumer_buttons);
@@ -252,7 +249,7 @@ void MapEditor::update() {
     
     if (viewport.hovered) {
         v3i cell;
-        bool auto_adjust = (selected_lizard != ~0u || selected_spawner != ~0u || selected_consumer != ~0u);
+        bool auto_adjust = (selected_spawner != ~0u || selected_consumer != ~0u);
         if (selected_tile != ~0u)
             auto_adjust = load_resource<TilePrefab>(tile_buttons[selected_tile].item_path).type == TileType_Scenery;
         if (auto_adjust && p_scene->get_object_placement(cell)) {
@@ -275,7 +272,6 @@ void MapEditor::update() {
                 vector<entt::entity> targets = p_scene->get_any(cell);
                 p_scene->registry.destroy(targets.begin(), targets.end());
                 map_prefab.tiles.erase(cell);
-                map_prefab.lizards.erase(cell);
                 map_prefab.consumers.erase(cell);
                 map_prefab.spawners.erase(cell);
                 map_prefab.solid_tiles.erase(cell);
@@ -294,9 +290,6 @@ void MapEditor::update() {
             }
             else if (selected_consumer != -1 && last_paint) {
                 instance_and_write_consumer(consumer_buttons[selected_consumer].item_path, cell);
-            }
-            else if (selected_lizard != -1) {
-                instance_and_write_lizard(lizard_buttons[selected_lizard].item_path, cell);
             }
         }
     }
@@ -355,8 +348,6 @@ void MapEditor::window(bool* p_open) {
         show_buttons("Spawners", *this, spawner_buttons, &selected_spawner);
         ImGui::Separator();
         show_buttons("Consumers", *this, consumer_buttons, &selected_consumer);
-        ImGui::Separator();
-        show_buttons("Lizards", *this, lizard_buttons, &selected_lizard);
     } else {
         unselect_buttons();
     }
@@ -366,7 +357,6 @@ void MapEditor::window(bool* p_open) {
 void MapEditor::unselect_buttons() {
     eraser_selected = false;
     selected_tile = -1;
-    selected_lizard = -1;
     selected_spawner = -1;
     selected_consumer = -1;
 }
@@ -377,7 +367,6 @@ void MapEditor::shutdown() {
     fs::create_directories(map_editor_path.parent_path());
     
     auto j = json();
-    TO_JSON_MEMBER(lizard_buttons);
     TO_JSON_MEMBER(tile_buttons);
     TO_JSON_MEMBER(spawner_buttons);
     TO_JSON_MEMBER(consumer_buttons);
@@ -408,16 +397,6 @@ void MapEditor::instance_and_write_spawner(const FilePath& path, v3i pos) {
         
     map_prefab.spawners[pos] = path;
     instance_prefab(p_scene, load_resource<SpawnerPrefab>(path), pos);
-}
-
-void MapEditor::instance_and_write_lizard(const FilePath& path, v3i pos) {
-    entt::entity old_tile = p_scene->targeting->select_lizard(pos);
-    if (old_tile != entt::null) {
-        p_scene->registry.destroy(old_tile);
-    }
-        
-    map_prefab.lizards[pos] = path;
-    instance_prefab(p_scene, load_resource<LizardPrefab>(path), pos);
 }
 
 void MapEditor::instance_and_write_tile(const FilePath& path, v3i input_pos, uint32 rotation) {
@@ -550,7 +529,7 @@ void MapEditor::draw_preview(v3i cell) {
             if (!mesh.vertices.empty())
                 p_scene->render_scene.quick_mesh(mesh, true, true);
         }
-    } else if (selected_lizard != -1 || selected_spawner != -1 || selected_consumer != -1) {
+    } else if (selected_spawner != -1 || selected_consumer != -1) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 48; i++) {
             float angle  = i * math::TAU / 48.0f;

@@ -16,9 +16,10 @@ struct StatEffect {
 
     Type type;
     float  value;
-    int max_stacks = 1;
+    int32 max_stacks = 1;
     float until = FLT_MAX; // Duration is used if adding stacks refreshes duration
-    int  stacks = 1;
+    int32  stacks = 1;
+    uint64 unique = 0; // If multiple buffs of this id, take best
 };
 
 struct Stat {

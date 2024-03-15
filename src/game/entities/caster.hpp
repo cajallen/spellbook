@@ -3,11 +3,11 @@
 #include <entt/entity/fwd.hpp>
 
 #include "general/math/geometry.hpp"
+#include "game/entities/ability.hpp"
 
 namespace spellbook {
 
 struct Scene;
-struct Ability;
 struct Stat;
 
 struct Taunt {
@@ -33,8 +33,8 @@ struct Taunt {
 };
 
 struct Caster {
-    std::unique_ptr<Ability> attack;
-    std::unique_ptr<Ability> spell;
+    std::unique_ptr<Attack> attack;
+    std::unique_ptr<Spell> spell;
 
     Taunt taunt;
     
@@ -42,7 +42,7 @@ struct Caster {
     std::unique_ptr<Stat> damage;
     std::unique_ptr<Stat> heal;
     std::unique_ptr<Stat> attack_speed;
-    std::unique_ptr<Stat> cooldown_reduction;
+    std::unique_ptr<Stat> cooldown_speed;
     std::unique_ptr<Stat> projectile_speed;
     std::unique_ptr<Stat> range;
     std::unique_ptr<Stat> buff_duration;
