@@ -20,7 +20,6 @@
 #include "renderer/samplers.hpp"
 #include "renderer/utils.hpp"
 #include "renderer/gpu_asset_cache.hpp"
-#include "renderer/font_manager.hpp"
 
 namespace spellbook {
 
@@ -32,7 +31,7 @@ Renderer& get_renderer() {
 Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
-        .request_validation_layers(true)
+        .request_validation_layers(false)
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,

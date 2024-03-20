@@ -33,8 +33,6 @@ void DebugUI::setup() {
     }
 
     WidgetSystem::setup();
-
-    get_game_text_layer().setup();
 }
 
 void DebugUI::shutdown() {
