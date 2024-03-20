@@ -18,6 +18,7 @@ namespace spellbook {
 Game game;
 
 void Game::startup() {
+    get_filepath_app_name() = "spellbook";
     Console::setup();
     get_renderer().setup();
     Input::setup(get_renderer().window);
