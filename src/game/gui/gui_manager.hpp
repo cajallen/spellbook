@@ -9,9 +9,11 @@
 namespace spellbook {
 
 struct Scene;
+struct TooltipRegion;
 
 struct InteractRegion {
     uint64 id;
+    uint32 char_index;
     int32 priority;
     range2i region;
 
@@ -29,16 +31,18 @@ struct InteractRegion {
 };
 
 struct GUIManager {
+    Scene* scene;
+
     vector<InteractRegion> interact_regions;
 
     ShopGUI shop_gui;
 
-    uint64 hovered_id;
-    uint64 pressed_id;
+    InteractRegion* hovered;
+    InteractRegion* pressed;
 
-    void setup();
-    void update(Scene* p_scene);
-    void draw(RenderScene& render_scene);
+    void setup(Scene* p_scene);
+    void update();
+    void draw();
 
     void add_interact_region(const InteractRegion& new_region);
     void remove_interact_region(uint64 id);

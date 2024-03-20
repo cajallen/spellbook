@@ -37,46 +37,6 @@ void ShopGUI::draw(GUIManager* manager, RenderScene& render_scene) {
         position.x += 50;
     }
 
-
-    Renderable r = {};
-    r.material_id = hash_view("untextured_mat");
-    r.frame_allocated = true;
-
-
-    v2i used_position = position;
-
-    TextSettings text_settings {
-        .depth = 500 + 5,
-        .width = 1000,
-        .distortion_amount = 3.0f,
-        .distortion_time = Input::time * 10.0f
-    };
-
-    string button_text = "{header}Next Round{\\header}";
-    range2i name_text_region = calc_formatted_text_region(button_text, used_position, text_settings);
-    int32 text_height = name_text_region.end.y - name_text_region.start.y;
-    v2i name_text_offset = v2i(20, -20 - text_height);
-    upload_formatted_text(button_text, used_position + name_text_offset, text_settings, nullptr, render_scene, true);
-    name_text_region.start += name_text_offset;
-    name_text_region.end += name_text_offset;
-
-    range2i used_region = name_text_region;
-    used_region.start -= v2i{20, 20};
-    used_region.end += v2i{20, 20};
-
-    // background
-    MeshUICPU background_mesh = generate_rounded_quad(used_region, 32, 2, palette::gray_3, 5.0f, Input::time * 5.0f);
-    upload_mesh(background_mesh, true);
-    r.mesh_id = background_mesh.id;
-    r.sort_index = 500;
-    render_scene.ui_renderables.push_back(r);
-
-    // full outline
-    MeshUICPU background_outline_mesh = generate_rounded_outline(used_region, 32, 2, 2.0f, palette::black, 5.0f, Input::time * 5.0f);
-    upload_mesh(background_outline_mesh, true);
-    r.mesh_id = background_outline_mesh.id;
-    r.sort_index = 500 + 5;
-    render_scene.ui_renderables.push_back(r);
 }
 
 void ShopGUI::update(GUIManager* manager) {

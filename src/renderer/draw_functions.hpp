@@ -40,7 +40,7 @@ MeshCPU generate_outline(Camera* camera, const Bitmask3D& bitmask, const vector<
 
 MeshUICPU generate_formatted_line_2d(vector<FormattedVertex2D> vertices);
 MeshUICPU generate_quad(v2i top_left, v2i bottom_right, Color color);
-MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounded_corners, Color color, float distortion_amount, float distortion_time);
+MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounded_corners, Color color, float distortion_amount, float distortion_time, bool uv_square, float uv_scale = 1.0f);
 MeshUICPU generate_rounded_outline(range2i region, int32 rounded_size, int32 rounded_corners, float width, Color color, float distortion_amount, float distortion_time);
 
 

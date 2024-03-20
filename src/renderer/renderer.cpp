@@ -32,20 +32,22 @@ Renderer& get_renderer() {
 Renderer::Renderer() : imgui_data() {
     vkb::InstanceBuilder builder;
     builder
-        .request_validation_layers(false)
+        .request_validation_layers(true)
         .set_debug_callback([](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT                           messageType,
             const VkDebugUtilsMessengerCallbackDataEXT*               pCallbackData,
             void*                                                     pUserData) -> VkBool32 {
                 auto ms = vkb::to_string_message_severity(messageSeverity);
                 auto mt = vkb::to_string_message_type(messageType);
-                log_error(fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), "renderer");
-                __debugbreak();
+                if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+                    log_warning(fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), "renderer");
+                else
+                    log_error(fmt_("[{}: {}]\n{}\n", ms, mt, pCallbackData->pMessage), "renderer");
                 return VK_FALSE;
             })
         .set_app_name("saurian_sorcery")
         .set_engine_name("spellbook")
-        .require_api_version(1, 2, 0)
+        .require_api_version(1, 3, 0)
         .set_app_version(0, 1, 0);
     auto inst_ret = builder.build();
     assert_else(inst_ret.has_value())

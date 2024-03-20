@@ -48,13 +48,6 @@ struct LizardCardGUI {
     void update(GUIManager* manager);
 
     v2i calculate_used_position() const;
-    range2i calculate_attack_title_region() const;
-    range2i calculate_spell_title_region() const;
-    v2i calculate_attack_title_offset() const;
-    v2i calculate_spell_title_offset() const;
-
-    v2i calculate_attack_text_offset() const;
-    v2i calculate_spell_text_offset() const;
 };
 
 }

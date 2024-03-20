@@ -60,14 +60,15 @@ struct MaterialGPU {
     vuk::CullModeFlags cull_mode;
 
     bool frame_allocated = false;
-    
+
     void bind_parameters(vuk::CommandBuffer& cbuf);
     void bind_textures(vuk::CommandBuffer& cbuf);
 
     void update_from_cpu(const MaterialCPU& new_material);
 };
 
-void make_ui_material(uint64 id, vuk::SampledImage& image);
+uint64 make_ui_material(const FilePath& texture);
+uint64 make_ui_material(uint64 id, vuk::SampledImage& image);
 
 bool inspect(MaterialCPU* material);
 void inspect(MaterialGPU* material);

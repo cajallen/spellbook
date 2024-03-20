@@ -7,34 +7,30 @@
 #include "renderer/gpu_asset_cache.hpp"
 #include "game/effects/text_layer.hpp"
 #include "renderer/draw_functions.hpp"
+#include "game/gui/gui_items.hpp"
 
 namespace spellbook {
 
-void GUIManager::setup() {
+void GUIManager::setup(Scene* p_scene) {
+    scene = p_scene;
     get_game_text_layer().setup();
-
-    uint64 id = hash_view("untextured_mat");
-    auto& tex = get_gpu_asset_cache().get_texture_or_upload("white"_symbolic).value.view;
-    vuk::SampledImage image = vuk::make_sampled_image(tex.get(), Sampler().address(Address_Repeat).get());
-    make_ui_material(id, image);
 }
 
-void GUIManager::update(Scene* p_scene) {
+void GUIManager::update() {
     bool set_hover = false;
-    pressed_id = 0;
-    range2i hover_region;
+    pressed = nullptr;
+    hovered = nullptr;
     for (int32 i = interact_regions.size() - 1; i >= 0; i--) {
-        const InteractRegion& interact_region = interact_regions[i];
-        v2i mouse_pos = v2i(Input::mouse_pos) - p_scene->render_scene.viewport.start;
+        InteractRegion& interact_region = interact_regions[i];
+        v2i mouse_pos = v2i(Input::mouse_pos) - scene->render_scene.viewport.start;
         if (math::contains(interact_region.region, mouse_pos)) {
             if (!set_hover) {
-                hovered_id = interact_region.id;
-                hover_region = interact_region.region;
+                hovered = &interact_region;
                 set_hover = true;
             }
             if (Input::mouse_release[0]) {
                 if (interact_region.clickable) {
-                    pressed_id = hovered_id;
+                    pressed = hovered;
                     break;
                 }
                 // If it's not clickable, we can still look for something to click
@@ -45,45 +41,23 @@ void GUIManager::update(Scene* p_scene) {
     }
 
     v2i padding = {20, 20};
-    if (get_effect_database().entries.contains(hovered_id)) {
-        v2i tooltip_pos = (hover_region.start + hover_region.end) / 2;
-        EffectDatabase::EffectEntry& effect_entry = get_effect_database().entries.at(hovered_id);
-        string tooltip_text = effect_entry.description;
 
-        TextSettings text_settings {
-            .depth = 700 + 5,
-            .width = 500,
-            .distortion_amount = 0.2f,
-            .ref_floats = &effect_entry.extra_floats,
-            .ref_strings = &effect_entry.extra_strings,
-            .distortion_time = Input::time
-        };
-        tooltip_pos.y += 30;
-        range2i region = calc_formatted_text_region(tooltip_text, tooltip_pos, text_settings);
-        v2i text_position = region.start + v2i{0, 15} + padding;
+    if (hovered && get_effect_database().entries.contains(hovered->id)) {
+        EffectDatabase::EffectEntry& effect_entry = get_effect_database().entries.at(hovered->id);
+        v2i tooltip_pos = (hovered->region.start + hovered->region.end) / 2;
 
-        upload_formatted_text(tooltip_text, text_position, text_settings, nullptr, p_scene->render_scene, true);
+        Panel panel(*this);
+        panel.padding = {15, 15};
+        panel.depth = hovered->priority;
+        panel.background_tint = palette::gray_2;
+        panel.given_region = {tooltip_pos, tooltip_pos + v2i{400, 600}};
+        TextGUI text(*this);
+        text.text = effect_entry.description;
+        text.ref_floats = &effect_entry.extra_floats;
+        text.ref_strings = &effect_entry.extra_strings;
+        panel.item = make_unique<TextGUI>(text);
 
-        range2i used_region = region;
-        used_region.end += padding * 2.0f;
-
-        Renderable r = {};
-        r.material_id = hash_view("untextured_mat");
-        r.frame_allocated = true;
-
-        // background
-        MeshUICPU background_mesh = generate_rounded_quad(used_region, 32, 2, palette::gray_3, 5.0f, Input::time * 5.0f);
-        upload_mesh(background_mesh, true);
-        r.mesh_id = background_mesh.id;
-        r.sort_index = 700;
-        p_scene->render_scene.ui_renderables.push_back(r);
-
-        // full outline
-        MeshUICPU background_outline_mesh = generate_rounded_outline(used_region, 32, 2, 2.0f, palette::black, 5.0f, Input::time * 5.0f);
-        upload_mesh(background_outline_mesh, true);
-        r.mesh_id = background_outline_mesh.id;
-        r.sort_index = 700 + 5;
-        p_scene->render_scene.ui_renderables.push_back(r);
+        panel.draw();
     }
 
     interact_regions.clear();
@@ -91,8 +65,8 @@ void GUIManager::update(Scene* p_scene) {
     shop_gui.update(this);
 }
 
-void GUIManager::draw(RenderScene& render_scene) {
-    shop_gui.draw(this, render_scene);
+void GUIManager::draw() {
+    shop_gui.draw(this, scene->render_scene);
 }
 
 void GUIManager::add_interact_region(const InteractRegion& new_region) {

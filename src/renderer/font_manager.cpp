@@ -121,10 +121,10 @@ Font* FontManager::load_font(const FilePath& path, uint32 font_size) {
         }
     }
 
-    texture.format = vuk::Format::eR8Uint;
+    texture.format = vuk::Format::eR8Srgb;
     texture.needs_mips = false;
 
-    upload_texture(texture);
+    upload_texture(texture, false);
     Sampler sampler = Sampler().address(Address_Clamp).filter(Filter_Nearest).mips(false);
     TextureGPU* texture_gpu = get_gpu_asset_cache().get_texture(font.id);
 
@@ -195,29 +195,24 @@ inline void _generate_text_mesh_add_quad(MeshUICPU& mesh, v2i top_left, v2i bott
     mesh.indices.push_back(start_index + 3);
 }
 
-inline void _read_tag(TextFormatState& state, umap<uint64, vector<range2i>>* tooltip_regions) {
+inline void _read_tag(TextFormatState& state, umap<uint64, vector<TooltipRegion>>* tooltip_regions, uint32 char_index) {
     if (state.tag.starts_with("col=")) {
         state.color = Color32(state.tag.substr(4));
-    } else if (state.tag.starts_with("lift=")) {
-        string value_string = state.tag.substr(5);
-        state.lift = -atof(value_string.c_str());
     } else if (state.tag.starts_with("tip=")) {
         if (tooltip_regions) {
             uint64 tooltip_hash = hash_view(state.tag.substr(4));
-            (*tooltip_regions)[tooltip_hash].push_back({});
+            (*tooltip_regions)[tooltip_hash].push_back({.index = char_index, .id = tooltip_hash});
             state.tooltip = &tooltip_regions->at(tooltip_hash).back();
             state.tooltip_initiated = false;
         }
     } else if (state.tag.starts_with("shadow")) {
         state.shadow = true;
-    }else if (state.tag.starts_with('\\')) {
+    } else if (state.tag.starts_with('\\')) {
         if (state.tag == "\\col") {
             state.color = Color32(palette::gray_8);
         }
-        if (state.tag == "\\lift") {
-            state.lift = 0.0f;
-        }
         if (state.tag == "\\tip") {
+            state.lift = 0.0f;
             state.tooltip = nullptr;
         }
         if (state.tag == "\\shadow") {
@@ -227,11 +222,12 @@ inline void _read_tag(TextFormatState& state, umap<uint64, vector<range2i>>* too
     state.tag.clear();
 }
 
-vector<Renderable*> upload_text_mesh(const vector<string>& strings, const vector<Font*>& fonts, v2i position, int32 depth, float distortion_amount, float distortion_time, umap<uint64, vector<range2i>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated) {
+vector<Renderable*> upload_text_mesh(const vector<string>& strings, const vector<Font*>& fonts, v2i position, int32 depth, float distortion_amount, float distortion_time, umap<uint64, vector<TooltipRegion>>* tooltip_regions, uint64* hovered_id, uint32* hovered_index, RenderScene& render_scene, bool frame_allocated) {
     v2i start_position = position;
 
     vector<Renderable*> renderables;
 
+    uint32 char_index = 0;
     for (uint8 i = 0; i < strings.size(); i++) {
         string_view text = strings[i];
         const Font& font = *fonts[i];
@@ -243,7 +239,7 @@ vector<Renderable*> upload_text_mesh(const vector<string>& strings, const vector
         for (char c : text) {
             if (state.reading_tag) {
                 if (c == '}') {
-                    _read_tag(state, tooltip_regions);
+                    _read_tag(state, tooltip_regions, char_index);
                     state.reading_tag = false;
                     continue;
                 }
@@ -254,21 +250,27 @@ vector<Renderable*> upload_text_mesh(const vector<string>& strings, const vector
                 state.reading_tag = true;
                 continue;
             }
+            char_index++;
             if (c == '\n') {
                 position.x = start_position.x;
                 position.y += font.size;
                 continue;
             }
+            if (hovered_id && hovered_index && state.tooltip && char_index == *hovered_index && state.tooltip->id == *hovered_id) {
+                state.lift += 2;
+            }
+
             const Glyph& glyph = font.glyphs[c];
-            v2i char_start = position + glyph.mesh_offset + v2i(0, state.lift * font.size);
+            v2i char_start = position + glyph.mesh_offset + v2i(0, -state.lift);
             v2i char_end = char_start + glyph.mesh_size;
             if (state.tooltip != nullptr) {
                 if (!state.tooltip_initiated) {
-                    *state.tooltip = {char_start, char_end};
+                    state.tooltip->region = {char_start, char_end + v2i(0, state.lift)};
+                    state.tooltip->index = char_index;
                     state.tooltip_initiated = true;
                 } else {
-                    math::expand(*state.tooltip, char_start);
-                    math::expand(*state.tooltip, char_end);
+                    math::expand(state.tooltip->region, char_start);
+                    math::expand(state.tooltip->region, char_end + v2i(0, state.lift));
                 }
             }
             v2 uv_start = v2(glyph.atlas_position) / v2(font.atlas_size);

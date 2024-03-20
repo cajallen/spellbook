@@ -769,6 +769,7 @@ void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                         cmd.bind_graphics_pipeline(mat.pipeline);
                         mat.bind_parameters(cmd);
                         mat.bind_textures(cmd);
+                        current_mat = renderable.material_id;
                     }
 
                     MeshGPU& mesh = get_gpu_asset_cache().meshes.at(renderable.mesh_id);

@@ -10,6 +10,8 @@
 
 namespace spellbook {
 
+struct InteractRegion;
+
 struct GameTextLayer {
     Font* default_font;
     Font* default_bold_font;
@@ -30,14 +32,14 @@ struct TextSettings {
     float distortion_amount = 0.0f;
     umap<string, float>* ref_floats;
     umap<string, string>* ref_strings;
+    uint64* hovered_id;
+    uint32* hovered_index;
 
     float distortion_time = 0.0f;
 };
 
-shared_ptr<HitEffect> id_to_hit_effect(uint64 id);
-
 void insert_newlines(int32& position, string& text, Font* font, const TextSettings& settings);
 range2i calc_formatted_text_region(const string& text, v2i position, const TextSettings& settings);
-vector<Renderable*> upload_formatted_text(const string& text, v2i position, const TextSettings& settings, umap<uint64, vector<range2i>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated);
+vector<Renderable*> upload_formatted_text(const string& text, v2i position, const TextSettings& settings, umap<uint64, vector<TooltipRegion>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated);
 
 }

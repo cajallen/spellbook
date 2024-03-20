@@ -24,9 +24,22 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     }
 };
 
-void make_ui_material(uint64 id, vuk::SampledImage& image) {
+uint64 make_ui_material(const FilePath& fp) {
+    uint64 id = hash_path(fp) ^ hash_view("ui_mat");
+    if (get_gpu_asset_cache().materials.contains(id))
+        return id;
+
+    auto& tex = get_gpu_asset_cache().get_texture_or_upload(fp).value.view;
+    vuk::SampledImage image = vuk::make_sampled_image(tex.get(), Sampler().address(Address_Repeat).get());
+
+    return make_ui_material(id, image);
+}
+
+uint64 make_ui_material(uint64 id, vuk::SampledImage& image) {
+    if (get_gpu_asset_cache().materials.contains(id))
+        return id;
+
     MaterialGPU material_gpu = {};
-    material_gpu.frame_allocated = false;
     material_gpu.pipeline      = get_renderer().context->get_named_pipeline(vuk::Name("ui"));
     material_gpu.images.emplace(ATLAS_BINDING, image);
     material_gpu.cull_mode = vuk::CullModeFlagBits::eNone;
@@ -35,6 +48,7 @@ void make_ui_material(uint64 id, vuk::SampledImage& image) {
     assert_else(material_gpu.pipeline != nullptr);
 
     get_gpu_asset_cache().materials[id] = std::move(material_gpu);
+    return id;
 }
 
 uint64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {

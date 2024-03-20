@@ -126,6 +126,7 @@ void insert_newlines(int32& position, string& text, Font* font, const TextSettin
             if (replace_word_break) {
                 text[last_acceptable_word_break] = '\n';
                 text_index = last_acceptable_word_break;
+                last_acceptable_word_break = -1;
             } else {
                 text.insert(last_acceptable_word_break + 1, 1, '\n');
                 text_index = last_acceptable_word_break + 1;
@@ -135,7 +136,7 @@ void insert_newlines(int32& position, string& text, Font* font, const TextSettin
     }
 }
 
-vector<Renderable*> upload_formatted_text(const string& input_text, v2i position, const TextSettings& settings, umap<uint64, vector<range2i>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated) {
+vector<Renderable*> upload_formatted_text(const string& input_text, v2i position, const TextSettings& settings, umap<uint64, vector<TooltipRegion>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated) {
     TextFormatState state = {};
 
     vector<string> strings;
@@ -173,7 +174,7 @@ vector<Renderable*> upload_formatted_text(const string& input_text, v2i position
         }
     }
 
-    return upload_text_mesh(strings, fonts, position, settings.depth, settings.distortion_amount, settings.distortion_time, tooltip_regions, render_scene, frame_allocated);
+    return upload_text_mesh(strings, fonts, position, settings.depth, settings.distortion_amount, settings.distortion_time, tooltip_regions, settings.hovered_id, settings.hovered_index, render_scene, frame_allocated);
 }
 
 }

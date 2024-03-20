@@ -33,7 +33,7 @@ void HitTestScene::show_buttons() {
 void HitTestScene::setup() {
     setup_scene(new Scene(), false);
 
-    gui_manager.setup();
+    gui_manager.setup(p_scene);
     gui_manager.shop_gui.add_lizard_card<LizardType_Ranger>();
     gui_manager.shop_gui.add_lizard_card<LizardType_Assassin>();
 }
@@ -78,8 +78,8 @@ void HitTestScene::update() {
 
     p_scene->update();
 
-    gui_manager.draw(p_scene->render_scene);
-    gui_manager.update(p_scene);
+    gui_manager.draw();
+    gui_manager.update();
 }
 
 void HitTestScene::window(bool* p_open) {
