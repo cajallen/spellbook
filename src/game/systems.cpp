@@ -76,8 +76,6 @@ void health_draw_system(Scene* scene) {
         if (health.value <= 0.0f)
             continue;
 
-        float percentage = health.value / health.max_health->value();
-        float percentage2 = health.buffer_value / health.max_health->value();
         auto link = scene->registry.try_get<TransformLink>(entity);
         v3 position = link ? logic_tfm.position + link->offset : logic_tfm.position + v3(0.5f, 0.5f, 0.0f);
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
@@ -88,12 +86,12 @@ void health_draw_system(Scene* scene) {
         
         m44 inner_matrix = math::translate(position) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
-                           math::translate(v3(-(1.0f - percentage) * 0.5f * width, 0.0f, vertical_offset)) *
-                           math::scale(v3(percentage * 0.5f * width, thickness, thickness));
+                           math::translate(v3(-(1.0f - health.value) * 0.5f * width, 0.0f, vertical_offset)) *
+                           math::scale(v3(health.value * 0.5f * width, thickness, thickness));
         m44 buffer_matrix = math::translate(position) * 
                            math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) *
-                           math::translate(v3(-(1.0f - percentage2) * 0.5f * width, 0.0f, vertical_offset)) *
-                           math::scale(v3(percentage2 * 0.5f * width, thickness, thickness) * 0.9f);
+                           math::translate(v3(-(1.0f - health.buffer_value) * 0.5f * width, 0.0f, vertical_offset)) *
+                           math::scale(v3(health.buffer_value * 0.5f * width, thickness, thickness) * 0.9f);
         m44 outer_matrix = math::translate(v3(0.0f, 0.0f, vertical_offset) + position) *
                            math::rotation(euler{dir_to_camera - math::PI * 0.5f, 0.0f}) * 
                            math::scale(v3(0.5f * width, thickness, thickness));

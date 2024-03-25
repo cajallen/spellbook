@@ -15,7 +15,7 @@ struct StatEffect {
     enum Type { Type_Base, Type_Multiply, Type_Add, Type_Override };
 
     Type type;
-    float  value;
+    float value;
     int32 max_stacks = 1;
     float until = FLT_MAX; // Duration is used if adding stacks refreshes duration
     int32  stacks = 1;

@@ -4,12 +4,12 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 
 #include "extension/imgui_extra.hpp"
+#include "extension/fmt_geometry.hpp"
+#include "extension/fmt.hpp"
 #include "general/logger.hpp"
+#include "general/file/file_path.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/gpu_asset_cache.hpp"
-
-#include "extension/fmt.hpp"
-#include "general/file/file_path.hpp"
 
 namespace spellbook {
 
@@ -24,7 +24,7 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     }
 };
 
-uint64 make_ui_material(const FilePath& fp) {
+uint64 make_ui_material(const FilePath& fp, bool single_channel) {
     uint64 id = hash_path(fp) ^ hash_view("ui_mat");
     if (get_gpu_asset_cache().materials.contains(id))
         return id;
@@ -32,16 +32,26 @@ uint64 make_ui_material(const FilePath& fp) {
     auto& tex = get_gpu_asset_cache().get_texture_or_upload(fp).value.view;
     vuk::SampledImage image = vuk::make_sampled_image(tex.get(), Sampler().address(Address_Repeat).get());
 
-    return make_ui_material(id, image);
+    return make_ui_material(id, image, single_channel);
 }
 
-uint64 make_ui_material(uint64 id, vuk::SampledImage& image) {
+uint64 make_ui_material(uint64 id, vuk::SampledImage& image, bool single_channel) {
     if (get_gpu_asset_cache().materials.contains(id))
         return id;
+
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = true;
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("shaders/ui.vert"_distributed), "shaders/ui.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/ui.frag"_distributed), "shaders/ui.frag"_distributed.abs_string());
+        get_renderer().context->create_named_pipeline("ui", pci);
+    }
 
     MaterialGPU material_gpu = {};
     material_gpu.pipeline      = get_renderer().context->get_named_pipeline(vuk::Name("ui"));
     material_gpu.images.emplace(ATLAS_BINDING, image);
+    material_gpu.extra_material_data.push_back(uint8(single_channel ? 1 : 0));
     material_gpu.cull_mode = vuk::CullModeFlagBits::eNone;
     material_gpu.frame_allocated = false;
 
@@ -50,6 +60,48 @@ uint64 make_ui_material(uint64 id, vuk::SampledImage& image) {
     get_gpu_asset_cache().materials[id] = std::move(material_gpu);
     return id;
 }
+
+uint64 make_panel_material(const FilePath& fp, const Color& color1, const Color& color2, const v3& vignette_amount) {
+    uint64 id = hash_view(fmt_("ui_mat:{},{},{},{}", fp.abs_string(), color1, color2, vignette_amount));
+    if (get_gpu_asset_cache().materials.contains(id))
+        return id;
+
+    auto& tex = get_gpu_asset_cache().get_texture_or_upload(fp).value.view;
+    vuk::SampledImage image = vuk::make_sampled_image(tex.get(), Sampler().address(Address_Repeat).get());
+
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = true;
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("shaders/ui.vert"_distributed), "shaders/ui.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/ui_panel.frag"_distributed), "shaders/ui_panel.frag"_distributed.abs_string());
+        get_renderer().context->create_named_pipeline("ui_panel", pci);
+    }
+
+    struct ExtraMaterialData {
+        Color c1, c2;
+        v3 vignette;
+    } emd;
+    emd.c1 = color1;
+    emd.c2 = color2;
+    emd.vignette = vignette_amount;
+
+    MaterialGPU material_gpu = {};
+    material_gpu.pipeline      = get_renderer().context->get_named_pipeline(vuk::Name("ui_panel"));
+    material_gpu.images.emplace(ATLAS_BINDING, image);
+
+    material_gpu.extra_material_data.resize(sizeof(ExtraMaterialData));
+    memcpy(material_gpu.extra_material_data.data(), &emd, sizeof(ExtraMaterialData));
+
+    material_gpu.cull_mode = vuk::CullModeFlagBits::eNone;
+    material_gpu.frame_allocated = false;
+
+    assert_else(material_gpu.pipeline != nullptr);
+
+    get_gpu_asset_cache().materials[id] = std::move(material_gpu);
+    return id;
+}
+
 
 uint64 upload_material(const MaterialCPU& material_cpu, bool frame_allocation) {
     if (!material_cpu.file_path.is_file())

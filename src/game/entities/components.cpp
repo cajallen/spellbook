@@ -191,6 +191,7 @@ Health::Health(float health_value, Scene* init_scene, entt::entity init_entity, 
     buffer_value = value;
     max_health = std::make_unique<Stat>(scene, entity, value);
     damage_taken_multiplier = std::make_unique<Stat>(scene, entity, 1.0f);
+    regen = std::make_unique<Stat>(scene, entity, 0.0f);
     emitter_cpu_path = hurt_emitter_path;
 }
 
@@ -199,7 +200,7 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
 
     Caster* caster = scene->registry.try_get<Caster>(damager);
     float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * damage_taken_multiplier->value();
-    value -= hurt_value;
+    value -= hurt_value / max_health->value();
 
     if (emitter_cpu_path.is_file()) {
         EmitterCPU hurt_emitter = load_resource<EmitterCPU>(emitter_cpu_path);
@@ -214,6 +215,14 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
                 this->scene->registry.get<EmitterComponent>(entity).remove_emitter(random_id);
         }, true)->start(hurt_time);
     }
+}
+
+void Health::heal(entt::entity damager, float amount) {
+    damage_signal.publish(scene, damager, entity, amount);
+
+    Caster* caster = scene->registry.try_get<Caster>(damager);
+    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * damage_taken_multiplier->value();
+    value += hurt_value / max_health->value();
 }
 
 void Health::apply_dot(entt::entity damager, uint64 id, const StatEffect& effect, EmitterCPU* emitter) {

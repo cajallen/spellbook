@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <functional>
 #include <entt/entity/fwd.hpp>
 
 #include "extension/fmt.hpp"
@@ -10,6 +11,20 @@ namespace spellbook {
 
 struct Scene;
 
+// Hit effects are a subset of effects
+enum EffectType {
+    EffectType_Damage,
+    EffectType_Heal,
+    EffectType_Growth,
+    EffectType_Regen,
+    EffectType_Vulnerable,
+    EffectType_Resistance,
+    EffectType_Amplify,
+    EffectType_Haste,
+    EffectType_Slow,
+    EffectType_Acid
+};
+
 struct EffectDatabase {
     struct EffectEntry {
         string name;
@@ -19,59 +34,23 @@ struct EffectDatabase {
         umap<string, float> extra_floats;
     };
     bool initialized = false;
-    umap<uint64, EffectEntry> entries;
+    vector<EffectEntry> entries;
 };
 
 void initialize_effect_database(EffectDatabase&);
 EffectDatabase& get_effect_database();
 
 struct HitEffect {
+    EffectType type;
     int32 level = 1;
     float duration = 0.0f;
     float quantity = 1.0f;
 
-    virtual void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {}
-    virtual bool hits_disposition(Team::Disposition disposition) { return false; }
+    std::function<void(HitEffect&, Scene*, entt::entity, const vector<entt::entity>&)> apply_function;
+    std::function<bool(Team::Disposition)> hits_disposition_function;
+
+    HitEffect(EffectType type);
 };
 
-struct Damage : HitEffect {
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
-
-struct Vulnerable : HitEffect {
-    static constexpr float effect[] = {0.3f, 0.5f, 1.0f};
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
-
-struct Resistance : HitEffect {
-    static constexpr float effect[] = {0.2f, 0.5f, 0.9f};
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
-
-struct Slow : HitEffect {
-    static constexpr float effect[] = {0.2f, 0.4f, 0.7f, 1.0f};
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
-
-struct Haste : HitEffect {
-    static constexpr float effect[] = {0.2f, 0.5f};
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
-
-struct Poison : HitEffect {
-    static constexpr float effect[] = {1.0f, 2.0f, 4.0f, 8.0f};
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
-
-struct Growth : HitEffect {
-    void apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) override;
-    bool hits_disposition(Team::Disposition disposition) override;
-};
 
 }

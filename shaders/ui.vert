@@ -3,7 +3,7 @@
 
 #include "include.glsli"
 
-layout (location = 0) in vec3 vin_position;
+layout (location = 0) in vec2 vin_position;
 layout (location = 1) in vec2 vin_uv;
 layout (location = 2) in uvec4 vin_color;
 
@@ -22,7 +22,7 @@ layout(location = 0) out VS_OUT {
 } vout;
 
 void main() {
-    vec4 h_position = screen_pixels_to_NDC * vec4(vin_position, 1.0);
+    vec4 h_position = screen_pixels_to_NDC * vec4(vin_position, 0.5f, 1.0);
     vout.position = vin_position.xy;
     vout.color = vin_color / 255.0;
     vout.uv = vin_uv;

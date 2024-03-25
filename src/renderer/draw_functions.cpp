@@ -41,17 +41,24 @@ v2 position2uv(v3 v) {
 } // namespace icosphere
 
 MeshUICPU generate_quad(v2i top_left, v2i bottom_right, Color color) {
+    return generate_quad(top_left, bottom_right, bottom_right - top_left, color);
+}
+
+MeshUICPU generate_quad(v2i top_left, v2i bottom_right, v2i uv_size, Color color) {
+    v2 uv_ratio = v2(bottom_right - top_left) / v2(uv_size);
+
     uint64 id = uint64(top_left.x) << 32 | top_left.y;
     id = id ^ (uint64(bottom_right.x) << 32 | bottom_right.y);
     return MeshUICPU{id, vector<VertexUI> {
-            VertexUI {v3(top_left.x,     top_left.y, 0.0f), v2{0.0f, 0.0f},     Color32(color)},
-            VertexUI {v3(bottom_right.x, top_left.y, 0.0f), v2{1.0f, 0.0f},     Color32(color)},
-            VertexUI {v3(bottom_right.x, bottom_right.y, 0.0f), v2{1.0f, 1.0f}, Color32(color)},
-            VertexUI {v3(top_left.x,     bottom_right.y, 0.0f), v2{0.0f, 1.0f}, Color32(color)}
+            VertexUI {v2(top_left.x,     top_left.y), v2{0.0f, 0.0f},     Color32(color)},
+            VertexUI {v2(bottom_right.x, top_left.y), v2{uv_ratio.x, 0.0f},     Color32(color)},
+            VertexUI {v2(bottom_right.x, bottom_right.y), v2{uv_ratio.x, uv_ratio.y}, Color32(color)},
+            VertexUI {v2(top_left.x,     bottom_right.y), v2{0.0f, uv_ratio.y}, Color32(color)}
         },
         {0, 1, 2, 0, 2, 3}
     };
 }
+
 
 MeshCPU generate_cube(v3 center, v3 extents, Color vertex_color) {
     ZoneScoped;
@@ -427,10 +434,10 @@ MeshUICPU generate_formatted_line_2d(vector<FormattedVertex2D> vertices) {
         if (seg1.separate || seg2.separate)
             continue;
 
-        mesh_cpu.vertices.emplace_back(v3(seg1.left, 0.0f), v2(0), Color32(seg1.color));
-        mesh_cpu.vertices.emplace_back(v3(seg1.right, 0.0f), v2(0), Color32(seg1.color));
-        mesh_cpu.vertices.emplace_back(v3(seg2.right, 0.0f), v2(0), Color32(seg2.color));
-        mesh_cpu.vertices.emplace_back(v3(seg2.left, 0.0f), v2(0), Color32(seg2.color));
+        mesh_cpu.vertices.emplace_back(v2(seg1.left), v2(0), Color32(seg1.color));
+        mesh_cpu.vertices.emplace_back(v2(seg1.right), v2(0), Color32(seg1.color));
+        mesh_cpu.vertices.emplace_back(v2(seg2.right), v2(0), Color32(seg2.color));
+        mesh_cpu.vertices.emplace_back(v2(seg2.left), v2(0), Color32(seg2.color));
         mesh_cpu.indices.push_back(j*4+0);
         mesh_cpu.indices.push_back(j*4+1);
         mesh_cpu.indices.push_back(j*4+2);
@@ -546,7 +553,18 @@ static vector<v2> generate_rounded_shape(range2i region, int32 rounded_size, int
     return vertices;
 }
 
-MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounded_corners, Color color, float distortion_amount, float distortion_time, bool uv_square, float uv_scale) {
+
+MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounded_corners, float distortion_amount, float distortion_time, bool uv_square, float uv_scale) {
+    auto calc_uv = [](const v2& pos, const range2i& region, bool uv_square) {
+        v2 uv;
+        if (uv_square) {
+            uv = (pos - v2(region.start)) / math::min(region.end.x - region.start.x, region.end.y - region.start.y);
+        } else {
+            uv = (pos - v2(region.start)) / v2(region.end - region.start);
+        }
+        return uv;
+    };
+
     string name = fmt_("rounded_quad: {} {} {} {}", region.start, region.end, rounded_size, rounded_corners);
     MeshUICPU mesh_cpu;
     mesh_cpu.id = hash_view(name);
@@ -554,19 +572,14 @@ MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounde
     vector<v2> positions = generate_rounded_shape(region, rounded_size, rounded_corners, distortion_amount, distortion_time);
 
     v2 region_center = v2(region.start + region.end) * 0.5f;
-    mesh_cpu.vertices.emplace_back(v3(region_center.x, region_center.y, 0.0f), v2(0.0f), Color32(color));
+    mesh_cpu.vertices.emplace_back(v2(region_center.x, region_center.y), calc_uv(region_center, region, uv_square), Color32(0, 0, 0, 0));
 
     for (uint32 i = 0; i < positions.size(); i++) {
         uint32 start_index = mesh_cpu.vertices.size();
 
-        v2 uv;
-        if (uv_square) {
-            uv = (positions[i] - v2(region.start)) / math::min(region.end.x - region.start.x, region.end.y - region.start.y);
-        } else {
-            uv = (positions[i] - v2(region.start)) / v2(region.end - region.start);
-        }
+        float vignette_ratio = math::length(positions[i] - region_center) / math::length(v2(region.start) - region_center);
 
-        mesh_cpu.vertices.emplace_back(v3(positions[i].x, positions[i].y, 0.0f), uv, Color32(color));
+        mesh_cpu.vertices.emplace_back(positions[i], calc_uv(positions[i], region, uv_square), Color32(math::round_cast(vignette_ratio * 255.0f), 0, 0, 0));
         if (i == 0) // We've only added two vertices, wait
             continue;
         mesh_cpu.indices.push_back(0);
@@ -576,6 +589,51 @@ MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounde
 
     return mesh_cpu;
 }
+
+MeshUICPU generate_rounded_quad(range2i region, int32 rounded_size, int32 rounded_corners, float distortion_amount, float distortion_time, Color c) {
+    string name = fmt_("rounded_quad: {} {} {} {} {}", region.start, region.end, rounded_size, rounded_corners, c);
+    MeshUICPU mesh_cpu;
+    mesh_cpu.id = hash_view(name);
+
+    vector<v2> positions = generate_rounded_shape(region, rounded_size, rounded_corners, distortion_amount, distortion_time);
+
+    v2 region_center = v2(region.start + region.end) * 0.5f;
+    mesh_cpu.vertices.emplace_back(v2(region_center.x, region_center.y), v2{}, Color32(c));
+
+    for (uint32 i = 0; i < positions.size(); i++) {
+        uint32 start_index = mesh_cpu.vertices.size();
+
+        mesh_cpu.vertices.emplace_back(positions[i], v2{}, Color32(c));
+        if (i == 0) // We've only added two vertices, wait
+            continue;
+        mesh_cpu.indices.push_back(0);
+        mesh_cpu.indices.push_back(start_index);
+        mesh_cpu.indices.push_back(start_index-1);
+    }
+
+    return mesh_cpu;
+}
+
+MeshUICPU generate_separator(v2i start, v2i end, int32 segments, float width, float distortion_amount, float distortion_time, Color c) {
+    vector<FormattedVertex2D> vertices;
+
+    constexpr int count = 5;
+    v2 p1 = v2(start);
+    v2 p2 = v2(end);
+    for (uint32 i = 0; i <= count; i++) {
+        v2 pos = p1 * (i / float(count)) + p2 * (1.0f - (i / float(count)));
+        vertices.emplace_back(pos, c, width);
+    }
+
+    for (FormattedVertex2D& vertex : vertices) {
+        v3 pos = v3(vertex.position.x, vertex.position.y, distortion_time);
+        vertex.position.x += distortion_amount * (1.0f - 2.0f * fractal_perlin_noise(pos, 0.02f, 2, 0.5f, 0));
+        vertex.position.y += distortion_amount * (1.0f - 2.0f * fractal_perlin_noise(pos, 0.02f, 2, 0.5f, 1));
+    }
+
+    return generate_formatted_line_2d(vertices);
+}
+
 MeshUICPU generate_rounded_outline(range2i region, int32 rounded_size, int32 rounded_corners, float width, Color color, float distortion_amount, float distortion_time) {
     vector<FormattedVertex2D> vertices;
 

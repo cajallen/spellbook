@@ -47,6 +47,8 @@ struct LizardDatabase {
         float scale;
         FilePath model_path;
         FilePath hurt_emitter;
+        FilePath splash;
+        FilePath background;
         umap<string, string> extra_strings;
         umap<string, float> extra_floats;
     };

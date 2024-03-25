@@ -91,6 +91,7 @@ struct Health {
     
     Health(float health_value, Scene* scene, entt::entity e, const FilePath& hurt_emitter_path = {});
     void damage(entt::entity damager, float amount, v3 direction);
+    void heal(entt::entity damager, float amount);
     void apply_dot(entt::entity damager, uint64 id, const StatEffect& effect, EmitterCPU* emitter = nullptr);
 };
 

@@ -25,7 +25,7 @@ enum EnemyType {
 
 struct EnemyPrefab : Resource {
     EnemyType type = EnemyType_Empty;
-    FilePath base_model_path = "models/enemy_spider/spider_base.sbmod"_resource;
+    FilePath base_model_path;
     FilePath attachment_model_path;
     FilePath hurt_path;
     

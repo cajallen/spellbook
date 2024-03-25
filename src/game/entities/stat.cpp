@@ -33,7 +33,7 @@ void Stat::add_effect(uint64 id, const StatEffect& init_effect, EmitterCPU* emit
 
     // Refresh and add stacks
     effect_value.stacks = math::min(effect_value.stacks + init_effect.stacks, effect_value.max_stacks);
-    effect_value.until = scene->time + init_effect.until;
+    effect_value.until = init_effect.until;
 
     if (emitter && adding) {
         EmitterComponent& emitters = scene->registry.get<EmitterComponent>(entity);

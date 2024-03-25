@@ -44,6 +44,14 @@ void initialize_lizard_database(LizardDatabase& database) {
                 entry.hurt_emitter = FilePath(from_jv<string>(*value_jv_ptr), FilePathLocation_Content);
                 continue;
             }
+            if (value_name == "Splash") {
+                entry.splash = FilePath(from_jv<string>(*value_jv_ptr), FilePathLocation_Content);
+                continue;
+            }
+            if (value_name == "Background") {
+                entry.background = FilePath(from_jv<string>(*value_jv_ptr), FilePathLocation_Content);
+                continue;
+            }
             visit(overloaded{
                 [&](float arg) { entry.extra_floats[value_name] = arg; },
                 [&](const string& arg) { entry.extra_strings[value_name] = arg; },

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <tracy/Tracy.hpp>
 
+#include "general/file/file_path.hpp"
 #include "renderer/render_scene.hpp"
 #include "editor/console.hpp"
 #include "editor/editor_scene.hpp"
@@ -16,6 +17,10 @@ namespace fs = std::filesystem;
 namespace spellbook {
 
 Game game;
+
+constexpr string_view get_filepath_app_name() {
+    return "spellbook";
+}
 
 void Game::startup() {
     get_filepath_app_name() = "spellbook";

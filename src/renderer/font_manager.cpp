@@ -21,13 +21,6 @@ void FontManager::setup() {
         log_warning("Font manager initialization failure");
         return;
     }
-
-    {
-        vuk::PipelineBaseCreateInfo pci;
-        pci.add_glsl(get_contents("shaders/ui.vert"_distributed), "shaders/ui.vert"_distributed.abs_string());
-        pci.add_glsl(get_contents("shaders/ui.frag"_distributed), "shaders/ui.frag"_distributed.abs_string());
-        get_renderer().context->create_named_pipeline("ui", pci);
-    }
 }
 
 
@@ -181,12 +174,12 @@ range2i calc_text_region(const vector<string>& strings, const vector<Font*>& fon
     }
     return region;
 }
-inline void _generate_text_mesh_add_quad(MeshUICPU& mesh, v2i top_left, v2i bottom_right, v2 uv_start, v2 uv_end, int32 depth, Color32 col) {
+inline void _generate_text_mesh_add_quad(MeshUICPU& mesh, v2i top_left, v2i bottom_right, v2 uv_start, v2 uv_end, Color32 col) {
     uint32 start_index = mesh.vertices.size();
-    mesh.vertices.emplace_back(v3(top_left.x, top_left.y, depth), v2(uv_start.x, uv_start.y), col);
-    mesh.vertices.emplace_back(v3(bottom_right.x, top_left.y, depth), v2(uv_end.x, uv_start.y), col);
-    mesh.vertices.emplace_back(v3(bottom_right.x, bottom_right.y, depth), v2(uv_end.x, uv_end.y), col);
-    mesh.vertices.emplace_back(v3(top_left.x, bottom_right.y, depth), v2(uv_start.x, uv_end.y), col);
+    mesh.vertices.emplace_back(v2(top_left.x, top_left.y), v2(uv_start.x, uv_start.y), col);
+    mesh.vertices.emplace_back(v2(bottom_right.x, top_left.y), v2(uv_end.x, uv_start.y), col);
+    mesh.vertices.emplace_back(v2(bottom_right.x, bottom_right.y), v2(uv_end.x, uv_end.y), col);
+    mesh.vertices.emplace_back(v2(top_left.x, bottom_right.y), v2(uv_start.x, uv_end.y), col);
     mesh.indices.push_back(start_index + 0);
     mesh.indices.push_back(start_index + 1);
     mesh.indices.push_back(start_index + 2);
@@ -283,9 +276,9 @@ vector<Renderable*> upload_text_mesh(const vector<string>& strings, const vector
             };
             v2i offset_i = math::round_cast(offset);
 
-            _generate_text_mesh_add_quad(mesh_base, char_start + offset_i, char_end + offset_i, uv_start, uv_end, depth, state.color);
+            _generate_text_mesh_add_quad(mesh_base, char_start + offset_i, char_end + offset_i, uv_start, uv_end, state.color);
             if (state.shadow)
-                _generate_text_mesh_add_quad(mesh_shadow, char_start + offset_i + v2i(2), char_end + offset_i + v2i(2), uv_start, uv_end, depth - 1, Color32(0, 0, 0, 127));
+                _generate_text_mesh_add_quad(mesh_shadow, char_start + offset_i + v2i(2), char_end + offset_i + v2i(2), uv_start, uv_end, Color32(0, 0, 0, 127));
             position.x += glyph.mesh_advance.x;
         }
         mesh_base.id = hash_view(text) ^ font.id;

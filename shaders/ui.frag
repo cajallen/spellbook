@@ -13,7 +13,17 @@ layout (location = 0) out vec4 fout_color;
 
 layout(binding = TEXTURE_BINDING) uniform sampler2D s_texture;
 
+layout(push_constant) uniform uPushConstant {
+    bool single_channel;
+} pc;
+
 void main() {
-    float s = texture(s_texture, fin.uv).r;
-    fout_color = vec4(fin.color.rgb, s * fin.color.a);
+    vec4 tex = texture(s_texture, fin.uv);
+    tex.rgb = linear_to_srgb(tex.rgb);
+
+    if (pc.single_channel) {
+        fout_color = vec4(fin.color.rgb, tex.r * fin.color.a);
+    } else {
+        fout_color = fin.color * tex;
+    }
 }

@@ -5,6 +5,10 @@
 #include "general/math/geometry.hpp"
 #include "general/file/file_path.hpp"
 
+#define HIERARCHY_DEPTH_INCREMENT 2
+#define DISTORTION_AMOUNT 5.0f
+#define DISTORTION_TIME Input::time * 5.0f
+
 namespace spellbook {
 
 struct GUIManager;
@@ -14,9 +18,14 @@ struct ItemGUI {
     range2i given_region;
     int32 depth;
 
+    bool hoverable;
+    bool clickable; // requires hoverable
+
     ItemGUI(GUIManager& manager);
     virtual void draw();
     virtual range2i get_occupied_region();
+    void add_interact_region(range2i region);
+    uint64 get_id();
 };
 
 struct SpacingGUI : ItemGUI {
@@ -40,19 +49,50 @@ struct ImageGUI : ItemGUI {
  protected:
     FilePath texture_path = "white"_symbolic;
     v2i size;
+    bool tiling;
  public:
+
+    Color tint = palette::white;
+
     using ItemGUI::ItemGUI;
 
     void draw() override;
     range2i get_occupied_region() override;
     void set_image(const FilePath& fp, v2i bounds, bool keep_aspect = true);
+    void set_image_tiling(const FilePath& fp, float scale);
 };
 
-struct Panel : ItemGUI {
-    v2i padding;
+struct PanelGUI : ItemGUI {
+    v2i start_padding;
+    v2i end_padding;
     unique_ptr<ItemGUI> item;
     FilePath texture_path = "white"_symbolic;
     Color background_tint = palette::white;
+    Color outline_color = palette::black;
+    float outline_width = 2.0f;
+    bool show = true;
+    bool shrink = true;
+
+    using ItemGUI::ItemGUI;
+
+    void draw() override;
+    range2i get_occupied_region() override;
+};
+
+struct AlignmentGUI : ItemGUI {
+    v2 pos; // 0-1
+    unique_ptr<ItemGUI> item;
+
+    using ItemGUI::ItemGUI;
+
+    void draw() override;
+    range2i get_occupied_region() override;
+};
+
+struct VerticalSeparator : ItemGUI {
+    uint8 height = 8;
+    Color color = palette::black;
+    float width = 2.0f;
 
     using ItemGUI::ItemGUI;
 
@@ -75,6 +115,7 @@ struct TextGUI : ItemGUI {
 struct VerticalBox : ItemGUI {
     vector<unique_ptr<ItemGUI>> items;
     vector<float> spacing_weights;
+    float background_opacity = 0.0f;
 
     using ItemGUI::ItemGUI;
 
@@ -85,6 +126,16 @@ struct VerticalBox : ItemGUI {
 struct HorizontalBox : ItemGUI {
     vector<unique_ptr<ItemGUI>> items;
     vector<float> spacing_weights;
+    float background_opacity = 0.0f;
+
+    using ItemGUI::ItemGUI;
+
+    void draw() override;
+    range2i get_occupied_region() override;
+};
+
+struct StackGUI : ItemGUI {
+    vector<unique_ptr<ItemGUI>> items;
 
     using ItemGUI::ItemGUI;
 

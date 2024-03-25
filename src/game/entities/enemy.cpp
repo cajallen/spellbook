@@ -19,6 +19,7 @@
 #include "game/entities/components.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/caster.hpp"
+#include "game/entities/team.hpp"
 #include "game/entities/enemy_ik.hpp"
 #include "game/entities/tags.hpp"
 #include "game/entities/targeting.hpp"
@@ -219,6 +220,8 @@ void EnemyMortarAttack::targeting() {
 entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i location) {
     static SpiderControllerSettings settings;
 
+    FilePath base_model_path = prefab.base_model_path.is_file() ? prefab.base_model_path : "models/enemy_spider/spider_base.sbmod"_resource;
+
     if (prefab.type == EnemyType_InnateBot)
         return instance_innate_bot(scene, prefab, location);
 
@@ -230,13 +233,13 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     PathInfo* selected_path = !available_paths.empty() ? available_paths[math::random_int32(available_paths.size())] : nullptr;
     entt::entity spawner = selected_path ? selected_path->spawner : entt::null;
     entt::entity selected_consumer = selected_path ? selected_path->consumer : entt::null;
-        
-    entt::entity base_entity = setup_basic_unit(scene, prefab.base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
+
+    entt::entity base_entity = setup_basic_unit(scene, base_model_path, v3(location), prefab.max_health, prefab.hurt_path);
     static int base_i = 0;
-    scene->registry.emplace<Name>(base_entity, fmt_("{}_{}", prefab.base_model_path.stem(), base_i++));
     entt::entity attachment_entity = prefab.type != EnemyType_InnateBot ? scene->registry.create() : entt::null;
 
     scene->registry.erase<TransformLink>(base_entity);
+    scene->registry.emplace<Team>(base_entity, Team::Team_Bots);
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
     scene->registry.emplace<Traveler>(base_entity);
     scene->registry.emplace<SpiderController>(base_entity, settings);
@@ -304,6 +307,7 @@ entt::entity instance_innate_bot(Scene* scene, const EnemyPrefab& prefab, v3i lo
     entt::entity attachment_entity = prefab.type != EnemyType_InnateBot ? scene->registry.create() : entt::null;
 
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
+    scene->registry.emplace<Team>(base_entity, Team::Team_Bots);
     scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.base_scale);
     scene->registry.get<TransformLink>(base_entity).offset.z = 0.5f;
 

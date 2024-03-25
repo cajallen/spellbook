@@ -7,11 +7,13 @@ namespace spellbook {
 
 struct Hit {
     Scene* scene;
-    v3i location;
+    v3i position;
     entt::entity caster;
     vector<HitEffect> effects;
 
+    void pre_apply();
     void process();
+    void post_apply();
 };
 
 }

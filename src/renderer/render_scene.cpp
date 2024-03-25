@@ -163,7 +163,7 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     auto [pubo_composite, fubo_composite] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&composite_data, 1));
     buffer_composite_data             = *pubo_composite;
 
-    m44 ui_view = math::translate(v3(-1.0f, -1.0f, 0.0f)) * math::scale(v3(2.0f, 2.0f, 1.0f)) * math::scale(v3(1.0f / viewport.size.x, 1.0f / viewport.size.y, 1.0f / 1000.0f));
+    m44 ui_view = math::translate(v3(-1.0f, -1.0f, 0.0f)) * math::scale(v3(2.0f, 2.0f, 1.0f)) * math::scale(v3(1.0f / viewport.size.x, 1.0f / viewport.size.y, 1.0f));
     m44GPU ui_view_gpu = m44GPU(ui_view);
     auto [pubo_ui_view, fubo_ui_view] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&ui_view_gpu, 1));
     buffer_ui_view              = *pubo_ui_view;
@@ -770,6 +770,8 @@ void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                         mat.bind_parameters(cmd);
                         mat.bind_textures(cmd);
                         current_mat = renderable.material_id;
+                        uint32 single_channel = mat.extra_material_data.size() != 1 ? 0 : mat.extra_material_data.front();
+                        cmd.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, single_channel);
                     }
 
                     MeshGPU& mesh = get_gpu_asset_cache().meshes.at(renderable.mesh_id);
@@ -817,6 +819,7 @@ void RenderScene::add_emitter_update_pass(std::shared_ptr<vuk::RenderGraph> rg) 
 }
 
 void RenderScene::cleanup(vuk::Allocator& allocator) {
+    emitters.clear();
     get_renderer().scenes.remove_value(this);
 }
 

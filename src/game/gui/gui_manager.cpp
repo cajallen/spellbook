@@ -14,6 +14,12 @@ namespace spellbook {
 void GUIManager::setup(Scene* p_scene) {
     scene = p_scene;
     get_game_text_layer().setup();
+
+    for (uint32 i = 0; i < magic_enum::enum_count<EffectType>(); i++) {
+        auto effect_type = EffectType(i);
+        auto effect_name = magic_enum::enum_name(effect_type).substr(strlen("EffectType_"));
+        hash_to_effect[hash_view(effect_name)] = effect_type;
+    }
 }
 
 void GUIManager::update() {
@@ -40,17 +46,17 @@ void GUIManager::update() {
         }
     }
 
-    v2i padding = {20, 20};
-
-    if (hovered && get_effect_database().entries.contains(hovered->id)) {
-        EffectDatabase::EffectEntry& effect_entry = get_effect_database().entries.at(hovered->id);
+    if (hovered && hash_to_effect.contains(hovered->id)) {
+        EffectType effect_type = hash_to_effect.at(hovered->id);
+        EffectDatabase::EffectEntry& effect_entry = get_effect_database().entries.at(effect_type);
         v2i tooltip_pos = (hovered->region.start + hovered->region.end) / 2;
 
-        Panel panel(*this);
-        panel.padding = {15, 15};
+        PanelGUI panel(*this);
+        panel.start_padding = {15, 15};
+        panel.end_padding = panel.start_padding;
         panel.depth = hovered->priority;
         panel.background_tint = palette::gray_2;
-        panel.given_region = {tooltip_pos, tooltip_pos + v2i{400, 600}};
+        panel.given_region = {tooltip_pos, tooltip_pos + v2i{300, 600}};
         TextGUI text(*this);
         text.text = effect_entry.description;
         text.ref_floats = &effect_entry.extra_floats;

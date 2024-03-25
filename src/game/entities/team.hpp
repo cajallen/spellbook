@@ -17,6 +17,13 @@ struct Team {
     };
 
     Disposition outlook[8];
+
+    Team(TeamID team) {
+        outlook[0] = Disposition_Neutral;
+        for (uint8 i = 1; i < 8; ++i) outlook[i] = Disposition_Hostile;
+        identity = team;
+        outlook[team] = Disposition_Friendly;
+    }
 };
 
 }

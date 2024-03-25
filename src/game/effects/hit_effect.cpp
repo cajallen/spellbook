@@ -7,87 +7,132 @@
 
 namespace spellbook {
 
-void Damage::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void damage_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    LogicTransform* source_tfm = scene->registry.try_get<LogicTransform>(caster);
+    v3 source_pos = {};
+    if (source_tfm)
+        source_pos = source_tfm->position;
+
     for (entt::entity target : targets) {
-        Caster* caster = scene->registry.try_get<Caster>(target);
+        Health& health = scene->registry.get<Health>(target);
+        LogicTransform& enemy_tfm = scene->registry.get<LogicTransform>(target);
+        health.damage(caster, effect.quantity / targets.size(), enemy_tfm.position - source_pos);
     }
 }
 
-void Vulnerable::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void heal_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    for (entt::entity target : targets) {
+        Health& health = scene->registry.get<Health>(target);
+        health.heal(caster, effect.quantity / targets.size());
+    }
+}
+
+void regen_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    for (entt::entity target : targets) {
+        Health* health = scene->registry.try_get<Health>(target);
+        unique_ptr<Stat>& r = health->regen;
+
+        StatEffect stat_effect = {
+            .type = StatEffect::Type_Add,
+            .value = effect.quantity,
+            .until = Input::time + effect.duration,
+            .unique = uint64(effect.type)
+        };
+        r->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+    }
+}
+
+void growth_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    for (entt::entity target : targets) {
+        Health* health = scene->registry.try_get<Health>(target);
+        unique_ptr<Stat>& mh = health->max_health;
+
+        StatEffect stat_effect = {
+            .type = StatEffect::Type_Add,
+            .value = effect.quantity,
+            .until = Input::time + effect.duration,
+            .unique = uint64(effect.type)
+        };
+        mh->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+    }
+}
+
+void vulnerable_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Health* health = scene->registry.try_get<Health>(target);
         unique_ptr<Stat>& dtm = health->damage_taken_multiplier;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f + effect[level - 1],
-            .until = Input::time + duration,
-            .unique = hash_view("Vulnerable")
+            .value = 1.0f + entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .until = Input::time + effect.duration,
+            .unique = uint64(effect.type)
         };
-        dtm->add_effect(hash_view("Vulnerable") ^ uint64(caster), stat_effect);
+        dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
     }
 }
 
-void Resistance::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void resistance_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Health* health = scene->registry.try_get<Health>(target);
         unique_ptr<Stat>& dtm = health->damage_taken_multiplier;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f - effect[level - 1],
-            .until = Input::time + duration,
-            .unique = hash_view("Resistance")
+            .value = 1.0f - entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .until = Input::time + effect.duration,
+            .unique = uint64(effect.type)
         };
-        dtm->add_effect(hash_view("Resistance") ^ uint64(caster), stat_effect);
+        dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
     }
 }
 
-void Slow::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void slow_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Traveler* move = scene->registry.try_get<Traveler>(target);
         unique_ptr<Stat>& speed = move->max_speed;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f - effect[level - 1],
-            .until = Input::time + duration,
-            .unique = hash_view("Slow")
+            .value = 1.0f - entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .until = Input::time + effect.duration,
+            .unique = uint64(effect.type)
         };
-        speed->add_effect(hash_view("Slow") ^ uint64(caster), stat_effect);
+        speed->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
     }
 }
 
-void Haste::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void haste_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
-        Caster* caster = scene->registry.try_get<Caster>(target);
-        unique_ptr<Stat>& cast_speed = caster->attack_speed;
-        unique_ptr<Stat>& cooldown_speed = caster->cooldown_speed;
+        Caster* enemy_caster = scene->registry.try_get<Caster>(target);
+        unique_ptr<Stat>& cast_speed = enemy_caster->attack_speed;
+        unique_ptr<Stat>& cooldown_speed = enemy_caster->cooldown_speed;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f - effect[level - 1],
-            .until = Input::time + duration,
-            .unique = hash_view("Haste")
+            .value = 1.0f - entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .until = Input::time + effect.duration,
+            .unique = uint64(effect.type)
         };
-        cast_speed->add_effect(hash_view("Haste") ^ uint64(caster), stat_effect);
-        cooldown_speed->add_effect(hash_view("Haste") ^ uint64(caster), stat_effect);
+        cast_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect);
+        cooldown_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect);
     }
 }
 
-void Poison::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void poison_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Caster* caster = scene->registry.try_get<Caster>(target);
     }
 }
 
-void Growth::apply(Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
-    for (entt::entity target : targets) {
-        Caster* caster = scene->registry.try_get<Caster>(target);
-    }
-}
-
-bool Damage::hits_disposition(Team::Disposition disposition) {
+bool damage_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return false;
         case Team::Disposition_Hostile: return true;
@@ -95,15 +140,7 @@ bool Damage::hits_disposition(Team::Disposition disposition) {
     }
 }
 
-bool Vulnerable::hits_disposition(Team::Disposition disposition) {
-    switch (disposition) {
-        case Team::Disposition_Friendly: return false;
-        case Team::Disposition_Hostile: return true;
-        default: return false;
-    }
-}
-
-bool Resistance::hits_disposition(Team::Disposition disposition) {
+bool heal_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return true;
         case Team::Disposition_Hostile: return false;
@@ -111,15 +148,7 @@ bool Resistance::hits_disposition(Team::Disposition disposition) {
     }
 }
 
-bool Slow::hits_disposition(Team::Disposition disposition) {
-    switch (disposition) {
-        case Team::Disposition_Friendly: return false;
-        case Team::Disposition_Hostile: return true;
-        default: return false;
-    }
-}
-
-bool Haste::hits_disposition(Team::Disposition disposition) {
+bool growth_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return true;
         case Team::Disposition_Hostile: return false;
@@ -127,7 +156,15 @@ bool Haste::hits_disposition(Team::Disposition disposition) {
     }
 }
 
-bool Poison::hits_disposition(Team::Disposition disposition) {
+bool regen_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return true;
+        case Team::Disposition_Hostile: return false;
+        default: return false;
+    }
+}
+
+bool vulnerable_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return false;
         case Team::Disposition_Hostile: return true;
@@ -135,11 +172,57 @@ bool Poison::hits_disposition(Team::Disposition disposition) {
     }
 }
 
-bool Growth::hits_disposition(Team::Disposition disposition) {
+bool resistance_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return true;
         case Team::Disposition_Hostile: return false;
         default: return false;
+    }
+}
+
+bool slow_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return false;
+        case Team::Disposition_Hostile: return true;
+        default: return false;
+    }
+}
+
+bool haste_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return true;
+        case Team::Disposition_Hostile: return false;
+        default: return false;
+    }
+}
+
+bool poison_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return false;
+        case Team::Disposition_Hostile: return true;
+        default: return false;
+    }
+}
+
+HitEffect::HitEffect(EffectType _type) {
+    type = _type;
+    switch (type) {
+        case (EffectType_Damage): {
+            apply_function = damage_apply;
+            hits_disposition_function = damage_hits_disposition;
+        } break;
+        case (EffectType_Heal): {
+            apply_function = heal_apply;
+            hits_disposition_function = heal_hits_disposition;
+        } break;
+        case (EffectType_Growth): {
+            apply_function = growth_apply;
+            hits_disposition_function = growth_hits_disposition;
+        } break;
+        case (EffectType_Regen): {
+            apply_function = regen_apply;
+            hits_disposition_function = regen_hits_disposition;
+        } break;
     }
 }
 
@@ -152,13 +235,19 @@ EffectDatabase& get_effect_database() {
 
 void initialize_effect_database(EffectDatabase& database) {
     json& database_json = get_file_cache().load_json("resources/data/effects.sbjson"_content);
-    for (const auto& [effect_name, effect_jv_ptr] : database_json) {
-        EffectDatabase::EffectEntry entry {.name = effect_name};
-        json effect_json = from_jv<json>(*effect_jv_ptr);
+
+    database.entries.resize(magic_enum::enum_count<EffectType>());
+    for (const auto& effect_jv_ptr : database_json.at("List")->get_list()) {
+        EffectDatabase::EffectEntry entry {};
+        json effect_json = from_jv<json>(effect_jv_ptr);
+        EffectType type;
         for (const auto& [value_name, value_jv_ptr] : effect_json) {
+            if (value_name == "Type") {
+                type = from_jv<EffectType>(*value_jv_ptr);
+                continue;
+            }
             if (value_name == "Description") {
                 entry.description = from_jv<string>(*value_jv_ptr);
-                entry.extra_strings[value_name] = entry.description;
                 continue;
             }
             if (value_name == "Color") {
@@ -171,7 +260,7 @@ void initialize_effect_database(EffectDatabase& database) {
                 [](auto arg) {}
             }, value_jv_ptr->value);
         }
-        database.entries[hash_view(effect_name)] = entry;
+        database.entries[uint64(type)] = entry;
     }
     database.initialized = true;
 }

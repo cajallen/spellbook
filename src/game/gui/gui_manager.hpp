@@ -2,9 +2,9 @@
 
 #include "general/math/geometry.hpp"
 #include "general/math/math.hpp"
-
-#include "card_gui.hpp"
-#include "shop_gui.hpp"
+#include "game/gui/card_gui.hpp"
+#include "game/gui/shop_gui.hpp"
+#include "game/effects/hit_effect.hpp"
 
 namespace spellbook {
 
@@ -39,6 +39,8 @@ struct GUIManager {
 
     InteractRegion* hovered;
     InteractRegion* pressed;
+
+    umap<uint64, EffectType> hash_to_effect;
 
     void setup(Scene* p_scene);
     void update();

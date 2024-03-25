@@ -91,7 +91,6 @@ void ResourceEditor::shutdown() {
     TO_JSON_MEMBER(bead_prefab.file_path);
     TO_JSON_MEMBER(enemy_prefab.file_path);
     file_dump(j, config_path.abs_string());
-    p_scene->cleanup();
 }
 
 void ResourceEditor::update() {
@@ -206,7 +205,7 @@ void ResourceEditor::switch_tab(Tab new_tab) {
                 v3 pos = (v3(i % width, i / width, 0.0f) - v3(0.5f * width, 0.5f * width, 0.0f)) * 3.0f;
                 i++;
                 p_scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
-                
+
                 auto& model_comp = p_scene->registry.emplace<Model>(entity);
                 model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(tile_entry.model_path));
                 model_comp.model_gpu = instance_model(p_scene->render_scene, *model_comp.model_cpu);

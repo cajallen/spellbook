@@ -10,14 +10,6 @@
 namespace spellbook {
 
 
-void ShopGUI::add_lizard_card(LizardType type) {
-    switch (type) {
-        case LizardType_Assassin: return add_lizard_card<LizardType_Assassin>();
-        case LizardType_Ranger: return add_lizard_card<LizardType_Ranger>();
-    }
-}
-
-
 void ShopGUI::draw(GUIManager* manager, RenderScene& render_scene) {
     render_scene.viewport.start;
     render_scene.viewport.size;
@@ -30,7 +22,7 @@ void ShopGUI::draw(GUIManager* manager, RenderScene& render_scene) {
     for (LizardCardGUI& card : cards) {
         card.position = {position.x, position.y - card.size.y};
 
-        card.draw(manager, render_scene);
+        card.draw(manager);
 
         i++;
         position.x += card.size.x;

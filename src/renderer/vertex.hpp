@@ -39,15 +39,15 @@ struct Vertex {
 };
 
 struct VertexUI {
-    v3 position = {0.0f, 0.0f, 0.0f};
+    v2 position = {0.0f, 0.0f};
     v2 uv = {0.0f, 0.0f};
     Color32 color = Color32(255, 255, 255, 255);
 
     static inline vuk::Packed get_format() {
         return vuk::Packed {
-            vuk::Format::eR32G32B32Sfloat, // position
-            vuk::Format::eR32G32Sfloat,    // uv
-            vuk::Format::eR8G8B8A8Uint     // color
+            vuk::Format::eR32G32Sfloat, // position
+            vuk::Format::eR32G32Sfloat, // uv
+            vuk::Format::eR8G8B8A8Uint  // color
         };
     }
 };

@@ -12,8 +12,6 @@ struct GUIManager;
 struct ShopGUI {
     vector<LizardCardGUI> cards;
 
-    void add_lizard_card(LizardType type);
-
     template<LizardType T>
     void add_lizard_card() {
         auto& lizard_entry = get_lizard_database().lizard_entries.at(LizardType_Assassin);

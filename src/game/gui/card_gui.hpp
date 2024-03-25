@@ -9,23 +9,12 @@ struct GUIManager;
 struct RenderScene;
 struct Scene;
 
-struct CardSettings {
-    int32 expand_size = 170;
-    v2i padding = {20, 20};
-    int32 line_spacing = 30;
-};
-
 struct LizardCardGUI {
-    enum Expanded {
-        Expanded_None,
-        Expanded_Attack,
-        Expanded_Spell
-    };
-
-    CardSettings settings;
-
     v2i size;
-    uint64 untextured_mat;
+
+    uint64 card_id;
+    uint64 attack_id;
+    uint64 spell_id;
 
     int32 depth;
 
@@ -35,7 +24,8 @@ struct LizardCardGUI {
 
     float selected_at;
 
-    Expanded expanded;
+    bool attack_expanded;
+    bool spell_expanded;
 
     std::function<void(Scene*,v3i)> instance_function;
 
@@ -44,7 +34,7 @@ struct LizardCardGUI {
 
     LizardCardGUI(LizardDatabase::LizardEntry& lizard, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, const std::function<void(Scene*,v3i)>& instance_func);
 
-    void draw(GUIManager* manager, RenderScene& render_scene) const;
+    void draw(GUIManager* manager);
     void update(GUIManager* manager);
 
     v2i calculate_used_position() const;

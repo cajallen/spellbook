@@ -197,7 +197,7 @@ void Scene::inspect_entity(entt::entity entity) {
     ZoneScoped;
 	if (!registry.any_of<Name>(entity))
 		return;
-    
+
 	auto& name = registry.get<Name>(entity).name;
 
 	if (name.empty())

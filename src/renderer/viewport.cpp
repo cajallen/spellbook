@@ -54,6 +54,7 @@ void inspect(Viewport* viewport) {
 	ImGui::Text(fmt_("Start: {}", viewport->start).c_str());
 	ImGui::Text(fmt_("Size:  {}", viewport->size).c_str());
     ImGui::Text(fmt_("Mouse Status: Hovered={}, Focused={}", viewport->hovered ? "T" : "F", viewport->focused ? "T" : "F").c_str());
+    ImGui::Text(fmt_("Mouse Pos: {}", math::round_cast(Input::mouse_pos) - viewport->start).c_str());
 }
 
 ray3 Viewport::ray(v2i screen_pos) {

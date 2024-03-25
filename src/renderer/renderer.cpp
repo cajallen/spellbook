@@ -338,6 +338,8 @@ void Renderer::cleanup() {
 }
 
 Renderer::~Renderer() {
+    futures.clear();
+    imgui_images.clear();
     present_ready.reset();
     render_complete.reset();
     imgui_data.font_texture.view.reset();

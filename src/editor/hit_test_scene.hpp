@@ -12,18 +12,24 @@ struct Font;
 struct HitTestScene : EditorScene {
     MapPrefab map_prefab;
 
+    struct HitEffectInfo {
+        bool enabled;
+        int32 level;
+        float quantity;
+        float duration;
+    };
+    umap<string, HitEffectInfo> effects;
+
     GUIManager gui_manager;
+
+    entt::entity god_caster;
 
     void setup() override;
     void setup_scene(Scene* scene, bool scene_setup);
     void update() override;
     void window(bool* p_open) override;
 
-    void show_buttons();
-
     void build_visuals(Scene* scene);
-
-    string text = "Grants {tip=haste1}Haste 1{\\tip} to the caster";
 };
 
 }

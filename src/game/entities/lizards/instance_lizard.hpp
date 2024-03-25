@@ -27,8 +27,6 @@ void instance_lizard(Scene* scene, v3i location) {
     PoseController* poser = scene->registry.try_get<PoseController>(entity);
     if (poser)
         poser->set_state(AnimationState_Idle, 0.0f);
-    Health& health = scene->registry.get<Health>(entity);
-    health.regen = std::make_unique<Stat>(scene, entity, 0.0f);
 }
 
 }
