@@ -36,7 +36,9 @@ void main() {
     uint index = gl_InstanceIndex;
     Particle particle = particles[index];
 
-    float scale = particle.position_scale.w * max(smoothstep(0.0, particle.falloff, particle.life / particle.life_total), 0.001);
+    float growth_scale = particle.growth > 0.0 ? max(smoothstep(0.0, particle.growth, 1.0 - particle.life / particle.life_total), 0.001) : 1.0;
+    float falloff_scale = max(smoothstep(0.0, particle.falloff, particle.life / particle.life_total), 0.001);
+    float scale = particle.position_scale.w * growth_scale * falloff_scale;
     mat4 M;
     M[0] = vec4(scale, 0.0, 0.0, 0.0);
     M[1] = vec4(0.0, scale, 0.0, 0.0);
@@ -46,13 +48,11 @@ void main() {
         M[3][3] = 1.0 / 0.0;
 
     if (particles[index].alignment.w > 0.0) {
-        vec3 a = particles[index].alignment.xyz;
-        vec3 b = normalize(particles[index].velocity_damping.xyz);
-        vec3 vr = b - dot(a, b) * a;
-        vec3 basis_2 = normalize(vr);
-        vec3 basis_3 = normalize(cross(b, a));
-        vec3 basis_1 = normalize(cross(basis_2, basis_3));
-        mat3 rotation = mat3(basis_1, basis_2, basis_3);
+        vec3 basis_x = normalize(particles[index].velocity_damping.xyz);
+        vec3 basis_z = particles[index].alignment.xyz;
+        vec3 basis_y = normalize(cross(basis_z, basis_x));
+        basis_z = normalize(cross(basis_x, basis_y));
+        mat3 rotation = mat3(basis_x, basis_y, basis_z);
         M = M * mat4(rotation);
     }
     vec4 h_position = M * vec4(vin_position, 1.0);
@@ -63,7 +63,7 @@ void main() {
     vec3 t = normalize(N * vin_tangent);
     t = normalize(t - dot(t, n) * n);
     vec3 b = cross(n, t);
-    vout.TBN      = mat3(t, b, n);
+    vout.TBN = mat3(t, b, n);
 
     vout.uv = vin_uv;
     vout.color = texture(color_table, vec2(particle.color_x, 1.0 - particle.life / particle.life_total)).rgb;

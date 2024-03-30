@@ -65,27 +65,30 @@ void deinstance_emitter(EmitterGPU& emitter, float current_time, bool wait_despa
 void EmitterGPU::update_from_cpu(const EmitterCPU& new_emitter, float current_time) {
     settings.pose_matrix = m44GPU(
         math::translate(new_emitter.position) *
-        math::rotation(new_emitter.rotation) *
-        math::translate(new_emitter.offset - 0.5f * new_emitter.position_random)
+        math::rotation(new_emitter.orientation_settings.rotation) *
+        math::translate(new_emitter.offset - 0.5f * new_emitter.offset_random)
     );
-    settings.scale_unused.x = new_emitter.scale - 0.5f * new_emitter.scale_random;
-    settings.velocity_damping.xyz = new_emitter.velocity - 0.5f * new_emitter.velocity_random;
-    settings.velocity_damping.w = new_emitter.damping;
+    settings.scale_unused.x = new_emitter.scale_settings.scale - 0.5f * new_emitter.scale_settings.scale_random;
+    settings.velocity_damping.xyz = new_emitter.velocity_settings.velocity - 0.5f * new_emitter.velocity_settings.velocity_random;
+    settings.velocity_damping.w = new_emitter.velocity_settings.damping;
+    settings.attractor.xyz = new_emitter.velocity_settings.attractor_world_space ? new_emitter.velocity_settings.attractor : new_emitter.position;
+    settings.attractor.w = new_emitter.velocity_settings.attractor_force;
     settings.life = new_emitter.duration - 0.5f * new_emitter.duration_random;
-    settings.falloff = new_emitter.falloff;
+    settings.falloff = new_emitter.scale_settings.falloff;
+    settings.growth = new_emitter.scale_settings.growth;
 
-    settings.position_scale_random.xyz = new_emitter.position_random;
-    settings.position_scale_random.w = new_emitter.scale_random;
-    settings.velocity_damping_random.xyz = new_emitter.velocity_random;
+    settings.position_scale_random.xyz = new_emitter.offset_random;
+    settings.position_scale_random.w = new_emitter.scale_settings.scale_random;
+    settings.velocity_damping_random.xyz = new_emitter.velocity_settings.velocity_random;
     settings.life_random = new_emitter.duration_random;
 
-    settings.alignment_vector = v4(new_emitter.alignment_vector - new_emitter.alignment_random, new_emitter.alignment_vector == v3(0.0f) ? 0.0f : 1.0f);
-    settings.alignment_random = v4(new_emitter.alignment_random * 2.0, 0.0f);
+    settings.alignment_vector = v4(new_emitter.orientation_settings.alignment_vector - new_emitter.orientation_settings.alignment_random, new_emitter.orientation_settings.alignment_vector == v3(0.0f) ? 0.0f : 1.0f);
+    settings.alignment_random = v4(new_emitter.orientation_settings.alignment_random * 2.0, 0.0f);
 
     rate = 1.0f / new_emitter.particles_per_second;
 
-    mesh = hash_path(new_emitter.mesh);
-    material = hash_path(new_emitter.material);
+    mesh = (get_gpu_asset_cache().meshes.contains(hash_path(new_emitter.mesh)) || fs::exists(new_emitter.mesh.abs_path())) ? hash_path(new_emitter.mesh) : 0;
+    material = (get_gpu_asset_cache().materials.contains(hash_path(new_emitter.material)) || fs::exists(new_emitter.material.abs_path())) ? hash_path(new_emitter.material) : 0;
     get_gpu_asset_cache().paths[mesh] = new_emitter.mesh;
     get_gpu_asset_cache().paths[material] = new_emitter.material;
 
@@ -147,7 +150,7 @@ void EmitterGPU::update_size() {
     calculate_max();
 
     vector<uint8> bytes;
-    bytes.resize(settings.max_particles * sizeof(v4)*4 + 4);
+    bytes.resize(sizeof(int32) + settings.max_particles * (sizeof(v4)*6));
     auto [buf, fut] = create_buffer(*get_renderer().global_allocator, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(bytes));
     particles_buffer = std::move(buf);
     get_renderer().enqueue_setup(std::move(fut));
@@ -160,29 +163,38 @@ bool inspect(RenderScene& scene, EmitterCPU* emitter) {
     changed |= inspect_dependencies(emitter->dependencies, emitter->file_path);
 
     changed |= ImGui::DragFloat3("Offset", emitter->offset.data, 0.01f);
-    changed |= ImGui::DragFloat3("Offset Random", emitter->position_random.data, 0.01f);
-    changed |= ImGui::DragFloat3("Velocity", emitter->velocity.data, 0.01f);
-    changed |= ImGui::DragFloat3("Velocity Random", emitter->velocity_random.data, 0.01f);
-    changed |= ImGui::DragFloat("Damping", &emitter->damping, 0.01f);
-    changed |= ImGui::DragFloat("Damping Random", &emitter->damping_random, 0.01f);
+    changed |= ImGui::DragFloat3("Offset Random", emitter->offset_random.data, 0.01f);
 
-    changed |= ImGui::DragFloat3("Alignment", emitter->alignment_vector.data, 0.01f);
-    changed |= ImGui::DragFloat3("Alignment Random", emitter->alignment_random.data, 0.01f);
-
-    changed |= ImGui::DragFloat("Scale", &emitter->scale, 0.01f);
-    changed |= ImGui::DragFloat("Scale Random", &emitter->scale_random, 0.01f);
     changed |= ImGui::DragFloat("Particles Per Second", &emitter->particles_per_second, 0.01f);
     changed |= ImGui::DragFloat("Duration", &emitter->duration, 0.01f);
     changed |= ImGui::DragFloat("Duration Random", &emitter->duration_random, 0.01f);
-    changed |= ImGui::DragFloat("Falloff", &emitter->falloff, 0.01f);
 
     changed |= ImGui::ColorEdit3("Color 1 Start", emitter->color1_start.data);
     changed |= ImGui::ColorEdit3("Color 1 End", emitter->color1_end.data);
     changed |= ImGui::ColorEdit3("Color 2 Start", emitter->color2_start.data);
     changed |= ImGui::ColorEdit3("Color 2 End", emitter->color2_end.data);
 
-    // TODO
-    //changed |= ImGui::PathSelect("Mesh", &emitter->mesh, FileType_Mesh);
+    changed |= ImGui::PathSelect<MeshCPU>("Mesh", &emitter->mesh);
+
+    ImGui::Text("Velocity Settings");
+    changed |= ImGui::DragFloat3("Velocity", emitter->velocity_settings.velocity.data, 0.01f);
+    changed |= ImGui::DragFloat3("Velocity Random", emitter->velocity_settings.velocity_random.data, 0.01f);
+    changed |= ImGui::DragFloat("Damping", &emitter->velocity_settings.damping, 0.01f);
+    changed |= ImGui::DragFloat("Damping Random", &emitter->velocity_settings.damping_random, 0.01f);
+
+    changed |= ImGui::Checkbox("Attractor World Space", &emitter->velocity_settings.attractor_world_space);
+    changed |= ImGui::DragFloat3("Attractor Offset", emitter->velocity_settings.attractor.data, 0.01f);
+    changed |= ImGui::DragFloat("Attractor Force", &emitter->velocity_settings.attractor_force, 0.01f);
+
+    ImGui::Text("Scale Settings");
+    changed |= ImGui::DragFloat("Scale", &emitter->scale_settings.scale, 0.01f);
+    changed |= ImGui::DragFloat("Scale Random", &emitter->scale_settings.scale_random, 0.01f);
+    changed |= ImGui::DragFloat("Growth", &emitter->scale_settings.growth, 0.01f);
+    changed |= ImGui::DragFloat("Falloff", &emitter->scale_settings.falloff, 0.01f);
+
+    ImGui::Text("Orientation Settings");
+    changed |= ImGui::DragFloat3("Alignment", emitter->orientation_settings.alignment_vector.data, 0.01f);
+    changed |= ImGui::DragFloat3("Alignment Random", emitter->orientation_settings.alignment_random.data, 0.01f);
 
     return changed;
 }
@@ -234,12 +246,13 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer) {
 void upload_dependencies(EmitterGPU& renderable) {
     if (renderable.mesh == 0 || renderable.material == 0)
         return;
+
     get_gpu_asset_cache().get_mesh_or_upload(renderable.mesh);
     get_gpu_asset_cache().get_material_or_upload(renderable.material);
 }
 
 void EmitterCPU::set_velocity_direction(v3 dir) {
-    velocity = math::length(velocity) * math::normalize(dir);
+    velocity_settings.velocity = math::length(velocity_settings.velocity) * math::normalize(dir);
 }
 
 

@@ -21,6 +21,7 @@
 #include "game/entities/enemy.hpp"
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
+#include "text_3d.hpp"
 
 namespace spellbook {
 
@@ -81,7 +82,7 @@ void health_draw_system(Scene* scene) {
         float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
 
         float width = friendly ? 0.7f : 0.5f;
-        float vertical_offset = friendly ? 1.1f : 0.6f;
+        float vertical_offset = friendly ? 1.1f : 0.5f;
         float thickness = friendly ? 0.05f : 0.03f;
         
         m44 inner_matrix = math::translate(position) * 
@@ -102,6 +103,27 @@ void health_draw_system(Scene* scene) {
         scene->render_scene.add_renderable(renderable1);
         scene->render_scene.add_renderable(renderable2);
         scene->render_scene.add_renderable(renderable3);
+    }
+
+    auto health_amount_system = scene->registry.view<LogicTransform, Health, Text3DTransform, Text3D>();
+    for (auto [entity, logic_tfm, health, text_tfm, text] : health_amount_system.each()) {
+        bool friendly = scene->registry.all_of<Lizard>(entity);
+        if (health.value <= 0.0f)
+            continue;
+
+        float vertical_offset = friendly ? 1.1f : 0.5f;
+        auto link = scene->registry.try_get<TransformLink>(entity);
+        v3 position = link ? logic_tfm.position + link->offset : logic_tfm.position + v3(0.5f, 0.5f, 0.0f);
+        position.z += vertical_offset;
+        position.z -= 0.02f; // not sure why this is necessary
+
+        float dir_to_camera = math::angle_to(scene->camera.position.xy, position.xy);
+
+        v4 h_axis = math::rotation(euler{dir_to_camera - math::PI / 2.0f, 0.0f}) * v4(1, 0, 0, 1);
+        text.set_text(fmt_("{{col=ffffff}}{{shadow}}{:.1f} / {:.1f}", health.value * health.max_health->value(), health.max_health->value()));
+        text_tfm.origin = position;
+        text_tfm.billboard_mode = Text3DTransform::BillboardMode_X;
+        text_tfm.alignment_axis = h_axis.xyz / h_axis.w;
     }
 }
 
@@ -299,8 +321,8 @@ void collision_update_system(Scene* scene) {
 void emitter_system(Scene* scene) {
     for (auto [entity, emitter_comp, logic_transform] : scene->registry.view<EmitterComponent, LogicTransform>().each()) {
         for (auto& [id, emitter_gpu] : emitter_comp.emitters) {
-            if (emitter_gpu->emitter_cpu.position != logic_transform.position) {
-                emitter_gpu->emitter_cpu.position = logic_transform.position;
+            if (emitter_gpu->emitter_cpu.position != logic_transform.position + v3(0.5f)) {
+                emitter_gpu->emitter_cpu.position = logic_transform.position + v3(0.5f);
                 emitter_gpu->update_from_cpu(emitter_gpu->emitter_cpu, Input::time);
             }
         }

@@ -1,12 +1,12 @@
 ﻿#include "gui_items.hpp"
 
-#include "gui_manager.hpp"
+#include "extension/fmt_geometry.hpp"
+#include "editor/console.hpp"
+#include "game/gui/gui_manager.hpp"
 #include "game/effects/text_layer.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
-
-#include "editor/console.hpp"
-#include "extension/fmt_geometry.hpp"
+#include "renderer/text_draw.hpp"
 
 namespace spellbook {
 
@@ -52,7 +52,7 @@ void PanelGUI::draw() {
         r.mesh_id = background_mesh.id;
         r.material_id = make_panel_material(texture_path, c1, c2, vignette);
         r.sort_index = depth;
-        manager.scene->render_scene.ui_renderables.push_back(r);
+        manager.scene->render_scene.ui_renderables.emplace(r);
 
         // full outline
         MeshUICPU background_outline_mesh = generate_rounded_outline(region, 32, 2, outline_width, outline_color,DISTORTION_AMOUNT, DISTORTION_TIME);
@@ -60,7 +60,7 @@ void PanelGUI::draw() {
         r.mesh_id = background_outline_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
         r.sort_index = depth + HIERARCHY_DEPTH_INCREMENT;
-        manager.scene->render_scene.ui_renderables.push_back(r);
+        manager.scene->render_scene.ui_renderables.emplace(r);
     }
 
     if (item) {
@@ -129,7 +129,7 @@ void ImageGUI::draw() {
     r.mesh_id = image_mesh.id;
     r.material_id = make_ui_material(texture_path);
     r.sort_index = depth;
-    manager.scene->render_scene.ui_renderables.push_back(r);
+    manager.scene->render_scene.ui_renderables.emplace(r);
 
     console({.str=fmt_("Drew Image from {} to {}", region.start, region.end), .frame_tags={"GUI"}});
 
@@ -150,7 +150,7 @@ void ButtonGUI::draw() {
 }
 
 void TextGUI::draw() {
-    TextSettings text_settings {
+    GameTextLayerSettings text_settings {
         .depth = depth,
         .width = given_region.end.x - given_region.start.x,
         .distortion_amount = 0.0f,
@@ -187,7 +187,7 @@ void TextGUI::draw() {
     }
 }
 range2i TextGUI::get_occupied_region() {
-    TextSettings text_settings {
+    GameTextLayerSettings text_settings {
         .depth = depth,
         .width = given_region.end.x - given_region.start.x,
         .distortion_amount = 0.0f,
@@ -246,7 +246,7 @@ void VerticalBox::draw() {
         r.mesh_id = background_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
         r.sort_index = depth;
-        manager.scene->render_scene.ui_renderables.push_back(r);
+        manager.scene->render_scene.ui_renderables.emplace(r);
     }
 
     console({.str=fmt_("Drew VBox from {} to {}", region.start, region.end), .frame_tags={"GUI"}});
@@ -311,7 +311,7 @@ void HorizontalBox::draw() {
         r.mesh_id = background_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
         r.sort_index = depth;
-        manager.scene->render_scene.ui_renderables.push_back(r);
+        manager.scene->render_scene.ui_renderables.emplace(r);
     }
 
     console({.str=fmt_("Drew HBox from {} to {}", region.start, region.end), .frame_tags={"GUI"}});
@@ -354,7 +354,7 @@ void VerticalSeparator::draw() {
     r.mesh_id = background_mesh.id;
     r.material_id = make_ui_material("white"_symbolic);
     r.sort_index = depth;
-    manager.scene->render_scene.ui_renderables.push_back(r);
+    manager.scene->render_scene.ui_renderables.emplace(r);
 
     range2i region = get_occupied_region();
     console({.str=fmt_("Drew VSeparator from {} to {}", region.start, region.end), .frame_tags={"GUI"}});

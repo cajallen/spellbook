@@ -11,6 +11,7 @@ void GameTextLayer::setup() {
     default_bold_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 20);
     title_font = get_font_manager().load_font("resources/fonts/dh.otf"_content, 35);
     header_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 25);
+    spatial_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 50, false);
 }
 
 inline void _change_font(vector<string>& strings, vector<Font*>& fonts, Font* font) {
@@ -56,7 +57,7 @@ inline void _read_tag(TextFormatState& state, vector<string>& strings, vector<Fo
     state.tag.clear();
 }
 
-range2i calc_formatted_text_region(const string& text, v2i position, const TextSettings& settings) {
+range2i calc_formatted_text_region(const string& text, v2i position, const GameTextLayerSettings& settings) {
     TextFormatState state = {};
 
     vector<string> strings;
@@ -94,7 +95,7 @@ range2i calc_formatted_text_region(const string& text, v2i position, const TextS
     return calc_text_region(strings, fonts, position);
 }
 
-void insert_newlines(int32& position, string& text, Font* font, const TextSettings& settings) {
+void insert_newlines(int32& position, string& text, Font* font, const GameTextLayerSettings& settings) {
     bool reading_tag = false;
     int32 last_acceptable_word_break = -1;
     bool replace_word_break = false;
@@ -136,7 +137,7 @@ void insert_newlines(int32& position, string& text, Font* font, const TextSettin
     }
 }
 
-vector<Renderable*> upload_formatted_text(const string& input_text, v2i position, const TextSettings& settings, umap<uint64, vector<TooltipRegion>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated) {
+vector<Renderable*> upload_formatted_text(const string& input_text, v2i position, const GameTextLayerSettings& settings, umap<uint64, vector<TooltipRegion>>* tooltip_regions, RenderScene& render_scene, bool frame_allocated) {
     TextFormatState state = {};
 
     vector<string> strings;
@@ -174,7 +175,18 @@ vector<Renderable*> upload_formatted_text(const string& input_text, v2i position
         }
     }
 
-    return upload_text_mesh(strings, fonts, position, settings.depth, settings.distortion_amount, settings.distortion_time, tooltip_regions, settings.hovered_id, settings.hovered_index, render_scene, frame_allocated);
+    TextSettings text_settings = {
+        .spatial = false,
+        .position = position,
+        .depth = settings.depth,
+        .distortion_amount = settings.distortion_amount,
+        .distortion_time = settings.distortion_time,
+        .tooltip_regions = tooltip_regions,
+        .hovered_id = settings.hovered_id,
+        .hovered_index = settings.hovered_index
+    };
+
+    return upload_text_mesh(strings, fonts, render_scene, text_settings, frame_allocated);
 }
 
 }

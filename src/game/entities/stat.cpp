@@ -80,7 +80,7 @@ float Stat::value() {
                 base += effect.value * effect.stacks;
             } break;
             case (StatEffect::Type_Multiply): {
-                mult *= math::pow(1.0f + effect.value, (float) effect.stacks);
+                mult *= math::pow(effect.value, (float) effect.stacks);
             } break;
             case (StatEffect::Type_Add): {
                 add += effect.value * effect.stacks;

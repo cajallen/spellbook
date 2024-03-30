@@ -13,6 +13,7 @@
 #include "game/entities/enemy.hpp"
 #include "game/entities/components.hpp"
 #include "game/visual_tile.hpp"
+#include "game/text_3d.hpp"
 #include "game/effects/text_layer.hpp"
 #include "game/effects/hit.hpp"
 #include "game/effects/hit_effect.hpp"
@@ -27,8 +28,6 @@ ADD_EDITOR_SCENE(HitTestScene);
 
 void HitTestScene::setup() {
     setup_scene(new Scene(), false);
-
-    gui_manager.setup(p_scene);
     //gui_manager.shop_gui.add_lizard_card<LizardType_Ranger>();
     //gui_manager.shop_gui.add_lizard_card<LizardType_Assassin>();
 }
@@ -38,6 +37,8 @@ void HitTestScene::setup_scene(Scene* scene, bool scene_setup) {
     if (!scene_setup)
         p_scene->setup("HitTestScene");
     p_scene->set_edit_mode(false);
+
+    gui_manager.setup(p_scene);
 
     TilePrefab tile_prefab = load_resource<TilePrefab>("resources/tiles/empty_tile"_content);
     TilePrefab slot_prefab = load_resource<TilePrefab>("resources/tiles/empty_slot"_content);
@@ -65,6 +66,14 @@ void HitTestScene::setup_scene(Scene* scene, bool scene_setup) {
     god_caster = p_scene->registry.create();
     p_scene->registry.emplace<Team>(god_caster, Team::Team_Lizards);
     p_scene->registry.emplace<LogicTransform>(god_caster, v3(0.0f, 0.0f, 2.0f));
+
+
+//    entt::entity text_test = p_scene->registry.create();
+//    Text3D& text_cmp = p_scene->registry.emplace<Text3D>(text_test, p_scene);
+//    Text3DTransform& text_tfm = p_scene->registry.emplace<Text3DTransform>(text_test, v3(0.5f, 0.5f, 1.0f));
+//    text_cmp.set_text("{shadow}{col=ffffff}Hello world!");
+//    text_tfm.billboard_mode = Text3DTransform::BillboardMode_Z;
+//    //text_tfm.alignment_axis = v3::X;
 }
 
 void HitTestScene::update() {
@@ -120,9 +129,16 @@ void HitTestScene::window(bool* p_open) {
             ImGui::TableHeadersRow();
 
             EFFECT_ROW(Damage);
+            EFFECT_ROW(Vulnerable);
+            EFFECT_ROW(Weaken);
+            EFFECT_ROW(Slow);
+
             EFFECT_ROW(Heal);
             EFFECT_ROW(Regen);
             EFFECT_ROW(Growth);
+            EFFECT_ROW(Resistance);
+            EFFECT_ROW(Haste);
+            EFFECT_ROW(Amplify);
 
             ImGui::EndTable();
         }

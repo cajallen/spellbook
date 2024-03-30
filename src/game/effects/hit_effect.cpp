@@ -44,7 +44,6 @@ void regen_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vec
 }
 
 void growth_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
-    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Health* health = scene->registry.try_get<Health>(target);
         unique_ptr<Stat>& mh = health->max_health;
@@ -61,54 +60,62 @@ void growth_apply(HitEffect& effect, Scene* scene, entt::entity caster, const ve
 
 void vulnerable_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    FilePath emitter_path = FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content);
+    EmitterCPU emitter = load_resource<EmitterCPU>(emitter_path);
     for (entt::entity target : targets) {
         Health* health = scene->registry.try_get<Health>(target);
         unique_ptr<Stat>& dtm = health->damage_taken_multiplier;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f + entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .value = 1.0f + (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
             .until = Input::time + effect.duration,
             .unique = uint64(effect.type)
         };
-        dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+        dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
     }
 }
 
 void resistance_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    FilePath emitter_path = FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content);
+    EmitterCPU emitter = load_resource<EmitterCPU>(emitter_path);
     for (entt::entity target : targets) {
         Health* health = scene->registry.try_get<Health>(target);
         unique_ptr<Stat>& dtm = health->damage_taken_multiplier;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f - entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .value = 1.0f - (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
             .until = Input::time + effect.duration,
             .unique = uint64(effect.type)
         };
-        dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+        dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
     }
 }
 
 void slow_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    FilePath emitter_path = FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content);
+    EmitterCPU emitter = load_resource<EmitterCPU>(emitter_path);
     for (entt::entity target : targets) {
         Traveler* move = scene->registry.try_get<Traveler>(target);
         unique_ptr<Stat>& speed = move->max_speed;
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f - entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .value = 1.0f - (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
             .until = Input::time + effect.duration,
             .unique = uint64(effect.type)
         };
-        speed->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+        speed->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
     }
 }
 
 void haste_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    FilePath emitter_path = FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content);
+    EmitterCPU emitter = load_resource<EmitterCPU>(emitter_path);
     for (entt::entity target : targets) {
         Caster* enemy_caster = scene->registry.try_get<Caster>(target);
         unique_ptr<Stat>& cast_speed = enemy_caster->attack_speed;
@@ -116,16 +123,31 @@ void haste_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vec
 
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
-            .value = 1.0f - entry.extra_floats.at(fmt_("Level{}", effect.level)),
+            .value = 1.0f - (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
             .until = Input::time + effect.duration,
             .unique = uint64(effect.type)
         };
-        cast_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect);
+        cast_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect, &emitter);
         cooldown_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect);
     }
 }
 
-void poison_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+void amplify_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    for (entt::entity target : targets) {
+        Caster* caster = scene->registry.try_get<Caster>(target);
+    }
+}
+
+void weaken_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    for (entt::entity target : targets) {
+        Caster* caster = scene->registry.try_get<Caster>(target);
+    }
+}
+
+
+void acid_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Caster* caster = scene->registry.try_get<Caster>(target);
@@ -180,14 +202,6 @@ bool resistance_hits_disposition(Team::Disposition disposition) {
     }
 }
 
-bool slow_hits_disposition(Team::Disposition disposition) {
-    switch (disposition) {
-        case Team::Disposition_Friendly: return false;
-        case Team::Disposition_Hostile: return true;
-        default: return false;
-    }
-}
-
 bool haste_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return true;
@@ -196,7 +210,31 @@ bool haste_hits_disposition(Team::Disposition disposition) {
     }
 }
 
-bool poison_hits_disposition(Team::Disposition disposition) {
+bool slow_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return false;
+        case Team::Disposition_Hostile: return true;
+        default: return false;
+    }
+}
+
+bool amplify_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return true;
+        case Team::Disposition_Hostile: return false;
+        default: return false;
+    }
+}
+
+bool weaken_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return false;
+        case Team::Disposition_Hostile: return true;
+        default: return false;
+    }
+}
+
+bool acid_hits_disposition(Team::Disposition disposition) {
     switch (disposition) {
         case Team::Disposition_Friendly: return false;
         case Team::Disposition_Hostile: return true;
@@ -222,6 +260,34 @@ HitEffect::HitEffect(EffectType _type) {
         case (EffectType_Regen): {
             apply_function = regen_apply;
             hits_disposition_function = regen_hits_disposition;
+        } break;
+        case (EffectType_Vulnerable): {
+            apply_function = vulnerable_apply;
+            hits_disposition_function = vulnerable_hits_disposition;
+        } break;
+        case (EffectType_Resistance): {
+            apply_function = resistance_apply;
+            hits_disposition_function = resistance_hits_disposition;
+        } break;
+        case (EffectType_Amplify): {
+            apply_function = amplify_apply;
+            hits_disposition_function = amplify_hits_disposition;
+        } break;
+        case (EffectType_Weaken): {
+            apply_function = weaken_apply;
+            hits_disposition_function = weaken_hits_disposition;
+        } break;
+        case (EffectType_Haste): {
+            apply_function = haste_apply;
+            hits_disposition_function = haste_hits_disposition;
+        } break;
+        case (EffectType_Slow): {
+            apply_function = slow_apply;
+            hits_disposition_function = slow_hits_disposition;
+        } break;
+        case (EffectType_Acid): {
+            apply_function = acid_apply;
+            hits_disposition_function = acid_hits_disposition;
         } break;
     }
 }

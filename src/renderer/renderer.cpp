@@ -314,7 +314,7 @@ void Renderer::render() {
 
         for (auto it = scene->ui_renderables.begin(); it != scene->ui_renderables.end();) {
             if (it->frame_allocated)
-                it = scene->ui_renderables.remove(it);
+                it = scene->ui_renderables.erase(it);
             else
                 ++it;
         }

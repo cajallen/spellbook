@@ -5,6 +5,7 @@ add_subdirectory(tinygltf)
 add_subdirectory(vuk)
 add_subdirectory(tracy)
 add_subdirectory(vk-bootstrap)
+add_subdirectory(freetype)
 
 # fetches
 include(FetchContent)
@@ -55,7 +56,7 @@ target_link_libraries(libs INTERFACE
     miniaudio
     stb
     ft
-    ${FREETYPE_PATH}/freetype.lib
+    freetype
 )
 target_include_directories(libs INTERFACE 
     tracy/public

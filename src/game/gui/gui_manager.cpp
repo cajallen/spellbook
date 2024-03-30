@@ -56,7 +56,7 @@ void GUIManager::update() {
         panel.end_padding = panel.start_padding;
         panel.depth = hovered->priority;
         panel.background_tint = palette::gray_2;
-        panel.given_region = {tooltip_pos, tooltip_pos + v2i{300, 600}};
+        panel.given_region = {tooltip_pos, tooltip_pos + v2i{350, 600}};
         TextGUI text(*this);
         text.text = effect_entry.description;
         text.ref_floats = &effect_entry.extra_floats;

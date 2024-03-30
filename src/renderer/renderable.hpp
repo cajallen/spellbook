@@ -23,9 +23,9 @@ struct Renderable {
 
     SkeletonGPU* skeleton = nullptr;
     
-    bool   frame_allocated     = false;
-    uint32 selection_id        = 0;
-    int32 sort_index = 0;
+    bool   frame_allocated = false;
+    uint32 selection_id    = 0;
+    int32 sort_index       = 0;
 
     bool operator<(const Renderable& rhs) const {
         return sort_index < rhs.sort_index;

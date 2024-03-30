@@ -24,6 +24,32 @@ void MaterialGPU::bind_textures(vuk::CommandBuffer& cbuf) {
     }
 };
 
+uint64 make_3d_text_material(uint64 id, vuk::SampledImage& image) {
+    if (get_gpu_asset_cache().materials.contains(id))
+        return id;
+
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = true;
+        vuk::PipelineBaseCreateInfo pci;
+        pci.add_glsl(get_contents("shaders/text_3d.vert"_distributed), "shaders/text_3d.vert"_distributed.abs_string());
+        pci.add_glsl(get_contents("shaders/text_3d.frag"_distributed), "shaders/text_3d.frag"_distributed.abs_string());
+        get_renderer().context->create_named_pipeline("text_3d", pci);
+    }
+
+    MaterialGPU material_gpu = {};
+    material_gpu.pipeline      = get_renderer().context->get_named_pipeline(vuk::Name("text_3d"));
+    material_gpu.images.emplace(BASE_COLOR_BINDING, image);
+    material_gpu.extra_material_data.push_back(uint8(1));
+    material_gpu.cull_mode = vuk::CullModeFlagBits::eNone;
+    material_gpu.frame_allocated = false;
+
+    assert_else(material_gpu.pipeline != nullptr);
+
+    get_gpu_asset_cache().materials[id] = std::move(material_gpu);
+    return id;
+}
+
 uint64 make_ui_material(const FilePath& fp, bool single_channel) {
     uint64 id = hash_path(fp) ^ hash_view("ui_mat");
     if (get_gpu_asset_cache().materials.contains(id))

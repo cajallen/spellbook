@@ -86,7 +86,7 @@ struct AssassinAttack : Attack {
         }
 
         EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/assassin/basic_hit.sbjemt"_resource);
-        emitter_cpu.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
+        emitter_cpu.orientation_settings.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
         quick_emitter(scene, "Assassin hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
 
         auto poser = scene->registry.try_get<PoseController>(caster);

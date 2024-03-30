@@ -17,6 +17,7 @@
 #include "game/entities/enemy.hpp"
 #include "game/entities/enemy_ik.hpp"
 
+#include "game/text_3d.hpp"
 
 namespace spellbook {
 
@@ -202,9 +203,17 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
     float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * damage_taken_multiplier->value();
     value -= hurt_value / max_health->value();
 
+    LogicTransform& damagee_tfm = scene->registry.get<LogicTransform>(entity);
+    entt::entity damage_number_entity = scene->registry.create();
+    Text3D& damage_number_text = scene->registry.emplace<Text3D>(damage_number_entity, scene);
+    Text3DTransform& damage_number_tfm = scene->registry.emplace<Text3DTransform>(damage_number_entity);
+    damage_number_tfm.origin = damagee_tfm.position + v3(0.5f) + v3(0.1f, 0.0f, 0.0f);
+    damage_number_tfm.lifetime = 0.0f;
+    damage_number_text.set_text(fmt_("{{col=ff2222}}{{shadow}}{:.1f}", amount));
+
     if (emitter_cpu_path.is_file()) {
         EmitterCPU hurt_emitter = load_resource<EmitterCPU>(emitter_cpu_path);
-        hurt_emitter.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
+        hurt_emitter.orientation_settings.rotation = math::quat_between(v3(1,0,0), math::normalize(direction));
         uint64 random_id = math::random_uint64();
         EmitterComponent& emitter = scene->registry.get<EmitterComponent>(entity);
         emitter.add_emitter(random_id, hurt_emitter);
@@ -221,7 +230,7 @@ void Health::heal(entt::entity damager, float amount) {
     damage_signal.publish(scene, damager, entity, amount);
 
     Caster* caster = scene->registry.try_get<Caster>(damager);
-    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * damage_taken_multiplier->value();
+    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount);
     value += hurt_value / max_health->value();
 }
 
@@ -260,7 +269,10 @@ entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 locat
     scene->registry.emplace<EmitterComponent>(entity, scene);
     scene->registry.emplace<Health>(entity, health_value, scene, entity, hurt_path);
     scene->registry.emplace<Tags>(entity, *scene);
-    
+
+    scene->registry.emplace<Text3D>(entity, scene);
+    scene->registry.emplace<Text3DTransform>(entity);
+
     if (model_comp.model_cpu->skeleton) {
         scene->registry.emplace<PoseController>(entity, *model_comp.model_cpu->skeleton);
     }

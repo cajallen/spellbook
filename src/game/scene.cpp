@@ -15,6 +15,7 @@
 #include "entities/caster.hpp"
 #include "game/game.hpp"
 #include "game/systems.hpp"
+#include "game/text_3d.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/spawner.hpp"
@@ -111,6 +112,7 @@ void Scene::update() {
     consumer_system(this);
     health_system(this);
     health_draw_system(this);
+    text_3d_system(this);
     disposal_system(this);
 
 

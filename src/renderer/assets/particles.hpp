@@ -19,30 +19,48 @@ namespace spellbook {
 struct RenderScene;
 
 struct EmitterCPU : Resource {
-    v3 offset = v3(0.0f);
+
+    struct VelocitySettings {
+        v3 velocity = v3(0.0f);
+        v3 velocity_random = v3(0.0f);
+        float damping = 1.0f;
+        float damping_random = 0.0f;
+
+        bool attractor_world_space = false;
+        v3 attractor;
+        float attractor_force = 0.0f;
+    };
+
+    struct ScaleSettings {
+        float scale = 1.0f;
+        float scale_random = 0.0f;
+        float growth = 0.0f;
+        float falloff = 0.5f;
+    };
+
+    struct OrientationSettings {
+        quat rotation = quat();
+        v3 alignment_vector = v3(0.0f);
+        v3 alignment_random = v3(0.0f);
+    };
+
     v3 position = v3(0.0f);
-    v3 velocity = v3(0.0f);
-    quat rotation = quat();
-    float damping = 1.0f;
-    float scale = 1.0f;
+    v3 offset = v3(0.0f);
+    v3 offset_random = v3(0.0f);
+
+    VelocitySettings velocity_settings;
+    ScaleSettings scale_settings;
+    OrientationSettings orientation_settings;
+
     float duration = 1.0f;
-    float falloff = 0.5f;
+    float duration_random = 0.0f;
 
     float particles_per_second = 1.0f;
-    
+
     Color color1_start = palette::white;
     Color color1_end = palette::white;
     Color color2_start = palette::white;
     Color color2_end = palette::white;
-    
-    v3 velocity_random = v3(0.0f);
-    v3 position_random = v3(0.0f);
-    float scale_random = 0.0f;
-    float duration_random = 0.0f;
-    float damping_random = 0.0f;
-
-    v3 alignment_vector = v3(0.0f);
-    v3 alignment_random = v3(0.0f);
 
     FilePath mesh;
     FilePath material;
@@ -58,6 +76,7 @@ struct EmitterCPU : Resource {
 struct EmitterSettings {
     m44GPU pose_matrix = (m44GPU) m44::identity();
     v4 velocity_damping;
+    v4 attractor;
 
     v4 scale_unused;
 
@@ -70,7 +89,8 @@ struct EmitterSettings {
     float life;
     float life_random;
     float falloff;
-    
+    float growth;
+
     uint32 max_particles;
 };
 
@@ -111,6 +131,9 @@ void render_particles(EmitterGPU& emitter, vuk::CommandBuffer& command_buffer);
 
 void upload_dependencies(EmitterGPU& emitter);
 
-JSON_IMPL(EmitterCPU, offset, velocity, damping, scale, duration, falloff, particles_per_second, color1_start, color1_end, color2_start, color2_end, velocity_random, position_random, scale_random, duration_random, alignment_vector, alignment_random, mesh, material);
+JSON_IMPL(EmitterCPU::ScaleSettings, scale, scale_random, growth, falloff);
+JSON_IMPL(EmitterCPU::VelocitySettings, velocity, velocity_random, damping, damping_random, attractor_world_space, attractor, attractor_force);
+JSON_IMPL(EmitterCPU::OrientationSettings, rotation, alignment_vector, alignment_random);
+JSON_IMPL(EmitterCPU, offset, offset_random, scale_settings, velocity_settings, orientation_settings, duration, duration_random, particles_per_second, color1_start, color1_end, color2_start, color2_end, mesh, material);
 
 }

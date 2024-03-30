@@ -19,7 +19,7 @@ layout(push_constant) uniform uPushConstant {
 
 void main() {
     vec4 tex = texture(s_texture, fin.uv);
-    tex.rgb = linear_to_srgb(tex.rgb);
+    //tex.rgb = linear_to_srgb(tex.rgb);
 
     if (pc.single_channel) {
         fout_color = vec4(fin.color.rgb, tex.r * fin.color.a);

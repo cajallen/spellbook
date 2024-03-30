@@ -22,7 +22,7 @@ layout(location = 0) out VS_OUT {
 } vout;
 
 void main() {
-    vec4 h_position = screen_pixels_to_NDC * vec4(vin_position, 0.5f, 1.0);
+    vec4 h_position = screen_pixels_to_NDC * vec4(vin_position, 0.5, 1.0);
     vout.position = vin_position.xy;
     vout.color = vin_color / 255.0;
     vout.uv = vin_uv;

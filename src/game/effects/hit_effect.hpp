@@ -20,6 +20,7 @@ enum EffectType {
     EffectType_Vulnerable,
     EffectType_Resistance,
     EffectType_Amplify,
+    EffectType_Weaken,
     EffectType_Haste,
     EffectType_Slow,
     EffectType_Acid

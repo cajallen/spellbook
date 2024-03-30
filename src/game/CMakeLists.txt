@@ -15,4 +15,5 @@ target_sources(spellbook_src PUBLIC
     tile_set_generator.cpp
     timer.cpp
     visual_tile.cpp
+    text_3d.cpp
 )

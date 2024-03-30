@@ -27,7 +27,7 @@ static Texture allocate_texture(Allocator& allocator, Format format, Extent3D ex
     ici.samples = Samples::e1;
     ici.initialLayout = ImageLayout::eUndefined;
     ici.tiling        = ImageTiling::eOptimal;
-    ici.usage         = ImageUsageFlagBits::eStorage | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled;
+    ici.usage         = ImageUsageFlagBits::eStorage | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled | ImageUsageFlagBits::eColorAttachment;
     ici.mipLevels = 1;
     ici.arrayLayers = 1;
     auto tex = allocator.get_context().allocate_texture(allocator, ici);
@@ -255,7 +255,7 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     
     buffer_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, model_buffer_size, 1});
     buffer_ids = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, id_buffer_size, 1});
-    int i = 0;
+    int32 i = 0;
     for (const auto& [mat_hash, mat_map] : renderables_built) {
         for (const auto& [mesh_hash, mesh_list] : mat_map) {
             for (auto& [id, transform] : mesh_list) {
@@ -277,6 +277,22 @@ void RenderScene::setup_renderables_for_passes(vuk::Allocator& allocator) {
     
     for (const auto& renderable : widget_renderables) {
         memcpy((m44GPU*) buffer_model_mats.mapped_ptr + i++, &renderable.transform, sizeof(m44GPU));
+    }
+
+
+    // 3D TEXT
+    vector<Renderable> sorted_ui_renderables;
+    for (const Renderable& r : ui_renderables) {
+        if (r.sort_index < 0)
+            sorted_ui_renderables.insert_search(r);
+    }
+
+    uint32 text_model_buffer_size = sizeof(m44GPU) * sorted_ui_renderables.size();
+    buffer_3d_text_model_mats = **vuk::allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, text_model_buffer_size, 1});
+    i = 0;
+    for (const auto& renderable : sorted_ui_renderables) {
+        if (renderable.sort_index < 0)
+            memcpy((m44GPU*) buffer_3d_text_model_mats.mapped_ptr + i++, &renderable.transform, sizeof(m44GPU));
     }
 
 }
@@ -754,7 +770,6 @@ void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                         .depthWriteEnable = false,
                         .depthCompareOp   = vuk::CompareOp::eNever,
                     });
-                cmd.bind_buffer(0, VIEW_BINDING, buffer_ui_view);
 
                 vector<Renderable> sorted_ui_renderables;
 
@@ -762,8 +777,16 @@ void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     sorted_ui_renderables.insert_search(r);
                 }
 
+                cmd.bind_buffer(0, CAMERA_BINDING, buffer_camera_data).bind_buffer(0, MODEL_BINDING, buffer_3d_text_model_mats);
+                bool in_positives = false;
+
                 uint64 current_mat = 0;
+                uint32 item_index = 0;
                 for (const auto& renderable : sorted_ui_renderables) {
+                    if (!in_positives && renderable.sort_index >= 0) {
+                        in_positives = true;
+                        cmd.bind_buffer(0, VIEW_BINDING, buffer_ui_view);
+                    }
                     if (current_mat != renderable.material_id) {
                         MaterialGPU& mat = get_gpu_asset_cache().materials.at(renderable.material_id);
                         cmd.bind_graphics_pipeline(mat.pipeline);
@@ -778,7 +801,7 @@ void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                     cmd
                         .bind_vertex_buffer(0, mesh.vertex_buffer.get(), 0, VertexUI::get_format())
                         .bind_index_buffer(mesh.index_buffer.get(), vuk::IndexType::eUint32);
-                    cmd.draw_indexed(mesh.index_count, 1, 0, 0, 0);
+                    cmd.draw_indexed(mesh.index_count, 1, 0, 0, item_index++);
                 }
             },
     });

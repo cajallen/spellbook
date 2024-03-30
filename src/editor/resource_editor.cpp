@@ -19,7 +19,7 @@
 
 namespace spellbook {
 
-//ADD_EDITOR_SCENE(ResourceEditor);
+ADD_EDITOR_SCENE(ResourceEditor);
 
 void ResourceEditor::set_model(ModelCPU* model, Ownership ownership) {
     if (model_owner == Ownership_Owned)

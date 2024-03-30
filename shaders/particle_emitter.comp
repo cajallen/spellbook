@@ -11,6 +11,7 @@ layout(binding = 0) buffer Particles {
 layout(binding = 1) uniform EmitterSettings {
     mat4 pose_matrix;
     vec4 velocity_damping;
+    vec4 attractor;
 
     vec4 scale_unused;
     
@@ -23,6 +24,7 @@ layout(binding = 1) uniform EmitterSettings {
     float life;
     float life_random;
     float falloff;
+    float growth;
     
     uint max_particles;
 };
@@ -70,14 +72,19 @@ void main() {
         particles[index] = Particle(
             vec4(position_hpos.xyz / position_hpos.w, scale_unused.x + pr3 * position_scale_random.w),
             vec4(velocity, velocity_damping.w + vr7 * velocity_damping_random.w),
+            vec4(attractor),
             vec4(normalize(alignment_vector.xyz + vec3(ar10, ar11, ar12) * alignment_random.xyz), alignment_vector.w),
             cr9,
             life + lr8 * life_random,
             life + lr8 * life_random,
-            falloff
+            falloff,
+            growth,
+            0,0,0
         );
     } else {
+        vec3 vec_to_attractor = normalize(particles[index].attractor.xyz - particles[index].position_scale.xyz);
         particles[index].velocity_damping.xyz *= pow(particles[index].velocity_damping.w, pc.dt);
+        particles[index].velocity_damping.xyz += vec_to_attractor * attractor.w * pc.dt;
         particles[index].position_scale.xyz += particles[index].velocity_damping.xyz * pc.dt;
         particles[index].life -= pc.dt;
     }

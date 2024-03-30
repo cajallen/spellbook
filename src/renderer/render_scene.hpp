@@ -59,7 +59,7 @@ struct RenderScene {
     plf::colony<StaticRenderable> static_renderables;
     plf::colony<Renderable> renderables;
     plf::colony<Renderable> widget_renderables;
-    vector<Renderable> ui_renderables;
+    plf::colony<Renderable> ui_renderables;
     plf::colony<EmitterGPU> emitters;
     Viewport                viewport;
     uint64 widget_model_start = 0;
@@ -84,6 +84,7 @@ struct RenderScene {
     vuk::Buffer buffer_top_camera_data;
     vuk::Buffer buffer_composite_data;
     vuk::Buffer buffer_model_mats;
+    vuk::Buffer buffer_3d_text_model_mats;
     vuk::Buffer buffer_ids;
     vuk::Buffer buffer_ui_view;
 

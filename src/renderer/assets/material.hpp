@@ -67,6 +67,7 @@ struct MaterialGPU {
     void update_from_cpu(const MaterialCPU& new_material);
 };
 
+uint64 make_3d_text_material(uint64 id, vuk::SampledImage& image);
 uint64 make_ui_material(const FilePath& texture, bool single_channel = false);
 uint64 make_ui_material(uint64 id, vuk::SampledImage& image, bool single_channel = true);
 uint64 make_panel_material(const FilePath& fp, const Color& color1, const Color& color2, const v3& vignette_amount);
