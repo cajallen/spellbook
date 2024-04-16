@@ -31,7 +31,8 @@ struct ModelExternal {
 struct ModelCPU : Resource {
     struct Node {
         string name;
-        FilePath mesh_asset_path;
+        uint32 mesh_selection = 0;
+        vector<FilePath> mesh_path_options;
         FilePath material_asset_path;
         m44 transform = {};
         
@@ -61,7 +62,33 @@ struct ModelCPU : Resource {
     static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == ModelCPU::extension(); }; }
 };
 
-JSON_IMPL(ModelCPU::Node, name, mesh_asset_path, material_asset_path, transform, parent, children);
+inline ModelCPU::Node from_jv_impl(const json_value& jv, ModelCPU::Node* _) {
+    json j = from_jv<json>(jv);
+    ModelCPU::Node value;
+    FROM_JSON_ELE(name);
+    FROM_JSON_ELE(mesh_selection);
+    FROM_JSON_ELE(mesh_path_options);
+    if (j.contains("mesh_asset_path")) {
+        value.mesh_path_options.push_back(from_jv<FilePath>(*j.at("mesh_asset_path")));
+    }
+    FROM_JSON_ELE(material_asset_path);
+    FROM_JSON_ELE(transform);
+    FROM_JSON_ELE(parent);
+    FROM_JSON_ELE(children);
+    return value;
+}
+inline json_value to_jv(const ModelCPU::Node& value) {
+    auto j = json();
+    TO_JSON_ELE(name);
+    TO_JSON_ELE(mesh_selection);
+    TO_JSON_ELE(mesh_path_options);
+    TO_JSON_ELE(material_asset_path);
+    TO_JSON_ELE(transform);
+    TO_JSON_ELE(parent);
+    TO_JSON_ELE(children);
+    return to_jv(j);
+}
+
 
 struct ModelGPU {
     umap<ModelCPU::Node*, Renderable*> renderables;

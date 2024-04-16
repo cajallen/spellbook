@@ -175,7 +175,7 @@ EntryGatherFunction gather_lizard() {
 
         Tags* liz_tags = ability.scene->registry.try_get<Tags>(liz);
         if (liz_tags) {
-            if (liz_tags->has_tag("untargetable"_hs))
+            if (liz_tags->has_tag(hash_view("untargetable")))
                 return uset<entt::entity>{};
         }
         return liz == entt::null ? uset<entt::entity>{} : uset<entt::entity>{liz};

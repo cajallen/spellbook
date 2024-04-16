@@ -112,6 +112,18 @@ void SpiderController::update_target(Scene* scene, const LogicTransform& logic_t
     }
 }
 
+void SpiderController::clamp_start() {
+    for (int i = 0; i < 4; i++) {
+        v3 to_start = world_starts[i] - world_desired[i];
+        float len = math::length(to_start);
+        if (len > settings.desired_dist_from_center) {
+            v3 old_world_start = world_starts[i];
+            v3 new_world_start = world_desired[i] + settings.desired_dist_from_center / len * to_start;
+            world_starts[i] = new_world_start;
+        }
+    }
+}
+
 bool SpiderController::check_all_targets_set() {
     bool all_set = true;
     for (int i = 0; i < 4; i++)

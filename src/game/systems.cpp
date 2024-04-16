@@ -189,9 +189,6 @@ void health_system(Scene* scene) {
     ZoneScoped;
     auto healths = scene->registry.view<Health>();
     for (auto [entity, health] : healths.each()) {
-        for (auto& [dotter, dot] : health.dots) {
-            health.damage(dotter, dot->value() * scene->delta_time, v3(0.0f));
-        }
         float dh = 6.0f * (health.buffer_value - health.value) + 0.3f;
         health.buffer_value = math::max(health.buffer_value - dh * scene->delta_time, health.value);
 
@@ -204,7 +201,7 @@ void health_system(Scene* scene) {
 
         if (health.regen)
             health.value += health.regen->value() * scene->delta_time;
-        health.value = math::min(health.value, health.max_health->value());
+        health.value = math::min(health.value, 1.0f);
     }
 }
 
@@ -319,6 +316,19 @@ void collision_update_system(Scene* scene) {
 }
 
 void emitter_system(Scene* scene) {
+    for (auto [entity, emitter_comp] : scene->registry.view<EmitterComponent>().each()) {
+        for (auto it = emitter_comp.expirations.begin(); it != emitter_comp.expirations.end();) {
+            if (it->second < Input::time) {
+                uint64 id = it->first;
+                deinstance_emitter(*emitter_comp.emitters[id], true);
+                emitter_comp.emitters.erase(id);
+
+                it = emitter_comp.expirations.erase(it);
+            } else
+                it++;
+        }
+    }
+
     for (auto [entity, emitter_comp, logic_transform] : scene->registry.view<EmitterComponent, LogicTransform>().each()) {
         for (auto& [id, emitter_gpu] : emitter_comp.emitters) {
             if (emitter_gpu->emitter_cpu.position != logic_transform.position + v3(0.5f)) {

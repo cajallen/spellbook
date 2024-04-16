@@ -14,8 +14,12 @@ struct Item;
 
 struct ShopEntry {
     Bead cost_type = Bead_Oak;
-    int cost_amount = 0;
+    int32 cost_amount = 0;
     LizardType lizard_type;
+    uint8 lizard_variant;
+
+    std::function<void(Scene*, entt::entity)> build_func;
+
     Item* item = nullptr;
 };
 

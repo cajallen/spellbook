@@ -4,11 +4,11 @@ namespace spellbook {
 
 struct Team {
     enum TeamID : uint8 {
-        Team_None,
-        Team_Lizards,
-        Team_Bots
+        TeamID_None,
+        TeamID_Lizards,
+        TeamID_Bots
     };
-    TeamID identity = Team_None;
+    TeamID identity = TeamID_None;
 
     enum Disposition : uint8 {
         Disposition_Friendly,

@@ -5,6 +5,9 @@
 namespace spellbook {
 
 void GameTextLayer::setup() {
+    if (default_font)
+        return;
+
     get_font_manager().setup();
 
     default_font = get_font_manager().load_font("resources/fonts/t.ttf"_content, 20);

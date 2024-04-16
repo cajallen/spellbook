@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <entt/entity/fwd.hpp>
 #include "general/math/geometry.hpp"
 
 namespace spellbook {
@@ -9,7 +10,6 @@ struct Scene;
 
 struct Text3D {
     Text3D(Scene* s) : scene(s) {}
-    ~Text3D();
 
     void set_text(string_view text);
     string_view get_text() const { return text; }
@@ -38,5 +38,7 @@ struct Text3DTransform {
 };
 
 void text_3d_system(Scene* scene);
+void on_text_3d_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+
 
 }

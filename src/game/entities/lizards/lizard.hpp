@@ -7,41 +7,43 @@
 #include "general/file/file_path.hpp"
 #include "game/entities/ability.hpp"
 
+#define LIZARD_VARIANT_COUNT 4
+
 namespace spellbook {
 
 struct Scene;
 
 enum LizardType {
     LizardType_Empty,
-    LizardType_Barbarian,
-    LizardType_Champion,
-    LizardType_Assassin,
-    LizardType_Ranger,
-    LizardType_IllusionMage,
-    LizardType_MindMage,
-    LizardType_WaterMage,
-    LizardType_Warlock,
-    LizardType_Thief,
-    LizardType_Druid,
-    LizardType_LaserMage,
-    LizardType_Treasurer,
-    LizardType_SacrificeSupport,
-    LizardType_Bulwark
+    LizardType_Hanther,
+    LizardType_Sauria,
+    LizardType_Rokko,
+    LizardType_Empyrea
 };
 
 struct Lizard { // Component
     LizardType type = LizardType_Empty;
-    v3 default_direction = v3(0,1,0);
+    uint8 lizard_variant = 0;
     std::function<void(Scene*, entt::entity)> dragging_preview_function;
 };
 
-template <LizardType T>
+template <LizardType T, uint8 Variant>
 void draw_dragging_preview(Scene* scene, entt::entity entity);
 
-constexpr uint32 ability_index(LizardType lt, AbilityType at) { return lt * magic_enum::enum_count<AbilityType>() + at; }
+constexpr uint32 ability_index(LizardType lizard_type, uint8 variant, AbilityType ability_type) {
+    return
+        lizard_type * (magic_enum::enum_count<AbilityType>() + LIZARD_VARIANT_COUNT)
+        + variant * LIZARD_VARIANT_COUNT
+        + ability_type;
+}
 struct LizardDatabase {
     struct LizardEntry {
+        struct VariantInfo {
+            string title;
+            uint8 uv = 0;
+        };
         LizardType type;
+        std::array<VariantInfo, LIZARD_VARIANT_COUNT> variants;
         string name;
         Color32 color;
         float scale;
@@ -55,6 +57,7 @@ struct LizardDatabase {
 
     struct AbilityEntry {
         LizardType lizard_type;
+        uint8 lizard_variant;
         AbilityType ability_type;
         string name;
         string description;
@@ -72,7 +75,9 @@ struct LizardDatabase {
 void initialize_lizard_database(LizardDatabase&);
 LizardDatabase& get_lizard_database();
 
-template <LizardType T>
+entt::entity instance_lizard(Scene* scene, v3i position, LizardType lizard_type, uint8 lizard_variant, std::function<void(Scene*, entt::entity)> build_func);
+
+template <LizardType T, uint8 Variant>
 void build(Scene* scene, entt::entity entity);
 
 }

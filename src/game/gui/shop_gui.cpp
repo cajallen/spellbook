@@ -4,8 +4,6 @@
 #include "gui_manager.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
-#include "renderer/assets/mesh.hpp"
-#include "game/effects/text_layer.hpp"
 
 namespace spellbook {
 

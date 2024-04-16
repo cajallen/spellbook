@@ -38,7 +38,7 @@ void caster_system(Scene* scene) {
     for (auto [entity, caster] : scene->registry.view<Caster>().each()) {
         Tags* tags = scene->registry.try_get<Tags>(entity);
         if (tags)
-            if (tags->has_tag("no_cast"_hs))
+            if (tags->has_tag(hash_view("no_cast")))
                 continue;
 
         if (caster.casting())

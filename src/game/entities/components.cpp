@@ -2,7 +2,6 @@
 
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
-#include <entt/core/hashed_string.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
@@ -188,9 +187,9 @@ const m44& ModelTransform::get_transform() {
 }
 
 Health::Health(float health_value, Scene* init_scene, entt::entity init_entity, const FilePath& hurt_emitter_path) : scene(init_scene), entity(init_entity) {
-    value = health_value;
+    value = 1.0f;
     buffer_value = value;
-    max_health = std::make_unique<Stat>(scene, entity, value);
+    max_health = std::make_unique<Stat>(scene, entity, health_value);
     damage_taken_multiplier = std::make_unique<Stat>(scene, entity, 1.0f);
     regen = std::make_unique<Stat>(scene, entity, 0.0f);
     emitter_cpu_path = hurt_emitter_path;
@@ -204,6 +203,7 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
     value -= hurt_value / max_health->value();
 
     LogicTransform& damagee_tfm = scene->registry.get<LogicTransform>(entity);
+
     entt::entity damage_number_entity = scene->registry.create();
     Text3D& damage_number_text = scene->registry.emplace<Text3D>(damage_number_entity, scene);
     Text3DTransform& damage_number_tfm = scene->registry.emplace<Text3DTransform>(damage_number_entity);
@@ -234,16 +234,10 @@ void Health::heal(entt::entity damager, float amount) {
     value += hurt_value / max_health->value();
 }
 
-void Health::apply_dot(entt::entity damager, uint64 id, const StatEffect& effect, EmitterCPU* emitter) {
-    if (!dots.contains(damager))
-        dots[damager] = std::make_unique<Stat>(scene, entity, 0.0f);
-    // different id
-    dots[damager]->add_effect(1, effect, emitter);
-}
-
-
-void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu) {
+void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu, float duration) {
     emitters[id] = &instance_emitter(scene->render_scene, emitter_cpu, Input::time);
+    if (duration > 0.0f)
+        expirations[id] = Input::time + duration;
 }
 
 void EmitterComponent::remove_emitter(uint64 id) {
@@ -251,6 +245,8 @@ void EmitterComponent::remove_emitter(uint64 id) {
         return;
     deinstance_emitter(*emitters[id], true);
     emitters.erase(id);
+    if (expirations.contains(id))
+        expirations.erase(id);
 }
 
 entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 location, float health_value, const FilePath& hurt_path) {
@@ -301,7 +297,7 @@ void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity en
 void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity) {
     auto tags = registry.try_get<Tags>(entity);
     if (tags) {
-        tags->apply_tag("no_cast"_hs, Dragging::get_drag_tag_id(entity));
+        tags->apply_tag(hash_view("no_cast"), Dragging::get_drag_tag_id(entity));
     }
 
     Caster* caster = registry.try_get<Caster>(entity);

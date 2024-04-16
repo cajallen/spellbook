@@ -11,8 +11,8 @@ struct Hit {
     entt::entity caster;
     vector<HitEffect> effects;
 
-    void pre_apply();
     void process();
+    void pre_apply();
     void post_apply();
 };
 

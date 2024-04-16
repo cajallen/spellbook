@@ -28,7 +28,7 @@
 
 namespace spellbook {
 
-//ADD_EDITOR_SCENE(MapEditor);
+ADD_EDITOR_SCENE(MapEditor);
 
 template <typename T>
 bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& buttons, uint32* selected) {
@@ -321,6 +321,7 @@ void MapEditor::window(bool* p_open) {
             build_visuals(game_scene->p_scene, nullptr);
         }
 
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 130.0f);
         ImGui::PathSelect<VisualTileSet>("VTS", &vts_path);
         ImGui::SameLine();
         if (ImGui::Button("Load##VTS")) {
@@ -328,7 +329,7 @@ void MapEditor::window(bool* p_open) {
             build_visuals(p_scene, nullptr);
         }
         
-        
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 130.0f);
         ImGui::PathSelect<MapPrefab>("Map Path", &map_prefab.file_path, 1);
         ImGui::SameLine();
         if (ImGui::Button("Load##Map")) {

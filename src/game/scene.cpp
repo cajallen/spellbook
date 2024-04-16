@@ -3,12 +3,12 @@
 #include <tracy/Tracy.hpp>
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
-#include <entt/core/hashed_string.hpp>
 
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/math/math.hpp"
 #include "general/bitmask_3d.hpp"
+#include "general/astar.hpp"
 #include "renderer/draw_functions.hpp"
 #include "editor/console.hpp"
 #include "entities/area_trigger.hpp"
@@ -24,16 +24,16 @@
 #include "game/entities/enemy.hpp"
 #include "game/entities/tags.hpp"
 #include "game/entities/projectile.hpp"
-#include "general/astar.hpp"
+#include "game/effects/text_layer.hpp"
 
 namespace spellbook {
-
-using namespace entt::literals;
 
 Scene::Scene() {}
 Scene::~Scene() {}
 
 void Scene::setup(const string& input_name) {
+    get_game_text_layer().setup();
+
     name = input_name;
 	render_scene.name = name + "::render_scene";
 	camera = Camera(v3(-8.0f, 8.0f, 6.0f), math::d2r(euler{-45.0f, -30.0f}));
@@ -45,7 +45,7 @@ void Scene::setup(const string& input_name) {
 
     registry.on_construct<Dragging>().connect<&on_dragging_create>(*this);
     registry.on_destroy<Model>().connect<&on_model_destroy>(*this);
-    registry.on_destroy<StaticModel>().connect<&on_model_destroy>(*this);
+    registry.on_destroy<StaticModel>().connect<&on_static_model_destroy>(*this);
     registry.on_destroy<Dragging>().connect<&on_dragging_destroy>(*this);
     registry.on_destroy<EmitterComponent>().connect<&on_emitter_component_destroy>(*this);
     registry.on_destroy<GridSlot>().connect<&on_gridslot_destroy>(*this);
@@ -54,6 +54,7 @@ void Scene::setup(const string& input_name) {
     registry.on_destroy<GridSlot>().connect<&on_gridslot_destroy>(*this);
     registry.on_construct<ForceDragging>().connect<&on_forcedrag_create>(*this);
     registry.on_destroy<ForceDragging>().connect<&on_forcedrag_destroy>(*this);
+    registry.on_destroy<Text3D>().connect<&on_text_3d_destroy>(*this);
 
     game.scenes.push_back(this);
 	get_renderer().add_scene(&render_scene);
@@ -101,6 +102,7 @@ void Scene::update() {
 
     caster_system(this);
     projectile_system(this);
+    effects_system(this);
 
     pickup_system(this);
     
@@ -350,11 +352,6 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, const 
 entt::entity quick_emitter(Scene* scene, const string& name, v3 position, EmitterCPU emitter_cpu, float duration) {
     auto e = scene->registry.create();
     
-    struct EmitterTimerTimeoutPayload {
-        Scene* scene;
-        entt::entity entity;
-    };
-    
     scene->registry.emplace<Name>(e, name);
     scene->registry.emplace<LogicTransform>(e, position);
     
@@ -378,7 +375,7 @@ void Scene::select_entity(entt::entity entity) {
 
     Tags* tags = registry.try_get<Tags>(selected_entity);
     if (tags)
-        if (tags->has_tag("no_move"_hs))
+        if (tags->has_tag(hash_view("no_move")))
             return;
     
     if (registry.all_of<Draggable>(selected_entity) && player.can_drag()) {

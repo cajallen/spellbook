@@ -1,7 +1,6 @@
 ﻿#include "ability.hpp"
 
 #include <imgui/imgui.h>
-#include <entt/core/hashed_string.hpp>
 
 #include "extension/fmt.hpp"
 #include "game/pose_controller.hpp"
@@ -12,8 +11,6 @@
 #include "game/entities/lizards/lizard.hpp"
 
 namespace spellbook {
-
-using namespace entt::literals;
 
 Ability::Ability(Scene* _scene, entt::entity _caster) : scene(_scene), caster(_caster) {}
 Attack::Attack(Scene* _scene, entt::entity _caster) : Ability(_scene, _caster) {}
@@ -104,14 +101,14 @@ void Ability::lizard_turn_to_target() {
     auto lizard = scene->registry.try_get<Lizard>(caster);
     if (lizard) {
         v3 dir_to = math::normalize(v3(target) - v3(caster_pos));
-        float ang = math::angle_difference(lizard->default_direction.xy, dir_to.xy);
+        float ang = math::angle_difference(v3::X.xy, dir_to.xy);
         scene->registry.get<LogicTransform>(caster).yaw = ang;
     }
 }
 
 bool Ability::can_cast() const {
     Tags& tags = scene->registry.get<Tags>(caster);
-    if (tags.has_tag("no_cast"_hs))
+    if (tags.has_tag(hash_view("no_cast")))
         return false;
     if (!has_target)
         return false;

@@ -85,14 +85,12 @@ struct Health {
     std::unique_ptr<Stat> max_health;
     std::unique_ptr<Stat> damage_taken_multiplier;
     std::unique_ptr<Stat> regen;
-    umap<entt::entity, std::unique_ptr<Stat>> dots;
 
     entt::sigh<void(Scene*, entt::entity, entt::entity, float)> damage_signal;
     
     Health(float health_value, Scene* scene, entt::entity e, const FilePath& hurt_emitter_path = {});
     void damage(entt::entity damager, float amount, v3 direction);
     void heal(entt::entity damager, float amount);
-    void apply_dot(entt::entity damager, uint64 id, const StatEffect& effect, EmitterCPU* emitter = nullptr);
 };
 
 struct Killed {
@@ -133,8 +131,9 @@ struct Collision {
 struct EmitterComponent {
     Scene* scene;
     umap<uint64, EmitterGPU*> emitters;
+    umap<uint64, float> expirations;
 
-    void add_emitter(uint64 id, const EmitterCPU& emitter_cpu);
+    void add_emitter(uint64 id, const EmitterCPU& emitter_cpu, float duration = 0.0f);
     void remove_emitter(uint64 id);
 };
 
@@ -157,6 +156,7 @@ void on_gridslot_destroy(Scene& scene, entt::registry& registry, entt::entity en
 void on_dragging_create(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
+void on_static_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 void on_emitter_component_destroy(Scene& scene, entt::registry& registry, entt::entity entity);
 
 void on_forcedrag_create(Scene& scene, entt::registry& registry, entt::entity entity);

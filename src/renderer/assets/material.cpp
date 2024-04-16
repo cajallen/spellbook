@@ -194,7 +194,7 @@ bool inspect(MaterialCPU* material) {
     changed |= ImGui::PathSelect<TextureCPU>("normal_asset_path", &material->normal_asset_path);
     changed |= ImGui::PathSelect<TextureCPU>("emissive_asset_path", &material->emissive_asset_path);
 
-    changed |= ImGui::EnumCombo("cull_mode", &material->cull_mode);
+    changed |= ImGui::EnumCombo("cull_mode", &material->cull_mode, false);
     ImGui::InputText("shader", &material->shader_name);
     ImGui::SameLine();
     changed |= ImGui::Button(ICON_FA_REFRESH);

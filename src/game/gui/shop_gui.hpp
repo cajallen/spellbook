@@ -12,11 +12,11 @@ struct GUIManager;
 struct ShopGUI {
     vector<LizardCardGUI> cards;
 
-    template<LizardType T>
+    template<LizardType T, uint8 variant>
     void add_lizard_card() {
-        auto& lizard_entry = get_lizard_database().lizard_entries.at(LizardType_Assassin);
-        auto& attack_entry = get_lizard_database().ability_entries.at(ability_index(LizardType_Assassin, AbilityType_Attack));
-        auto& spell_entry = get_lizard_database().ability_entries.at(ability_index(LizardType_Assassin, AbilityType_Spell));
+        auto& lizard_entry = get_lizard_database().lizard_entries.at(T);
+        auto& attack_entry = get_lizard_database().ability_entries.at(ability_index(T, variant, AbilityType_Attack));
+        auto& spell_entry = get_lizard_database().ability_entries.at(ability_index(T, variant, AbilityType_Spell));
 
         LizardCardGUI card(lizard_entry, attack_entry, spell_entry, 500, instance_lizard<T>);
 

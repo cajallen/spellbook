@@ -2,7 +2,6 @@
 
 #include <entt/entity/entity.hpp>
 #include <entt/entity/registry.hpp>
-#include <entt/core/hashed_string.hpp>
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 
@@ -26,8 +25,6 @@
 
 
 namespace spellbook {
-
-using namespace entt::literals;
 
 struct EnemyLaserAttack : Attack {
     std::shared_ptr<Timer> beam_animate;
@@ -125,7 +122,7 @@ bool EnemyResistorAttack::can_cast() const {
     if (cooldown_timer && cooldown_timer->ticking)
         return false;
     Tags& tags = scene->registry.get<Tags>(caster);
-    if (tags.has_tag("no_cast"_hs))
+    if (tags.has_tag(hash_view("no_cast")))
         return false;
     if (casting())
         return false;
@@ -238,8 +235,9 @@ entt::entity instance_prefab(Scene* scene, const EnemyPrefab& prefab, v3i locati
     static int base_i = 0;
     entt::entity attachment_entity = prefab.type != EnemyType_InnateBot ? scene->registry.create() : entt::null;
 
+    scene->registry.emplace<Name>(base_entity, fmt_("enemy_base{}", base_i++));
     scene->registry.erase<TransformLink>(base_entity);
-    scene->registry.emplace<Team>(base_entity, Team::Team_Bots);
+    scene->registry.emplace<Team>(base_entity, Team::TeamID_Bots);
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
     scene->registry.emplace<Traveler>(base_entity);
     scene->registry.emplace<SpiderController>(base_entity, settings);
@@ -307,7 +305,7 @@ entt::entity instance_innate_bot(Scene* scene, const EnemyPrefab& prefab, v3i lo
     entt::entity attachment_entity = prefab.type != EnemyType_InnateBot ? scene->registry.create() : entt::null;
 
     scene->registry.emplace<Enemy>(base_entity, attachment_entity, spawner, selected_consumer);
-    scene->registry.emplace<Team>(base_entity, Team::Team_Bots);
+    scene->registry.emplace<Team>(base_entity, Team::TeamID_Bots);
     scene->registry.get<ModelTransform>(base_entity).scale = v3(prefab.base_scale);
     scene->registry.get<TransformLink>(base_entity).offset.z = 0.5f;
 
@@ -365,6 +363,7 @@ void enemy_ik_controller_system(Scene* scene) {
         ik.update_desire(tfm);
         ik.resolve_desire();
         ik.update_target(scene, logic_tfm);
+        ik.clamp_start();
         assert_else(ik.check_all_targets_set());
         ik.update_transform_linkers();
         ik.update_constraints(scene, model, tfm_inv);
@@ -490,7 +489,7 @@ void traveler_reset_system(Scene* scene) {
 void travel_system(Scene* scene) {
     ZoneScoped;
     for (auto [entity, transform, traveler] : scene->registry.view<LogicTransform, Traveler>().each()) {
-        if (scene->registry.any_of<Tags>(entity) && scene->registry.get<Tags>(entity).has_tag("no_move"_hs))
+        if (scene->registry.any_of<Tags>(entity) && scene->registry.get<Tags>(entity).has_tag(hash_view("no_move")))
             continue;
         if (!traveler.has_target())
             continue;

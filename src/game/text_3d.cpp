@@ -9,13 +9,13 @@
 
 namespace spellbook {
 
-Text3D::~Text3D() {
-    while (!renderables.empty()) {
-        Renderable* renderable = renderables.front();
-        auto it = scene->render_scene.ui_renderables.get_iterator(renderable);
-        if (it != scene->render_scene.ui_renderables.end())
-            scene->render_scene.ui_renderables.erase(it);
-        renderables.remove_index(0);
+void on_text_3d_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
+    Text3D& text = registry.get<Text3D>(entity);
+    while (!text.renderables.empty()) {
+        Renderable* renderable = text.renderables.front();
+        auto it = scene.render_scene.ui_renderables.get_iterator(renderable);
+        scene.render_scene.ui_renderables.erase(it);
+        text.renderables.remove_index(0);
     }
 }
 
@@ -39,7 +39,6 @@ void Text3D::set_text(string_view new_text) {
 }
 
 void text_3d_system(Scene* scene) {
-
     auto text_rise_system = scene->registry.view<Text3DTransform>();
     for (auto [entity, text_tfm] : text_rise_system.each()) {
         if (text_tfm.lifetime < 0.0f)

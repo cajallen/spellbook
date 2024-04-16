@@ -73,6 +73,7 @@ struct SpiderController {
     void update_desire(const m44& tfm);
     void resolve_desire();
     void update_target(Scene* scene, const LogicTransform& logic_tfm);
+    void clamp_start();
     bool check_all_targets_set();
     void update_transform_linkers();
     void update_constraints(Scene* scene, const Model& model, const m44& tfm_inv);

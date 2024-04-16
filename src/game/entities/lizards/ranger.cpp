@@ -3,7 +3,6 @@
 #include "game/entities/lizards/lizard.hpp"
 
 #include <entt/entity/entity.hpp>
-#include <entt/core/hashed_string.hpp>
 
 #include "extension/fmt.hpp"
 #include "general/math/matrix_math.hpp"
@@ -22,8 +21,6 @@
 #include "game/entities/targeting.hpp"
 
 namespace spellbook {
-
-using namespace entt::literals;
 
 constexpr float attack_projectile_speed = 6.0f;
 constexpr float attack_damage = 3.0f;
@@ -122,7 +119,7 @@ void RangerAttack::trigger() {
                 // Vulnerability
                 // Remove existing vulns
                 for (auto [entity, enemy, health] : scene->registry.view<Enemy, Health>().each()) {
-                    health.damage_taken_multiplier->remove_effect("ranger_mark"_hs);
+                    health.damage_taken_multiplier->remove_effect("ranger_mark");
                 }
                 // Select vuln
                 entt::entity select_enemy = entt::null;
@@ -137,7 +134,7 @@ void RangerAttack::trigger() {
                 // Apply vuln
                 if (scene->registry.valid(select_enemy)) {
                     Health& health = scene->registry.get<Health>(select_enemy);
-                    health.damage_taken_multiplier->add_effect(uint64("ranger_mark"_hs), StatEffect{
+                    health.damage_taken_multiplier->add_effect(uint64("ranger_mark"), StatEffect{
                         .type = StatEffect::Type_Multiply,
                         .value = attack_vuln_amount
                     }, &load_resource<EmitterCPU>("emitters/ranger/basic_mark.sbjemt"_resource));
@@ -186,7 +183,7 @@ int ranger_attack_entry_eval(Scene* scene, const uset<entt::entity>& units) {
             counter += 1;
         
         Health& health = scene->registry.get<Health>(entity);
-        bool marked = health.damage_taken_multiplier->effects.contains(uint64("ranger_mark"_hs));
+        bool marked = health.damage_taken_multiplier->effects.contains(uint64("ranger_mark"));
         if (marked)
             counter += 3;
     }
@@ -260,8 +257,8 @@ void trigger<LizardType_Ranger, AbilityType_Spell>(void* data, v3i target) {
                         health.damage(caster_entity, 2.0f, v3(0, 0, 1));
 
                         Tags& tags = timer->scene->registry.get<Tags>(enemy);
-                        tags.apply_tag("no_move"_hs, "Ranger Trap Root"_hs, 3.0f);
-                        tags.apply_tag("no_cast"_hs, "Ranger Trap Silence"_hs, 3.0f);
+                        tags.apply_tag("no_move", "Ranger Trap Root", 3.0f);
+                        tags.apply_tag("no_cast", "Ranger Trap Silence", 3.0f);
                     }
                 }, true)->start(0.5f);
                 add_timer(area_trigger.scene, "Ranger Trap Dissipate Timer", [trap_entity](Timer* timer) {

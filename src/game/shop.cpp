@@ -64,7 +64,7 @@ void ShopGenerator::inspect() {
 
 void FirstFreeShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    first_warehouse.add_entry({Bead_Oak, 0, LizardType_Assassin}, 1.0f);
+    first_warehouse.add_entry({Bead_Oak, 0, LizardType_Empyrea, uint8(0), build<LizardType_Empyrea, 0>}, 1.0f);
 }
 vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -106,7 +106,7 @@ void FirstFreeShopGenerator::inspect() {
 
 void SimpleShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    warehouse.add_entry({Bead_Oak, 4, LizardType_Assassin}, 1.0f);
+    warehouse.add_entry({Bead_Oak, 4, LizardType_Empyrea, uint8(0), build<LizardType_Empyrea, 0>}, 1.0f);
 }
 vector<ShopEntry*>* SimpleShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -140,12 +140,14 @@ void SimpleShopGenerator::inspect() {
 }
 
 bool button(ShopEntry* shop_entry) {
-    string button_text = shop_entry->cost_amount > 0 ? fmt_("{}\n{} {}{}",
-        magic_enum::enum_name(shop_entry->lizard_type).substr(strlen("LizardType_")),
+    auto& database_entry = get_lizard_database().lizard_entries.at(shop_entry->lizard_type);
+    string button_text = shop_entry->cost_amount > 0 ? fmt_("{}, {}\n{} {}{}",
+        database_entry.name,
+        database_entry.variants.at(shop_entry->lizard_variant).title,
         shop_entry->cost_amount,
         magic_enum::enum_name(shop_entry->cost_type),
         shop_entry->cost_amount > 1 ? "s" : ""
-    ) : fmt_("{}\n{}", magic_enum::enum_name(shop_entry->lizard_type).substr(strlen("LizardType_")), "Free");
+    ) : fmt_("{}, {}\n{}", database_entry.name, database_entry.variants.at(shop_entry->lizard_variant).title, "Free");
     return ImGui::Button(button_text.c_str(), {200, 80});
 }
 
@@ -201,12 +203,13 @@ void show_shop(Shop* shop, Player* player) {
     }
     if (shop->entries != nullptr) {
         for (uint32 i = 0; i < shop->entries->size(); i++) {
+            ShopEntry& entry = *shop->entries->at(i);
             if (i > 0)
                 ImGui::SameLine();
-            Bead bead_type = shop->entries->at(i)->cost_type;
-            Color color = shop->entries->at(i)->cost_amount > 0 ? bead_color(bead_type) : palette::gray_7;
+            Bead bead_type = entry.cost_type;
+            Color color = entry.cost_amount > 0 ? bead_color(bead_type) : palette::gray_7;
             
-            ImGui::BeginDisabled(player->bank.beads[bead_type] < shop->entries->at(i)->cost_amount);
+            ImGui::BeginDisabled(player->bank.beads[bead_type] < entry.cost_amount);
             ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4) Color(color, 0.4f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4) Color(color, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4) Color(color.rgb * 0.8f, 1.0f));
@@ -216,9 +219,15 @@ void show_shop(Shop* shop, Player* player) {
                 if (player->scene->selected_entity == entt::null) {
                     v3  intersect = math::intersect_axis_plane(player->scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
 
-                    // TODO: instance
+                    entt::entity lizard = instance_lizard(
+                        player->scene,
+                        math::round_cast(intersect),
+                        entry.lizard_type,
+                        entry.lizard_variant,
+                        entry.build_func
+                    );
                     player->scene->audio.play_sound("audio/drop.flac"_resource, {.global = true, .volume = 0.3f});
-                    //player->scene->select_entity(lizard);
+                    player->scene->select_entity(lizard);
                     player->bank.beads[bead_type] -= shop->entries->at(i)->cost_amount;
                     shop->shop_generator->purchase(i);
                 }

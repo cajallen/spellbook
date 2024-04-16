@@ -24,12 +24,11 @@
 
 namespace spellbook {
 
-ADD_EDITOR_SCENE(HitTestScene);
+//ADD_EDITOR_SCENE(HitTestScene);
 
 void HitTestScene::setup() {
     setup_scene(new Scene(), false);
-    //gui_manager.shop_gui.add_lizard_card<LizardType_Ranger>();
-    //gui_manager.shop_gui.add_lizard_card<LizardType_Assassin>();
+//    gui_manager.shop_gui.add_lizard_card<LizardType_Empyrea, 0>();
 }
 
 void HitTestScene::setup_scene(Scene* scene, bool scene_setup) {
@@ -64,7 +63,7 @@ void HitTestScene::setup_scene(Scene* scene, bool scene_setup) {
     instance_prefab(p_scene, load_resource<EnemyPrefab>("resources/enemies/innate_bot.sbjenm"_content), v3i(0,0,0));
 
     god_caster = p_scene->registry.create();
-    p_scene->registry.emplace<Team>(god_caster, Team::Team_Lizards);
+    p_scene->registry.emplace<Team>(god_caster, Team::TeamID_Lizards);
     p_scene->registry.emplace<LogicTransform>(god_caster, v3(0.0f, 0.0f, 2.0f));
 
 
@@ -139,6 +138,9 @@ void HitTestScene::window(bool* p_open) {
             EFFECT_ROW(Resistance);
             EFFECT_ROW(Haste);
             EFFECT_ROW(Amplify);
+
+            EFFECT_ROW(Acid);
+            EFFECT_ROW(Ethereal);
 
             ImGui::EndTable();
         }

@@ -28,7 +28,8 @@ ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
     for (id_ptr<Node> old_node : oth.nodes) {
         id_ptr<Node> new_node = id_ptr<Node>::emplace(
             old_node->name,
-            old_node->mesh_asset_path,
+            old_node->mesh_selection,
+            old_node->mesh_path_options,
             old_node->material_asset_path,
             old_node->transform,
             old_node->parent,
@@ -97,7 +98,16 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
         if (ImGui::TreeNode(id_str.c_str())) {
             ImGui::InputText("Name", &node->name);
             ImGui::Text("Index: %d", model->nodes.find(node));
-            changed |= ImGui::PathSelect<MeshCPU>("mesh_asset_path", &node->mesh_asset_path);
+            int32 mesh_selection = node->mesh_selection;
+            changed |= ImGui::SliderInt("mesh_selection", &mesh_selection, 0, node->mesh_path_options.size() - 1);
+            node->mesh_selection = mesh_selection;
+            changed |= ImGui::OrderedVector(node->mesh_path_options,
+                [](FilePath& item) { ImGui::PathSelect<ModelCPU>("##Path", &item); return false; },
+                [](vector<FilePath>& values, bool pressed) {
+                    if (pressed)
+                        values.emplace_back();
+                },
+                true);
             changed |= ImGui::PathSelect<MaterialCPU>("material_asset_path", &node->material_asset_path);
             if (ImGui::TreeNode("Transform")) {
                 if (ImGui::DragMat4("##Transform", &node->transform, 0.02f, "%.2f")) {
@@ -148,12 +158,13 @@ ModelGPU instance_model(RenderScene& render_scene, const ModelCPU& model, bool f
     
     for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
         ModelCPU::Node& node           = *node_ptr;
-        if (!node.mesh_asset_path.is_file() || !node.material_asset_path.is_file())
+        if (node.mesh_path_options.empty() || !node.material_asset_path.is_file())
             continue;
+        FilePath& mesh_path = node.mesh_path_options.at(node.mesh_selection);
 
-        uint64 mesh_id = hash_path(node.mesh_asset_path);
+        uint64 mesh_id = hash_path(mesh_path);
         uint64 material_id = hash_path(node.material_asset_path);
-        get_gpu_asset_cache().paths[mesh_id] = node.mesh_asset_path;
+        get_gpu_asset_cache().paths[mesh_id] = mesh_path;
         get_gpu_asset_cache().paths[material_id] = node.material_asset_path;
 
         auto new_renderable = render_scene.add_renderable(Renderable(
@@ -173,12 +184,13 @@ vector<StaticRenderable*> instance_static_model(RenderScene& render_scene, const
     vector<StaticRenderable*> renderables;
     for (id_ptr<ModelCPU::Node> node_ptr : model.nodes) {
         ModelCPU::Node& node           = *node_ptr;
-        if (!node.mesh_asset_path.is_file() || !node.material_asset_path.is_file())
+        FilePath& mesh_path = node.mesh_path_options.at(node.mesh_selection);
+        if (!mesh_path.is_file() || !node.material_asset_path.is_file())
             continue;
 
-        uint64 mesh_id = hash_path(node.mesh_asset_path);
+        uint64 mesh_id = hash_path(mesh_path);
         uint64 material_id = hash_path(node.material_asset_path);
-        get_gpu_asset_cache().paths[mesh_id] = node.mesh_asset_path;
+        get_gpu_asset_cache().paths[mesh_id] = mesh_path;
         get_gpu_asset_cache().paths[material_id] = node.material_asset_path;
 
         get_gpu_asset_cache().get_mesh_or_upload(mesh_id);
@@ -288,9 +300,9 @@ void ModelCPU::Node::cache_transform() {
 constexpr m44 gltf_fixup = m44(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);
 
 void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, vector<uint8>& output_buffer);
-void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices);
+void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices, vector<vector<v2>>& uvs);
 void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<uint32>& indices);
-string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index);
+string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index, int uv_index);
 string _calculate_gltf_material_name(tinygltf::Model& model, int material_index);
 bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool replace_existing_pose);
 bool _convert_gltf_meshes(tinygltf::Model& model, const FilePath& output_folder);
@@ -378,14 +390,25 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
             auto primitive = mesh.primitives[0];
             int  material  = primitive.material;
             assert_else(material >= 0 && "Need material on node, default mat NYI");
-            string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0);
             string material_name = _calculate_gltf_material_name(gltf_model, material);
 
-            fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
             fs::path material_path = output_folder_path / (material_name + string(MaterialCPU::extension()));
 
+            uint8 uv_set_count = 0;
+            for (uv_set_count = 0; uv_set_count < 4;) {
+                string texcoord_key = fmt_("TEXCOORD_{}", uv_set_count);
+                if (!primitive.attributes.contains(texcoord_key))
+                    break;
+                uv_set_count++;
+            }
+
+            for (uint8 uv_index = 0; uv_index < uv_set_count; uv_index++) {
+                string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0, uv_index);
+                fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
+                model_node.mesh_path_options.emplace_back(mesh_path);
+            }
+
             model_node.name                = gltf_node.name;
-            model_node.mesh_asset_path     = FilePath(mesh_path);
             model_node.material_asset_path = FilePath(material_path);
             model_node.transform           = _calculate_matrix(gltf_node);
             if (gltf_node.skin != -1) {
@@ -425,13 +448,23 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
 
             int    material      = primitive.material;
             string material_name = _calculate_gltf_material_name(gltf_model, material);
-            string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive);
-
             fs::path material_path = output_folder_path / (material_name + string(MaterialCPU::extension()));
-            fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
+
+            uint8 uv_set_count = 0;
+            for (uv_set_count = 0; uv_set_count < 4;) {
+                string texcoord_key = fmt_("TEXCOORD_{}", uv_set_count);
+                if (!primitive.attributes.contains(texcoord_key))
+                    break;
+                uv_set_count++;
+            }
+
+            for (uint8 uv_index = 0; uv_index < uv_set_count; uv_index++) {
+                string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive, uv_index);
+                fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
+                model_node_ptr->mesh_path_options.emplace_back(mesh_path);
+            }
 
             model_node_ptr->name      = model_cpu.nodes[multimat_node_index]->name + "_PRIM_" + &buffer[0];
-            model_node_ptr->mesh_asset_path      = FilePath(mesh_path);
             model_node_ptr->material_asset_path  = FilePath(material_path);
             model_node_ptr->transform = m44::identity();
             model_node_ptr->parent    = model_cpu.nodes[multimat_node_index];
@@ -450,7 +483,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
                 traverse(child, children_uses, traverse);
             }
             
-            if (node->material_asset_path.is_file() && node->mesh_asset_path.is_file())
+            if (node->material_asset_path.is_file() && node->mesh_path_options.at(node->mesh_selection).is_file())
                 this_uses = true;
             if (children_uses)
                 this_uses = true;
@@ -649,7 +682,7 @@ void _unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accessor, v
     }
 }
 
-void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices) {
+void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, vector<Vertex>& vertices, vector<vector<v2>>& uvs) {
     ZoneScoped;
     tinygltf::Accessor& pos_accessor = model.accessors[primitive.attributes["POSITION"]];
     vertices.resize(pos_accessor.count);
@@ -724,32 +757,37 @@ void _extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mod
         }
     }
 
-    tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
-    vector<uint8>          uv_data;
-    _unpack_gltf_buffer(model, uv_accessor, uv_data);
-    for (int i = 0; i < vertices.size(); i++) {
-        if (uv_accessor.type == TINYGLTF_TYPE_VEC2) {
-            if (uv_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
-                float* dtf = (float*) uv_data.data();
+    for (uint8 uv_index = 0; uv_index < 4; uv_index++) {
+        string texcoord_key = fmt_("TEXCOORD_{}", uv_index);
+        if (!primitive.attributes.contains(texcoord_key))
+            break;
+        uvs.resize(uv_index + 1);
+        uvs[uv_index].resize(vertices.size());
+        tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes[texcoord_key]];
+        vector<uint8>          uv_data;
+        _unpack_gltf_buffer(model, uv_accessor, uv_data);
+        for (int i = 0; i < vertices.size(); i++) {
+            if (uv_accessor.type == TINYGLTF_TYPE_VEC2) {
+                if (uv_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+                    float* dtf = (float*) uv_data.data();
 
-                // vec3f
-                vertices[i].uv[0] = *(dtf + (i * 2) + 0);
-                vertices[i].uv[1] = *(dtf + (i * 2) + 1);
-            } else {
-                log_error("Only FLOAT supported for UV coordinate in GLTF convert");
-            }
-        } else if (uv_accessor.type == TINYGLTF_TYPE_VEC3) {
-            if (uv_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
-                float* dtf = (float*) uv_data.data();
+                    uvs[uv_index][i][0] = *(dtf + (i * 2) + 0);
+                    uvs[uv_index][i][1] = *(dtf + (i * 2) + 1);
+                } else {
+                    log_error("Only FLOAT supported for UV coordinate in GLTF convert");
+                }
+            } else if (uv_accessor.type == TINYGLTF_TYPE_VEC3) {
+                if (uv_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+                    float* dtf = (float*) uv_data.data();
 
-                // vec3f
-                vertices[i].uv[0] = *(dtf + (i * 3) + 0);
-                vertices[i].uv[1] = *(dtf + (i * 3) + 1);
+                    uvs[uv_index][i][0] = *(dtf + (i * 3) + 0);
+                    uvs[uv_index][i][1] = *(dtf + (i * 3) + 1);
+                } else {
+                    log_error("Only FLOAT supported for UV coordinate in GLTF convert");
+                }
             } else {
-                log_error("Only FLOAT supported for UV coordinate in GLTF convert");
+                log_error("Unsupported type for UV coordinate in GLTF convert");
             }
-        } else {
-            log_error("Unsupported type for UV coordinate in GLTF convert");
         }
     }
 
@@ -908,12 +946,12 @@ void _extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& mode
     }
 }
 
-string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index) {
+string _calculate_gltf_mesh_name(tinygltf::Model& model, int mesh_index, int primitive_index, int uv_index) {
     char prim_buffer[50];
     itoa(primitive_index, prim_buffer, 10);
 
     string meshname = model.meshes[mesh_index].name;
-
+    meshname += fmt_("_uv{}", uv_index);
     bool multiprim = model.meshes[mesh_index].primitives.size() > 1;
     if (multiprim) {
         meshname += "_sub_" + string{&prim_buffer[0]};
@@ -935,18 +973,27 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const FilePath& output_folder)
         for (auto i_primitive = 0; i_primitive < gltf_mesh.primitives.size(); i_primitive++) {
             MeshCPU mesh_cpu;
 
-            string name = _calculate_gltf_mesh_name(model, i_mesh, i_primitive);
-            mesh_cpu.file_path = FilePath(output_folder.abs_path() / (name + string(MeshCPU::extension())));
-
             auto& primitive = gltf_mesh.primitives[i_primitive];
             _extract_gltf_indices(primitive, model, mesh_cpu.indices);
-            _extract_gltf_vertices(primitive, model, mesh_cpu.vertices);
 
-            if (math::length(mesh_cpu.vertices.back().tangent) < 0.1f) {
-                mesh_cpu.fix_tangents();
+            vector<vector<v2>> uvs;
+            _extract_gltf_vertices(primitive, model, mesh_cpu.vertices, uvs);
+
+            for (vector<v2>& uv_set : uvs) {
+                for (uint32 i = 0; i < uv_set.size(); i++) {
+                    mesh_cpu.vertices[i].uv = uv_set[i];
+                }
+
+                if (math::length(mesh_cpu.vertices.back().tangent) < 0.1f) {
+                    mesh_cpu.fix_tangents();
+                }
+
+                string name = _calculate_gltf_mesh_name(model, i_mesh, i_primitive, uvs.index(uv_set));
+                mesh_cpu.file_path = FilePath(output_folder.abs_path() / (name + string(MeshCPU::extension())));
+
+                save_mesh(mesh_cpu);
             }
-            
-            save_mesh(mesh_cpu);
+
         }
     }
     return true;

@@ -4,8 +4,42 @@
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
 #include "game/entities/caster.hpp"
+#include "game/entities/tags.hpp"
+#include "editor/console.hpp"
+
 
 namespace spellbook {
+
+void effects_system(Scene* scene) {
+    for (auto [entity, health, acid] : scene->registry.view<Health, Acid>().each()) {
+        bool ticked = false;
+        for (int32 i = acid.levels.size() - 1; i >= 0; i--) {
+            if (acid.levels[i].next_tick <= scene->time) {
+                string level_string = fmt_("Level{}DPS", i + 1);
+                float  acid_dps     = get_effect_database().entries.at(EffectType_Acid).extra_floats.at(level_string);
+                health.damage(acid.levels[i].applier, acid_dps * Acid::tick_delta * acid.levels[i].stacks, v3::Z);
+
+                ticked = true;
+
+                acid.levels[i].next_tick += Acid::tick_delta;
+                if (acid.levels[i].next_tick > acid.levels[i].effect_end) {
+                    acid.levels[i].next_tick = FLT_MAX;
+                    acid.levels[i].stacks = 0;
+                }
+            }
+        }
+        if (ticked) {
+            for (auto it = acid.tick_effects.begin(); it != acid.tick_effects.end();) {
+                if (it->response_end < scene->time)
+                    it = acid.tick_effects.remove(it);
+                else {
+                    it->response(scene, entity);
+                    it++;
+                }
+            }
+        }
+    }
+}
 
 void damage_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     LogicTransform* source_tfm = scene->registry.try_get<LogicTransform>(caster);
@@ -36,7 +70,7 @@ void regen_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vec
         StatEffect stat_effect = {
             .type = StatEffect::Type_Add,
             .value = effect.quantity,
-            .until = Input::time + effect.duration,
+            .until = scene->time + effect.duration,
             .unique = uint64(effect.type)
         };
         r->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
@@ -51,7 +85,7 @@ void growth_apply(HitEffect& effect, Scene* scene, entt::entity caster, const ve
         StatEffect stat_effect = {
             .type = StatEffect::Type_Add,
             .value = effect.quantity,
-            .until = Input::time + effect.duration,
+            .until = scene->time + effect.duration,
             .unique = uint64(effect.type)
         };
         mh->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
@@ -69,7 +103,7 @@ void vulnerable_apply(HitEffect& effect, Scene* scene, entt::entity caster, cons
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
             .value = 1.0f + (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
-            .until = Input::time + effect.duration,
+            .until = scene->time + effect.duration,
             .unique = uint64(effect.type)
         };
         dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
@@ -87,7 +121,7 @@ void resistance_apply(HitEffect& effect, Scene* scene, entt::entity caster, cons
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
             .value = 1.0f - (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
-            .until = Input::time + effect.duration,
+            .until = scene->time + effect.duration,
             .unique = uint64(effect.type)
         };
         dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
@@ -105,7 +139,7 @@ void slow_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vect
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
             .value = 1.0f - (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
-            .until = Input::time + effect.duration,
+            .until = scene->time + effect.duration,
             .unique = uint64(effect.type)
         };
         speed->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
@@ -124,7 +158,7 @@ void haste_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vec
         StatEffect stat_effect = {
             .type = StatEffect::Type_Multiply,
             .value = 1.0f - (entry.extra_floats.at(fmt_("Level{}", effect.level)) / 100.0f),
-            .until = Input::time + effect.duration,
+            .until = scene->time + effect.duration,
             .unique = uint64(effect.type)
         };
         cast_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect, &emitter);
@@ -150,7 +184,40 @@ void weaken_apply(HitEffect& effect, Scene* scene, entt::entity caster, const ve
 void acid_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
-        Caster* caster = scene->registry.try_get<Caster>(target);
+        Acid* acid = scene->registry.try_get<Acid>(target);
+        if (!acid) {
+            acid = &scene->registry.emplace<Acid>(target);
+        }
+
+        Acid::AcidLevel& level = acid->levels.at(effect.level);
+        level.applier = caster;
+        level.stacks = math::min(level.stacks + 1, math::round_cast(entry.extra_floats.at("MaxStacks")));
+        level.effect_end = scene->time + effect.duration;
+        if (level.next_tick >= scene->time + Acid::tick_delta)
+            level.next_tick = scene->time + Acid::tick_delta;
+
+        console({.str=fmt_("Applied Acid, level:{}, stacks:{}, end:{}, next_tick:{}", effect.level, level.stacks, level.effect_end, level.next_tick)});
+
+        EmitterComponent& emitters = scene->registry.get<EmitterComponent>(target);
+        if (emitters.expirations.contains(effect.level == 0 ? hash_view("acid1") : hash_view("acid2"))) {
+            emitters.expirations.at(effect.level == 0 ? hash_view("acid1") : hash_view("acid2")) = level.effect_end;
+        } else {
+            EmitterCPU emitter_cpu = load_resource<EmitterCPU>(FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content));
+            emitter_cpu.particles_per_second *= effect.level == 0 ? 0.4f : 1.0f;
+            emitters.add_emitter(effect.level == 0 ? hash_view("acid1") : hash_view("acid2"), emitter_cpu, effect.duration);
+        }
+    }
+}
+
+void ethereal_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
+    EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
+    for (entt::entity target : targets) {
+        Tags& tags = scene->registry.get<Tags>(target);
+        tags.apply_tag(hash_view("untargetable"), hash_view("ethereal"), target, effect.duration);
+
+        const EmitterCPU& emitter_cpu = load_resource<EmitterCPU>(FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content));
+        EmitterComponent& emitters = scene->registry.get<EmitterComponent>(target);
+        emitters.add_emitter(hash_view("ethereal"), emitter_cpu, effect.duration);
     }
 }
 
@@ -242,6 +309,14 @@ bool acid_hits_disposition(Team::Disposition disposition) {
     }
 }
 
+bool ethereal_hits_disposition(Team::Disposition disposition) {
+    switch (disposition) {
+        case Team::Disposition_Friendly: return true;
+        case Team::Disposition_Hostile: return false;
+        default: return false;
+    }
+}
+
 HitEffect::HitEffect(EffectType _type) {
     type = _type;
     switch (type) {
@@ -288,6 +363,10 @@ HitEffect::HitEffect(EffectType _type) {
         case (EffectType_Acid): {
             apply_function = acid_apply;
             hits_disposition_function = acid_hits_disposition;
+        } break;
+        case (EffectType_Ethereal): {
+            apply_function = ethereal_apply;
+            hits_disposition_function = ethereal_hits_disposition;
         } break;
     }
 }
