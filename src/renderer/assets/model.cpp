@@ -1037,7 +1037,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const FilePath& output_fold
                 format,
                 vector<uint8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())
             };
-            save_texture(texture_cpu);
+            save_resource(texture_cpu);
             *texture_files[i] = texture_cpu.file_path;
         }
 

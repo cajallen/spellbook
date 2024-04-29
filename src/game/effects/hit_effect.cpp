@@ -50,14 +50,22 @@ void damage_apply(HitEffect& effect, Scene* scene, entt::entity caster, const ve
     for (entt::entity target : targets) {
         Health& health = scene->registry.get<Health>(target);
         LogicTransform& enemy_tfm = scene->registry.get<LogicTransform>(target);
-        health.damage(caster, effect.quantity / targets.size(), enemy_tfm.position - source_pos);
+        bool did_damage = health.damage(caster, effect.quantity / targets.size(), enemy_tfm.position - source_pos);
+
+        effect.checked_entities.push_back(target);
+        if (did_damage)
+            effect.affected_entities.push_back(target);
     }
 }
 
 void heal_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vector<entt::entity>& targets) {
     for (entt::entity target : targets) {
         Health& health = scene->registry.get<Health>(target);
-        health.heal(caster, effect.quantity / targets.size());
+        bool did_heal = health.heal(caster, effect.quantity / targets.size());
+
+        effect.checked_entities.push_back(target);
+        if (did_heal)
+            effect.affected_entities.push_back(target);
     }
 }
 
@@ -74,6 +82,9 @@ void regen_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vec
             .unique = uint64(effect.type)
         };
         r->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -89,6 +100,9 @@ void growth_apply(HitEffect& effect, Scene* scene, entt::entity caster, const ve
             .unique = uint64(effect.type)
         };
         mh->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -107,6 +121,9 @@ void vulnerable_apply(HitEffect& effect, Scene* scene, entt::entity caster, cons
             .unique = uint64(effect.type)
         };
         dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -125,6 +142,9 @@ void resistance_apply(HitEffect& effect, Scene* scene, entt::entity caster, cons
             .unique = uint64(effect.type)
         };
         dtm->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -143,6 +163,9 @@ void slow_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vect
             .unique = uint64(effect.type)
         };
         speed->add_effect(uint64(effect.type) ^ uint64(caster), stat_effect, &emitter);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -163,6 +186,9 @@ void haste_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vec
         };
         cast_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect, &emitter);
         cooldown_speed->add_effect(uint64(effect.type) ^ uint64(enemy_caster), stat_effect);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -170,6 +196,9 @@ void amplify_apply(HitEffect& effect, Scene* scene, entt::entity caster, const v
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Caster* caster = scene->registry.try_get<Caster>(target);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -177,6 +206,9 @@ void weaken_apply(HitEffect& effect, Scene* scene, entt::entity caster, const ve
     EffectDatabase::EffectEntry& entry = get_effect_database().entries[effect.type];
     for (entt::entity target : targets) {
         Caster* caster = scene->registry.try_get<Caster>(target);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -206,6 +238,9 @@ void acid_apply(HitEffect& effect, Scene* scene, entt::entity caster, const vect
             emitter_cpu.particles_per_second *= effect.level == 0 ? 0.4f : 1.0f;
             emitters.add_emitter(effect.level == 0 ? hash_view("acid1") : hash_view("acid2"), emitter_cpu, effect.duration);
         }
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 
@@ -218,6 +253,9 @@ void ethereal_apply(HitEffect& effect, Scene* scene, entt::entity caster, const 
         const EmitterCPU& emitter_cpu = load_resource<EmitterCPU>(FilePath(entry.extra_strings.at("Particles"), FilePathLocation_Content));
         EmitterComponent& emitters = scene->registry.get<EmitterComponent>(target);
         emitters.add_emitter(hash_view("ethereal"), emitter_cpu, effect.duration);
+
+        effect.checked_entities.push_back(target);
+        effect.affected_entities.push_back(target);
     }
 }
 

@@ -31,13 +31,10 @@ inline GameTextLayer& get_game_text_layer() {
 struct GameTextLayerSettings {
     int32 depth = 500;
     int32 width = 500;
-    float distortion_amount = 0.0f;
     umap<string, float>* ref_floats;
     umap<string, string>* ref_strings;
     uint64* hovered_id;
     uint32* hovered_index;
-
-    float distortion_time = 0.0f;
 };
 
 void insert_newlines(int32& position, string& text, Font* font, const GameTextLayerSettings& settings);

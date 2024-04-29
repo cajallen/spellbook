@@ -25,6 +25,11 @@
           "name": "CMAKE_C_FLAGS",
           "value": "/DWIN32 /D_WINDOWS",
           "type": "STRING"
+        },
+        {
+          "name": "TRACY_ENABLE",
+          "value": "True",
+          "type": "BOOL"
         }
       ]
     },
@@ -41,7 +46,7 @@
       "variables": [
         {
           "name": "TRACY_ENABLE",
-          "value": "False",
+          "value": "True",
           "type": "BOOL"
         }
       ]

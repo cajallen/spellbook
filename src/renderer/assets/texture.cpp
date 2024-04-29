@@ -25,23 +25,43 @@ FilePath upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
     return tex_cpu.file_path;
 }
 
-TextureCPU load_texture(const FilePath& file_path) {
-    AssetFile& asset_file = get_file_cache().load_asset(file_path);
+
+template<>
+TextureCPU& load_resource(const FilePath& input_path, bool assert_exists, bool clear_cache) {
+    if (clear_cache && cpu_resource_cache<TextureCPU>().contains(input_path))
+        cpu_resource_cache<TextureCPU>().erase(input_path);
+    if (cpu_resource_cache<TextureCPU>().contains(input_path))
+        return *cpu_resource_cache<TextureCPU>()[input_path];
+
+    TextureCPU& texture = *cpu_resource_cache<TextureCPU>().emplace(input_path, std::make_unique<TextureCPU>()).first->second;
+
+    bool exists = fs::exists(input_path.abs_path());
+    bool corrext = input_path.extension() == TextureCPU::extension();
+    if (assert_exists) {
+        assert_else(exists && corrext)
+            return texture;
+    } else {
+        check_else(exists && corrext)
+            return texture;
+    }
+
+    AssetFile& asset_file = get_file_cache().load_asset(input_path);
 
     TextureInfo texture_info = from_jv<TextureInfo>(*asset_file.asset_json["texture_info"]);
-    TextureCPU  texture_cpu  = from_jv<TextureCPU>(*asset_file.asset_json["texture_cpu"]);
-    texture_cpu.file_path = file_path;
+    texture = from_jv<TextureCPU>(*asset_file.asset_json["texture_cpu"]);
+    texture.file_path = input_path;
 
-    texture_cpu.pixels.resize(texture_info.pixels_bsize);
+    texture.pixels.resize(texture_info.pixels_bsize);
     LZ4_decompress_safe((const char*) asset_file.binary_blob.data(),
-        (char*) texture_cpu.pixels.data(),
+        (char*) texture.pixels.data(),
         asset_file.binary_blob.size(),
-        (int32) texture_cpu.pixels.size());
+        (int32) texture.pixels.size());
 
-    return texture_cpu;
+    return texture;
 }
 
-void save_texture(const TextureCPU& texture_cpu) {
+template<>
+bool save_resource(const TextureCPU& texture_cpu) {
     AssetFile file;
     file.file_path = texture_cpu.file_path;
     file.version   = 2;
@@ -64,6 +84,7 @@ void save_texture(const TextureCPU& texture_cpu) {
 
     get_file_cache().parsed_assets[file.file_path] = file;
     save_asset_file(file);
+    return true;
 }
 
 TextureCPU convert_to_texture(const FilePath& input_file_path, const FilePath& output_folder, const string& output_name) {

@@ -138,7 +138,7 @@ void file_browser(const string& window_name, bool* p_open, FilePath* out) {
                 vuk::Format::eR8G8B8A8Srgb,
                 vector<uint8>(pixels, pixels + size.x * size.y * 4)
             };
-            save_texture(texture_cpu);
+            save_resource(texture_cpu);
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

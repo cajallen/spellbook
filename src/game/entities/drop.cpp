@@ -40,14 +40,8 @@ bool inspect(BeadPrefab* bead_prefab) {
 
 Color bead_color(Bead bead) {
     switch (bead) {
-        case (Bead_Oak): {
+        case (Bead_Wood): {
             return Color(0.82f, 0.66f, 0.37f);
-        } break;
-        case (Bead_Yew): {
-            return Color(0.65f, 0.15f, 0.20f);
-        } break;
-        case (Bead_Amber): {
-            return Color(0.87f, 0.37f, 0.02f);
         } break;
         case (Bead_Malachite): {
             return Color(0.24f, 0.80f, 0.60f);

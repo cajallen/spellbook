@@ -26,43 +26,16 @@ struct EmpyreaAttack : Attack {
     LizardDatabase::AbilityEntry* entry;
     uint32 phase = 0;
 
-    void DamageReaction(Scene* scene, entt::entity damager, entt::entity empyrea, float amount) {
-        if (amount < 0.1f || ethereal_cooldown->ticking)
-            return;
 
-        Hit hit = {
-            .scene = scene,
-            .position = math::round_cast(scene->registry.get<LogicTransform>(empyrea).position),
-            .caster = empyrea
-        };
-        HitEffect hit_effect(EffectType_Ethereal);
-        hit_effect.duration = entry->extra_floats.at("EtherealDuration");
-        hit.effects.push_back(hit_effect);
-        hit.process();
-        ethereal_cooldown->start(entry->extra_floats.at("EtherealCooldown"));
-    }
+    void EtherealReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect);
+    void DamageReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect);
+    void ExecuteReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect);
 
-    EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
-        entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, variant, AbilityType_Attack));
-        setup_time(entry->pre_time, entry->post_time);
-        setup_cd(entry->extra_floats.at("CD"));
-        ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
-        Health& health = scene->registry.get<Health>(caster);
-        entt::sink sink{health.damage_signal};
-        sink.connect<&EmpyreaAttack<variant>::DamageReaction>(*this);
-
-        entry_gather_function = gather_enemies();
-        entry_eval_function = basic_lizard_entry_eval;
-        set_anims = false;
-    }
+    EmpyreaAttack(Scene* _scene, entt::entity _caster);
     ~EmpyreaAttack() override {
         if (!scene)
             return;
-        Health* health = scene->registry.try_get<Health>(caster);
-        if (health) {
-            entt::sink sink{health->damage_signal};
-            sink.disconnect(this);
-        }
+        scene->hit_scene_state.cleanup_on_death(caster);
     }
     void start() override {
         auto poser = scene->registry.try_get<PoseController>(caster);
@@ -96,38 +69,6 @@ struct EmpyreaAttack : Attack {
     }
 };
 
-template<>
-void EmpyreaAttack<0>::trigger() {
-    console({.str="Empyrea Attack Triggered"});
-    auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
-    v3 hit_vec = v3(target) - logic_tfm.position;
-
-    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/empyrea/basic_hit.sbjemt"_resource);
-    emitter_cpu.orientation_settings.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
-    quick_emitter(scene, "Empyrea hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
-
-    Hit hit = {
-        .scene = scene,
-        .position = target,
-        .caster = caster
-    };
-    HitEffect damage_effect(EffectType_Damage);
-    damage_effect.quantity = entry->extra_floats.at("Damage");
-    hit.effects.push_back(damage_effect);
-    HitEffect acid_effect(EffectType_Acid);
-    acid_effect.level = 0;
-    acid_effect.duration = entry->extra_floats.at("AcidDuration");
-    hit.effects.push_back(acid_effect);
-    hit.process();
-
-    auto poser = scene->registry.try_get<PoseController>(caster);
-    if (poser) {
-        poser->set_state(phase == 0 ? AnimationState_AttackOut : AnimationState_Attack2Out, post_trigger_time.value());
-    }
-
-    phase = phase == 0 ? 1 : 0;
-}
-
 template<uint8 variant>
 struct EmpyreaSpell : Spell {
     LizardDatabase::AbilityEntry* entry;
@@ -144,18 +85,80 @@ struct EmpyreaSpell : Spell {
     void trigger() override;
 };
 
+
+/// CORROSIVE
+template<uint8 variant>
+void EmpyreaAttack<variant>::DamageReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect) {
+    if (ethereal_cooldown->ticking)
+        return;
+
+    HitEffect ethereal_effect(EffectType_Ethereal);
+    ethereal_effect.duration = entry->extra_floats.at("EtherealDuration");
+
+    Hit hit = {
+        .scene = scene,
+        .position = math::round_cast(scene->registry.get<LogicTransform>(caster).position),
+        .caster = caster,
+        .effects = {ethereal_effect}
+    };
+    hit.process();
+
+    ethereal_cooldown->start(entry->extra_floats.at("EtherealCooldown"));
+}
+
+template<>
+EmpyreaAttack<0>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
+    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, 0, AbilityType_Attack));
+    setup_time(entry->pre_time, entry->post_time);
+    setup_cd(entry->extra_floats.at("CD"));
+    ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
+
+    HitReaction& damage_reaction = scene->hit_scene_state.reactions.push_back({});
+    damage_reaction.relies_on_effect_type = EffectType_Damage;
+    damage_reaction.relies_on_receiver = caster;
+    damage_reaction.reaction.connect<&EmpyreaAttack<0>::DamageReaction>(*this);
+
+    entry_gather_function = gather_enemies();
+    entry_eval_function = basic_lizard_entry_eval;
+    set_anims = false;
+}
+
+template<>
+void EmpyreaAttack<0>::trigger() {
+    auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    v3 hit_vec = v3(target) - logic_tfm.position;
+
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/empyrea/basic_hit.sbjemt"_resource);
+    emitter_cpu.orientation_settings.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
+    quick_emitter(scene, "Empyrea hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
+
+    HitEffect damage_effect(EffectType_Damage);
+    damage_effect.quantity = entry->extra_floats.at("Damage");
+    HitEffect acid_effect(EffectType_Acid);
+    acid_effect.level = 0;
+    acid_effect.duration = entry->extra_floats.at("AcidDuration");
+
+    Hit hit = {
+        .scene = scene,
+        .position = target,
+        .caster = caster,
+        .effects = {damage_effect, acid_effect}
+    };
+    hit.process();
+
+    auto poser = scene->registry.try_get<PoseController>(caster);
+    if (poser) {
+        poser->set_state(phase == 0 ? AnimationState_AttackOut : AnimationState_Attack2Out, post_trigger_time.value());
+    }
+
+    phase = phase == 0 ? 1 : 0;
+}
+
 template<>
 void EmpyreaSpell<0>::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
 
-    Hit hit = {
-        .scene = scene,
-        .position = math::round_cast(logic_tfm.position),
-        .caster = caster
-    };
-    HitEffect splash_effect(EffectType_Splash);
-    splash_effect.level = 2;
-    hit.effects.push_back(splash_effect);
+    HitEffect floor_effect(EffectType_Floor);
     HitEffect custom_effect(EffectType_Custom);
     custom_effect.hits_disposition_function = [](Team::Disposition disposition) {
         switch (disposition) {
@@ -179,36 +182,202 @@ void EmpyreaSpell<0>::trigger() {
                 [this](Scene* scene, entt::entity target) -> void {
                     LogicTransform& logic_tfm = scene->registry.get<LogicTransform>(target);
 
-                    Hit hit = {
-                        .scene = scene,
-                        .position = math::round_cast(logic_tfm.position),
-                        .caster = caster
-                    };
-                    HitEffect splash_effect(EffectType_Splash);
-                    splash_effect.level = 2;
-                    hit.effects.push_back(splash_effect);
-                    HitEffect slow_level(EffectType_Splash);
-                    slow_level.duration = entry->extra_floats.at("SlowDuration");
-                    slow_level.level = math::round_cast(entry->extra_floats.at("SlowLevel"));
-                    hit.effects.push_back(slow_level);
+                    HitEffect floor_effect(EffectType_Floor);
+                    HitEffect slow_effect(EffectType_Slow);
+                    slow_effect.duration = entry->extra_floats.at("SlowDuration");
+                    slow_effect.level = math::round_cast(entry->extra_floats.at("SlowLevel"));
                     HitEffect acid_effect(EffectType_Acid);
                     acid_effect.level = 1;
                     acid_effect.duration = attack_entry->extra_floats.at("AcidDuration");
+                    Hit hit = {
+                        .scene = scene,
+                        .position = math::round_cast(logic_tfm.position),
+                        .caster = caster,
+                        .effects = {floor_effect, slow_effect, acid_effect}
+                    };
                     hit.effects.push_back(acid_effect);
                     hit.process();
                 }
             );
         }
     };
+    Hit hit = {
+        .scene = scene,
+        .position = math::round_cast(logic_tfm.position),
+        .caster = caster,
+        .effects = {floor_effect, custom_effect}
+    };
     hit.effects.push_back(custom_effect);
     hit.process();
 }
 
+
+/// SHADOW DANCER
+template<uint8 variant>
+void EmpyreaAttack<variant>::EtherealReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect) {
+    HitEffect amplify_effect(EffectType_Amplify);
+    amplify_effect.level = math::round_cast(entry->extra_floats.at("AmplifyLevel"));
+    amplify_effect.duration = entry->extra_floats.at("AmplifyDuration");
+    Hit hit = {
+                        .scene = scene,
+                        .position = math::round_cast(scene->registry.get<LogicTransform>(caster).position),
+                        .caster = caster,
+                        .effects = {amplify_effect}
+    };
+    hit.process();
+}
+
+template<>
+EmpyreaAttack<1>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
+    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, 0, AbilityType_Attack));
+    setup_time(entry->pre_time, entry->post_time);
+    setup_cd(entry->extra_floats.at("CD"));
+    ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
+
+    HitReaction& damage_reaction = scene->hit_scene_state.reactions.push_back({});
+    damage_reaction.relies_on_effect_type = EffectType_Damage;
+    damage_reaction.relies_on_receiver = caster;
+    damage_reaction.reaction.connect<&EmpyreaAttack<1>::DamageReaction>(*this);
+
+    HitReaction& ethereal_reaction = scene->hit_scene_state.reactions.push_back({});
+    ethereal_reaction.relies_on_effect_type = EffectType_Ethereal;
+    ethereal_reaction.relies_on_receiver = caster;
+    ethereal_reaction.reaction.connect<&EmpyreaAttack<1>::EtherealReaction>(*this);
+
+    entry_gather_function = gather_enemies();
+    entry_eval_function = basic_lizard_entry_eval;
+    set_anims = false;
+}
+
+template<>
+void EmpyreaAttack<1>::trigger() {
+    auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    v3 hit_vec = v3(target) - logic_tfm.position;
+
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/empyrea/basic_hit.sbjemt"_resource);
+    emitter_cpu.orientation_settings.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
+    quick_emitter(scene, "Empyrea hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
+
+    HitEffect damage_effect(EffectType_Damage);
+    damage_effect.quantity = entry->extra_floats.at("Damage");
+
+    Hit hit = {
+        .scene = scene,
+        .position = target,
+        .caster = caster,
+        .effects = {damage_effect}
+    };
+    hit.process();
+
+    auto poser = scene->registry.try_get<PoseController>(caster);
+    if (poser) {
+        poser->set_state(phase == 0 ? AnimationState_AttackOut : AnimationState_Attack2Out, post_trigger_time.value());
+    }
+
+    phase = phase == 0 ? 1 : 0;
+}
+
+template<>
+void EmpyreaSpell<1>::trigger() {
+    auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    HitEffect regen_effect(EffectType_Regen);
+    regen_effect.quantity = entry->extra_floats.at("RegenAmount");
+    regen_effect.duration = entry->extra_floats.at("RegenDuration");
+
+    Hit hit = {
+        .scene = scene,
+        .position = math::round_cast(logic_tfm.position),
+        .caster = caster,
+        .effects = {regen_effect}
+    };
+    hit.process();
+}
+
+
+/// ASSASSIN
+template<uint8 variant>
+void EmpyreaAttack<variant>::ExecuteReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect) {
+    HitEffect heal_effect(EffectType_Amplify);
+    heal_effect.quantity = entry->extra_floats.at("ExecuteHealAmount");
+    Hit hit = {
+                     .scene = scene,
+                     .position = math::round_cast(scene->registry.get<LogicTransform>(caster).position),
+                     .caster = caster,
+                     .effects = {heal_effect}
+    };
+    hit.process();
+}
+
+template<>
+EmpyreaAttack<2>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
+    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, 0, AbilityType_Attack));
+    setup_time(entry->pre_time, entry->post_time);
+    setup_cd(entry->extra_floats.at("CD"));
+    ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
+
+    HitReaction& execute_reaction = scene->hit_scene_state.reactions.push_back({});
+    execute_reaction.relies_on_effect_type = EffectType_Execute;
+    execute_reaction.relies_on_receiver = caster;
+    execute_reaction.reaction.connect<&EmpyreaAttack<2>::ExecuteReaction>(*this);
+
+    entry_gather_function = gather_enemies();
+    entry_eval_function = basic_lizard_entry_eval;
+    set_anims = false;
+}
+
+template<>
+void EmpyreaAttack<2>::trigger() {
+    auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
+    v3 hit_vec = v3(target) - logic_tfm.position;
+
+    EmitterCPU emitter_cpu = load_resource<EmitterCPU>("emitters/empyrea/basic_hit.sbjemt"_resource);
+    emitter_cpu.orientation_settings.rotation = math::quat_between(v3(1.0f, 0.0f, 0.0f), math::normalize(hit_vec));
+    quick_emitter(scene, "Empyrea hit", v3(target) + v3(0.5f), emitter_cpu, 0.2f);
+
+    HitEffect damage_effect(EffectType_Damage);
+    damage_effect.quantity = entry->extra_floats.at("Damage");
+    HitEffect execute_effect(EffectType_Execute);
+    execute_effect.quantity = entry->extra_floats.at("ExecuteAmount");
+
+    Hit hit = {
+        .scene = scene,
+        .position = target,
+        .caster = caster,
+        .effects = {damage_effect, execute_effect}
+    };
+    hit.process();
+
+    auto poser = scene->registry.try_get<PoseController>(caster);
+    if (poser) {
+        poser->set_state(phase == 0 ? AnimationState_AttackOut : AnimationState_Attack2Out, post_trigger_time.value());
+    }
+
+    phase = phase == 0 ? 1 : 0;
+}
+
+template<>
+void EmpyreaSpell<2>::trigger() {
+    HitEffect floor_effect(EffectType_Floor);
+    HitEffect cull_effect(EffectType_Cull);
+    cull_effect.quantity = entry->extra_floats.at("CullAmount");
+
+    Hit hit = {
+        .scene = scene,
+        .position = target,
+        .caster = caster,
+        .effects = {floor_effect, cull_effect}
+    };
+    hit.process();
+}
+
+
+
+/// GENERAL
 template<>
 void draw_dragging_preview<LizardType_Empyrea, 0>(Scene* scene, entt::entity entity) {
     v3 logic_pos = scene->registry.get<Dragging>(entity).potential_logic_position;
     v3i logic_posi = math::round_cast(logic_pos);
-    
+
     vector<v3i> center_pieces = {logic_posi};
     for (const v2i& offset : {v2i{-1, 0}, v2i{0, -1}, v2i{1, 0}, v2i{0, 1}}) {
         center_pieces.push_back(logic_posi + v3i(offset, 0));
@@ -217,6 +386,17 @@ void draw_dragging_preview<LizardType_Empyrea, 0>(Scene* scene, entt::entity ent
         generate_outline(&scene->camera, scene->map_data.solids, center_pieces, palette::green_yellow, 0.05f),
         true, false);
 }
+
+template<>
+void draw_dragging_preview<LizardType_Empyrea, 1>(Scene* scene, entt::entity entity) {
+    draw_dragging_preview<LizardType_Empyrea, 0>(scene, entity);
+}
+
+template<>
+void draw_dragging_preview<LizardType_Empyrea, 2>(Scene* scene, entt::entity entity) {
+    draw_dragging_preview<LizardType_Empyrea, 0>(scene, entity);
+}
+
 
 template<>
 void build<LizardType_Empyrea, 0>(Scene* scene, entt::entity entity) {
@@ -228,24 +408,24 @@ void build<LizardType_Empyrea, 0>(Scene* scene, entt::entity entity) {
     caster.spell = std::make_unique<EmpyreaSpell<0>>(scene, entity);
 }
 
-//template<>
-//void build<LizardType_Empyrea, 1>(Scene* scene, entt::entity entity) {
-//    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, v3::X);
-//    Caster& caster = scene->registry.get<Caster>(entity);
-//
-//    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 0>;
-//    caster.attack = std::make_unique<EmpyreaAttack<1>>(scene, entity);
-//    caster.spell = std::make_unique<EmpyreaSpell<1>>(scene, entity);
-//}
-//
-//template<>
-//void build<LizardType_Empyrea, 2>(Scene* scene, entt::entity entity) {
-//    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, v3::X);
-//    Caster& caster = scene->registry.get<Caster>(entity);
-//
-//    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 0>;
-//    caster.attack = std::make_unique<EmpyreaAttack<2>>(scene, entity);
-//    caster.spell = std::make_unique<EmpyreaSpell<2>>(scene, entity);
-//}
+template<>
+void build<LizardType_Empyrea, 1>(Scene* scene, entt::entity entity) {
+    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, uint8(1));
+    Caster& caster = scene->registry.get<Caster>(entity);
+
+    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 1>;
+    caster.attack = std::make_unique<EmpyreaAttack<1>>(scene, entity);
+    caster.spell = std::make_unique<EmpyreaSpell<1>>(scene, entity);
+}
+
+template<>
+void build<LizardType_Empyrea, 2>(Scene* scene, entt::entity entity) {
+    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, uint8(2));
+    Caster& caster = scene->registry.get<Caster>(entity);
+
+    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 2>;
+    caster.attack = std::make_unique<EmpyreaAttack<2>>(scene, entity);
+    caster.spell = std::make_unique<EmpyreaSpell<2>>(scene, entity);
+}
 
 }

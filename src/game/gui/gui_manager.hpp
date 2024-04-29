@@ -4,6 +4,7 @@
 #include "general/math/math.hpp"
 #include "game/gui/card_gui.hpp"
 #include "game/gui/shop_gui.hpp"
+#include "game/gui/hud_gui.hpp"
 #include "game/effects/hit_effect.hpp"
 
 namespace spellbook {
@@ -36,6 +37,7 @@ struct GUIManager {
     vector<InteractRegion> interact_regions;
 
     ShopGUI shop_gui;
+    HUDGUI hud_gui;
 
     InteractRegion* hovered;
     InteractRegion* pressed;

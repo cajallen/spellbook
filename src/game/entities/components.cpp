@@ -195,9 +195,7 @@ Health::Health(float health_value, Scene* init_scene, entt::entity init_entity, 
     emitter_cpu_path = hurt_emitter_path;
 }
 
-void Health::damage(entt::entity damager, float amount, v3 direction) {
-    damage_signal.publish(scene, damager, entity, amount);
-
+bool Health::damage(entt::entity damager, float amount, v3 direction) {
     Caster* caster = scene->registry.try_get<Caster>(damager);
     float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount) * damage_taken_multiplier->value();
     value -= hurt_value / max_health->value();
@@ -224,14 +222,17 @@ void Health::damage(entt::entity damager, float amount, v3 direction) {
                 this->scene->registry.get<EmitterComponent>(entity).remove_emitter(random_id);
         }, true)->start(hurt_time);
     }
+
+
+    return hurt_value > 0.0f;
 }
 
-void Health::heal(entt::entity damager, float amount) {
-    damage_signal.publish(scene, damager, entity, amount);
-
+bool Health::heal(entt::entity damager, float amount) {
     Caster* caster = scene->registry.try_get<Caster>(damager);
-    float hurt_value = (caster ? stat_instance_value(&*caster->damage, amount) : amount);
-    value += hurt_value / max_health->value();
+    float heal_value = (caster ? stat_instance_value(&*caster->heal, amount) : amount);
+    value += heal_value / max_health->value();
+
+    return heal_value > 0.0f;
 }
 
 void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu, float duration) {

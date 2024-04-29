@@ -9,7 +9,7 @@ namespace spellbook {
 struct Scene;
 
 struct Bank {
-    std::array<int, Bead_Count> beads;
+    std::array<int32, Bead_Count> beads;
 };
 
 struct Player {

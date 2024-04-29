@@ -18,6 +18,7 @@ struct LizardCardGUI {
 
     int32 depth;
 
+    uint8 variant;
     LizardDatabase::LizardEntry& lizard;
     LizardDatabase::AbilityEntry& attack;
     LizardDatabase::AbilityEntry& spell;
@@ -32,7 +33,7 @@ struct LizardCardGUI {
     // set by the UI
     v2i position;
 
-    LizardCardGUI(LizardDatabase::LizardEntry& lizard, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, const std::function<void(Scene*,v3i)>& instance_func);
+    LizardCardGUI(LizardDatabase::LizardEntry& lizard, uint8 variant, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, std::function<void(Scene*,v3i)> instance_func);
 
     void draw(GUIManager* manager);
     void update(GUIManager* manager);

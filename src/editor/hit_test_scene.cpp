@@ -37,8 +37,6 @@ void HitTestScene::setup_scene(Scene* scene, bool scene_setup) {
         p_scene->setup("HitTestScene");
     p_scene->set_edit_mode(false);
 
-    gui_manager.setup(p_scene);
-
     TilePrefab tile_prefab = load_resource<TilePrefab>("resources/tiles/empty_tile"_content);
     TilePrefab slot_prefab = load_resource<TilePrefab>("resources/tiles/empty_slot"_content);
     for (int32 x = -2; x <= 2; x++) {
@@ -82,9 +80,6 @@ void HitTestScene::update() {
     Viewport& viewport = p_scene->render_scene.viewport;
 
     p_scene->update();
-
-    gui_manager.draw();
-    gui_manager.update();
 }
 
 #define EFFECT_ROW(Type) {ImGui::TableNextRow();\

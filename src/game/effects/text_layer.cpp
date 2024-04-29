@@ -31,8 +31,8 @@ inline void _read_tag(TextFormatState& state, vector<string>& strings, vector<Fo
     } else if (state.tag.starts_with("header")) {
         _change_font(strings, fonts, get_game_text_layer().header_font);
     } else if (state.tag.starts_with("tip=")) {
-        uint64 tooltip_hash = hash_view(state.tag.substr(4));
-        string insertion_string = fmt_("{{col={}}}", Color32(get_effect_database().entries.at(tooltip_hash).color).to_string());
+        EffectType tooltip_type = magic_enum::enum_cast<EffectType>(fmt_("EffectType_{}", state.tag.substr(4))).value_or(EffectType_Custom);
+        string insertion_string = fmt_("{{col={}}}", Color32(get_effect_database().entries.at(tooltip_type).color).to_string());
         strings.back().insert(strings.back().size(), insertion_string);
     } else if (state.tag.starts_with("ref=")) {
         string ref_input = state.tag.substr(4);
@@ -117,6 +117,7 @@ void insert_newlines(int32& position, string& text, Font* font, const GameTextLa
         }
         if (c == '\n') {
             position = 0;
+            last_acceptable_word_break = -1;
             continue;
         }
         if (c == ' ') {
@@ -125,8 +126,9 @@ void insert_newlines(int32& position, string& text, Font* font, const GameTextLa
         }
         Glyph& glyph = font->glyphs[c];
 
+        int32 glyph_end = position + glyph.mesh_size.x;
         position += glyph.mesh_advance.x;
-        if (position > settings.width && last_acceptable_word_break >= 0) {
+        if (glyph_end > settings.width && last_acceptable_word_break >= 0) {
             if (replace_word_break) {
                 text[last_acceptable_word_break] = '\n';
                 text_index = last_acceptable_word_break;
@@ -182,8 +184,6 @@ vector<Renderable*> upload_formatted_text(const string& input_text, v2i position
         .spatial = false,
         .position = position,
         .depth = settings.depth,
-        .distortion_amount = settings.distortion_amount,
-        .distortion_time = settings.distortion_time,
         .tooltip_regions = tooltip_regions,
         .hovered_id = settings.hovered_id,
         .hovered_index = settings.hovered_index

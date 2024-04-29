@@ -40,16 +40,16 @@ struct LizardDatabase {
     struct LizardEntry {
         struct VariantInfo {
             string title;
+            FilePath splash;
+            Color32 color;
             uint8 uv = 0;
         };
         LizardType type;
         std::array<VariantInfo, LIZARD_VARIANT_COUNT> variants;
         string name;
-        Color32 color;
         float scale;
         FilePath model_path;
         FilePath hurt_emitter;
-        FilePath splash;
         FilePath background;
         umap<string, string> extra_strings;
         umap<string, float> extra_floats;

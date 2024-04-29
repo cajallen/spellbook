@@ -6,21 +6,20 @@
 #include "general/color.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/render_scene.hpp"
-#include "game/effects/text_layer.hpp"
 #include "game/gui/gui_items.hpp"
-#include "editor/console.hpp"
 
 
 namespace spellbook {
 
 
-LizardCardGUI::LizardCardGUI(LizardDatabase::LizardEntry& lizard, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, const std::function<void(Scene*,v3i)>& instance_func)
-    : lizard(lizard)
+LizardCardGUI::LizardCardGUI(LizardDatabase::LizardEntry& lizard, uint8 variant, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, std::function<void(Scene*,v3i)> instance_func)
+    : variant(variant)
+    , lizard(lizard)
     , attack(attack)
     , spell(spell)
     , depth(depth)
     , instance_function(instance_func) {
-    size = v2i{300, 350};
+    size = v2i{350, 400};
     selected_at = 0.0f;
     attack_expanded = false;
     spell_expanded = false;
@@ -45,17 +44,17 @@ void LizardCardGUI::draw(GUIManager* manager) {
     AlignmentGUI card_splash_container(*manager);
     {
         ImageGUI card_splash(*manager);
-        card_splash.set_image(lizard.splash, v2i(200, 500), true);
+        card_splash.set_image(lizard.variants[variant].splash, v2i(200, 500), true);
         card_splash_container.item = make_unique<ImageGUI>(std::move(card_splash));
     }
     VerticalBox card_layout(*manager);
     {
         HorizontalBox title_bar(*manager);
-        title_bar.background_opacity = 0.5f;
+        title_bar.background_opacity = 0.6f;
         SpacingGUI    title_left_spacing(*manager);
         title_left_spacing.size = {10, 10};
         TextGUI text(*manager);
-        text.text = fmt_("{{header}}{{shadow}}{{col={}}}{}{{\\col}}{{\\shadow}}{{\\header}}", lizard.color.to_string(), lizard.name);
+        text.text = fmt_("{{header}}{{shadow}}{{col=ffffff}}{}{{\\col}}{{\\shadow}}{{\\header}}", lizard.name);
         title_bar.spacing_weights.push_back(0.0f);
         title_bar.items.emplace_back(make_unique<SpacingGUI>(title_left_spacing));
         title_bar.spacing_weights.push_back(0.0f);
@@ -65,24 +64,24 @@ void LizardCardGUI::draw(GUIManager* manager) {
         card_layout.items.emplace_back(make_unique<HorizontalBox>(std::move(title_bar)));
     }
     {
-        VerticalSeparator separator(*manager);
-        separator.height = 12;
-        separator.color = mix(palette::burly_wood, palette::black, 0.7f);
-        separator.width = 2.0f;
+        HorizontalBox title_bar(*manager);
+        title_bar.background_opacity = 0.6f;
+        SpacingGUI    title_left_spacing(*manager);
+        title_left_spacing.size = {10, 10};
+        TextGUI text(*manager);
+        text.text = fmt_("{{bold}}{{shadow}}{{col={}}}{}{{\\col}}{{\\shadow}}{{\\bold}}", lizard.variants[variant].color.to_string(), lizard.variants[variant].title);
+        title_bar.spacing_weights.push_back(0.0f);
+        title_bar.items.emplace_back(make_unique<SpacingGUI>(title_left_spacing));
+        title_bar.spacing_weights.push_back(0.0f);
+        title_bar.items.emplace_back(make_unique<TextGUI>(text));
+        title_bar.spacing_weights.push_back(1.0f);
         card_layout.spacing_weights.push_back(0.0f);
-        card_layout.items.emplace_back(make_unique<VerticalSeparator>(std::move(separator)));
+        card_layout.items.emplace_back(make_unique<HorizontalBox>(std::move(title_bar)));
     }
-    {
-        VerticalSeparator separator(*manager);
-        separator.height = 12;
-        separator.color = mix(palette::burly_wood, palette::black, 0.7f);
-        separator.width = 2.0f;
-        card_layout.spacing_weights.push_back(1.0f);
-        card_layout.items.emplace_back(make_unique<VerticalSeparator>(std::move(separator)));
-    }
+
     {
         HorizontalBox attack_name_bar(*manager);
-        attack_name_bar.background_opacity = 0.5f;
+        attack_name_bar.background_opacity = 0.6f;
         ImageGUI attack_icon(*manager);
         attack_icon.set_image("resources/icons/attack.sbatex"_content, v2i{20, 20}, true);
         attack_name_bar.spacing_weights.push_back(0.0f);
@@ -103,7 +102,7 @@ void LizardCardGUI::draw(GUIManager* manager) {
         attack_name_bar.hoverable = true;
         attack_name_bar.clickable = true;
         attack_index = card_layout.items.size();
-        card_layout.spacing_weights.push_back(0.0f);
+        card_layout.spacing_weights.push_back(1.0f);
         card_layout.items.emplace_back(make_unique<HorizontalBox>(std::move(attack_name_bar)));
     }
     if (attack_expanded) {
@@ -113,7 +112,7 @@ void LizardCardGUI::draw(GUIManager* manager) {
         card_layout.items.emplace_back(make_unique<SpacingGUI>(std::move(spacing)));
 
         HorizontalBox attack_text_bar(*manager);
-        attack_text_bar.background_opacity = 0.5f;
+        attack_text_bar.background_opacity = 0.6f;
         TextGUI attack_text(*manager);
         attack_text.text = attack.description;
         attack_text.ref_floats  = &attack.extra_floats;
@@ -132,7 +131,7 @@ void LizardCardGUI::draw(GUIManager* manager) {
     }
     {
         HorizontalBox spell_name_bar(*manager);
-        spell_name_bar.background_opacity = 0.5f;
+        spell_name_bar.background_opacity = 0.6f;
         ImageGUI spell_icon(*manager);
         spell_icon.set_image("resources/icons/spell.sbatex"_content, v2i{20, 20}, true);
         spell_name_bar.spacing_weights.push_back(0.0f);
@@ -162,7 +161,7 @@ void LizardCardGUI::draw(GUIManager* manager) {
         card_layout.items.emplace_back(make_unique<SpacingGUI>(std::move(spacing)));
 
         HorizontalBox spell_text_bar(*manager);
-        spell_text_bar.background_opacity = 0.5f;
+        spell_text_bar.background_opacity = 0.6f;
         TextGUI spell_text(*manager);
         spell_text.text = spell.description;
         spell_text.ref_floats = &spell.extra_floats;
@@ -176,9 +175,9 @@ void LizardCardGUI::draw(GUIManager* manager) {
 
     panel.hoverable = true;
     panel.clickable = true;
-    attack_id = card_layout.items[attack_index]->get_id();
-    spell_id = card_layout.items[spell_index]->get_id();
-    card_id = panel.get_id();
+    attack_id = card_layout.items[attack_index]->id;
+    spell_id = card_layout.items[spell_index]->id;
+    card_id = panel.id;
 
     card_stack.items.emplace_back(make_unique<AlignmentGUI>(std::move(card_splash_container)));
     card_stack.items.emplace_back(make_unique<VerticalBox>(std::move(card_layout)));

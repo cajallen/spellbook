@@ -35,10 +35,6 @@ void initialize_lizard_database(LizardDatabase& database) {
                 entry.name = from_jv<string>(*value_jv_ptr);
                 continue;
             }
-            if (value_name == "Color") {
-                entry.color = Color32(from_jv<string>(*value_jv_ptr));
-                continue;
-            }
             if (value_name == "Scale") {
                 entry.scale = from_jv<float>(*value_jv_ptr);
                 continue;
@@ -49,10 +45,6 @@ void initialize_lizard_database(LizardDatabase& database) {
             }
             if (value_name == "HurtEmitter") {
                 entry.hurt_emitter = FilePath(from_jv<string>(*value_jv_ptr), FilePathLocation_Content);
-                continue;
-            }
-            if (value_name == "Splash") {
-                entry.splash = FilePath(from_jv<string>(*value_jv_ptr), FilePathLocation_Content);
                 continue;
             }
             if (value_name == "Background") {
@@ -66,6 +58,14 @@ void initialize_lizard_database(LizardDatabase& database) {
                     for (const auto& [variant_name, variant_jv_ptr] : variant_json) {
                         if (variant_name == "Title") {
                             entry.variants[variant_index].title = from_jv<string>(*variant_jv_ptr);
+                            continue;
+                        }
+                        if (variant_name == "Splash") {
+                            entry.variants[variant_index].splash = FilePath(from_jv<string>(*variant_jv_ptr), FilePathLocation_Content);
+                            continue;
+                        }
+                        if (variant_name == "Color") {
+                            entry.variants[variant_index].color = Color32(from_jv<string>(*variant_jv_ptr));
                             continue;
                         }
                         if (variant_name == "UV") {

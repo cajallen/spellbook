@@ -11,14 +11,16 @@ struct Scene;
 struct Player;
 struct SpawnStateInfo;
 struct Item;
+struct ShopGUI;
 
 struct ShopEntry {
-    Bead cost_type = Bead_Oak;
+    Bead cost_type = Bead_Wood;
     int32 cost_amount = 0;
     LizardType lizard_type;
     uint8 lizard_variant;
 
     std::function<void(Scene*, entt::entity)> build_func;
+    std::function<void(ShopGUI&)> add_card_func;
 
     Item* item = nullptr;
 };
@@ -68,12 +70,15 @@ struct FirstFreeShopGenerator : ShopGenerator {
 };
 
 struct Shop {
+    ShopGUI* shop_gui;
     std::unique_ptr<ShopGenerator> shop_generator = {};
     vector<ShopEntry*>* entries = nullptr;
+
+    void open(Scene* scene);
 };
 
 bool button(ShopEntry* shop_entry);
-void show_shop(Shop* shop, Player* player);
+void inspect(Shop* shop, Player* player);
 
 void inspect(ShopEntry* shop_entry);
 void inspect(Warehouse* warehouse);

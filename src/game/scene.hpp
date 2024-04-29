@@ -12,6 +12,8 @@
 #include "game/player.hpp"
 #include "game/map_targeting.hpp"
 #include "game/audio.hpp"
+#include "game/effects/hit.hpp"
+#include "game/gui/gui_manager.hpp"
 
 
 namespace spellbook {
@@ -70,6 +72,10 @@ struct Scene {
     
     std::unique_ptr<astar::Navigation> navigation;
     vector<PathInfo> paths;
+
+    GUIManager gui_manager;
+
+    HitSceneState hit_scene_state;
 
     Scene();
     ~Scene();

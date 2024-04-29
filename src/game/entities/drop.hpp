@@ -11,9 +11,7 @@ namespace spellbook {
 struct Scene;
 
 enum Bead {
-    Bead_Oak,
-    Bead_Yew,
-    Bead_Amber,
+    Bead_Wood,
     Bead_Malachite,
     Bead_Quartz,
     Bead_Count

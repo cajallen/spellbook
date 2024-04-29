@@ -2,6 +2,7 @@
 
 #include "extension/fmt_geometry.hpp"
 #include "editor/console.hpp"
+#include "game/scene.hpp"
 #include "game/gui/gui_manager.hpp"
 #include "game/effects/text_layer.hpp"
 #include "renderer/render_scene.hpp"
@@ -10,7 +11,7 @@
 
 namespace spellbook {
 
-ItemGUI::ItemGUI(GUIManager& manager) : manager(manager), hoverable(false), clickable(false) {
+ItemGUI::ItemGUI(GUIManager& manager) : id(math::random_uint64()), manager(manager), hoverable(false), clickable(false) {
 }
 void ItemGUI::draw() {
 }
@@ -19,14 +20,11 @@ void ItemGUI::add_interact_region(range2i region) {
     if (!hoverable)
         return;
     InteractRegion text_interact_region;
-    text_interact_region.id = get_id();
+    text_interact_region.id = id;
     text_interact_region.region = region;
     text_interact_region.priority = depth;
     text_interact_region.clickable = clickable;
     manager.add_interact_region(text_interact_region);
-}
-uint64 ItemGUI::get_id() {
-    return uint64(this);
 }
 
 range2i ItemGUI::get_occupied_region() {
@@ -47,7 +45,7 @@ void PanelGUI::draw() {
         Color c1 = background_tint;
         Color c2 = mix(background_tint, palette::black, 0.2f);
         v3 vignette = {0.4f, 1.0f, 0.3f};
-        MeshUICPU background_mesh = generate_rounded_quad(region, 32, 2,DISTORTION_AMOUNT, DISTORTION_TIME, true, 1.0f);
+        MeshUICPU background_mesh = generate_rounded_quad(region, 32, 2, true, 1.0f);
         upload_mesh(background_mesh, true);
         r.mesh_id = background_mesh.id;
         r.material_id = make_panel_material(texture_path, c1, c2, vignette);
@@ -55,7 +53,7 @@ void PanelGUI::draw() {
         manager.scene->render_scene.ui_renderables.emplace(r);
 
         // full outline
-        MeshUICPU background_outline_mesh = generate_rounded_outline(region, 32, 2, outline_width, outline_color,DISTORTION_AMOUNT, DISTORTION_TIME);
+        MeshUICPU background_outline_mesh = generate_rounded_outline(region, 32, 2, outline_width, outline_color);
         upload_mesh(background_outline_mesh, true);
         r.mesh_id = background_outline_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
@@ -91,7 +89,7 @@ range2i ButtonGUI::get_occupied_region() {
 
 void ImageGUI::set_image(const FilePath& fp, v2i bounds, bool keep_aspect) {
     texture_path = fp;
-    TextureCPU tex = load_texture(fp);
+    const TextureCPU& tex = load_resource<TextureCPU>(fp);
     tiling = false;
     if (keep_aspect) {
         v2 ratio = v2(tex.size) / v2(bounds);
@@ -104,7 +102,7 @@ void ImageGUI::set_image(const FilePath& fp, v2i bounds, bool keep_aspect) {
 }
 void ImageGUI::set_image_tiling(const FilePath& fp, float scale) {
     texture_path = fp;
-    TextureCPU tex = load_texture(fp);
+    const TextureCPU& tex = load_resource<TextureCPU>(fp);
     v2 f_size = v2(tex.size) * scale;
     size = math::round_cast(f_size);
     tiling = true;
@@ -152,13 +150,11 @@ void ButtonGUI::draw() {
 void TextGUI::draw() {
     GameTextLayerSettings text_settings {
         .depth = depth,
-        .width = given_region.end.x - given_region.start.x,
-        .distortion_amount = 0.0f,
+        .width = given_region.end.x - given_region.start.x + 1, // End is inclusive, width is not
         .ref_floats = ref_floats,
         .ref_strings = ref_strings,
         .hovered_id = &manager.hovered->id,
-        .hovered_index = &manager.hovered->char_index,
-        .distortion_time = Input::time * 10.0f
+        .hovered_index = &manager.hovered->char_index
     };
     range2i text_region = calc_formatted_text_region(text, given_region.start, text_settings);
 
@@ -190,12 +186,10 @@ range2i TextGUI::get_occupied_region() {
     GameTextLayerSettings text_settings {
         .depth = depth,
         .width = given_region.end.x - given_region.start.x,
-        .distortion_amount = 0.0f,
         .ref_floats = ref_floats,
         .ref_strings = ref_strings,
         .hovered_id = &manager.hovered->id,
-        .hovered_index = &manager.hovered->char_index,
-        .distortion_time = Input::time * 10.0f
+        .hovered_index = &manager.hovered->char_index
     };
 
     range2i text_region = calc_formatted_text_region(text, given_region.start, text_settings);
@@ -241,7 +235,7 @@ void VerticalBox::draw() {
         Renderable r = {};
         r.frame_allocated = true;
         // background
-        MeshUICPU background_mesh = generate_rounded_quad(background_region, 4, 1, DISTORTION_AMOUNT, DISTORTION_TIME, Color(v3(0.0f), background_opacity));
+        MeshUICPU background_mesh = generate_rounded_quad(background_region, 4, 1, Color(v3(0.0f), background_opacity));
         upload_mesh(background_mesh, true);
         r.mesh_id = background_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
@@ -306,7 +300,7 @@ void HorizontalBox::draw() {
         Renderable r = {};
         r.frame_allocated = true;
         // background
-        MeshUICPU background_mesh = generate_rounded_quad(background_region, 4, 1, DISTORTION_AMOUNT, DISTORTION_TIME, Color(v3(0.0f), background_opacity));
+        MeshUICPU background_mesh = generate_rounded_quad(background_region, 4, 1, Color(v3(0.0f), background_opacity));
         upload_mesh(background_mesh, true);
         r.mesh_id = background_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
@@ -349,7 +343,7 @@ void VerticalSeparator::draw() {
     r.frame_allocated = true;
 
     // background
-    MeshUICPU background_mesh = generate_separator(p1, p2, 5, width, DISTORTION_AMOUNT, DISTORTION_TIME, color);
+    MeshUICPU background_mesh = generate_separator(p1, p2, 5, width, color);
     upload_mesh(background_mesh, true);
     r.mesh_id = background_mesh.id;
     r.material_id = make_ui_material("white"_symbolic);

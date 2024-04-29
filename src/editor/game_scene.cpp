@@ -40,6 +40,8 @@ void GameScene::setup(const MapPrefab& map_prefab) {
     p_scene->set_edit_mode(false);
     p_scene->time_scale = 1.0f;
     setup_player_stuff();
+
+    p_scene->shop.open(p_scene);
 }
 
 void GameScene::update() {
@@ -63,6 +65,9 @@ void GameScene::setup_player_stuff() {
     p_scene->player.scene = p_scene;
     p_scene->shop.shop_generator = std::make_unique<FirstFreeShopGenerator>();
     p_scene->shop.shop_generator->setup(p_scene);
+
+    p_scene->gui_manager.hud_gui.player = &p_scene->player;
+    p_scene->gui_manager.hud_gui.enabled = true;
 }
 
 

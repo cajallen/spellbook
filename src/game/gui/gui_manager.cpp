@@ -68,10 +68,12 @@ void GUIManager::update() {
 
     interact_regions.clear();
 
+    hud_gui.update(this);
     shop_gui.update(this);
 }
 
 void GUIManager::draw() {
+    hud_gui.draw(this, scene->render_scene);
     shop_gui.draw(this, scene->render_scene);
 }
 

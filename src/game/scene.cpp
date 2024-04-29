@@ -34,6 +34,8 @@ Scene::~Scene() {}
 void Scene::setup(const string& input_name) {
     get_game_text_layer().setup();
 
+    gui_manager.setup(this);
+
     name = input_name;
 	render_scene.name = name + "::render_scene";
 	camera = Camera(v3(-8.0f, 8.0f, 6.0f), math::d2r(euler{-45.0f, -30.0f}));
@@ -117,10 +119,12 @@ void Scene::update() {
     text_3d_system(this);
     disposal_system(this);
 
-
     for (auto entity : registry.view<Name>()) {
         preview_3d_components(this, entity);
     }
+
+    gui_manager.draw();
+    gui_manager.update();
 }
 
 void MapData::update(entt::registry& registry) {
@@ -250,13 +254,14 @@ void Scene::settings_window(bool* p_open) {
 		}
 	}
     ImGui::End();
-    
-    if (!edit_mode) {
+
+    constexpr bool debug_ui_enabled = false;
+    if (!edit_mode && debug_ui_enabled) {
         if (ImGui::Begin((name + " Shop").c_str())) {
             inspect(spawn_state_info);
             if (ImGui::BeginTabBar("ShopTabBar")) {
                 if (ImGui::BeginTabItem("Shop")) {
-                    show_shop(&shop, &player);
+                    inspect(&shop, &player);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Generator")) {

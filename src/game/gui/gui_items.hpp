@@ -6,14 +6,13 @@
 #include "general/file/file_path.hpp"
 
 #define HIERARCHY_DEPTH_INCREMENT 2
-#define DISTORTION_AMOUNT 5.0f
-#define DISTORTION_TIME Input::time * 5.0f
 
 namespace spellbook {
 
 struct GUIManager;
 
 struct ItemGUI {
+    uint64 id;
     GUIManager& manager;
     range2i given_region;
     int32 depth;
@@ -25,7 +24,6 @@ struct ItemGUI {
     virtual void draw();
     virtual range2i get_occupied_region();
     void add_interact_region(range2i region);
-    uint64 get_id();
 };
 
 struct SpacingGUI : ItemGUI {

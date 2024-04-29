@@ -41,8 +41,11 @@ struct TextureGPU {
     bool frame_allocated;
 };
 
-TextureCPU load_texture(const FilePath& file_name);
-void       save_texture(const TextureCPU& texture_cpu);
+template <>
+bool     save_resource(const TextureCPU& resource_file);
+template <>
+TextureCPU& load_resource(const FilePath& input_path, bool assert_exist, bool clear_cache);
+
 FilePath   upload_texture(const TextureCPU& tex_cpu, bool frame_allocation = false);
 TextureCPU convert_to_texture(const FilePath& file_name, const FilePath& output_folder, const string& output_name);
 

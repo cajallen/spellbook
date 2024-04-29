@@ -14,6 +14,8 @@ struct Scene;
 // Hit effects are a subset of effects
 enum EffectType {
     EffectType_Custom,
+    EffectType_Reaction,
+    EffectType_Innate,
     EffectType_Damage,
     EffectType_Heal,
     EffectType_Growth,
@@ -26,7 +28,11 @@ enum EffectType {
     EffectType_Slow,
     EffectType_Acid,
     EffectType_Ethereal,
-    EffectType_Splash
+    EffectType_Splash,
+    EffectType_Floor,
+    EffectType_Execute,
+    EffectType_Cull,
+    EffectType_Count
 };
 
 struct EffectDatabase {
@@ -52,6 +58,10 @@ struct HitEffect {
 
     std::function<void(HitEffect&, Scene*, entt::entity, const vector<entt::entity>&)> apply_function;
     std::function<bool(Team::Disposition)> hits_disposition_function;
+
+    // internal, for use in post_apply with a hit
+    vector<entt::entity> checked_entities;
+    vector<entt::entity> affected_entities;
 
     HitEffect(EffectType type);
 };

@@ -1,6 +1,7 @@
 target_sources(spellbook_src PUBLIC
     shop_gui.cpp
     card_gui.cpp
+    hud_gui.cpp
     gui_manager.cpp
     gui_items.cpp
 )

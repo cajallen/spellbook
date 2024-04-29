@@ -46,7 +46,7 @@ TextureGPU& GPUAssetCache::get_texture_or_upload(const FilePath& asset_path) {
     uint64 hash = hash_path(asset_path);
     if (textures.contains(hash))
         return textures[hash];
-    upload_texture(load_texture(asset_path));
+    upload_texture(load_resource<TextureCPU>(asset_path));
     return textures[hash];
 }
 

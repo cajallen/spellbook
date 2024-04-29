@@ -79,7 +79,7 @@ void _read_tag(TextFormatState& state, umap<uint64, vector<TooltipRegion>>* tool
         state.shadow = true;
     } else if (state.tag.starts_with('\\')) {
         if (state.tag == "\\col") {
-            state.color = Color32(palette::gray_8);
+            state.color = Color32(palette::gray_9);
         }
         if (state.tag == "\\tip") {
             state.lift = 0.0f;
@@ -149,19 +149,16 @@ vector<Renderable*> upload_text_mesh(const vector<string>& strings, const vector
             v2 uv_end = v2(glyph.atlas_position + glyph.atlas_size) / v2(font.atlas_size);
 
             v2 char_center = v2(char_start + char_end) / 2.0f;
-            v2 offset = settings.spatial ? v2{} : v2{
-                settings.distortion_amount * (1.0f - 2.0f * fractal_perlin_noise(v3(char_center, settings.distortion_time), 0.02f, 2, 0.5f, 0)),
-                settings.distortion_amount * (1.0f - 2.0f * fractal_perlin_noise(v3(char_center, settings.distortion_time), 0.02f, 2, 0.5f, 1))
-            };
-            v2i offset_i = math::round_cast(offset);
 
-            _generate_text_mesh_add_quad(mesh_base, char_start + offset_i, char_end + offset_i, uv_start, uv_end, state.color);
+            _generate_text_mesh_add_quad(mesh_base, char_start, char_end, uv_start, uv_end, state.color);
             if (state.shadow)
-                _generate_text_mesh_add_quad(mesh_shadow, char_start + offset_i + v2i(math::round_cast(font.size * 0.07f) + 1), char_end + offset_i + v2i(math::round_cast(font.size * 0.07f) + 1), uv_start, uv_end, Color32(0, 0, 0, 127));
+                _generate_text_mesh_add_quad(mesh_shadow, char_start + v2i(math::round_cast(font.size * 0.07f) + 1), char_end + v2i(math::round_cast(font.size * 0.07f) + 1), uv_start, uv_end, Color32(0, 0, 0, 127));
             position.x += glyph.mesh_advance.x;
         }
         mesh_base.id = hash_combine(hash_view(text), font.id);
         mesh_shadow.id = hash_combine(hash_combine(hash_view(text), font.id), hash_view("shadow"));
+        mesh_base.id = hash_combine(mesh_base.id, hash_combine(settings.position.x, settings.position.y));
+        mesh_shadow.id = hash_combine(mesh_shadow.id, hash_combine(settings.position.x, settings.position.y));
 
         if (!mesh_base.vertices.empty()) {
             upload_mesh(mesh_base, frame_allocated);

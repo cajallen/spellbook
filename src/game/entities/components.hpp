@@ -1,7 +1,6 @@
 #pragma once
 
 #include <entt/entity/entity.hpp>
-#include <entt/signal/sigh.hpp>
 
 #include "general/string.hpp"
 #include "general/umap.hpp"
@@ -85,12 +84,10 @@ struct Health {
     std::unique_ptr<Stat> max_health;
     std::unique_ptr<Stat> damage_taken_multiplier;
     std::unique_ptr<Stat> regen;
-
-    entt::sigh<void(Scene*, entt::entity, entt::entity, float)> damage_signal;
     
     Health(float health_value, Scene* scene, entt::entity e, const FilePath& hurt_emitter_path = {});
-    void damage(entt::entity damager, float amount, v3 direction);
-    void heal(entt::entity damager, float amount);
+    bool damage(entt::entity damager, float amount, v3 direction);
+    bool heal(entt::entity damager, float amount);
 };
 
 struct Killed {

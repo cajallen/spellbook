@@ -31,8 +31,6 @@ struct TextSettings {
     // non spatial settings
     v2i position;
     int32 depth;
-    float distortion_amount;
-    float distortion_time;
     umap<uint64, vector<TooltipRegion>>* tooltip_regions;
     uint64* hovered_id;
     uint32* hovered_index;

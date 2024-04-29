@@ -20,8 +20,6 @@ struct HitTestScene : EditorScene {
     };
     umap<string, HitEffectInfo> effects;
 
-    GUIManager gui_manager;
-
     entt::entity god_caster;
 
     void setup() override;

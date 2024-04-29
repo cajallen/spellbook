@@ -10,7 +10,9 @@
 #include "game/entities/drop.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/spawner.hpp"
+#include "game/entities/lizards/instance_lizard.hpp"
 #include "game/entities/items/basic_stat_items.hpp"
+#include "game/gui/shop_gui.hpp"
 
 namespace spellbook {
 
@@ -62,9 +64,16 @@ void ShopGenerator::inspect() {
     log_warning("Attempted to use unenforced virtual ShopGenerator");
 }
 
+template<LizardType LT, uint8 variant>
+void add_warehouse_entry(Warehouse* warehouse, Bead cost_type, int32 cost_amount, float chance = 1.0f) {
+    warehouse->add_entry({cost_type, cost_amount, LT, variant, build<LT, variant>, add_lizard_card<LT, variant>}, 1.0f);
+}
+
 void FirstFreeShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    first_warehouse.add_entry({Bead_Oak, 0, LizardType_Empyrea, uint8(0), build<LizardType_Empyrea, 0>}, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, 0>(&first_warehouse, Bead_Wood, 0, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, 1>(&first_warehouse, Bead_Wood, 0, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, 2>(&first_warehouse, Bead_Wood, 0, 1.0f);
 }
 vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -103,10 +112,11 @@ void FirstFreeShopGenerator::inspect() {
     ImGui::Unindent();
 }
 
-
 void SimpleShopGenerator::setup(Scene* scene) {
     round_info = scene->spawn_state_info;
-    warehouse.add_entry({Bead_Oak, 4, LizardType_Empyrea, uint8(0), build<LizardType_Empyrea, 0>}, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, 0>(&warehouse, Bead_Wood, 4, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, 1>(&warehouse, Bead_Wood, 4, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, 2>(&warehouse, Bead_Wood, 4, 1.0f);
 }
 vector<ShopEntry*>* SimpleShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -179,7 +189,21 @@ void inspect(Warehouse* warehouse) {
         ImGui::EndTable();
     }
 }
-void show_shop(Shop* shop, Player* player) {
+
+void Shop::open(Scene* scene) {
+    shop_generator->reset();
+    entries = shop_generator->generate_shop();
+
+    shop_gui = &scene->gui_manager.shop_gui;
+    if (shop_gui) {
+        shop_gui->enabled = true;
+        for (auto entry : *entries) {
+            entry->add_card_func(*shop_gui);
+        }
+    }
+}
+
+void inspect(Shop* shop, Player* player) {
     ImGui::BeginGroup();
     for (uint32 i = 0; i < player->bank.beads.size(); i++) {
         auto bead_name = string(magic_enum::enum_name((Bead) i));
