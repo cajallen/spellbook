@@ -1,7 +1,7 @@
 ﻿#include "node_editor_impl.hpp"
 
-#include <imgui/misc/cpp/imgui_stdlib.h>
 #include <imgui.h>
+#include <imgui/misc/cpp/imgui_stdlib.h>
 #include "extension/icons/font_awesome4.h"
 #include "extension/fmt.hpp"
 

@@ -305,7 +305,7 @@ void RenderScene::pre_render() {
 
 
 void RenderScene::update() {
-    if (!query.futures.empty() && query.futures.front().node && *query.futures.front().poll() == vuk::Signal::Status::eHostAvailable) {
+    while (!query.futures.empty() && query.futures.front().node && *query.futures.front().poll() == vuk::Signal::Status::eHostAvailable) {
         auto result_buf = *query.futures.front().get(*get_renderer().global_allocator, get_renderer().compiler);
         query.result = *((uint32*) result_buf.mapped_ptr);
         query.futures.pop();
