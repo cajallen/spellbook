@@ -1,19 +1,20 @@
 #pragma once
 
-#include "general/string.hpp"
-#include "general/math/geometry.hpp"
-#include "renderer/camera.hpp"
-#include "renderer/viewport.hpp"
+#include "general/memory.hpp"
 #include "general/input.hpp"
+#include "general/math/geometry.hpp"
 
 struct GLFWwindow;
 
 namespace spellbook {
 
+struct Viewport;
+struct Camera;
+
 struct CameraController {
     string    name;
-    Viewport* viewport = nullptr; // Controller needs a viewport, because input is theoretically passed through the viewport.
-    Camera*   camera   = nullptr;
+    Viewport* viewport = {}; // Controller needs a viewport, because input is theoretically passed through the viewport.
+    Camera*   camera   = {};
 
     enum NavigationMode { NavigationMode_None, NavigationMode_Fly, NavigationMode_Pivot };
     NavigationMode nav_mode = NavigationMode_None;

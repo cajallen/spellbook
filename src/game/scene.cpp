@@ -16,15 +16,19 @@
 #include "game/game.hpp"
 #include "game/systems.hpp"
 #include "game/text_3d.hpp"
+#include "game/player.hpp"
+#include "game/audio.hpp"
 #include "game/pose_controller.hpp"
+#include "game/entities/consumer.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/spawner.hpp"
-#include "game/entities/consumer.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
 #include "game/entities/tags.hpp"
 #include "game/entities/projectile.hpp"
 #include "game/effects/text_layer.hpp"
+#include "game/gui/gui_manager.hpp"
+
 
 namespace spellbook {
 
@@ -34,16 +38,18 @@ Scene::~Scene() {}
 void Scene::setup(const string& input_name) {
     get_game_text_layer().setup();
 
-    gui_manager.setup(this);
+    gui_manager = make_unique<GUIManager>();
+    gui_manager->setup(this);
 
     name = input_name;
-	render_scene.name = name + "::render_scene";
+    render_scene = make_unique<RenderScene>();
+	render_scene->name = name + "::render_scene";
 	camera = Camera(v3(-8.0f, 8.0f, 6.0f), math::d2r(euler{-45.0f, -30.0f}));
-	render_scene.viewport.name	 = render_scene.name + "::viewport";
-	render_scene.viewport.camera = &camera;
-	render_scene.viewport.setup();
+	render_scene->viewport.name	 = render_scene->name + "::viewport";
+	render_scene->viewport.camera = &camera;
+	render_scene->viewport.setup();
 	controller.name = name + "::controller";
-	controller.setup(&render_scene.viewport, &camera);
+	controller.setup(&render_scene->viewport, &camera);
 
     registry.on_construct<Dragging>().connect<&on_dragging_create>(*this);
     registry.on_destroy<Model>().connect<&on_model_destroy>(*this);
@@ -59,17 +65,21 @@ void Scene::setup(const string& input_name) {
     registry.on_destroy<Text3D>().connect<&on_text_3d_destroy>(*this);
 
     game.scenes.push_back(this);
-	get_renderer().add_scene(&render_scene);
+	get_renderer().add_scene(&*render_scene);
 
-    spawn_state_info = new SpawnStateInfo();
-    player.bank.beads[Bead_Quartz] = 2;
+    spawn_state_info = make_unique<SpawnStateInfo>();
+    player = make_unique<Player>();
+    player->bank.beads[Bead_Quartz] = 2;
+
+    shop = make_unique<Shop>();
 
     targeting = std::make_unique<MapTargeting>();
     targeting->scene = this;
 
     navigation = std::make_unique<astar::Navigation>(&map_data.path_solids, &map_data.slot_solids, &map_data.unstandable_solids, &map_data.ramps);
 
-    audio.setup();
+    audio = make_unique<Audio>();
+    audio->setup();
 }
 
 void Scene::update() {
@@ -86,7 +96,7 @@ void Scene::update() {
     update_timers(this);
     
 	controller.update();
-    audio.update(this);
+    audio->update(this);
 
     traveler_reset_system(this);
     
@@ -123,8 +133,8 @@ void Scene::update() {
         preview_3d_components(this, entity);
     }
 
-    gui_manager.draw();
-    gui_manager.update();
+    gui_manager->draw();
+    gui_manager->update();
 }
 
 void MapData::update(entt::registry& registry) {
@@ -159,7 +169,7 @@ void update_paths(vector<PathInfo>& paths, Scene& scene) {
     paths.clear();
     for (auto [spawner_e, spawner, spawner_tfm] : scene.registry.view<Spawner, LogicTransform>().each()) {
         for (auto [consumer_e, consumer, consumer_tfm] : scene.registry.view<Shrine, LogicTransform>().each()) {
-            Path path = scene.navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
+            NavigationPath path = scene.navigation->find_path(math::round_cast(spawner_tfm.position), math::round_cast(consumer_tfm.position));
             if (math::distance(path.get_destination(), consumer_tfm.position) < 0.1f) {
                 paths.emplace_back(spawner_e, consumer_e, std::move(path));
             }
@@ -185,17 +195,16 @@ void render_paths(vector<PathInfo>& paths, RenderScene& render_scene, float time
 
 
 void Scene::set_edit_mode(bool to) {
-    render_scene.render_grid = false;
-    render_scene.render_widgets = to;
+    render_scene->render_grid = false;
+    render_scene->render_widgets = to;
     edit_mode = to;
 }
 
 void Scene::cleanup() {
-    audio.shutdown();
-    delete spawn_state_info;
+    audio->shutdown();
     
     controller.cleanup();
-	render_scene.cleanup(*get_renderer().global_allocator);
+	render_scene->cleanup(*get_renderer().global_allocator);
     game.scenes.remove_value(this);
 }
 
@@ -247,7 +256,7 @@ void Scene::settings_window(bool* p_open) {
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Render Scene")) {
-			    render_scene.settings_gui();
+			    render_scene->settings_gui();
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
@@ -258,14 +267,14 @@ void Scene::settings_window(bool* p_open) {
     constexpr bool debug_ui_enabled = false;
     if (!edit_mode && debug_ui_enabled) {
         if (ImGui::Begin((name + " Shop").c_str())) {
-            inspect(spawn_state_info);
+            inspect(&*spawn_state_info);
             if (ImGui::BeginTabBar("ShopTabBar")) {
                 if (ImGui::BeginTabItem("Shop")) {
-                    inspect(&shop, &player);
+                    inspect(&*shop, &*player);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Generator")) {
-                    shop.shop_generator->inspect();
+                    shop->shop_generator->inspect();
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();
@@ -280,19 +289,23 @@ void Scene::output_window(bool* p_open) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     if (ImGui::Begin((name + " Output").c_str(), p_open)) {
         pause = false;
-        render_scene.viewport.window_hovered = ImGui::IsWindowHovered();
-        render_scene.image((v2i) ImGui::GetContentRegionAvail());
-        // if (ImGui::BeginDragDropTarget()) {
-        //     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_ENTITY_LIZARD")) {
-        //         
-        //     }
-        //     ImGui::EndDragDropTarget();
-        // }
-        render_scene.cull_pause = false;
+        render_scene->viewport.window_hovered = ImGui::IsWindowHovered();
+        render_scene->window((v2i) ImGui::GetContentRegionAvail());
+        render_scene->cull_pause = false;
     } else {
         pause = true;
-        render_scene.viewport.window_hovered = false;
-        render_scene.cull_pause = true;
+        render_scene->viewport.window_hovered = false;
+        render_scene->cull_pause = true;
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
+void Scene::output_image(bool* p_open) {
+    ZoneScoped;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    if (ImGui::Begin((name + " Output").c_str(), p_open)) {
+        render_scene->render();
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -373,9 +386,10 @@ entt::entity quick_emitter(Scene* scene, const string& name, v3 position, Emitte
 
 void Scene::select_entity(entt::entity entity) {
     selected_entity = entity;
-    v3  intersect = math::intersect_axis_plane(render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+    v3  intersect = math::intersect_axis_plane(render_scene->viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
     LogicTransform* logic_tfm = registry.try_get<LogicTransform>(selected_entity);
-    if (!logic_tfm)
+    Dragging* dragging = registry.try_get<Dragging>(selected_entity);
+    if (!logic_tfm || dragging)
         return;
 
     Tags* tags = registry.try_get<Tags>(selected_entity);
@@ -383,14 +397,14 @@ void Scene::select_entity(entt::entity entity) {
         if (tags->has_tag(hash_view("no_move")))
             return;
     
-    if (registry.all_of<Draggable>(selected_entity) && player.can_drag()) {
+    if (registry.all_of<Draggable>(selected_entity) && player->can_drag()) {
         Draggable& draggable = registry.get<Draggable>(selected_entity);
-        registry.emplace<Dragging>(selected_entity, player.get_drag_cost(), draggable.drag_height, time, logic_tfm->position, intersect);
+        registry.emplace<Dragging>(selected_entity, player->get_drag_cost(), draggable.drag_height, time, logic_tfm->position, intersect);
     }
 }
 
 bool Scene::get_object_placement(v2i offset, v3i& pos) {
-    ray3 mouse_ray = render_scene.viewport.ray(math::round_cast(Input::mouse_pos) + offset);
+    ray3 mouse_ray = render_scene->viewport.ray(math::round_cast(Input::mouse_pos) + offset);
     v3 intersect;
     return ray_intersection(map_data.solids, mouse_ray, intersect, pos, {});
 }

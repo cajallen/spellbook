@@ -35,7 +35,7 @@ target_include_directories(ft INTERFACE freetype/include)
 add_library(lz4 lz4/lz4.cpp lz4/lz4hc.cpp lz4/xxhash.cpp)
 
 add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE vuk/ext/stb)
+target_include_directories(stb INTERFACE stb)
 
 add_library(miniaudio INTERFACE)
 target_include_directories(miniaudio INTERFACE miniaudio)
@@ -50,7 +50,6 @@ target_link_libraries(libs INTERFACE
     lz4
     vk-bootstrap
     imgui
-    vk-bootstrap
     robin_hood
     fmt
     miniaudio

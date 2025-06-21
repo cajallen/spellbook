@@ -21,6 +21,34 @@
 
 namespace spellbook {
 
+ModelCPU::Node from_jv_impl(const json_value& jv, ModelCPU::Node* _) {
+    json j = from_jv<json>(jv);
+    ModelCPU::Node value;
+    FROM_JSON_ELE(name);
+    FROM_JSON_ELE(mesh_selection);
+    FROM_JSON_ELE(mesh_path_options);
+    if (j.contains("mesh_asset_path")) {
+        value.mesh_path_options.push_back(from_jv<FilePath>(*j.at("mesh_asset_path")));
+    }
+    FROM_JSON_ELE(material_asset_path);
+    FROM_JSON_ELE(transform);
+    FROM_JSON_ELE(parent);
+    FROM_JSON_ELE(children);
+    return value;
+}
+json_value to_jv(const ModelCPU::Node& value) {
+    auto j = json();
+    TO_JSON_ELE(name);
+    TO_JSON_ELE(mesh_selection);
+    TO_JSON_ELE(mesh_path_options);
+    TO_JSON_ELE(material_asset_path);
+    TO_JSON_ELE(transform);
+    TO_JSON_ELE(parent);
+    TO_JSON_ELE(children);
+    return to_jv(j);
+}
+
+
 ModelCPU& ModelCPU::operator = (const ModelCPU& oth) {
     file_path = oth.file_path;
     dependencies = oth.dependencies;
@@ -92,7 +120,7 @@ bool inspect(ModelCPU* model, RenderScene* render_scene) {
 
     changed |= inspect_dependencies(model->dependencies, model->file_path);
     
-    std::function<void(id_ptr<ModelCPU::Node>)> traverse;
+    function<void(id_ptr<ModelCPU::Node>)> traverse;
     traverse = [&traverse, &model, &changed](id_ptr<ModelCPU::Node> node) {
         string id_str = fmt_("{}###{}", node->name, node.id);
         if (ImGui::TreeNode(id_str.c_str())) {
@@ -223,7 +251,7 @@ bool save_resource(const ModelCPU& model) {
         }
     }
     
-    string ext = model.file_path.rel_path().extension().string();
+    string ext = model.file_path.extension();
     assert_else(ext == ModelCPU::extension())
         return false;
     
@@ -240,7 +268,7 @@ ModelCPU& load_resource(const FilePath& input_path, bool assert_exists, bool cle
 
     ModelCPU& model = *cpu_resource_cache<ModelCPU>().emplace(input_path, std::make_unique<ModelCPU>()).first->second;
     
-    bool exists = fs::exists(input_path.abs_path());
+    bool exists = input_path.exists();
     bool corrext = input_path.extension() == ModelCPU::extension();
     if (assert_exists) {
         assert_else(exists && corrext)
@@ -314,9 +342,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
     // TODO: gltf can't support null materials
     // TODO: create dir
 
-    fs::path output_folder_path = output_folder.abs_path();
-
-    const auto& ext = input_path.rel_path().extension().string();
+    const auto& ext = input_path.extension();
     assert_else(ModelExternal::path_filter()(input_path))
         return {};
     tinygltf::Model    gltf_model;
@@ -335,9 +361,8 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
         return {};
 
     ModelCPU model_cpu;
-    fs::path model_fs_path = output_folder_path / output_name;
-    model_fs_path.replace_extension(ModelCPU::extension());
-    model_cpu.file_path = FilePath(model_fs_path);
+    model_cpu.file_path = output_folder + output_name;
+    model_cpu.file_path.replace_extension(ModelCPU::extension());
     
     _convert_gltf_skeletons(gltf_model, &model_cpu, replace_existing_poses);
     _convert_gltf_meshes(gltf_model, output_folder);
@@ -392,7 +417,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
             assert_else(material >= 0 && "Need material on node, default mat NYI");
             string material_name = _calculate_gltf_material_name(gltf_model, material);
 
-            fs::path material_path = output_folder_path / (material_name + string(MaterialCPU::extension()));
+            FilePath material_path = output_folder + (material_name + string(MaterialCPU::extension()));
 
             uint8 uv_set_count = 0;
             for (uv_set_count = 0; uv_set_count < 4;) {
@@ -404,7 +429,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
 
             for (uint8 uv_index = 0; uv_index < uv_set_count; uv_index++) {
                 string mesh_name     = _calculate_gltf_mesh_name(gltf_model, gltf_node.mesh, 0, uv_index);
-                fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
+                FilePath mesh_path     = output_folder + (mesh_name + string(MeshCPU::extension()));
                 model_node.mesh_path_options.emplace_back(mesh_path);
             }
 
@@ -448,7 +473,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
 
             int    material      = primitive.material;
             string material_name = _calculate_gltf_material_name(gltf_model, material);
-            fs::path material_path = output_folder_path / (material_name + string(MaterialCPU::extension()));
+            FilePath material_path = output_folder + (material_name + string(MaterialCPU::extension()));
 
             uint8 uv_set_count = 0;
             for (uv_set_count = 0; uv_set_count < 4;) {
@@ -460,7 +485,7 @@ ModelCPU convert_to_model(const FilePath& input_path, const FilePath& output_fol
 
             for (uint8 uv_index = 0; uv_index < uv_set_count; uv_index++) {
                 string mesh_name     = _calculate_gltf_mesh_name(gltf_model, multimat_node.mesh, i_primitive, uv_index);
-                fs::path mesh_path     = output_folder_path / (mesh_name + string(MeshCPU::extension()));
+                FilePath mesh_path     = output_folder + (mesh_name + string(MeshCPU::extension()));
                 model_node_ptr->mesh_path_options.emplace_back(mesh_path);
             }
 
@@ -524,7 +549,7 @@ bool _convert_gltf_skeletons(tinygltf::Model& model, ModelCPU* model_cpu, bool r
     if (model.skins.empty())
         return true;
     
-    fs::path skeleton_fs_path = model_cpu->file_path.abs_path();
+    FilePath skeleton_fs_path = model_cpu->file_path;
     skeleton_fs_path.replace_extension(SkeletonPrefab::extension());
     FilePath skeleton_path = FilePath(skeleton_fs_path);
     SkeletonPrefab& skeleton = load_resource<SkeletonPrefab>(skeleton_path, false);
@@ -989,7 +1014,7 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const FilePath& output_folder)
                 }
 
                 string name = _calculate_gltf_mesh_name(model, i_mesh, i_primitive, uvs.index(uv_set));
-                mesh_cpu.file_path = FilePath(output_folder.abs_path() / (name + string(MeshCPU::extension())));
+                mesh_cpu.file_path = output_folder + (name + string(MeshCPU::extension()));
 
                 save_mesh(mesh_cpu);
             }
@@ -1001,7 +1026,6 @@ bool _convert_gltf_meshes(tinygltf::Model& model, const FilePath& output_folder)
 
 bool _convert_gltf_materials(tinygltf::Model& model, const FilePath& output_folder) {
     ZoneScoped;
-    fs::path output_folder_path = output_folder.abs_path();
     int material_number = 0;
     for (auto& glmat : model.materials) {
         string matname = _calculate_gltf_material_name(model, material_number++);
@@ -1021,21 +1045,21 @@ bool _convert_gltf_materials(tinygltf::Model& model, const FilePath& output_fold
             if (texture_index < 0)
                 continue;
             auto image     = model.textures[texture_index];
-            auto baseImage = model.images[image.source];
+            auto base_image = model.images[image.source];
 
-            if (baseImage.name == "")
-                baseImage.name = texture_names[i];
+            if (base_image.name == "")
+                base_image.name = texture_names[i];
 
-            fs::path color_path = (output_folder_path / baseImage.name).string();
+            FilePath color_path = output_folder + base_image.name;
             color_path.replace_extension(TextureCPU::extension());
             vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
 
             TextureCPU texture_cpu = {
                 FilePath(color_path),
                 {},
-                v2i{baseImage.width, baseImage.height},
+                v2i{base_image.width, base_image.height},
                 format,
-                vector<uint8>(&*baseImage.image.begin(), &*baseImage.image.begin() + baseImage.image.size())
+                vector<uint8>(&*base_image.image.begin(), &*base_image.image.begin() + base_image.image.size())
             };
             save_resource(texture_cpu);
             *texture_files[i] = texture_cpu.file_path;
@@ -1051,7 +1075,7 @@ bool _convert_gltf_materials(tinygltf::Model& model, const FilePath& output_fold
         material_cpu.roughness_factor = pbr.roughnessFactor;
         material_cpu.metallic_factor  = pbr.metallicFactor;
         material_cpu.normal_factor    = material_cpu.normal_asset_path == "white"_symbolic ? 0.0f : 0.5f;
-        fs::path material_path        = output_folder_path / (matname + string(MaterialCPU::extension()));
+        FilePath material_path        = output_folder + (matname + string(MaterialCPU::extension()));
         material_cpu.file_path        = FilePath(material_path);
 
         if (glmat.alphaMode.compare("BLEND") == 0) {

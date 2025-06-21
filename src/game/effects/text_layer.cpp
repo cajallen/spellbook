@@ -10,8 +10,8 @@ void GameTextLayer::setup() {
 
     get_font_manager().setup();
 
-    default_font = get_font_manager().load_font("resources/fonts/t.ttf"_content, 20);
-    default_bold_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 20);
+    default_font = get_font_manager().load_font("resources/fonts/t.ttf"_content, 16);
+    default_bold_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 16);
     title_font = get_font_manager().load_font("resources/fonts/dh.otf"_content, 35);
     header_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 25);
     spatial_font = get_font_manager().load_font("resources/fonts/t-bold.ttf"_content, 50, false);

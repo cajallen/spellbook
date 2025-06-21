@@ -1,16 +1,18 @@
 #pragma once
 
-#include "editor_scene.hpp"
+#include "editor/editor_scene.hpp"
+
 #include "game/map.hpp"
-#include "game/scene.hpp"
+#include "game/visual_tile.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
-#include "game/entities/consumer.hpp"
 #include "game/entities/spawner.hpp"
-#include "game/visual_tile.hpp"
-#include "renderer/assets/model.hpp"
-#include "renderer/assets/material.hpp"
+#include "game/entities/consumer.hpp"
+#include "renderer/renderable.hpp"
+#include "renderer/assets/particles.hpp"
 #include "renderer/assets/mesh.hpp"
+#include "renderer/assets/material.hpp"
+#include "renderer/assets/model.hpp"
 
 namespace spellbook {
 

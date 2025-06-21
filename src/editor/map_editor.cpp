@@ -1,5 +1,6 @@
-
 #include "map_editor.hpp"
+
+#include <filesystem>
 
 #include <tracy/Tracy.hpp>
 #include <imgui/imgui.h>
@@ -8,13 +9,16 @@
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "general/input.hpp"
+#include "general/astar.hpp"
 #include "general/math/matrix_math.hpp"
 #include "editor/console.hpp"
 #include "editor/pose_widget.hpp"
 #include "editor/game_scene.hpp"
 #include "editor/widget_system.hpp"
 #include "editor/file_browser.hpp"
+#include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
+#include "renderer/assets/model.hpp"
 #include "game/game.hpp"
 #include "game/scene.hpp"
 #include "game/tile_set_generator.hpp"
@@ -23,8 +27,7 @@
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
 #include "game/entities/enemy.hpp"
-
-#include "general/astar.hpp"
+#include "game/text_3d.hpp"
 
 namespace spellbook {
 
@@ -104,9 +107,8 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
         ImGui::PathSelect<T>("Path", &add_map[name].item_path, 1);
         
         if (ImGui::Button("Add")) {
-            fs::path as_path = add_map[name].item_path.abs_path();
-            if (fs::is_directory(as_path)) {
-                for (auto& dir_entry : fs::directory_iterator(as_path)) {
+            if (add_map[name].item_path.is_directory()) {
+                for (auto& dir_entry : std::filesystem::directory_iterator(add_map[name].item_path.abs_path())) {
                     if (T::path_filter()(FilePath(dir_entry.path()))) {
                         buttons.emplace_back(
                             dir_entry.path().stem().string(),
@@ -144,7 +146,7 @@ bool show_buttons(const string& name, MapEditor& map_editor, vector<Button<T>>& 
 
 bool map_editor_key(KeyCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
-    Viewport& viewport = map_editor.p_scene->render_scene.viewport;
+    Viewport& viewport = map_editor.p_scene->render_scene->viewport;
     if (!viewport.hovered && !viewport.focused)
         return false;
 
@@ -163,7 +165,7 @@ bool map_editor_key(KeyCallbackArgs args) {
 
 bool map_editor_click_painting(ClickCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
-    Viewport& viewport = map_editor.p_scene->render_scene.viewport;
+    Viewport& viewport = map_editor.p_scene->render_scene->viewport;
     if (!viewport.hovered && !viewport.focused)
         return false;
     
@@ -171,7 +173,8 @@ bool map_editor_click_painting(ClickCallbackArgs args) {
         if (map_editor.selected_consumer != ~0u ||
             map_editor.selected_tile != ~0u ||
             map_editor.selected_spawner != ~0u ||
-            map_editor.eraser_selected) {
+            map_editor.eraser_selected ||
+            map_editor.is_home_selected) {
             map_editor.painting = true;
             return true;
         }
@@ -184,7 +187,7 @@ bool map_editor_click_painting(ClickCallbackArgs args) {
 
 bool map_editor_scroll(ScrollCallbackArgs args) {
     MapEditor& map_editor = *((MapEditor*) args.data);
-    Viewport& viewport = map_editor.p_scene->render_scene.viewport;
+    Viewport& viewport = map_editor.p_scene->render_scene->viewport;
     
     if (!viewport.hovered && !viewport.focused)
         return false;
@@ -206,7 +209,7 @@ void MapEditor::setup() {
     // generate_example_set();
 
     FilePath map_editor_file = "map_editor.sbjgen"_config;
-    if (fs::exists(map_editor_file.abs_path())) {
+    if (map_editor_file.exists()) {
         json j = parse_file(map_editor_file.abs_string());
         FROM_JSON_MEMBER(tile_buttons);
         FROM_JSON_MEMBER(spawner_buttons);
@@ -245,7 +248,7 @@ void MapEditor::update() {
     if (p_scene->pause)
         return;
 
-    Viewport& viewport = p_scene->render_scene.viewport;
+    Viewport& viewport = p_scene->render_scene->viewport;
     
     if (viewport.hovered) {
         v3i cell;
@@ -291,6 +294,27 @@ void MapEditor::update() {
             else if (selected_consumer != -1 && last_paint) {
                 instance_and_write_consumer(consumer_buttons[selected_consumer].item_path, cell);
             }
+            else if (is_home_selected) {
+                for (auto& home : map_prefab.homes) {
+                    if (home.position == cell) {
+                        p_scene->registry.destroy(home.e);
+                        map_prefab.homes.remove(&home, false);
+                        break;
+                    }
+                }
+                map_prefab.homes.emplace(selected_home, cell, rotation, entt::null);
+            }
+        }
+    }
+
+    for (auto& home : map_prefab.homes) {
+        if (!p_scene->registry.valid(home.e)) {
+            home.e = p_scene->registry.create();
+            Text3D& home_text = p_scene->registry.emplace<Text3D>(home.e, p_scene);
+            Text3DTransform& home_text_tfm = p_scene->registry.emplace<Text3DTransform>(home.e);
+            home_text_tfm.origin = v3(home.position) + v3(0.5f, 0.5f, 0.1f);
+            home_text_tfm.scale = 3.0f;
+            home_text.set_text(fmt_("{{col=ffffff}}{}", map_prefab.homes.index(home)));
         }
     }
     
@@ -349,6 +373,27 @@ void MapEditor::window(bool* p_open) {
         show_buttons("Spawners", *this, spawner_buttons, &selected_spawner);
         ImGui::Separator();
         show_buttons("Consumers", *this, consumer_buttons, &selected_consumer);
+        ImGui::Separator();
+
+        ImVec2 button_size   = ImVec2(100, 30);
+        uint32 step = 1u;
+        ImGui::SetNextItemWidth(90.0f);
+        ImGui::InputScalar("Home", ImGuiDataType_U32, &selected_home, &step);
+        selected_home = math::min(selected_home, 8u);
+        if (ImGui::Button("Home##Button", button_size)) {
+            if (is_home_selected)
+                unselect_buttons();
+            else {
+                unselect_buttons();
+                is_home_selected = true;
+            }
+        }
+        if (is_home_selected) {
+            v2 min = v2(ImGui::GetItemRectMin()) - v2(1);
+            v2 max = v2(ImGui::GetItemRectMax()) + v2(1);
+
+            ImGui::GetForegroundDrawList()->AddRect((ImVec2) min, (ImVec2) max, (uint32) palette::white, 0.0f, 0, 2.0f);
+        }
     } else {
         unselect_buttons();
     }
@@ -357,15 +402,16 @@ void MapEditor::window(bool* p_open) {
 
 void MapEditor::unselect_buttons() {
     eraser_selected = false;
-    selected_tile = -1;
-    selected_spawner = -1;
-    selected_consumer = -1;
+    selected_tile = ~0u;
+    selected_spawner = ~0u;
+    selected_consumer = ~0u;
+    is_home_selected = false;
 }
 
 
 void MapEditor::shutdown() {
     FilePath map_editor_path = "map_editor.sbjgen"_config;
-    fs::create_directories(map_editor_path.parent_path());
+    create_directories(map_editor_path.parent_path());
     
     auto j = json();
     TO_JSON_MEMBER(tile_buttons);
@@ -378,6 +424,8 @@ void MapEditor::shutdown() {
 
     Input::remove_callback<KeyCallback>("map_editor");
     Input::remove_callback<ClickCallback>("map_editor");
+
+    delete p_scene;
 }
 
 void MapEditor::instance_and_write_consumer(const FilePath& path, v3i pos) {
@@ -446,7 +494,7 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
         scene->visual_map_entities[pos] = entity;
 
         StaticModel& model = scene->registry.emplace<StaticModel>(entity,
-            instance_static_model(scene->render_scene, load_resource<ModelCPU>(tile_entry.model_path))
+            instance_static_model(*scene->render_scene, load_resource<ModelCPU>(tile_entry.model_path))
         );
 
         m44GPU tfm = m44GPU(
@@ -463,7 +511,7 @@ void MapEditor::build_visuals(Scene* scene, v3i* tile) {
 
 void MapEditor::draw_preview(v3i cell) {
     constexpr float line_width = 0.03f;
-    auto camera = p_scene->render_scene.viewport.camera;
+    auto camera = p_scene->render_scene->viewport.camera;
     if (eraser_selected) {
         auto line_mesh = generate_formatted_line(camera,
         {
@@ -485,7 +533,7 @@ void MapEditor::draw_preview(v3i cell) {
             {(v3) cell + v3(1.f, 0.f, 0.f), palette::gray_4, line_width}
         });
 
-        p_scene->render_scene.quick_mesh(line_mesh, true, true);
+        p_scene->render_scene->quick_mesh(line_mesh, true, true);
     } else if (selected_tile != -1) {
         TilePrefab tile_prefab = load_resource<TilePrefab>(tile_buttons[selected_tile].item_path);
         if (tile_prefab.type == TileType_Ramp) {
@@ -517,7 +565,7 @@ void MapEditor::draw_preview(v3i cell) {
                 {(v3) cell + v3(0.5f) - dir + perp, palette::white, line_width},
                 {(v3) cell + v3(0.5f) - dir - perp, palette::white, line_width}
             });
-            p_scene->render_scene.quick_renderable(ramp_line_mesh, true, true);
+            p_scene->render_scene->quick_renderable(ramp_line_mesh, true, true);
         } else {
             Bitmask3D bitmask;
             bitmask.set(cell + v3i::Z);
@@ -528,9 +576,9 @@ void MapEditor::draw_preview(v3i cell) {
             }
             auto mesh = generate_formatted_3d_bitmask(&p_scene->camera, bitmask);
             if (!mesh.vertices.empty())
-                p_scene->render_scene.quick_mesh(mesh, true, true);
+                p_scene->render_scene->quick_mesh(mesh, true, true);
         }
-    } else if (selected_spawner != -1 || selected_consumer != -1) {
+    } else if (selected_spawner != -1 || selected_consumer != -1 || is_home_selected) {
         vector<FormattedVertex> vertices;
         for (int i = 0; i <= 48; i++) {
             float angle  = i * math::TAU / 48.0f;
@@ -539,7 +587,7 @@ void MapEditor::draw_preview(v3i cell) {
         }
 
         auto line_mesh = generate_formatted_line(camera, std::move(vertices));
-        p_scene->render_scene.quick_mesh(line_mesh, true, true);
+        p_scene->render_scene->quick_mesh(line_mesh, true, true);
     }
 }
 

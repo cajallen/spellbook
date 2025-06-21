@@ -26,7 +26,7 @@ void TestScene::window(bool* p_open) {
         static quat rotation;
         
         PoseWidgetState state;
-        PoseWidgetSettings widget_settings{p_scene->render_scene};
+        PoseWidgetSettings widget_settings{*p_scene->render_scene};
         pose_widget(0, &position, &rotation, widget_settings, nullptr, &state);
 
         ImGui::DragFloat3("Position", position.data, 0.01f);

@@ -9,13 +9,17 @@
 #include "extension/fmt_geometry.hpp"
 #include "general/math/matrix_math.hpp"
 #include "general/logger.hpp"
+#include "general/input.hpp"
+#include "general/math/geometry.hpp"
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
+#include "renderer/assets/material.hpp"
+#include "renderer/assets/model.hpp"
 #include "editor/console.hpp"
 #include "editor/widget_system.hpp"
 #include "game/game.hpp"
-#include "general/input.hpp"
 #include "game/scene.hpp"
+#include "game/player.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
@@ -100,9 +104,9 @@ void health_draw_system(Scene* scene) {
         auto renderable1 = Renderable{mesh_id, friendly ? health_friendly_id : health_enemy_id, (m44GPU) inner_matrix, {}, true};
         auto renderable2 = Renderable{mesh_id, health_bar_id, (m44GPU) outer_matrix, {}, true};
         auto renderable3 = Renderable{mesh_id, health_buffer_id, (m44GPU) buffer_matrix, {}, true};
-        scene->render_scene.add_renderable(renderable1);
-        scene->render_scene.add_renderable(renderable2);
-        scene->render_scene.add_renderable(renderable3);
+        scene->render_scene->add_renderable(renderable1);
+        scene->render_scene->add_renderable(renderable2);
+        scene->render_scene->add_renderable(renderable3);
     }
 
     auto health_amount_system = scene->registry.view<LogicTransform, Health, Text3DTransform, Text3D>();
@@ -155,7 +159,7 @@ void transform_system(Scene* scene) {
             // but it's just for investigating optimization options
             if (!transform.renderable_dirty)
                 continue;
-            for (auto& [node, renderable] : model.model_gpu.renderables) {
+            for (auto& [node, renderable] : model.model_gpu->renderables) {
                 ZoneScoped;
                 renderable->transform = (m44GPU) (transform.get_transform() * node->cached_transform);
             }
@@ -210,7 +214,7 @@ void selection_id_system(Scene* scene) {
     auto model_view = scene->registry.view<Model>();
     for (auto [entity, model] : model_view.each()) {
         uint32 id = (uint32) entity;
-        for (auto [_, r] : model.model_gpu.renderables) {
+        for (auto [_, r] : model.model_gpu->renderables) {
             r->selection_id = id;
         }
     }
@@ -221,14 +225,11 @@ void selection_id_system(Scene* scene) {
 // Adds dragging to entities
 void dragging_update_system(Scene* scene) {
     ZoneScoped;
-    if (scene->render_scene.fut_query_result.get_control()) {
-        auto result_buf = *scene->render_scene.fut_query_result.get<vuk::Buffer>(*get_renderer().global_allocator, get_renderer().compiler);
-        uint32 result_int = *((uint32*) result_buf.mapped_ptr);
-        scene->render_scene.fut_query_result = {};
 
-        if (scene->registry.valid((entt::entity) result_int)) {
-            scene->select_entity((entt::entity) result_int);
-        }
+    auto result_int = scene->render_scene->query.result;
+
+    if (scene->registry.valid((entt::entity) result_int)) {
+        scene->select_entity((entt::entity) result_int);
     }
 }
 
@@ -347,7 +348,7 @@ void pickup_system(Scene* scene) {
         for (auto [lizard_entity, lizard, lizard_transform] : lizard_view.each()) {
             float distance = math::length(logic_tfm.position - lizard_transform.position);
             if (distance < 0.2f) {
-                scene->player.bank.beads[pickup.bead_type]++;
+                scene->player->bank.beads[pickup.bead_type]++;
                 scene->registry.emplace<Killed>(entity);
             } else {
                 if (math::abs(logic_tfm.position.z - lizard_transform.position.z) >= 0.8f)

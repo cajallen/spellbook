@@ -75,7 +75,7 @@ struct VisualTileSet : Resource {
     static constexpr string_view extension() { return ".sbjvts"; }
     static constexpr string_view dnd_key() { return "DND_VISUAL_TILE_SET"; }
     static FilePath folder() { return "visual_tile_sets"_resource; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == VisualTileSet::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == VisualTileSet::extension(); }; }
 };
 
 // Component

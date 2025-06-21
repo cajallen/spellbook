@@ -1,15 +1,19 @@
 #include "render_scene.hpp"
 
-#include <functional>
 #include <tracy/Tracy.hpp>
-#include <vuk/Partials.hpp>
+
+#include <vuk/vsl/Core.hpp>
+#include <vuk/RenderGraph.hpp>
 
 #include "extension/imgui_extra.hpp"
+#include "extension/fmt.hpp"
 #include "general/math/matrix_math.hpp"
 #include "general/input.hpp"
-#include "renderer/samplers.hpp"
+#include "renderer/sampler.hpp"
 #include "renderer/viewport.hpp"
 #include "renderer/renderable.hpp"
+#include "renderer/renderer.hpp"
+#include "renderer/runtime.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/fmt_renderer.hpp"
 #include "renderer/gpu_asset_cache.hpp"
@@ -18,22 +22,6 @@
 #include "renderer/assets/mesh.hpp"
 #include "renderer/assets/material.hpp"
 #include "renderer/assets/texture.hpp"
-
-namespace vuk {
-static Texture allocate_texture(Allocator& allocator, Format format, Extent3D extent) {
-    ImageCreateInfo ici;
-    ici.format = format;
-    ici.extent = extent;
-    ici.samples = Samples::e1;
-    ici.initialLayout = ImageLayout::eUndefined;
-    ici.tiling        = ImageTiling::eOptimal;
-    ici.usage         = ImageUsageFlagBits::eStorage | ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled | ImageUsageFlagBits::eColorAttachment;
-    ici.mipLevels = 1;
-    ici.arrayLayers = 1;
-    auto tex = allocator.get_context().allocate_texture(allocator, ici);
-    return std::move(tex);
-}
-}
 
 
 namespace spellbook {
@@ -56,15 +44,12 @@ void RenderScene::setup(vuk::Allocator& allocator) {
     uint64 background_mat_name = upload_material(std::move(background_mat));
     quick_renderable(cube, background_mat_name, false);
 
-    metallic_refl_iv = get_gpu_asset_cache().get_texture_or_upload("metallic_refl.sbatex"_distributed).value.view.get();
+    metallic_refl_iv = get_gpu_asset_cache().get_texture_or_upload("metallic_refl.sbatex"_distributed).value.ia.image_view;
 }
 
-void RenderScene::image(v2i size) {
+void RenderScene::window(v2i size) {
     viewport.start = (v2i) ImGui::GetWindowPos() + (v2i) ImGui::GetCursorPos();
     update_size(math::max(size, v2i(2, 2)));
-
-    auto si = vuk::make_sampled_image(render_target.view.get(), Sampler().get());
-    ImGui::Image(&*get_renderer().imgui_images.emplace(si), ImGui::GetContentRegionAvail());
 }
 
 void RenderScene::settings_gui() {
@@ -89,8 +74,8 @@ void RenderScene::settings_gui() {
 
 void RenderScene::update_size(v2i new_size) {
     bool changed = viewport.update_size(new_size);
-    if (changed)
-        render_target = vuk::allocate_texture(*get_renderer().global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
+    //if (changed)
+    //    render_target = vuk::allocate_texture(*get_renderer().global_allocator, vuk::Format::eB8G8R8A8Unorm, vuk::Extent3D(new_size));
 }
 
 Renderable* RenderScene::add_renderable(const Renderable& renderable) {
@@ -122,13 +107,13 @@ void RenderScene::_upload_buffer_objects(vuk::Allocator& allocator) {
     CameraData top_cam_data;
     top_cam_data.vp     = (m44GPU) (math::orthographic(v3(20.0f, 20.0f, 0.2f)) * math::look(v3(0.0f, 0.0f, 0.1f + scene_data.water_level), -v3::Z + v3(0.01f, 0.005f, 0.0f), v3::Y));
 
-    auto [pubo_camera, fubo_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&cam_data, 1));
+    auto [pubo_camera, fubo_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&cam_data, 1));
     buffer_camera_data              = *pubo_camera;
     
-    auto [pubo_sun_camera, fubo_sun_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&sun_cam_data, 1));
+    auto [pubo_sun_camera, fubo_sun_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&sun_cam_data, 1));
     buffer_sun_camera_data              = *pubo_sun_camera;
 
-    auto [pubo_top_camera, fubo_top_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&top_cam_data, 1));
+    auto [pubo_top_camera, fubo_top_camera] = vuk::create_buffer(allocator, vuk::MemoryUsage::eGPUonly, vuk::DomainFlagBits::eTransferOnTransfer, std::span(&top_cam_data, 1));
     buffer_top_camera_data              = *pubo_top_camera;
 
     struct CompositeData {
@@ -304,20 +289,6 @@ void RenderScene::pre_render() {
         log_error("RenderScene::pre_render without RenderScene::image call", "renderer");
     }
     viewport.pre_render();
-}
-
-
-void RenderScene::update() {
-}
-
-vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future target) {
-    ZoneScoped;
-    
-    if (cull_pause || user_pause) {
-        auto rg = make_shared<vuk::RenderGraph>("graph");
-        rg->attach_image("target_output", vuk::ImageAttachment::from_texture(render_target));
-        return vuk::Future {rg, "target_output"};
-    }
 
     prune_emitters();
     
@@ -330,345 +301,309 @@ vuk::Future RenderScene::render(vuk::Allocator& frame_allocator, vuk::Future tar
     for (EmitterGPU& emitter : emitters) {
         upload_dependencies(emitter);
     }
-
-    get_renderer().wait_for_futures();
-
-    _upload_buffer_objects(frame_allocator);
-    setup_renderables_for_passes(frame_allocator);
-    
-    auto rg = make_shared<vuk::RenderGraph>("graph");
-    rg->attach_in("target_input", std::move(target));
-
-    post_process_data.time = Input::time;
-    
-    add_emitter_update_pass(rg);
-    add_sundepth_pass(rg);
-    add_topdepth_pass(rg);
-    add_topdepth_blur_pass(rg);
-    add_forward_pass(rg);
-    add_widget_pass(rg);
-    add_postprocess_pass(rg);
-    add_ui_pass(rg);
-    add_info_read_pass(rg);
-    
-    return vuk::Future {rg, "target_output"};
 }
 
-void RenderScene::prune_emitters() {
-    for (auto it = emitters.begin(); it != emitters.end();) {
-        if (it->deinstance_at <= (Input::time - Input::delta_time - 0.1f))
-            it = emitters.erase(it);
-        else
-            it++;
+
+void RenderScene::update() {
+    if (!query.futures.empty() && query.futures.front().node && *query.futures.front().poll() == vuk::Signal::Status::eHostAvailable) {
+        auto result_buf = *query.futures.front().get(*get_renderer().global_allocator, get_renderer().compiler);
+        query.result = *((uint32*) result_buf.mapped_ptr);
+        query.futures.pop();
     }
-    std::erase_if(emitters, [](const EmitterGPU& emitter) {
-        return emitter.deinstance_at <= (Input::time - Input::delta_time - 0.1f);
-    });
 }
 
-void RenderScene::add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    rg->add_pass({
-        .name = "sun_depth",
-        .resources = {
-            "sun_depth_input"_image   >> vuk::eDepthStencilRW >> "sun_depth_output"
-        },
-        .execute = [this](vuk::CommandBuffer& command_buffer) {
-            ZoneScoped;
-            // Prepare render
-            command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-                .set_viewport(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {4096, 4096}})
-                .set_scissor(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {4096, 4096}})
+void RenderScene::render() {
+    ZoneScoped;
+
+    _upload_buffer_objects(*get_renderer().frame_allocator);
+    setup_renderables_for_passes(*get_renderer().frame_allocator);
+    
+    post_process_data.time = Input::time;
+
+    vector<vuk::Value<vuk::Buffer>> emitter_buffers_input;
+    vector<EmitterGPU*> vector_emitters;
+
+    for (auto& emitter : emitters) {
+        string emitter_name = fmt_("emitter_buffer:{}", vector_emitters.size());
+        emitter_buffers_input.push_back(vuk::acquire_buf(vuk::Name(emitter_name), emitter.particles_buffer.get(), vuk::Access::eComputeRW));
+        vector_emitters.push_back(&emitter);
+    }
+    auto emitter_buffers_array = vuk::declare_array("emitter_buffers", span(emitter_buffers_input));
+
+    auto emitter_update_pass = vuk::make_pass("emitter_update", [this, vector_emitters](vuk::CommandBuffer& command_buffer, VUK_ARG(vuk::Buffer[], vuk::Access::eComputeRW) emitter_buffers) {
+        for (uint32 i = 0; i < emitters.size(); i++) {
+            auto& emitter = *vector_emitters[i];
+            auto& emitter_buffer = emitter_buffers[i];
+
+            struct PC {
+                uint32 spawn_count = 0;
+                float dt;
+            } pc;
+            pc.spawn_count = math::max((Input::time - emitter.next_spawn) / emitter.rate, 0.0f);
+            emitter.next_spawn += emitter.rate * pc.spawn_count;
+            if (!emitter.emitting)
+                pc.spawn_count = 0;
+                
+            pc.dt = Input::delta_time;
+            command_buffer
+                .bind_compute_pipeline("emitter")
+                .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, pc)
+                .bind_buffer(0, 0, emitter_buffer);
+            *command_buffer.scratch_buffer<EmitterSettings>(0, 1) = emitter.settings;
+            command_buffer.dispatch(emitter.settings.max_particles); 
+        }
+    });
+    
+    emitter_update_pass(emitter_buffers_array);
+    emitter_buffers_array.submit(*get_renderer().frame_allocator, get_renderer().compiler);
+
+    auto sun_depth_pass = vuk::make_pass("sun_depth", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eDepthStencilRW) sun_depth) {
+        ZoneScoped;
+        // Prepare render
+        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_viewport(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {4096, 4096}})
+            .set_scissor(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {4096, 4096}})
+            .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                .depthTestEnable  = true,
+                .depthWriteEnable = true,
+                .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+            })
+            .broadcast_color_blend({vuk::BlendPreset::eOff});
+                
+        command_buffer
+            .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
+            .bind_buffer(0, CAMERA_BINDING, buffer_sun_camera_data)
+            .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
+            .bind_buffer(0, ID_BINDING, buffer_ids);
+
+        command_buffer
+            .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+            .bind_graphics_pipeline("directional_depth");
+    
+        int item_index = 0;
+        for (const auto& [mat_hash, mat_map] : renderables_built) {
+            for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
+                command_buffer
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
+                item_index += mesh_list.size();
+            }
+        }
+        for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
+            for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
+                command_buffer
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                for (auto& [id, transform, skeleton] : mesh_list) {
+                    command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
+                    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
+                }
+            }
+        }
+        return sun_depth;
+    });
+
+	auto sun_depth = vuk::declare_ia("sun_depth");
+	sun_depth->format = vuk::Format::eD16Unorm;
+    sun_depth->extent = {4096, 4096, 1};
+	sun_depth = vuk::clear_image(std::move(sun_depth), vuk::ClearDepthStencil{ 0.0f, 0 });
+    
+    sun_depth = sun_depth_pass(std::move(sun_depth));
+
+
+    auto top_depth_pass = vuk::make_pass("top_depth", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eDepthStencilRW) top_depth) {
+        ZoneScoped;
+        // Prepare render
+        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_viewport(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {1024, 1024}})
+            .set_scissor(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {1024, 1024}})
+            .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                        .depthTestEnable  = true,
+                        .depthWriteEnable = true,
+                        .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+            })
+            .broadcast_color_blend({vuk::BlendPreset::eOff});
+                
+        command_buffer
+            .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
+            .bind_buffer(0, CAMERA_BINDING, buffer_top_camera_data)
+            .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
+            .bind_buffer(0, ID_BINDING, buffer_ids);
+
+        command_buffer
+            .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+            .set_conservative({.mode = vuk::ConservativeRasterizationMode::eOverestimate, .overestimationAmount = 0.75f})
+            .bind_graphics_pipeline("directional_depth");
+            
+        int item_index = 0;
+        for (const auto& [mat_hash, mat_map] : renderables_built) {
+            for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
+                command_buffer
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
+                item_index += mesh_list.size();
+            }
+        }
+        for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
+            for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
+                command_buffer
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                for (auto& [id, transform, skeleton] : mesh_list) {
+                    command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
+                    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
+                }
+            }
+        }
+        return top_depth;
+    });
+
+	auto top_depth = vuk::declare_ia("top_depth");
+	top_depth->format = vuk::Format::eD16Unorm;
+    top_depth->extent = {1024, 1024, 1};
+	top_depth = vuk::clear_image(std::move(top_depth), vuk::ClearDepthStencil{ 0.0f, 0 });
+    
+    top_depth = top_depth_pass(std::move(top_depth));
+
+
+    auto depth_to_buffer = vuk::make_pass("top_depth_transfer1", [](vuk::CommandBuffer& cmd, VUK_IA(vuk::eTransferRead) top_depth, VUK_BA(vuk::eTransferWrite) top_blurred_temp0) {
+        cmd.copy_image_to_buffer(top_depth, top_blurred_temp0, {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eDepth}, .imageExtent = {1024, 1024, 1}});
+        return top_blurred_temp0;
+    });
+    auto buffer_to_color = vuk::make_pass("top_depth_transfer2", [](vuk::CommandBuffer& cmd, VUK_BA(vuk::eTransferRead) top_blurred_temp0, VUK_IA(vuk::eTransferWrite) top_blurred_temp1) {
+        cmd.copy_buffer_to_image(top_blurred_temp0, top_blurred_temp1, {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor}, .imageExtent = {1024, 1024, 1}});
+        return top_blurred_temp1;
+    });
+    auto top_depth_blur = vuk::make_pass("top_depth_blur", [](vuk::CommandBuffer& cmd, VUK_ARG(int32, vuk::eNone) axis, VUK_IA(vuk::eComputeRead) top_blurred_temp1, VUK_IA(vuk::eComputeWrite) top_blurred_temp2) {
+        ZoneScoped;
+        cmd.bind_compute_pipeline("blur");
+
+        cmd.bind_image(0, axis, top_blurred_temp1);
+        cmd.bind_image(0, axis, top_blurred_temp2);
+
+        auto target_size = top_blurred_temp1->extent;
+
+        cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, axis);
+        cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 1 * sizeof(int32), target_size.width);
+        cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 2 * sizeof(int32), target_size.height);
+
+        cmd.dispatch_invocations(target_size.width, target_size.height);
+
+        return top_blurred_temp2;
+    });
+
+    auto top_depth_temp_buf = vuk::declare_buf("top_depth_temp_buf", {.size = sizeof(uint16) * 1024 * 1024, .memory_usage = vuk::MemoryUsage::eGPUonly});
+    auto top_depth_temp = vuk::declare_ia("top_depth_temp");
+    top_depth_temp.same_shape_as(top_depth);
+
+    top_depth_temp_buf = depth_to_buffer(top_depth, top_depth_temp_buf);
+    top_depth = buffer_to_color(top_depth_temp_buf, top_depth);
+    top_depth = top_depth_blur(vuk::make_constant(vuk::Name("axis:0"), 0), top_depth, top_depth_temp);
+    top_depth = top_depth_blur(vuk::make_constant(vuk::Name("axis:1"), 1), top_depth, top_depth_temp);
+
+    auto forward_pass = vuk::make_pass("forward", [this](
+            vuk::CommandBuffer& command_buffer,
+            VUK_IA(vuk::eColorWrite) base_color, 
+            VUK_IA(vuk::eColorWrite) emissive,
+            VUK_IA(vuk::eColorWrite) normal,
+            VUK_IA(vuk::eColorWrite) info,
+            VUK_IA(vuk::eDepthStencilRW) depth) {
+        ZoneScoped;
+        // Prepare render
+        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_viewport(0, vuk::Rect2D::framebuffer())
+            .set_scissor(0, vuk::Rect2D::framebuffer())
+            .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                        .depthTestEnable  = true,
+                        .depthWriteEnable = true,
+                        .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
+            })
+            .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
+            .set_color_blend(base_color, vuk::BlendPreset::eAlphaBlend)
+            .set_color_blend(emissive, vuk::BlendPreset::eOff)
+            .set_color_blend(normal, vuk::BlendPreset::eOff)
+            .set_color_blend(info, vuk::BlendPreset::eOff);
+            
+        command_buffer
+            .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
+            .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
+            .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
+            .bind_buffer(0, ID_BINDING, buffer_ids);
+
+        int item_index = 0;
+        for (const auto& [mat_hash, mat_map] : renderables_built) {
+            MaterialGPU* material = get_gpu_asset_cache().materials.contains(mat_hash) ? &get_gpu_asset_cache().materials[mat_hash] : nullptr;
+            assert_else(material->pipeline != nullptr);
+            command_buffer
+                .set_rasterization({.cullMode = material->cull_mode})
+                .bind_graphics_pipeline(material->pipeline);
+            material->bind_parameters(command_buffer);
+            material->bind_textures(command_buffer);
+            for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
+                command_buffer
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
+                item_index += mesh_list.size();
+            }
+        }
+        for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
+            MaterialGPU* material = get_gpu_asset_cache().materials.contains(mat_hash) ? &get_gpu_asset_cache().materials[mat_hash] : nullptr;
+            command_buffer
+                .set_rasterization({.cullMode = material->cull_mode})
+                .bind_graphics_pipeline(material->pipeline);
+            material->bind_parameters(command_buffer);
+            material->bind_textures(command_buffer);
+            for (const auto& [mesh_hash, mesh_list] : mat_map) {
+                MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
+                command_buffer
+                    .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
+                    .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
+                for (auto& [id, transform, skeleton] : mesh_list) {
+                    command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
+                    command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
+                }
+            }
+        }            
+            
+        for (auto& emitter : emitters) {
+            render_particles(emitter, command_buffer);
+        }
+        // Render grid
+        if (render_grid) {
+            auto grid_view = get_gpu_asset_cache().get_texture_or_upload("grid"_symbolic).value.ia.image_view;
+            command_buffer
                 .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
                     .depthTestEnable  = true,
-                    .depthWriteEnable = true,
+                    .depthWriteEnable = false,
                     .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
                 })
-                .broadcast_color_blend({vuk::BlendPreset::eOff});
-                
-            command_buffer
-                .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
-                .bind_buffer(0, CAMERA_BINDING, buffer_sun_camera_data)
-                .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
-                .bind_buffer(0, ID_BINDING, buffer_ids);
-
-            command_buffer
-                .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-                .bind_graphics_pipeline("directional_depth");
-    
-            int item_index = 0;
-            for (const auto& [mat_hash, mat_map] : renderables_built) {
-                for (const auto& [mesh_hash, mesh_list] : mat_map) {
-                    MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
-                    command_buffer
-                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
-                    item_index += mesh_list.size();
-                }
-            }
-            for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
-                for (const auto& [mesh_hash, mesh_list] : mat_map) {
-                    MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
-                    command_buffer
-                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [id, transform, skeleton] : mesh_list) {
-                        command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
-                        command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
-                    }
-                }
-            }
-        }
-    });
-
-    rg->attach_and_clear_image("sun_depth_input", {.extent = {.extent = {4096, 4096, 1}}, .format = vuk::Format::eD16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearDepthStencil{0.0f, 0});
-}
-
-void RenderScene::add_topdepth_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    rg->add_pass({
-        .name = "top_depth",
-        .resources = {
-            "top_depth_input"_image   >> vuk::eDepthStencilRW >> "top_depth_output"
-        },
-        .execute = [this](vuk::CommandBuffer& command_buffer) {
-            ZoneScoped;
-            // Prepare render
-            command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-                .set_viewport(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {1024, 1024}})
-                .set_scissor(0, vuk::Rect2D{vuk::Sizing::eAbsolute, {}, {1024, 1024}})
-                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                          .depthTestEnable  = true,
-                          .depthWriteEnable = true,
-                          .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
-                })
-                .broadcast_color_blend({vuk::BlendPreset::eOff});
-                
-            command_buffer
-                .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
-                .bind_buffer(0, CAMERA_BINDING, buffer_top_camera_data)
-                .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
-                .bind_buffer(0, ID_BINDING, buffer_ids);
-
-            command_buffer
-                .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-                .set_conservative({.mode = vuk::ConservativeRasterizationMode::eOverestimate, .overestimationAmount = 0.75f})
-                .bind_graphics_pipeline("directional_depth");
-            
-            int item_index = 0;
-            for (const auto& [mat_hash, mat_map] : renderables_built) {
-                for (const auto& [mesh_hash, mesh_list] : mat_map) {
-                    MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
-                    command_buffer
-                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
-                    item_index += mesh_list.size();
-                }
-            }
-            for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
-                for (const auto& [mesh_hash, mesh_list] : mat_map) {
-                    MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
-                    command_buffer
-                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [id, transform, skeleton] : mesh_list) {
-                        command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
-                        command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
-                    }
-                }
-            }
-        }
-    });
-    rg->attach_and_clear_image("top_depth_input", {.extent = {.extent = {1024, 1024, 1}}, .format = vuk::Format::eD16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearDepthStencil{0.0f, 0});
-}
-
-void RenderScene::add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    rg->add_pass({
-        .name = "top_depth_transfer1",
-        .resources = {
-            "top_depth_output"_image >> vuk::eTransferRead,
-            "top_blurred_temp0_input"_buffer >> vuk::eTransferWrite >> "top_blurred_temp0_output"
-        },
-        .execute = [this](vuk::CommandBuffer& cmd) {
-            cmd.copy_image_to_buffer("top_depth_output", "top_blurred_temp0_input", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eDepth}, .imageExtent = {1024, 1024, 1}});
-        }
-    });
-    rg->add_pass({
-        .name = "top_depth_transfer2",
-        .resources = {
-            "top_blurred_temp0_output"_buffer >> vuk::eTransferRead,
-            "top_blurred_temp1_input"_image >> vuk::eTransferWrite >> "top_blurred_temp1_output"
-        },
-        .execute = [this](vuk::CommandBuffer& cmd) {
-            cmd.copy_buffer_to_image("top_blurred_temp0_output", "top_blurred_temp1_input", {.imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor}, .imageExtent = {1024, 1024, 1}});
-        }
-    });
-    // Blur x
-    rg->add_pass({
-        .name = "top_depth_blurx",
-        .resources = {
-            "top_blurred_temp1_output"_image   >> vuk::eComputeRead,
-            "top_blurred_temp2_input"_image >> vuk::eComputeWrite >> "top_blurred_temp2_output"
-        },
-        .execute = [this](vuk::CommandBuffer& cmd) {
-            ZoneScoped;
-            cmd.bind_compute_pipeline("blur");
-
-            cmd.bind_image(0, 0, "top_blurred_temp1_output");
-            cmd.bind_image(0, 1, "top_blurred_temp2_input");
-
-            auto target      = *cmd.get_resource_image_attachment("top_blurred_temp1_output");
-            auto target_size = target.extent.extent;
-
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, 0);
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 1 * sizeof(int32), target_size.width);
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 2 * sizeof(int32), target_size.height);
-
-            cmd.dispatch_invocations(target_size.width, target_size.height);
-        }
-    });
-    rg->add_pass({
-        .name = "top_depth_blury",
-        .resources = {
-            "top_blurred_temp2_output"_image   >> vuk::eComputeRead,
-            "top_blurred_temp3_input"_image   >> vuk::eComputeWrite >> "top_blurred",
-        },
-        .execute = [this](vuk::CommandBuffer& cmd) {
-            ZoneScoped;
-            cmd.bind_compute_pipeline("blur");
-
-            cmd.bind_image(0, 0, "top_blurred_temp2_output");
-            cmd.bind_image(0, 1, "top_blurred_temp3_input");
-
-            auto target      = *cmd.get_resource_image_attachment("top_blurred_temp2_output");
-            auto target_size = target.extent.extent;
-                
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, 1);
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 1 * sizeof(int32), target_size.width);
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 2 * sizeof(int32), target_size.height);
-
-            cmd.dispatch_invocations(target_size.width, target_size.height);
-        }
-    });
-
-    rg->attach_buffer("top_blurred_temp0_input", **vuk::allocate_buffer(*get_renderer().frame_allocator, {.mem_usage = vuk::MemoryUsage::eGPUonly, .size = sizeof(uint16) * 1024 * 1024}), vuk::Access::eNone);
-    rg->attach_and_clear_image("top_blurred_temp1_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
-    rg->attach_and_clear_image("top_blurred_temp2_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
-    rg->attach_and_clear_image("top_blurred_temp3_input", {.format = vuk::Format::eR16Unorm, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
-    rg->inference_rule("top_blurred_temp1_input", vuk::same_shape_as("top_depth_input"));
-    rg->inference_rule("top_blurred_temp2_input", vuk::same_shape_as("top_depth_input"));
-    rg->inference_rule("top_blurred_temp3_input", vuk::same_shape_as("top_depth_input"));
-}
-
-void RenderScene::add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    ZoneScoped;
-    rg->add_pass({
-        .name = "forward",
-        .resources = {
-            "base_color_input"_image >> vuk::eColorWrite     >> "base_color_output",
-            "emissive_input"_image >> vuk::eColorWrite     >> "emissive_output",
-            "normal_input"_image  >> vuk::eColorWrite     >> "normal_output",
-            "info_input"_image    >> vuk::eColorWrite     >> "info_output",
-            "depth_input"_image   >> vuk::eDepthStencilRW >> "depth_output"
-        },
-        .execute = [this](vuk::CommandBuffer& command_buffer) {
-            ZoneScoped;
-            // Prepare render
-            command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-                .set_viewport(0, vuk::Rect2D::framebuffer())
-                .set_scissor(0, vuk::Rect2D::framebuffer())
-                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                          .depthTestEnable  = true,
-                          .depthWriteEnable = true,
-                          .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
-                })
-                .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
-                .set_color_blend("base_color_input", vuk::BlendPreset::eAlphaBlend)
-                .set_color_blend("emissive_input", vuk::BlendPreset::eOff)
-                .set_color_blend("normal_input", vuk::BlendPreset::eOff)
-                .set_color_blend("info_input", vuk::BlendPreset::eOff);
-            
-            command_buffer
-                .bind_buffer(0, BONES_BINDING, SkeletonGPU::empty_buffer()->get())
+                .bind_graphics_pipeline("grid_3d")
+                .set_rasterization({})
                 .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
-                .bind_buffer(0, MODEL_BINDING, buffer_model_mats)
-                .bind_buffer(0, ID_BINDING, buffer_ids);
-
-            int item_index = 0;
-            for (const auto& [mat_hash, mat_map] : renderables_built) {
-                MaterialGPU* material = get_gpu_asset_cache().materials.contains(mat_hash) ? &get_gpu_asset_cache().materials[mat_hash] : nullptr;
-                assert_else(material->pipeline != nullptr);
-                command_buffer
-                    .set_rasterization({.cullMode = material->cull_mode})
-                    .bind_graphics_pipeline(material->pipeline);
-                material->bind_parameters(command_buffer);
-                material->bind_textures(command_buffer);
-                for (const auto& [mesh_hash, mesh_list] : mat_map) {
-                    MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
-                    command_buffer
-                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    command_buffer.draw_indexed(mesh->index_count, mesh_list.size(), 0, 0, item_index);
-                    item_index += mesh_list.size();
-                }
-            }
-            for (const auto& [mat_hash, mat_map] : rigged_renderables_built) {
-                MaterialGPU* material = get_gpu_asset_cache().materials.contains(mat_hash) ? &get_gpu_asset_cache().materials[mat_hash] : nullptr;
-                command_buffer
-                    .set_rasterization({.cullMode = material->cull_mode})
-                    .bind_graphics_pipeline(material->pipeline);
-                material->bind_parameters(command_buffer);
-                material->bind_textures(command_buffer);
-                for (const auto& [mesh_hash, mesh_list] : mat_map) {
-                    MeshGPU* mesh = get_gpu_asset_cache().meshes.contains(mesh_hash) ? &get_gpu_asset_cache().meshes[mesh_hash] : nullptr;
-                    command_buffer
-                        .bind_vertex_buffer(0, mesh->vertex_buffer.get(), 0, Vertex::get_format())
-                        .bind_index_buffer(mesh->index_buffer.get(), vuk::IndexType::eUint32);
-                    for (auto& [id, transform, skeleton] : mesh_list) {
-                        command_buffer.bind_buffer(0, BONES_BINDING, skeleton->buffer.get());
-                        command_buffer.draw_indexed(mesh->index_count, 1, 0, 0, item_index++);
-                    }
-                }
-            }            
-            
-            for (auto& emitter : emitters) {
-                render_particles(emitter, command_buffer);
-            }
-            // Render grid
-            if (render_grid) {
-                auto grid_view = get_gpu_asset_cache().get_texture_or_upload("grid"_symbolic).value.view.get();
-                command_buffer
-                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                        .depthTestEnable  = true,
-                        .depthWriteEnable = false,
-                        .depthCompareOp   = vuk::CompareOp::eGreaterOrEqual, // EQUAL can be used for multipass things
-                    })
-                    .bind_graphics_pipeline("grid_3d")
-                    .set_rasterization({})
-                    .bind_buffer(0, CAMERA_BINDING, buffer_camera_data)
-                    .bind_image(0, 1, grid_view).bind_sampler(0, 1, Sampler().anisotropy(true).get())
-                    .draw(6, 1, 0, 0);
-            }
+                .bind_image(0, 1, grid_view).bind_sampler(0, 1, Sampler().anisotropy(true).get())
+                .draw(6, 1, 0, 0);
         }
+        return std::make_tuple(base_color, emissive, normal, info, depth);
     });
 
-    rg->attach_and_clear_image("base_color_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, vuk::ClearColor(scene_data.fog_color));
-    rg->attach_and_clear_image("emissive_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, vuk::ClearColor {0.0f, 0.0f, 0.0f, 0.0f});
-    rg->attach_and_clear_image("normal_input", {.format = vuk::Format::eR16G16B16A16Sfloat}, vuk::ClearColor {0.0f, 0.0f, 0.0f, 0.0f});
-    rg->attach_and_clear_image("depth_input", {.format = vuk::Format::eD32Sfloat}, vuk::ClearDepthStencil{0.0f, 0});
-    rg->attach_and_clear_image("info_input", {.format = vuk::Format::eR32Uint}, vuk::ClearColor {-1u, -1u, -1u, -1u});
-    rg->inference_rule("base_color_input", vuk::same_extent_as("target_input"));
-}
+    auto base_color_input = vuk::clear_image(vuk::declare_ia("base_color", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1} ), vuk::ClearColor(scene_data.fog_color));
+    auto emissive_input = vuk::clear_image(vuk::declare_ia("emissive_input", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1} ), vuk::Transparent<float>);
+    auto normal_input = vuk::clear_image(vuk::declare_ia("normal_input", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1} ), vuk::Transparent<float>);
+    auto info_input = vuk::clear_image(vuk::declare_ia("info_input", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eR32Uint, .sample_count = vuk::Samples::e1} ), vuk::ClearColor {-1u, -1u, -1u, -1u});
+    auto depth_input = vuk::clear_image(vuk::declare_ia("depth_input", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eD32Sfloat, .sample_count = vuk::Samples::e1} ), vuk::ClearDepthStencil{0.0f, 0});
 
-void RenderScene::add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    ZoneScoped;
-    rg->add_pass({
-    .name = "widget",
-    .resources = {
-        "widget_input"_image >> vuk::eColorWrite     >> "widget_output",
-        "widget_depth_input"_image   >> vuk::eDepthStencilRW >> "widget_depth_output"
-    },
-    .execute = [this](vuk::CommandBuffer& command_buffer) {
+    auto [base_color, emissive, normal, info, depth] = forward_pass(base_color_input, emissive_input, normal_input, info_input, depth_input);
+
+
+    auto widget_pass = vuk::make_pass("widget", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) widget_color, VUK_IA(vuk::eDepthStencilRW) widget_depth) {
         ZoneScoped;
         if (render_widgets) {
             // Prepare render
@@ -691,153 +626,146 @@ void RenderScene::add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg) {
                 render_widget(renderable, command_buffer, &item_index);
             }
         }
-    }});
+        return std::make_tuple(widget_color, widget_depth);
+    });
 
-    rg->attach_and_clear_image("widget_input", {.format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1}, vuk::ClearColor{0.0f, 0.0f, 0.0f, 0.0f});
-    rg->attach_and_clear_image("widget_depth_input", {.format = vuk::Format::eD32Sfloat}, vuk::ClearDepthStencil{0.0f, 0});
-    rg->inference_rule("widget_input", vuk::same_extent_as("target_input"));
-}
+    auto widget_color_input = vuk::clear_image(vuk::declare_ia("widget_input", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eR16G16B16A16Sfloat, .sample_count = vuk::Samples::e1} ), vuk::ClearColor(scene_data.fog_color));
+    auto widget_depth_input = vuk::clear_image(vuk::declare_ia("widget_depth_input", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eD32Sfloat, .sample_count = vuk::Samples::e1} ), vuk::ClearDepthStencil{0.0f, 0});
+
+    auto [widget_color, widget_depth] = widget_pass(widget_color_input, widget_depth_input);
 
 
-void RenderScene::add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    ZoneScoped;
-    rg->add_pass(vuk::Pass {
-    .name = "postprocess_apply",
-    .resources = {
-        "base_color_output"_image >> vuk::eComputeSampled,
-        "emissive_output"_image >> vuk::eComputeSampled,
-        "normal_output"_image  >> vuk::eComputeSampled,
-        "depth_output"_image   >> vuk::eComputeSampled,
-        "widget_output"_image >> vuk::eComputeSampled,
-        "widget_depth_output"_image >> vuk::eComputeSampled,
-        "sun_depth_output"_image >> vuk::eComputeSampled,
-        "top_blurred"_image >> vuk::eComputeSampled,
-        "target_input"_image   >> vuk::eComputeWrite >> "composited",
-    },
-    .execute =
-        [this](vuk::CommandBuffer& cmd) {
-            ZoneScoped;
-            cmd.bind_compute_pipeline("postprocess");
+    auto postprocess_pass = vuk::make_pass("post_process", [this](
+            vuk::CommandBuffer& command_buffer, 
+            VUK_IA(vuk::eComputeSampled) base_color,
+            VUK_IA(vuk::eComputeSampled) emissive,
+            VUK_IA(vuk::eComputeSampled) normal,
+            VUK_IA(vuk::eComputeSampled) depth,
+            VUK_IA(vuk::eComputeSampled) widget,
+            VUK_IA(vuk::eComputeSampled) widget_depth,
+            VUK_IA(vuk::eComputeSampled) sun_depth,
+            VUK_IA(vuk::eComputeSampled) top_blurred,
+            VUK_IA(vuk::eComputeWrite) target) {
+        ZoneScoped;
+        command_buffer.bind_compute_pipeline("postprocess");
 
-            auto sampler = Sampler().filter(Filter_Linear).get();
-            auto linear_clamp_sampler = Sampler().filter(Filter_Linear).address(Address_Clamp).get();
-            auto sun_sampler = Sampler().filter(Filter_Nearest).address(Address_Border).get();
-            sun_sampler.borderColor = vuk::BorderColor::eFloatTransparentBlack;
-            cmd.bind_image(0, 0, "base_color_output").bind_sampler(0, 0, sampler);
-            cmd.bind_image(0, 1, "emissive_output").bind_sampler(0, 1, sampler);
-            cmd.bind_image(0, 2, "normal_output").bind_sampler(0, 2, sampler);
-            cmd.bind_image(0, 3, "depth_output").bind_sampler(0, 3, sampler);
-            cmd.bind_image(0, 4, "widget_output").bind_sampler(0, 4, sampler);
-            cmd.bind_image(0, 5, "widget_depth_output").bind_sampler(0, 5, sampler);
-            cmd.bind_image(0, 6, "sun_depth_output").bind_sampler(0, 6, sun_sampler);
-            cmd.bind_image(0, 7, "top_blurred").bind_sampler(0, 7, linear_clamp_sampler);
-            cmd.bind_image(0, 10, metallic_refl_iv).bind_sampler(0, 10, linear_clamp_sampler);
-            cmd.bind_image(0, 8, "target_input");
+        auto sampler = Sampler().filter(Filter_Linear).get();
+        auto linear_clamp_sampler = Sampler().filter(Filter_Linear).address(Address_Clamp).get();
+        auto sun_sampler = Sampler().filter(Filter_Nearest).address(Address_Border).get();
+        sun_sampler.borderColor = vuk::BorderColor::eFloatTransparentBlack;
 
-            cmd.bind_buffer(0, 9, buffer_composite_data);
+        command_buffer.bind_image(0, 0, base_color).bind_sampler(0, 0, sampler);
+        command_buffer.bind_image(0, 1, emissive).bind_sampler(0, 1, sampler);
+        command_buffer.bind_image(0, 2, normal).bind_sampler(0, 2, sampler);
+        command_buffer.bind_image(0, 3, depth).bind_sampler(0, 3, sampler);
+        command_buffer.bind_image(0, 4, widget).bind_sampler(0, 4, sampler);
+        command_buffer.bind_image(0, 5, widget_depth).bind_sampler(0, 5, sampler);
+        command_buffer.bind_image(0, 6, sun_depth).bind_sampler(0, 6, sun_sampler);
+        command_buffer.bind_image(0, 7, top_blurred).bind_sampler(0, 7, linear_clamp_sampler);
+        command_buffer.bind_image(0, 10, metallic_refl_iv).bind_sampler(0, 10, linear_clamp_sampler);
+        command_buffer.bind_image(0, 8, target);
+
+        command_buffer.bind_buffer(0, 9, buffer_composite_data);
             
-            auto target      = *cmd.get_resource_image_attachment("target_input");
-            auto target_size = target.extent.extent;
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, post_process_data);
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, sizeof(PostProcessData), target_size.width);
-            cmd.push_constants(vuk::ShaderStageFlagBits::eCompute, sizeof(PostProcessData) + sizeof(int32), target_size.height);
+        auto target_size = target->extent;
+        command_buffer.push_constants(vuk::ShaderStageFlagBits::eCompute, 0, post_process_data);
+        command_buffer.push_constants(vuk::ShaderStageFlagBits::eCompute, sizeof(PostProcessData), target_size.width);
+        command_buffer.push_constants(vuk::ShaderStageFlagBits::eCompute, sizeof(PostProcessData) + sizeof(int32), target_size.height);
 
-            cmd.dispatch_invocations(target_size.width, target_size.height);
-        },
+        command_buffer.dispatch_invocations(target_size.width, target_size.height);
+
+        return target;
     });
-}
 
-void RenderScene::add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    rg->add_pass(vuk::Pass {
-        .name = "ui_apply",
-        .resources = {
-            "composited"_image   >> vuk::eColorWrite >> "target_output",
-        },
-        .execute =
-            [this](vuk::CommandBuffer& cmd) {
-                ZoneScoped;
+    auto target = vuk::declare_ia("target", {.extent = vuk::Extent3D(viewport.size), .format = vuk::Format::eR16G16B16A16Sfloat});
+    auto result = postprocess_pass(base_color, emissive, normal, depth, widget_color, widget_depth, sun_depth, top_depth, target);
 
-                cmd.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-                    .set_viewport(0, vuk::Rect2D::framebuffer())
-                    .set_scissor(0, vuk::Rect2D::framebuffer())
-                    .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
-                    .set_color_blend("composited", vuk::BlendPreset::eAlphaBlend);
 
-                cmd
-                    .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
-                        .depthTestEnable  = false,
-                        .depthWriteEnable = false,
-                        .depthCompareOp   = vuk::CompareOp::eNever,
-                    });
+    auto ui_pass = vuk::make_pass("spellbook_ui", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) target) {
+        ZoneScoped;
 
-                vector<Renderable> sorted_ui_renderables;
+        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_viewport(0, vuk::Rect2D::framebuffer())
+            .set_scissor(0, vuk::Rect2D::framebuffer())
+            .broadcast_color_blend({vuk::BlendPreset::eAlphaBlend})
+            .set_color_blend(target, vuk::BlendPreset::eAlphaBlend);
 
-                for (const Renderable& r : ui_renderables) {
-                    sorted_ui_renderables.insert_search(r);
-                }
+        command_buffer
+            .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+            .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo {
+                .depthTestEnable  = false,
+                .depthWriteEnable = false,
+                .depthCompareOp   = vuk::CompareOp::eNever,
+            });
 
-                cmd.bind_buffer(0, CAMERA_BINDING, buffer_camera_data).bind_buffer(0, MODEL_BINDING, buffer_3d_text_model_mats);
-                bool in_positives = false;
+        vector<Renderable> sorted_ui_renderables;
 
-                uint64 current_mat = 0;
-                uint32 item_index = 0;
-                for (const auto& renderable : sorted_ui_renderables) {
-                    if (!in_positives && renderable.sort_index >= 0) {
-                        in_positives = true;
-                        cmd.bind_buffer(0, VIEW_BINDING, buffer_ui_view);
-                    }
-                    if (current_mat != renderable.material_id) {
-                        MaterialGPU& mat = get_gpu_asset_cache().materials.at(renderable.material_id);
-                        cmd.bind_graphics_pipeline(mat.pipeline);
-                        mat.bind_parameters(cmd);
-                        mat.bind_textures(cmd);
-                        current_mat = renderable.material_id;
-                        uint32 single_channel = mat.extra_material_data.size() != 1 ? 0 : mat.extra_material_data.front();
-                        cmd.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, single_channel);
-                    }
-
-                    MeshGPU& mesh = get_gpu_asset_cache().meshes.at(renderable.mesh_id);
-                    cmd
-                        .bind_vertex_buffer(0, mesh.vertex_buffer.get(), 0, VertexUI::get_format())
-                        .bind_index_buffer(mesh.index_buffer.get(), vuk::IndexType::eUint32);
-                    cmd.draw_indexed(mesh.index_count, 1, 0, 0, item_index++);
-                }
-            },
-    });
-}
-
-void RenderScene::add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    if (math::contains(range2i(v2i(0), v2i(viewport.size)), query)) {
-        auto info_storage_buffer = **vuk::allocate_buffer(*get_renderer().global_allocator, { vuk::MemoryUsage::eGPUtoCPU, sizeof(uint32), 1});
-        rg->attach_buffer("info_storage", info_storage_buffer);
-        rg->add_pass({
-            .name  = "read",
-            .resources = { 
-                "info_output"_image   >> vuk::eTransferRead,
-                "info_storage"_buffer >> vuk::eMemoryWrite >> "info_readable"},
-            .execute = [this](vuk::CommandBuffer& command_buffer) {
-                command_buffer.copy_image_to_buffer("info_output", "info_storage", {
-                    .imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor},
-                    .imageOffset = {query.x, query.y, 0},
-                    .imageExtent = {1,1,1}
-                });
-                query = v2i(-1, -1);
-            }
-        });
-        fut_query_result = vuk::Future{rg, "info_readable"};
-    }
-}
-
-void RenderScene::add_emitter_update_pass(std::shared_ptr<vuk::RenderGraph> rg) {
-    rg->add_pass({
-        .name = "emitter_update",
-        .resources = {},
-        .execute = [this](vuk::CommandBuffer& command_buffer) {
-            for (auto& emitter : emitters) {
-                update_emitter(emitter, command_buffer, Input::time, Input::delta_time);
-            }
+        for (const Renderable& r : ui_renderables) {
+            sorted_ui_renderables.insert_search(r);
         }
+
+        command_buffer.bind_buffer(0, CAMERA_BINDING, buffer_camera_data).bind_buffer(0, MODEL_BINDING, buffer_3d_text_model_mats);
+        bool in_positives = false;
+
+        uint64 current_mat = 0;
+        uint32 item_index = 0;
+        for (const auto& renderable : sorted_ui_renderables) {
+            if (!in_positives && renderable.sort_index >= 0) {
+                in_positives = true;
+                command_buffer.bind_buffer(0, VIEW_BINDING, buffer_ui_view);
+            }
+            if (current_mat != renderable.material_id) {
+                MaterialGPU& mat = get_gpu_asset_cache().materials.at(renderable.material_id);
+                command_buffer.bind_graphics_pipeline(mat.pipeline);
+                mat.bind_parameters(command_buffer);
+                mat.bind_textures(command_buffer);
+                current_mat = renderable.material_id;
+                uint32 single_channel = mat.extra_material_data.size() != 1 ? 0 : mat.extra_material_data.front();
+                command_buffer.push_constants(vuk::ShaderStageFlagBits::eFragment, 0, single_channel);
+            }
+
+            MeshGPU& mesh = get_gpu_asset_cache().meshes.at(renderable.mesh_id);
+            command_buffer
+                .bind_vertex_buffer(0, mesh.vertex_buffer.get(), 0, VertexUI::get_format())
+                .bind_index_buffer(mesh.index_buffer.get(), vuk::IndexType::eUint32);
+            command_buffer.draw_indexed(mesh.index_count, 1, 0, 0, item_index++);
+        }
+        return target;
+    });
+
+    target = ui_pass(target);
+
+
+    if (math::contains(range2i(v2i(0), v2i(viewport.size)), query.input)) {
+        auto info_read_pass = vuk::make_pass("id_readback", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eTransferRead) info, VUK_BA(vuk::eMemoryWrite) readback) {
+            command_buffer.copy_image_to_buffer(info, readback, {
+                .imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor},
+                .imageOffset = {query.input.x, query.input.y, 0},
+                .imageExtent = {1,1,1}
+            });
+            query.input = v2i(-1, -1);
+
+            return readback;
+        });
+        auto readback_buffer = vuk::declare_buf("info_readback", { .size = sizeof(uint32) * 1, .memory_usage = vuk::MemoryUsage::eGPUtoCPU });
+        readback_buffer = info_read_pass(info, readback_buffer);
+        readback_buffer.submit(*get_renderer().frame_allocator, get_renderer().compiler);
+        query.futures.push(std::move(readback_buffer));
+    }
+
+    ImGui::Image(get_renderer().imgui_data.add_image(std::move(target)), ImVec2(viewport.size));
+
+}
+
+void RenderScene::prune_emitters() {
+    for (auto it = emitters.begin(); it != emitters.end();) {
+        if (it->deinstance_at <= (Input::time - Input::delta_time - 0.1f))
+            it = emitters.erase(it);
+        else
+            it++;
+    }
+    std::erase_if(emitters, [](const EmitterGPU& emitter) {
+        return emitter.deinstance_at <= (Input::time - Input::delta_time - 0.1f);
     });
 }
 
@@ -854,7 +782,7 @@ void widget_setup() {
     vuk::PipelineBaseCreateInfo pci;
     pci.add_glsl(get_contents("shaders/widget.vert"_distributed), "shaders/widget.vert"_distributed.abs_string());
     pci.add_glsl(get_contents("shaders/widget.frag"_distributed), "shaders/widget.frag"_distributed.abs_string());
-    get_renderer().context->create_named_pipeline("widget", pci);
+    get_renderer().runtime->runtime->create_named_pipeline("widget", pci);
 
 
     MaterialCPU widget_mat = { .shader_name = "widget" };

@@ -1,18 +1,15 @@
 #include "game.hpp"
 
-#include <filesystem>
 #include <tracy/Tracy.hpp>
 
 #include "general/file/file_path.hpp"
 #include "renderer/render_scene.hpp"
+#include "renderer/renderer.hpp"
 #include "editor/console.hpp"
 #include "editor/editor_scene.hpp"
 #include "editor/resource_editor.hpp"
-#include "editor/map_editor.hpp"
 #include "general/input.hpp"
 #include "game/scene.hpp"
-
-namespace fs = std::filesystem;
 
 namespace spellbook {
 
@@ -50,6 +47,8 @@ void Game::step(bool skip_input) {
         editor_scene->update();
     }
     get_renderer().render();
+    debug_ui.render();
+    get_renderer().present();
     FrameMark;
 }
 

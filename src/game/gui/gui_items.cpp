@@ -8,6 +8,7 @@
 #include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/text_draw.hpp"
+#include "renderer/assets/material.hpp"
 
 namespace spellbook {
 
@@ -50,7 +51,7 @@ void PanelGUI::draw() {
         r.mesh_id = background_mesh.id;
         r.material_id = make_panel_material(texture_path, c1, c2, vignette);
         r.sort_index = depth;
-        manager.scene->render_scene.ui_renderables.emplace(r);
+        manager.scene->render_scene->ui_renderables.emplace(r);
 
         // full outline
         MeshUICPU background_outline_mesh = generate_rounded_outline(region, 32, 2, outline_width, outline_color);
@@ -58,7 +59,7 @@ void PanelGUI::draw() {
         r.mesh_id = background_outline_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
         r.sort_index = depth + HIERARCHY_DEPTH_INCREMENT;
-        manager.scene->render_scene.ui_renderables.emplace(r);
+        manager.scene->render_scene->ui_renderables.emplace(r);
     }
 
     if (item) {
@@ -127,7 +128,7 @@ void ImageGUI::draw() {
     r.mesh_id = image_mesh.id;
     r.material_id = make_ui_material(texture_path);
     r.sort_index = depth;
-    manager.scene->render_scene.ui_renderables.emplace(r);
+    manager.scene->render_scene->ui_renderables.emplace(r);
 
     console({.str=fmt_("Drew Image from {} to {}", region.start, region.end), .frame_tags={"GUI"}});
 
@@ -163,7 +164,7 @@ void TextGUI::draw() {
     text_region = {text_region.start - offset, text_region.end - offset};
 
     umap<uint64, vector<TooltipRegion>> tooltip_regions;
-    upload_formatted_text(text, given_region.start - offset, text_settings, &tooltip_regions, manager.scene->render_scene, true);
+    upload_formatted_text(text, given_region.start - offset, text_settings, &tooltip_regions, *manager.scene->render_scene, true);
 
     console({.str=fmt_("Drew Text from {} to {}", text_region.start, text_region.end), .frame_tags={"GUI"}});
 
@@ -197,7 +198,7 @@ range2i TextGUI::get_occupied_region() {
     // offset is needed because glyphs start from the bottom
     v2i offset = text_region.start - given_region.start;
 
-    text_region.start -= offset;
+text_region.start -= offset;
     text_region.end -= offset;
 
     return text_region;
@@ -240,7 +241,7 @@ void VerticalBox::draw() {
         r.mesh_id = background_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
         r.sort_index = depth;
-        manager.scene->render_scene.ui_renderables.emplace(r);
+        manager.scene->render_scene->ui_renderables.emplace(r);
     }
 
     console({.str=fmt_("Drew VBox from {} to {}", region.start, region.end), .frame_tags={"GUI"}});
@@ -305,7 +306,7 @@ void HorizontalBox::draw() {
         r.mesh_id = background_mesh.id;
         r.material_id = make_ui_material("white"_symbolic);
         r.sort_index = depth;
-        manager.scene->render_scene.ui_renderables.emplace(r);
+        manager.scene->render_scene->ui_renderables.emplace(r);
     }
 
     console({.str=fmt_("Drew HBox from {} to {}", region.start, region.end), .frame_tags={"GUI"}});
@@ -348,7 +349,7 @@ void VerticalSeparator::draw() {
     r.mesh_id = background_mesh.id;
     r.material_id = make_ui_material("white"_symbolic);
     r.sort_index = depth;
-    manager.scene->render_scene.ui_renderables.emplace(r);
+    manager.scene->render_scene->ui_renderables.emplace(r);
 
     range2i region = get_occupied_region();
     console({.str=fmt_("Drew VSeparator from {} to {}", region.start, region.end), .frame_tags={"GUI"}});

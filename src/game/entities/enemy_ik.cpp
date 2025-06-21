@@ -7,6 +7,8 @@
 #include "game/scene.hpp"
 #include "game/systems.hpp"
 #include "game/entities/components.hpp"
+#include "renderer/assets/skeleton.hpp"
+#include "renderer/assets/model.hpp"
 
 namespace spellbook {
 

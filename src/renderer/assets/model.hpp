@@ -1,15 +1,12 @@
 #pragma once
 
-#include "general/string.hpp"
-#include "general/vector.hpp"
 #include "general/umap.hpp"
 #include "general/memory.hpp"
 #include "general/id_ptr.hpp"
 #include "general/math/matrix.hpp"
 #include "general/file/file_path.hpp"
+#include "general/file/resource.hpp"
 #include "renderer/assets/skeleton.hpp"
-
-namespace fs = std::filesystem;
 
 namespace spellbook {
 
@@ -18,14 +15,12 @@ struct MaterialCPU;
 struct StaticRenderable;
 struct Renderable;
 struct RenderScene;
-struct SkeletonCPU;
-struct SkeletonGPU;
 
 struct ModelExternal {
     static constexpr string_view extension() { return "?"; }
     static constexpr string_view dnd_key() { return "DND_MODEL_EXTERNAL"; }
     static FilePath folder() { return get_external_resource_folder(); }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return vector<string>{".glb", ".gltf"}.contains(path.extension()); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return vector<string>{".glb", ".gltf"}.contains(path.extension()); }; }
 };
 
 struct ModelCPU : Resource {
@@ -59,45 +54,18 @@ struct ModelCPU : Resource {
     static constexpr string_view extension() { return ".sbjmod"; }
     static constexpr string_view dnd_key() { return "DND_MODEL"; }
     static FilePath folder() { return get_resource_folder() + "models"; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == ModelCPU::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == ModelCPU::extension(); }; }
 };
 
-inline ModelCPU::Node from_jv_impl(const json_value& jv, ModelCPU::Node* _) {
-    json j = from_jv<json>(jv);
-    ModelCPU::Node value;
-    FROM_JSON_ELE(name);
-    FROM_JSON_ELE(mesh_selection);
-    FROM_JSON_ELE(mesh_path_options);
-    if (j.contains("mesh_asset_path")) {
-        value.mesh_path_options.push_back(from_jv<FilePath>(*j.at("mesh_asset_path")));
-    }
-    FROM_JSON_ELE(material_asset_path);
-    FROM_JSON_ELE(transform);
-    FROM_JSON_ELE(parent);
-    FROM_JSON_ELE(children);
-    return value;
-}
-inline json_value to_jv(const ModelCPU::Node& value) {
-    auto j = json();
-    TO_JSON_ELE(name);
-    TO_JSON_ELE(mesh_selection);
-    TO_JSON_ELE(mesh_path_options);
-    TO_JSON_ELE(material_asset_path);
-    TO_JSON_ELE(transform);
-    TO_JSON_ELE(parent);
-    TO_JSON_ELE(children);
-    return to_jv(j);
-}
+ModelCPU::Node from_jv_impl(const json_value& jv, ModelCPU::Node* _);
+json_value to_jv(const ModelCPU::Node& value);
 
 
 struct ModelGPU {
     umap<ModelCPU::Node*, Renderable*> renderables;
     unique_ptr<SkeletonGPU> skeleton;
 
-    ModelGPU() {
-        renderables = {};
-        skeleton = {};
-    }
+    ModelGPU() : renderables(), skeleton() {}
     ModelGPU(const ModelGPU&) = delete;
     ModelGPU(ModelGPU&& other) = default;
     ModelGPU& operator=(ModelGPU&&) = default;

@@ -5,6 +5,7 @@
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
+#include "renderer/assets/model.hpp"
 #include "general/logger.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
@@ -17,9 +18,7 @@ entt::entity instance_prefab(Scene* scene, const TilePrefab& tile_prefab, v3i lo
     auto       entity = scene->registry.create();
 
     if (tile_prefab.model_path.is_file()) {
-        auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(tile_prefab.model_path));
-        model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+        scene->registry.emplace<Model>(entity, *scene->render_scene, tile_prefab.model_path);
         scene->registry.emplace<ModelTransform>(entity, v3(location), quat(v3::Z, math::PI * 0.5f * float(rotation)));
         scene->registry.emplace<TransformLink>(entity, tile_prefab.visual_offset);
     }

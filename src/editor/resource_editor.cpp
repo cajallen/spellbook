@@ -1,25 +1,26 @@
 ﻿#include "resource_editor.hpp"
 
 #include <tracy/Tracy.hpp>
-#include <vuk/Partials.hpp>
 #include <entt/entity/registry.hpp>
 
 #include "extension/icons/font_awesome4.h"
 #include "extension/imgui_extra.hpp"
 #include "extension/fmt.hpp"
+#include "general/input.hpp"
 #include "general/file/file_path.hpp"
+#include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
 #include "renderer/gpu_asset_cache.hpp"
 #include "editor/pose_widget.hpp"
 #include "game/game.hpp"
-#include "general/input.hpp"
+#include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/caster.hpp"
 
 namespace spellbook {
 
-ADD_EDITOR_SCENE(ResourceEditor);
+//ADD_EDITOR_SCENE(ResourceEditor);
 
 void ResourceEditor::set_model(ModelCPU* model, Ownership ownership) {
     if (model_owner == Ownership_Owned)
@@ -35,13 +36,13 @@ void ResourceEditor::setup() {
     p_scene->setup("Resource Editor");
     p_scene->set_edit_mode(true);
 
-    p_scene->render_scene.scene_data.ambient = Color(palette::white, 0.20f);
+    p_scene->render_scene->scene_data.ambient = Color(palette::white, 0.20f);
 
     FilePath config_path = "resource_editor.sbjgen"_config;
 
     set_model(new ModelCPU(), Ownership_Owned);
     
-    json j = fs::exists(config_path.abs_path()) ? parse_file(config_path.abs_string()) : json{};
+    json j = config_path.exists() ? parse_file(config_path.abs_string()) : json{};
     if (j.contains("tab"))
         external_tab_selection = from_jv<Tab>(*j.at("tab"));
     FROM_JSON_MEMBER(model_cpu->file_path)
@@ -78,8 +79,8 @@ void ResourceEditor::setup() {
 }
 
 void ResourceEditor::shutdown() {
-   FilePath config_path = "resource_editor.sbjgen"_config;
-   fs::create_directories(config_path.parent_path());
+    FilePath config_path = "resource_editor.sbjgen"_config;
+    create_directories(config_path.parent_path());
     
     auto j = json();
     TO_JSON_MEMBER(tab);
@@ -97,14 +98,14 @@ void ResourceEditor::update() {
     ZoneScoped;
     
     if (Input::mouse_click[GLFW_MOUSE_BUTTON_LEFT]) {
-        p_scene->render_scene.query = v2i(Input::mouse_pos) - p_scene->render_scene.viewport.start;
+        p_scene->render_scene->query.input = v2i(Input::mouse_pos) - p_scene->render_scene->viewport.start;
     }
 
     p_scene->update();
 }
 
 void ResourceEditor::switch_tab(Tab new_tab) {
-    auto& render_scene = p_scene->render_scene;
+    auto& render_scene = *p_scene->render_scene;
 
     FilePath model_path = model_cpu->file_path;
     p_scene->registry.clear();
@@ -145,7 +146,7 @@ void ResourceEditor::switch_tab(Tab new_tab) {
             emitter_gpu = nullptr;
         } break;
         case (Tab_TileSet): {
-            p_scene->render_scene.render_grid = false;
+            render_scene.render_grid = false;
         } break;
         case (Tab_Drop): {
         } break;
@@ -155,8 +156,7 @@ void ResourceEditor::switch_tab(Tab new_tab) {
     switch (new_tab) {
         case (Tab_Model): {
             entt::entity showing_entity = p_scene->registry.create();
-            Model* model;
-            model = &p_scene->registry.emplace<Model>(showing_entity, std::make_unique<ModelCPU>(*model_cpu), instance_model(render_scene, *model_cpu, false));
+            Model* model = &p_scene->registry.emplace<Model>(showing_entity, render_scene, *model_cpu);
 
             set_model(&*model->model_cpu, Ownership_From_Instance);
             p_scene->registry.emplace<ModelTransform>(showing_entity, v3(0.0f));
@@ -179,7 +179,7 @@ void ResourceEditor::switch_tab(Tab new_tab) {
             MaterialCPU mat = MaterialCPU{.color_tint = palette::gray};
             mat.file_path = "background_mat"_symbolic;
             uint64 mat_id = upload_material(mat);
-            background_renderable = &p_scene->render_scene.quick_renderable(cube, mat_id, false);
+            background_renderable = &render_scene.quick_renderable(cube, mat_id, false);
             
             if (enemy_prefab.file_path.is_file())
                 instance_prefab(p_scene, enemy_prefab, v3i(0));
@@ -206,13 +206,11 @@ void ResourceEditor::switch_tab(Tab new_tab) {
                 i++;
                 p_scene->registry.emplace<Name>(entity, fmt_("tile:({},{},{})",pos.x,pos.y,pos.z));
 
-                auto& model_comp = p_scene->registry.emplace<Model>(entity);
-                model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(tile_entry.model_path));
-                model_comp.model_gpu = instance_model(p_scene->render_scene, *model_comp.model_cpu);
+                auto& model_comp = p_scene->registry.emplace<Model>(entity, render_scene, tile_entry.model_path);
                 
                 p_scene->registry.emplace<ModelTransform>(entity, v3(pos));
             }
-            p_scene->render_scene.render_grid = false;
+            render_scene.render_grid = false;
         } break;
         case (Tab_Drop): {
             instance_prefab(p_scene, bead_prefab, v3(0.0f));
@@ -224,7 +222,7 @@ void ResourceEditor::switch_tab(Tab new_tab) {
 
 template<typename T>
 void asset_tab(
-    ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, T* asset_value, const std::function<void(bool)>& callback = {}) {
+    ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, T* asset_value, const function<void(bool)>& callback = {}) {
     if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Save##ResourceTab")) {
             save_resource(*asset_value);
@@ -246,13 +244,13 @@ void asset_tab(
 }
 
 template<>
-void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, ModelCPU** asset_value, const std::function<void(bool)>& callback) {
+void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, ModelCPU** asset_value, const function<void(bool)>& callback) {
     if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Reload##ResourceTab") || asset_editor.tab != type) {
             asset_editor.switch_tab(type);
         }
         
-        bool changed = inspect(*asset_value, &asset_editor.p_scene->render_scene);
+        bool changed = inspect(*asset_value, &*asset_editor.p_scene->render_scene);
         if (ImGui::Button("Save##ResourceTab")) {
             save_resource(**asset_value);
         }
@@ -268,7 +266,7 @@ void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab ty
             for (auto& model : models) {
                 // TODO
                 sb_assert(false && "NYI");
-                fs::path base_path = (*asset_value)->file_path.abs_path().parent_path();
+//                fs::path base_path = (*asset_value)->file_path.abs_path().parent_path();
 //                model.file_path = (base_path / (model.file_path + extension(FileType_Model))).string();
 //                save_resource(model);
             }
@@ -281,12 +279,12 @@ void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab ty
 }
 
 template<>
-void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, EmitterCPU* asset_value, const std::function<void(bool)>& callback) {
+void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, EmitterCPU* asset_value, const function<void(bool)>& callback) {
     if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Reload##ResourceTab") || asset_editor.tab != type)
             asset_editor.switch_tab(type);
         
-        bool changed = inspect(asset_editor.p_scene->render_scene, asset_value);
+        bool changed = inspect(*asset_editor.p_scene->render_scene, asset_value);
                     
         if (ImGui::Button("Save##ResourceTab")) {
             save_resource(*asset_value);
@@ -305,7 +303,7 @@ void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab ty
 }
 
 template<>
-void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, VisualTileSet* asset_value, const std::function<void(bool)>& callback) {
+void asset_tab(ResourceEditor& asset_editor, string name, ResourceEditor::Tab type, VisualTileSet* asset_value, const function<void(bool)>& callback) {
     if (ImGui::BeginTabItem(name.c_str(), nullptr, type == asset_editor.external_tab_selection ? ImGuiTabItemFlags_SetSelected : 0)) {
         if (ImGui::Button("Reload##ResourceTab") || asset_editor.tab != type)
             asset_editor.switch_tab(type);
@@ -375,7 +373,7 @@ void ResourceEditor::window(bool* p_open) {
 //                        }
 //                    }
 //                }
-//                auto camera = p_scene->render_scene.viewport.camera;
+//                auto camera = p_scene->render_scene->viewport.camera;
 //                auto line_mesh = generate_formatted_line(camera,
 //                {
 //                    {v3(0.f, 0.f, 0.f), palette::gray_4, 0.03f},
@@ -383,7 +381,7 @@ void ResourceEditor::window(bool* p_open) {
 //                });
 //
 //
-//                p_scene->render_scene.quick_mesh(line_mesh, true, true);
+//                p_scene->render_scene->quick_mesh(line_mesh, true, true);
 //            });
             asset_tab(*this, ICON_FA_CUBE " Tile", Tab_Tile, &tile_prefab, [this](bool changed) {
                 Bitmask3D bitmask;
@@ -392,11 +390,11 @@ void ResourceEditor::window(bool* p_open) {
                     bitmask.set(solid);
                 auto mesh = generate_formatted_3d_bitmask(&p_scene->camera, bitmask);
                 if (!mesh.vertices.empty())
-                    p_scene->render_scene.quick_mesh(mesh, true, true);
+                    p_scene->render_scene->quick_mesh(mesh, true, true);
 
                 auto mesh2 = generate_formatted_dot(&p_scene->camera, {v3(tile_prefab.new_offset) + v3(0.5f, 0.5f, 0.5f), palette::spellbook_4, 0.03f});
                 if (!mesh2.vertices.empty())
-                    p_scene->render_scene.quick_mesh(mesh2, true, true);
+                    p_scene->render_scene->quick_mesh(mesh2, true, true);
             });
             asset_tab(*this, ICON_FA_APPLE " Enemy", Tab_Enemy, &enemy_prefab);
             asset_tab(*this, ICON_FA_SIGN_OUT "Spawner", Tab_Spawner, &spawner_prefab);

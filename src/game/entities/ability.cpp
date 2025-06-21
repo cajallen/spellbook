@@ -16,6 +16,12 @@ Ability::Ability(Scene* _scene, entt::entity _caster) : scene(_scene), caster(_c
 Attack::Attack(Scene* _scene, entt::entity _caster) : Ability(_scene, _caster) {}
 Spell::Spell(Scene* _scene, entt::entity _caster) : Ability(_scene, _caster) {}
 
+Ability::~Ability() {
+    if (!scene)
+        return;
+    scene->hit_scene_state.cleanup_on_death(caster);
+}
+
 void Ability::setup_time(float base_pre, float base_post) {
     Caster& caster_comp = scene->registry.get<Caster>(caster);
     pre_trigger_time = {&*caster_comp.attack_speed, base_pre};

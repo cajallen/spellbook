@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <memory>
+#include "general/memory.hpp"
 #include "game/scene.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/items/item.hpp"

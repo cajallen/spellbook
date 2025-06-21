@@ -818,7 +818,7 @@ MeshCPU generate_outline(Camera* camera, const Bitmask3D& bitmask, const vector<
     return generate_formatted_line(camera, vertices);
 }
 
-void draw_path(RenderScene& render_scene, Path& path, const v3& pos) {
+void draw_path(RenderScene& render_scene, NavigationPath& path, const v3& pos) {
     vector<FormattedVertex> path_waypoints_vertices;
     for (const v3& waypoint : path.waypoints) {
         float t = float(path.waypoints.index(waypoint)) / float(path.waypoints.size() - 1);

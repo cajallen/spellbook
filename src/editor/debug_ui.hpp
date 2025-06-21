@@ -1,6 +1,5 @@
 #pragma once
 
-#include "general/string.hpp"
 #include "general/umap.hpp"
 #include "general/color.hpp"
 #include "general/file/json.hpp"
@@ -30,6 +29,7 @@ struct DebugUI {
     void setup();
     void _main_menu_bar();
     void update();
+    void render();
     void shutdown();
 
     bool* window_open(string window_name);

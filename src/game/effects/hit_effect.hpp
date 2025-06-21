@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include <functional>
 #include <entt/entity/fwd.hpp>
 
 #include "extension/fmt.hpp"
 #include "general/color.hpp"
+#include "general/function.hpp"
 #include "game/entities/team.hpp"
 
 namespace spellbook {
@@ -56,8 +56,8 @@ struct HitEffect {
     float duration = 0.0f;
     float quantity = 1.0f;
 
-    std::function<void(HitEffect&, Scene*, entt::entity, const vector<entt::entity>&)> apply_function;
-    std::function<bool(Team::Disposition)> hits_disposition_function;
+    function<void(HitEffect&, Scene*, entt::entity, const vector<entt::entity>&)> apply_function;
+    function<bool(Team::Disposition)> hits_disposition_function;
 
     // internal, for use in post_apply with a hit
     vector<entt::entity> checked_entities;
@@ -73,7 +73,7 @@ struct Acid {
 
     struct OnTickEffect {
         float response_end = 0.0f;
-        std::function<void(Scene*, entt::entity)> response;
+        function<void(Scene*, entt::entity)> response;
     };
     struct AcidLevel {
         entt::entity applier;

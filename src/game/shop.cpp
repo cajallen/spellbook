@@ -4,9 +4,12 @@
 
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
+#include "renderer/render_scene.hpp"
 #include "game/game.hpp"
 #include "game/player.hpp"
 #include "game/scene.hpp"
+#include "game/audio.hpp"
+#include "game/gui/gui_manager.hpp"
 #include "game/entities/drop.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/spawner.hpp"
@@ -64,16 +67,16 @@ void ShopGenerator::inspect() {
     log_warning("Attempted to use unenforced virtual ShopGenerator");
 }
 
-template<LizardType LT, uint8 variant>
+template<LizardType LT, LizardVariant LV>
 void add_warehouse_entry(Warehouse* warehouse, Bead cost_type, int32 cost_amount, float chance = 1.0f) {
-    warehouse->add_entry({cost_type, cost_amount, LT, variant, build<LT, variant>, add_lizard_card<LT, variant>}, 1.0f);
+    warehouse->add_entry({cost_type, cost_amount, LT, LV, build<LT, LV>, add_lizard_card<LT, LV>}, 1.0f);
 }
 
 void FirstFreeShopGenerator::setup(Scene* scene) {
-    round_info = scene->spawn_state_info;
-    add_warehouse_entry<LizardType_Empyrea, 0>(&first_warehouse, Bead_Wood, 0, 1.0f);
-    add_warehouse_entry<LizardType_Empyrea, 1>(&first_warehouse, Bead_Wood, 0, 1.0f);
-    add_warehouse_entry<LizardType_Empyrea, 2>(&first_warehouse, Bead_Wood, 0, 1.0f);
+    round_info = &*scene->spawn_state_info;
+    add_warehouse_entry<LizardType_Empyrea, LizardVariant_First>(&first_warehouse, Bead_Wood, 0, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, LizardVariant_Second>(&first_warehouse, Bead_Wood, 0, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, LizardVariant_Third>(&first_warehouse, Bead_Wood, 0, 1.0f);
 }
 vector<ShopEntry*>* FirstFreeShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -113,10 +116,10 @@ void FirstFreeShopGenerator::inspect() {
 }
 
 void SimpleShopGenerator::setup(Scene* scene) {
-    round_info = scene->spawn_state_info;
-    add_warehouse_entry<LizardType_Empyrea, 0>(&warehouse, Bead_Wood, 4, 1.0f);
-    add_warehouse_entry<LizardType_Empyrea, 1>(&warehouse, Bead_Wood, 4, 1.0f);
-    add_warehouse_entry<LizardType_Empyrea, 2>(&warehouse, Bead_Wood, 4, 1.0f);
+    round_info = &*scene->spawn_state_info;
+    add_warehouse_entry<LizardType_Empyrea, LizardVariant_First>(&warehouse, Bead_Wood, 4, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, LizardVariant_Second>(&warehouse, Bead_Wood, 4, 1.0f);
+    add_warehouse_entry<LizardType_Empyrea, LizardVariant_Third>(&warehouse, Bead_Wood, 4, 1.0f);
 }
 vector<ShopEntry*>* SimpleShopGenerator::generate_shop() {
     assert_else(out_shop.empty())
@@ -194,9 +197,9 @@ void Shop::open(Scene* scene) {
     shop_generator->reset();
     entries = shop_generator->generate_shop();
 
-    shop_gui = &scene->gui_manager.shop_gui;
+    shop_gui = &scene->gui_manager->shop_gui;
     if (shop_gui) {
-        shop_gui->enabled = true;
+        shop_gui->enabled = false; // don't want to deal with ui right now
         for (auto entry : *entries) {
             entry->add_card_func(*shop_gui);
         }
@@ -216,7 +219,7 @@ void inspect(Shop* shop, Player* player) {
     
     ImGui::BeginGroup();
     if (ImGui::Button("Get Shop")) {
-        player->scene->audio.play_sound("audio/reroll.flac"_resource, {.global = true, .volume = 0.3f});
+        player->scene->audio->play_sound("audio/reroll.flac"_resource, {.global = true, .volume = 0.3f});
         shop->shop_generator->reset();
         shop->entries = shop->shop_generator->generate_shop();
     }
@@ -241,7 +244,7 @@ void inspect(Shop* shop, Player* player) {
             }
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                 if (player->scene->selected_entity == entt::null) {
-                    v3  intersect = math::intersect_axis_plane(player->scene->render_scene.viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
+                    v3  intersect = math::intersect_axis_plane(player->scene->render_scene->viewport.ray((v2i) Input::mouse_pos), Z, 0.0f);
 
                     entt::entity lizard = instance_lizard(
                         player->scene,
@@ -250,7 +253,7 @@ void inspect(Shop* shop, Player* player) {
                         entry.lizard_variant,
                         entry.build_func
                     );
-                    player->scene->audio.play_sound("audio/drop.flac"_resource, {.global = true, .volume = 0.3f});
+                    player->scene->audio->play_sound("audio/drop.flac"_resource, {.global = true, .volume = 0.3f});
                     player->scene->select_entity(lizard);
                     player->bank.beads[bead_type] -= shop->entries->at(i)->cost_amount;
                     shop->shop_generator->purchase(i);

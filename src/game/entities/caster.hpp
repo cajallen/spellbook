@@ -2,6 +2,7 @@
 
 #include <entt/entity/fwd.hpp>
 
+#include "general/memory.hpp"
 #include "general/math/geometry.hpp"
 #include "game/entities/ability.hpp"
 
@@ -33,21 +34,21 @@ struct Taunt {
 };
 
 struct Caster {
-    std::unique_ptr<Attack> attack;
-    std::unique_ptr<Spell> spell;
+    unique_ptr<Attack> attack;
+    unique_ptr<Spell> spell;
 
     Taunt taunt;
     
     // Multipliers
-    std::unique_ptr<Stat> damage;
-    std::unique_ptr<Stat> heal;
-    std::unique_ptr<Stat> attack_speed;
-    std::unique_ptr<Stat> cooldown_speed;
-    std::unique_ptr<Stat> projectile_speed;
-    std::unique_ptr<Stat> range;
-    std::unique_ptr<Stat> buff_duration;
-    std::unique_ptr<Stat> debuff_duration;
-    std::unique_ptr<Stat> lifesteal;
+    unique_ptr<Stat> damage;
+    unique_ptr<Stat> heal;
+    unique_ptr<Stat> attack_speed;
+    unique_ptr<Stat> cooldown_speed;
+    unique_ptr<Stat> projectile_speed;
+    unique_ptr<Stat> range;
+    unique_ptr<Stat> buff_duration;
+    unique_ptr<Stat> debuff_duration;
+    unique_ptr<Stat> lifesteal;
 
     Caster(Scene* scene, entt::entity e);
 

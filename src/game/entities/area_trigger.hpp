@@ -2,8 +2,9 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "targeting.hpp"
+#include "general/function.hpp"
 #include "game/timer.hpp"
+#include "game/entities/targeting.hpp"
 
 namespace spellbook {
 
@@ -11,7 +12,7 @@ struct Scene;
 struct Caster;
 struct AreaTrigger;
 
-using AreaTriggerEntryGatherFunction = std::function<uset<entt::entity>(AreaTrigger&, v3i)>;
+using AreaTriggerEntryGatherFunction = function<uset<entt::entity>(AreaTrigger&, v3i)>;
 
 AreaTriggerEntryGatherFunction area_trigger_gather_lizard();
 AreaTriggerEntryGatherFunction area_trigger_gather_enemies();
@@ -24,8 +25,8 @@ struct AreaTrigger {
     entt::entity caster_entity;
     
     AreaTriggerEntryGatherFunction entry_gather;
-    std::function<bool(AreaTrigger&)> targeting;
-    std::function<void(AreaTrigger&)> trigger;
+    function<bool(AreaTrigger&)> targeting;
+    function<void(AreaTrigger&)> trigger;
 
     bool triggered = false;
 };

@@ -4,21 +4,18 @@
 #include <mutex>
 #include <array>
 
-#include <vuk/resources/DeviceFrameResource.hpp>
-#include <vuk/Context.hpp>
+#include <vuk/Value.hpp>
 #include <vuk/RenderGraph.hpp>
-#include <VkBootstrap.h>
 
-#include "extension/vuk_imgui.hpp"
-#include "general/vector.hpp"
+#include "general/memory.hpp"
+#include "general/function.hpp"
 #include "general/math/geometry.hpp"
-#include "renderer/assets/material.hpp"
-#include "renderer/assets/mesh.hpp"
-#include "renderer/assets/texture.hpp"
+#include "extension/vuk_imgui.hpp"
 
 struct GLFWwindow;
 
 using std::optional;
+using std::array;
 
 namespace spellbook {
 
@@ -40,8 +37,9 @@ namespace spellbook {
 #define ATLAS_BINDING 1
 
 struct FrameTimer {
-    int               ptr         = 0;
-    int               filled      = 0;
+    int32             current_frame = 1;
+    int32             ptr         = 0;
+    int32             filled      = 0;
     array<float, 200> frame_times = {};
     array<float, 200> delta_times = {};
 
@@ -51,6 +49,7 @@ struct FrameTimer {
 
 struct RenderScene;
 struct FontManager;
+struct Runtime;
 
 enum RenderStage { RenderStage_Inactive, RenderStage_Setup, RenderStage_BuildingRG, RenderStage_Presenting };
 
@@ -59,31 +58,23 @@ struct Renderer {
     FrameTimer           frame_timer;
     vector<RenderScene*> scenes;
 
-    v2i                                     window_size = {2560, 1440};
-    VkDevice                                device;
-    VkPhysicalDevice                        physical_device;
-    VkQueue                                 graphics_queue;
-    VkQueue                                 transfer_queue;
-    optional<vuk::Context>                  context;
-    optional<vuk::DeviceSuperFrameResource> super_frame_resource;
-    optional<vuk::Allocator>                global_allocator;
-    optional<vuk::Allocator>                frame_allocator;
-    vuk::SwapchainRef                       swapchain;
-    GLFWwindow*                             window;
-    VkSurfaceKHR                            surface;
-    vkb::Instance                           vkbinstance;
-    vkb::Device                             vkbdevice;
-    std::vector<vuk::Future>                futures;
-    std::mutex                              setup_lock;
+    vector<function<void(void)>> extra_passes;
+    bool do_extra_passes = false;
+
+    unique_ptr<Runtime> runtime;
+    ImGuiData imgui_data;
+
+    v2i                      window_size = {2560, 1440};
+    VkQueue                  graphics_queue;
+    VkQueue                  transfer_queue;
+    optional<vuk::Allocator> global_allocator;
+    optional<vuk::Allocator> frame_allocator;
+    GLFWwindow*              window;
+
+    vector<vuk::UntypedValue>  futures;
+    std::mutex                 setup_lock;
 
     vuk::Compiler compiler;
-
-    ImGuiData                      imgui_data;
-    plf::colony<vuk::SampledImage> imgui_images;
-    char* imgui_ini_path;
-
-    vuk::Unique<array<VkSemaphore, 3>> present_ready;
-    vuk::Unique<array<VkSemaphore, 3>> render_complete;
 
     bool suspend = false;
     
@@ -91,10 +82,11 @@ struct Renderer {
     void setup();
     void update();
     void render();
+    void present();
     void cleanup();
     ~Renderer();
 
-    void enqueue_setup(vuk::Future&& fut);
+    void enqueue_setup(vuk::UntypedValue fut);
     void wait_for_futures();
 
     void add_scene(RenderScene*);

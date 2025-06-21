@@ -17,14 +17,14 @@ namespace spellbook {
 void file_browser(const string& window_name, bool* p_open, FilePath* out) {
     ImGui::Begin(window_name.c_str(), p_open);
 
-    std::function<bool(const FilePath&)> filter = [](const FilePath&){ return true; };
+    function<bool(const FilePath&)> filter = [](const FilePath&){ return true; };
 
     bool popup_open = false;
     FilePath popup_set_input = {};
     FilePath popup_set_folder = {};
     string popup_set_name = "";
 
-    std::function context_callback = [&popup_set_folder, &popup_set_name, &popup_set_input, &popup_open](const FilePath& path) -> void {
+    auto context_callback = [&popup_set_folder, &popup_set_name, &popup_set_input, &popup_open](const FilePath& path) -> void {
         if (ModelExternal::path_filter()(path)) {
             if (ImGui::Selectable("Convert")) {
                 popup_set_input = FilePath(path);
@@ -46,7 +46,7 @@ void file_browser(const string& window_name, bool* p_open, FilePath* out) {
     // Header
     {
         if (ImGui::Button(ICON_FA_CHEVRON_UP)) {
-            *out = FilePath(out->abs_path().parent_path());
+            *out = out->parent_path();
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(-200.f);
@@ -60,7 +60,7 @@ void file_browser(const string& window_name, bool* p_open, FilePath* out) {
     }
 
     // Body
-    ImGui::PathSelectBody(out, Directory::path_filter()(*out) ? *out : FilePath(out->abs_path().parent_path()), filter, nullptr, 1, context_callback);
+    ImGui::PathSelectBody(out, Directory::path_filter()(*out) ? *out : out->parent_path(), filter, nullptr, 1, context_callback);
 
 
     // Popup

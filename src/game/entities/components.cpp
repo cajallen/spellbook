@@ -7,7 +7,12 @@
 #include "extension/imgui_extra.hpp"
 #include "general/math/matrix_math.hpp"
 #include "renderer/draw_functions.hpp"
+#include "renderer/render_scene.hpp"
+#include "renderer/assets/model.hpp"
+#include "renderer/assets/particles.hpp"
 #include "game/scene.hpp"
+#include "game/audio.hpp"
+#include "game/player.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/tags.hpp"
 #include "game/entities/caster.hpp"
@@ -49,7 +54,7 @@ void remove_dragging_impair(entt::registry& reg, entt::entity entity) {
 
 void inspect_components(Scene* scene, entt::entity entity) {
     INSPECT_COMPONENT(Model,
-        inspect(&*component->model_cpu, &scene->render_scene);
+        inspect(&*component->model_cpu, &*scene->render_scene);
     )
     INSPECT_COMPONENT(LogicTransform,
         ImGui::DragFloat3("Position", component->position.data, 0.01f);
@@ -127,7 +132,7 @@ void inspect_components(Scene* scene, entt::entity entity) {
 }
 
 void preview_3d_components(Scene* scene, entt::entity entity) {
-    RenderScene& render_scene = scene->render_scene;
+    RenderScene& render_scene = *scene->render_scene;
 
     bool show;
     show = scene->registry.any_of<Dragging>(entity);
@@ -147,6 +152,18 @@ void preview_3d_components(Scene* scene, entt::entity entity) {
         render_scene.quick_mesh(generate_formatted_line(render_scene.viewport.camera, std::move(vertices)), true, false);
     }
 }
+
+Model::Model(RenderScene& scene, const FilePath& fp) {
+    model_cpu = make_unique<ModelCPU>(load_resource<ModelCPU>(fp));
+    model_gpu = make_unique<ModelGPU>(instance_model(scene, *model_cpu));
+}
+
+Model::Model(RenderScene& scene, const ModelCPU& m) {
+    model_cpu = make_unique<ModelCPU>(m);
+    model_gpu = make_unique<ModelGPU>(instance_model(scene, *model_cpu));
+}
+
+Model::~Model() = default;
 
 
 void ModelTransform::set_translation(const v3& v) {
@@ -236,7 +253,7 @@ bool Health::heal(entt::entity damager, float amount) {
 }
 
 void EmitterComponent::add_emitter(uint64 id, const EmitterCPU& emitter_cpu, float duration) {
-    emitters[id] = &instance_emitter(scene->render_scene, emitter_cpu, Input::time);
+    emitters[id] = &instance_emitter(*scene->render_scene, emitter_cpu, Input::time);
     if (duration > 0.0f)
         expirations[id] = Input::time + duration;
 }
@@ -254,9 +271,7 @@ entt::entity setup_basic_unit(Scene* scene, const FilePath& model_path, v3 locat
     auto entity = scene->registry.create();
     scene->registry.emplace<AddToInspect>(entity);
 
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(model_path));
-    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+    auto& model_comp = scene->registry.emplace<Model>(entity, *scene->render_scene, model_path);
     
     scene->registry.emplace<LogicTransform>(entity, v3(location));
     scene->registry.emplace<Grounded>(entity);
@@ -324,7 +339,7 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
         scene.registry.emplace<ForceDragging>(potential_swap, dragging.start_logic_position, 0.2f);
     }
 
-    scene.audio.play_sound("audio/step.flac"_resource, {.position = logic_tfm.position});
+    scene.audio->play_sound("audio/step.flac"_resource, {.position = logic_tfm.position});
     
     if (registry.any_of<Egg>(entity)) {
         entt::entity shrine_entity = scene.get_shrine(math::round_cast(dragging.potential_logic_position));
@@ -336,7 +351,7 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
     
     if (!registry.any_of<ForceDragging>(entity) && math::length(logic_tfm.position - math::round(dragging.potential_logic_position)) > 0.1f)
         if (dragging.commited_cost.amount > 0)
-            scene.player.bank.beads[dragging.commited_cost.type] -= dragging.commited_cost.amount;
+            scene.player->bank.beads[dragging.commited_cost.type] -= dragging.commited_cost.amount;
     
     logic_tfm.position = math::round(dragging.potential_logic_position);
 
@@ -370,12 +385,12 @@ void on_dragging_destroy(Scene& scene, entt::registry& registry, entt::entity en
 
 void on_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
     Model& model = registry.get<Model>(entity);
-    deinstance_model(scene.render_scene, model.model_gpu);
+    deinstance_model(*scene.render_scene, *model.model_gpu);
 }
 
 void on_static_model_destroy(Scene& scene, entt::registry& registry, entt::entity entity) {
     StaticModel& model = registry.get<StaticModel>(entity);
-    deinstance_static_model(scene.render_scene, model.renderables);
+    deinstance_static_model(*scene.render_scene, model.renderables);
 }
 
 

@@ -1,11 +1,12 @@
 ﻿#include "text_3d.hpp"
 
+#include "general/math/matrix_math.hpp"
+#include "editor/console.hpp"
+#include "renderer/render_scene.hpp"
 #include "game/scene.hpp"
 #include "game/effects/text_layer.hpp"
 #include "game/entities/components.hpp"
-#include "general/math/matrix_math.hpp"
 
-#include "editor/console.hpp"
 
 namespace spellbook {
 
@@ -13,8 +14,8 @@ void on_text_3d_destroy(Scene& scene, entt::registry& registry, entt::entity ent
     Text3D& text = registry.get<Text3D>(entity);
     while (!text.renderables.empty()) {
         Renderable* renderable = text.renderables.front();
-        auto it = scene.render_scene.ui_renderables.get_iterator(renderable);
-        scene.render_scene.ui_renderables.erase(it);
+        auto it = scene.render_scene->ui_renderables.get_iterator(renderable);
+        scene.render_scene->ui_renderables.erase(it);
         text.renderables.remove_index(0);
     }
 }
@@ -25,7 +26,7 @@ void Text3D::set_text(string_view new_text) {
     text = new_text;
     while (!renderables.empty()) {
         Renderable* renderable = renderables.front();
-        scene->render_scene.ui_renderables.erase(scene->render_scene.ui_renderables.get_iterator(renderable));
+        scene->render_scene->ui_renderables.erase(scene->render_scene->ui_renderables.get_iterator(renderable));
         renderables.remove_index(0);
     }
 
@@ -35,7 +36,7 @@ void Text3D::set_text(string_view new_text) {
         .position = -region.end / 2,
         .depth = -1
     };
-    renderables = upload_text_mesh(vector<string>{string(text)}, vector<Font*>{get_game_text_layer().spatial_font}, scene->render_scene, text_settings);
+    renderables = upload_text_mesh(vector<string>{string(text)}, vector<Font*>{get_game_text_layer().spatial_font}, *scene->render_scene, text_settings);
 }
 
 void text_3d_system(Scene* scene) {

@@ -1,0 +1,45 @@
+#version 450
+#pragma shader_stage(compute)
+
+#include "include.glsli"
+
+layout(binding = 0, rg32f) uniform readonly image2D u_source;
+layout(binding = 1, rg32f) uniform writeonly image2D u_target;
+
+layout(push_constant) uniform uPushConstant {
+    float da;
+    float db;
+    float f;
+    float k;
+    float dt;
+} pc;
+
+layout (local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+
+    vec4 center = imageLoad(u_source, coord);
+    vec4 sum = center * -1.0;
+
+    sum += imageLoad(u_source, coord + ivec2(1, 0)) * 0.2;
+    sum += imageLoad(u_source, coord - ivec2(1, 0)) * 0.2;
+    sum += imageLoad(u_source, coord + ivec2(0, 1)) * 0.2;
+    sum += imageLoad(u_source, coord - ivec2(0, 1)) * 0.2;
+
+    sum += imageLoad(u_source, coord + ivec2(1, 1)) * 0.05;
+    sum += imageLoad(u_source, coord + ivec2(-1, 1)) * 0.05;
+    sum += imageLoad(u_source, coord + ivec2(1, -1)) * 0.05;
+    sum += imageLoad(u_source, coord + ivec2(-1, -1)) * 0.05;
+
+    float a = center.r;
+    float b = center.g;
+    float lapA = sum.r;
+    float lapB = sum.g;
+
+    float ab2 = a * b * b;
+    float a2 = a + (pc.da * lapA - ab2 + pc.f * (1.0f - a)) * pc.dt;
+    float b2 = b + (pc.db * lapB + ab2 - b * (pc.k + pc.f)) * pc.dt;
+	a2 = clamp(a2, 0.0, 1.0);
+	b2 = clamp(b2, 0.0, 1.0);
+    imageStore(u_target, coord, vec4(a2, b2, 0.0, 0.0));
+}

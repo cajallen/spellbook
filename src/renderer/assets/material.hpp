@@ -1,17 +1,17 @@
 #pragma once
 
-#include <vuk/CommandBuffer.hpp>
-#include <vuk/SampledImage.hpp>
+#include <vuk/runtime/vk/Pipeline.hpp>
 
-#include "general/string.hpp"
 #include "general/color.hpp"
-#include "general/math/geometry.hpp"
+#include "general/file/json.hpp"
 #include "general/file/file_path.hpp"
 #include "general/file/resource.hpp"
-#include "renderer/samplers.hpp"
+#include "renderer/sampler.hpp"
+#include "renderer/assets/texture.hpp"
 
 namespace vuk {
 struct PipelineBaseInfo;
+struct CommandBuffer;
 }
 
 namespace spellbook {
@@ -38,7 +38,7 @@ struct MaterialCPU : Resource {
     static constexpr string_view extension() { return ".sbjmat"; }
     static constexpr string_view dnd_key() { return "DND_MATERIAL"; }
     static FilePath folder() { return get_resource_folder(); }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == MaterialCPU::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == MaterialCPU::extension(); }; }
 };
 
 JSON_IMPL(MaterialCPU, color_tint, roughness_factor, metallic_factor, normal_factor, emissive_tint, color_asset_path,
@@ -54,7 +54,7 @@ struct MaterialGPU {
     // uses master shader
     vuk::PipelineBaseInfo* pipeline;
 
-    umap<uint32, vuk::SampledImage> images;
+    umap<uint32, TextureGPU*> images;
     vector<uint8> extra_material_data;
 
     vuk::CullModeFlags cull_mode;
@@ -67,9 +67,9 @@ struct MaterialGPU {
     void update_from_cpu(const MaterialCPU& new_material);
 };
 
-uint64 make_3d_text_material(uint64 id, vuk::SampledImage& image);
+uint64 make_3d_text_material(uint64 id, TextureGPU& tex);
 uint64 make_ui_material(const FilePath& texture, bool single_channel = false);
-uint64 make_ui_material(uint64 id, vuk::SampledImage& image, bool single_channel = true);
+uint64 make_ui_material(uint64 id, TextureGPU& tex, bool single_channel = true);
 uint64 make_panel_material(const FilePath& fp, const Color& color1, const Color& color2, const v3& vignette_amount);
 
 bool inspect(MaterialCPU* material);

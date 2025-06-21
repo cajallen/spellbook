@@ -1,7 +1,5 @@
 #pragma once
 
-#include "general/string.hpp"
-#include "general/vector.hpp"
 #include "general/umap.hpp"
 #include "general/color.hpp"
 #include "general/file/json.hpp"

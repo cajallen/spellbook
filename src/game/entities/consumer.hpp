@@ -14,7 +14,7 @@ struct ConsumerPrefab : Resource {
     static constexpr string_view extension() { return ".sbjcon"; }
     static constexpr string_view dnd_key() { return "DND_CONSUMER"; }
     static FilePath folder() { return "consumers"_resource; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == ConsumerPrefab::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == ConsumerPrefab::extension(); }; }
 };
 
 JSON_IMPL(ConsumerPrefab, shrine_model_path, egg_model_path);

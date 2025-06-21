@@ -7,8 +7,8 @@
 namespace spellbook {
 
 
-std::shared_ptr<Timer> add_timer(Scene* scene, std::function<void(Timer*)> callback, bool unowned_oneshot) {
-    std::shared_ptr<Timer> timer_ptr = std::make_shared<Timer>(scene);
+shared_ptr<Timer> add_timer(Scene* scene, function<void(Timer*)> callback, bool unowned_oneshot) {
+    shared_ptr<Timer> timer_ptr = make_shared<Timer>(scene);
     scene->timer_manager.timers.push_back(timer_ptr);
     Timer& timer = *timer_ptr;
     timer.callback = TimerCallback{&timer, std::move(callback)};
@@ -17,8 +17,8 @@ std::shared_ptr<Timer> add_timer(Scene* scene, std::function<void(Timer*)> callb
     return timer_ptr;
 }
 
-std::shared_ptr<Timer> add_tween_timer(Scene* scene, std::function<void(Timer*)> callback, bool unowned_oneshot) {
-    std::shared_ptr<Timer> timer_ptr = std::make_shared<Timer>(scene);
+shared_ptr<Timer> add_tween_timer(Scene* scene, function<void(Timer*)> callback, bool unowned_oneshot) {
+    shared_ptr<Timer> timer_ptr = make_shared<Timer>(scene);
     scene->timer_manager.timers.push_back(timer_ptr);
     Timer& timer = *timer_ptr;
     timer.callback = TimerCallback{&timer, callback};

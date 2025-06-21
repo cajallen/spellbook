@@ -1,11 +1,12 @@
 ﻿#include "font_manager.hpp"
 
+#include <ft2build.h>
+#include <freetype/freetype.h>
+
 #include <stb_rect_pack.h>
-#include <vuk/Context.hpp>
 
 #include "extension/fmt.hpp"
 #include "general/logger.hpp"
-#include "general/math/noise.hpp"
 #include "renderer/gpu_asset_cache.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/render_scene.hpp"
@@ -120,17 +121,14 @@ Font* FontManager::load_font(const FilePath& path, uint32 font_size, bool ui) {
     texture.needs_mips = !ui;
 
     upload_texture(texture, false);
-    Sampler sampler = Sampler().address(Address_Clamp).filter(ui ? Filter_Nearest : Filter_Linear).mips(!ui);
     TextureGPU* texture_gpu = get_gpu_asset_cache().get_texture(font.id);
-
-    font.image = vuk::make_sampled_image(texture_gpu->value.view.get(), sampler.get());
 
     FT_Done_Face(face);
 
     if (ui)
-        make_ui_material(font.id, font.image);
+        make_ui_material(font.id, *texture_gpu);
     else
-        make_3d_text_material(font.id, font.image);
+        make_3d_text_material(font.id, *texture_gpu);
 
     return &font;
 }

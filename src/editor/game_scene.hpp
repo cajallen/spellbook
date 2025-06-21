@@ -1,9 +1,11 @@
 ﻿#pragma once
 
-#include "editor_scene.hpp"
-#include "game/map.hpp"
+#include "general/logger.hpp"
+#include "editor/editor_scene.hpp"
 
 namespace spellbook {
+
+struct MapPrefab;
 
 // This class should be incredibly simple because it just drives the Scene class
 struct GameScene : EditorScene {

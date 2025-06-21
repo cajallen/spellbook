@@ -1,16 +1,14 @@
 ﻿#pragma once
 
-#include "game/scene.hpp"
-
 namespace spellbook {
+
+struct Scene;
 
 struct EditorScene {
     Scene*   p_scene = nullptr;
     
     virtual void setup() = 0 ;
-    virtual void update() {
-        p_scene->update();
-    }
+    virtual void update();
     virtual void window(bool* p_open) { }
     virtual void shutdown() { }
 };

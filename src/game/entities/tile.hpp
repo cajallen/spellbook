@@ -2,9 +2,10 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "general/string.hpp"
 #include "general/math/geometry.hpp"
+#include "general/file/file_path.hpp"
 #include "general/file/resource.hpp"
+#include "general/file/json.hpp"
 
 namespace spellbook {
 
@@ -28,7 +29,7 @@ struct TilePrefab : Resource {
     static constexpr string_view extension() { return ".sbjtil"; }
     static constexpr string_view dnd_key() { return "DND_TILE"; }
     static FilePath folder() { return "tiles"_resource; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == TilePrefab::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == TilePrefab::extension(); }; }
 };
 
 JSON_IMPL(TilePrefab, type, model_path, visual_offset, solids);

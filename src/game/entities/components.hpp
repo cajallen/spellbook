@@ -2,30 +2,37 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "general/string.hpp"
 #include "general/umap.hpp"
+#include "general/memory.hpp"
 #include "general/math/geometry.hpp"
 #include "general/math/quaternion.hpp"
 #include "general/math/matrix.hpp"
-#include "renderer/assets/model.hpp"
 #include "game/entities/drop.hpp"
 
 namespace spellbook {
 
 struct Scene;
+struct RenderScene;
 struct EmitterCPU;
 struct EmitterGPU;
+struct ModelCPU;
+struct ModelGPU;
 struct Timer;
 struct Stat;
 struct StatEffect;
+struct StaticRenderable;
 
 struct Name {
     string name;
 };
 
 struct Model {
-    std::unique_ptr<ModelCPU> model_cpu = nullptr;
-    ModelGPU model_gpu = {};
+    unique_ptr<ModelCPU> model_cpu = {};
+    unique_ptr<ModelGPU> model_gpu = {};
+
+    Model(RenderScene& render_scene, const FilePath& fp);
+    Model(RenderScene& render_scene, const ModelCPU& m);
+    ~Model();
 };
 
 struct StaticModel {

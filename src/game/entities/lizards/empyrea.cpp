@@ -5,8 +5,10 @@
 
 #include "extension/fmt.hpp"
 #include "general/file/file_path.hpp"
-#include "editor/console.hpp"
+#include "renderer/render_scene.hpp"
 #include "renderer/draw_functions.hpp"
+#include "renderer/assets/particles.hpp"
+#include "editor/console.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/entities/caster.hpp"
@@ -15,28 +17,23 @@
 #include "game/effects/hit.hpp"
 #include "game/effects/hit_effect.hpp"
 
+
 namespace spellbook {
 
 using namespace entt::literals;
 
 
-template<uint8 variant>
+template<LizardVariant variant>
 struct EmpyreaAttack : Attack {
     shared_ptr<Timer> ethereal_cooldown;
     LizardDatabase::AbilityEntry* entry;
     uint32 phase = 0;
-
 
     void EtherealReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect);
     void DamageReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect);
     void ExecuteReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect);
 
     EmpyreaAttack(Scene* _scene, entt::entity _caster);
-    ~EmpyreaAttack() override {
-        if (!scene)
-            return;
-        scene->hit_scene_state.cleanup_on_death(caster);
-    }
     void start() override {
         auto poser = scene->registry.try_get<PoseController>(caster);
         if (poser) {
@@ -69,7 +66,7 @@ struct EmpyreaAttack : Attack {
     }
 };
 
-template<uint8 variant>
+template<LizardVariant variant>
 struct EmpyreaSpell : Spell {
     LizardDatabase::AbilityEntry* entry;
     LizardDatabase::AbilityEntry* attack_entry;
@@ -87,7 +84,7 @@ struct EmpyreaSpell : Spell {
 
 
 /// CORROSIVE
-template<uint8 variant>
+template<LizardVariant variant>
 void EmpyreaAttack<variant>::DamageReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect) {
     if (ethereal_cooldown->ticking)
         return;
@@ -107,8 +104,8 @@ void EmpyreaAttack<variant>::DamageReaction(Scene* scene, entt::entity propagato
 }
 
 template<>
-EmpyreaAttack<0>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
-    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, 0, AbilityType_Attack));
+EmpyreaAttack<LizardVariant_First>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
+    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, LizardVariant_First, AbilityType_Attack));
     setup_time(entry->pre_time, entry->post_time);
     setup_cd(entry->extra_floats.at("CD"));
     ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
@@ -116,7 +113,7 @@ EmpyreaAttack<0>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_s
     HitReaction& damage_reaction = scene->hit_scene_state.reactions.push_back({});
     damage_reaction.relies_on_effect_type = EffectType_Damage;
     damage_reaction.relies_on_receiver = caster;
-    damage_reaction.reaction.connect<&EmpyreaAttack<0>::DamageReaction>(*this);
+    damage_reaction.reaction.connect<&EmpyreaAttack<LizardVariant_First>::DamageReaction>(*this);
 
     entry_gather_function = gather_enemies();
     entry_eval_function = basic_lizard_entry_eval;
@@ -124,7 +121,7 @@ EmpyreaAttack<0>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_s
 }
 
 template<>
-void EmpyreaAttack<0>::trigger() {
+void EmpyreaAttack<LizardVariant_First>::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
     v3 hit_vec = v3(target) - logic_tfm.position;
 
@@ -155,7 +152,7 @@ void EmpyreaAttack<0>::trigger() {
 }
 
 template<>
-void EmpyreaSpell<0>::trigger() {
+void EmpyreaSpell<LizardVariant_First>::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
 
     HitEffect floor_effect(EffectType_Floor);
@@ -213,7 +210,7 @@ void EmpyreaSpell<0>::trigger() {
 
 
 /// SHADOW DANCER
-template<uint8 variant>
+template<LizardVariant variant>
 void EmpyreaAttack<variant>::EtherealReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect) {
     HitEffect amplify_effect(EffectType_Amplify);
     amplify_effect.level = math::round_cast(entry->extra_floats.at("AmplifyLevel"));
@@ -228,8 +225,8 @@ void EmpyreaAttack<variant>::EtherealReaction(Scene* scene, entt::entity propaga
 }
 
 template<>
-EmpyreaAttack<1>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
-    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, 0, AbilityType_Attack));
+EmpyreaAttack<LizardVariant_Second>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
+    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, LizardVariant_Second, AbilityType_Attack));
     setup_time(entry->pre_time, entry->post_time);
     setup_cd(entry->extra_floats.at("CD"));
     ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
@@ -237,12 +234,12 @@ EmpyreaAttack<1>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_s
     HitReaction& damage_reaction = scene->hit_scene_state.reactions.push_back({});
     damage_reaction.relies_on_effect_type = EffectType_Damage;
     damage_reaction.relies_on_receiver = caster;
-    damage_reaction.reaction.connect<&EmpyreaAttack<1>::DamageReaction>(*this);
+    damage_reaction.reaction.connect<&EmpyreaAttack<LizardVariant_Second>::DamageReaction>(*this);
 
     HitReaction& ethereal_reaction = scene->hit_scene_state.reactions.push_back({});
     ethereal_reaction.relies_on_effect_type = EffectType_Ethereal;
     ethereal_reaction.relies_on_receiver = caster;
-    ethereal_reaction.reaction.connect<&EmpyreaAttack<1>::EtherealReaction>(*this);
+    ethereal_reaction.reaction.connect<&EmpyreaAttack<LizardVariant_Second>::EtherealReaction>(*this);
 
     entry_gather_function = gather_enemies();
     entry_eval_function = basic_lizard_entry_eval;
@@ -250,7 +247,7 @@ EmpyreaAttack<1>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_s
 }
 
 template<>
-void EmpyreaAttack<1>::trigger() {
+void EmpyreaAttack<LizardVariant_Second>::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
     v3 hit_vec = v3(target) - logic_tfm.position;
 
@@ -278,7 +275,7 @@ void EmpyreaAttack<1>::trigger() {
 }
 
 template<>
-void EmpyreaSpell<1>::trigger() {
+void EmpyreaSpell<LizardVariant_Second>::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
     HitEffect regen_effect(EffectType_Regen);
     regen_effect.quantity = entry->extra_floats.at("RegenAmount");
@@ -295,7 +292,7 @@ void EmpyreaSpell<1>::trigger() {
 
 
 /// ASSASSIN
-template<uint8 variant>
+template<LizardVariant variant>
 void EmpyreaAttack<variant>::ExecuteReaction(Scene* scene, entt::entity propagator, entt::entity receiver, HitEffect& effect) {
     HitEffect heal_effect(EffectType_Amplify);
     heal_effect.quantity = entry->extra_floats.at("ExecuteHealAmount");
@@ -309,8 +306,8 @@ void EmpyreaAttack<variant>::ExecuteReaction(Scene* scene, entt::entity propagat
 }
 
 template<>
-EmpyreaAttack<2>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
-    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, 0, AbilityType_Attack));
+EmpyreaAttack<LizardVariant_Third>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_scene, _caster) {
+    entry = &get_lizard_database().ability_entries.at(ability_index(LizardType_Empyrea, LizardVariant_Third, AbilityType_Attack));
     setup_time(entry->pre_time, entry->post_time);
     setup_cd(entry->extra_floats.at("CD"));
     ethereal_cooldown = add_timer(scene, [](Timer* timer) {});
@@ -318,7 +315,7 @@ EmpyreaAttack<2>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_s
     HitReaction& execute_reaction = scene->hit_scene_state.reactions.push_back({});
     execute_reaction.relies_on_effect_type = EffectType_Execute;
     execute_reaction.relies_on_receiver = caster;
-    execute_reaction.reaction.connect<&EmpyreaAttack<2>::ExecuteReaction>(*this);
+    execute_reaction.reaction.connect<&EmpyreaAttack<LizardVariant_Third>::ExecuteReaction>(*this);
 
     entry_gather_function = gather_enemies();
     entry_eval_function = basic_lizard_entry_eval;
@@ -326,7 +323,7 @@ EmpyreaAttack<2>::EmpyreaAttack(Scene* _scene, entt::entity _caster) : Attack(_s
 }
 
 template<>
-void EmpyreaAttack<2>::trigger() {
+void EmpyreaAttack<LizardVariant_Third>::trigger() {
     auto& logic_tfm = scene->registry.get<LogicTransform>(caster);
     v3 hit_vec = v3(target) - logic_tfm.position;
 
@@ -356,7 +353,7 @@ void EmpyreaAttack<2>::trigger() {
 }
 
 template<>
-void EmpyreaSpell<2>::trigger() {
+void EmpyreaSpell<LizardVariant_Third>::trigger() {
     HitEffect floor_effect(EffectType_Floor);
     HitEffect cull_effect(EffectType_Cull);
     cull_effect.quantity = entry->extra_floats.at("CullAmount");
@@ -374,7 +371,7 @@ void EmpyreaSpell<2>::trigger() {
 
 /// GENERAL
 template<>
-void draw_dragging_preview<LizardType_Empyrea, 0>(Scene* scene, entt::entity entity) {
+void draw_dragging_preview<LizardType_Empyrea, LizardVariant_First>(Scene* scene, entt::entity entity) {
     v3 logic_pos = scene->registry.get<Dragging>(entity).potential_logic_position;
     v3i logic_posi = math::round_cast(logic_pos);
 
@@ -382,50 +379,50 @@ void draw_dragging_preview<LizardType_Empyrea, 0>(Scene* scene, entt::entity ent
     for (const v2i& offset : {v2i{-1, 0}, v2i{0, -1}, v2i{1, 0}, v2i{0, 1}}) {
         center_pieces.push_back(logic_posi + v3i(offset, 0));
     }
-    scene->render_scene.quick_mesh(
+    scene->render_scene->quick_mesh(
         generate_outline(&scene->camera, scene->map_data.solids, center_pieces, palette::green_yellow, 0.05f),
         true, false);
 }
 
 template<>
-void draw_dragging_preview<LizardType_Empyrea, 1>(Scene* scene, entt::entity entity) {
-    draw_dragging_preview<LizardType_Empyrea, 0>(scene, entity);
+void draw_dragging_preview<LizardType_Empyrea, LizardVariant_Second>(Scene* scene, entt::entity entity) {
+    draw_dragging_preview<LizardType_Empyrea, LizardVariant_First>(scene, entity);
 }
 
 template<>
-void draw_dragging_preview<LizardType_Empyrea, 2>(Scene* scene, entt::entity entity) {
-    draw_dragging_preview<LizardType_Empyrea, 0>(scene, entity);
+void draw_dragging_preview<LizardType_Empyrea, LizardVariant_Third>(Scene* scene, entt::entity entity) {
+    draw_dragging_preview<LizardType_Empyrea, LizardVariant_First>(scene, entity);
 }
 
 
 template<>
-void build<LizardType_Empyrea, 0>(Scene* scene, entt::entity entity) {
-    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, uint8(0));
+void build<LizardType_Empyrea, LizardVariant_First>(Scene* scene, entt::entity entity) {
+    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, LizardVariant_First);
     Caster& caster = scene->registry.get<Caster>(entity);
 
-    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 0>;
-    caster.attack = std::make_unique<EmpyreaAttack<0>>(scene, entity);
-    caster.spell = std::make_unique<EmpyreaSpell<0>>(scene, entity);
+    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, LizardVariant_First>;
+    caster.attack = std::make_unique<EmpyreaAttack<LizardVariant_First>>(scene, entity);
+    caster.spell = std::make_unique<EmpyreaSpell<LizardVariant_First>>(scene, entity);
 }
 
 template<>
-void build<LizardType_Empyrea, 1>(Scene* scene, entt::entity entity) {
-    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, uint8(1));
+void build<LizardType_Empyrea, LizardVariant_Second>(Scene* scene, entt::entity entity) {
+    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, LizardVariant_Second);
     Caster& caster = scene->registry.get<Caster>(entity);
 
-    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 1>;
-    caster.attack = std::make_unique<EmpyreaAttack<1>>(scene, entity);
-    caster.spell = std::make_unique<EmpyreaSpell<1>>(scene, entity);
+    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, LizardVariant_Second>;
+    caster.attack = std::make_unique<EmpyreaAttack<LizardVariant_Second>>(scene, entity);
+    caster.spell = std::make_unique<EmpyreaSpell<LizardVariant_Second>>(scene, entity);
 }
 
 template<>
-void build<LizardType_Empyrea, 2>(Scene* scene, entt::entity entity) {
-    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, uint8(2));
+void build<LizardType_Empyrea, LizardVariant_Third>(Scene* scene, entt::entity entity) {
+    Lizard& lizard = scene->registry.emplace<Lizard>(entity, LizardType_Empyrea, LizardVariant_Third);
     Caster& caster = scene->registry.get<Caster>(entity);
 
-    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, 2>;
-    caster.attack = std::make_unique<EmpyreaAttack<2>>(scene, entity);
-    caster.spell = std::make_unique<EmpyreaSpell<2>>(scene, entity);
+    lizard.dragging_preview_function = draw_dragging_preview<LizardType_Empyrea, LizardVariant_Third>;
+    caster.attack = std::make_unique<EmpyreaAttack<LizardVariant_Third>>(scene, entity);
+    caster.spell = std::make_unique<EmpyreaSpell<LizardVariant_Third>>(scene, entity);
 }
 
 }

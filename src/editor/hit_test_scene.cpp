@@ -1,13 +1,17 @@
-﻿
-#include "hit_test_scene.hpp"
+﻿#include "hit_test_scene.hpp"
 
 #include <tracy/Tracy.hpp>
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
-#include <renderer/gpu_asset_cache.hpp>
 
 #include "general/math/matrix_math.hpp"
 #include "general/math/math.hpp"
+#include "renderer/gpu_asset_cache.hpp"
+#include "renderer/assets/mesh.hpp"
+#include "renderer/assets/material.hpp"
+#include "renderer/assets/model.hpp"
+#include "renderer/font_manager.hpp"
+#include "renderer/draw_functions.hpp"
 #include "game/scene.hpp"
 #include "game/entities/tile.hpp"
 #include "game/entities/enemy.hpp"
@@ -17,10 +21,6 @@
 #include "game/effects/text_layer.hpp"
 #include "game/effects/hit.hpp"
 #include "game/effects/hit_effect.hpp"
-#include "renderer/assets/mesh.hpp"
-#include "renderer/assets/material.hpp"
-#include "renderer/font_manager.hpp"
-#include "renderer/draw_functions.hpp"
 
 namespace spellbook {
 
@@ -77,7 +77,7 @@ void HitTestScene::update() {
     if (p_scene->pause)
         return;
 
-    Viewport& viewport = p_scene->render_scene.viewport;
+    Viewport& viewport = p_scene->render_scene->viewport;
 
     p_scene->update();
 }
@@ -164,7 +164,7 @@ void HitTestScene::build_visuals(Scene* scene) {
         scene->visual_map_entities[pos] = entity;
 
         StaticModel& model = scene->registry.emplace<StaticModel>(entity,
-            instance_static_model(scene->render_scene, load_resource<ModelCPU>(tile_entry.model_path))
+            instance_static_model(*scene->render_scene, load_resource<ModelCPU>(tile_entry.model_path))
         );
 
         m44GPU tfm = m44GPU(

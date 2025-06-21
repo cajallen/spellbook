@@ -40,7 +40,7 @@ struct EnemyPrefab : Resource {
     static constexpr string_view extension() { return ".sbjenm"; }
     static constexpr string_view dnd_key() { return "DND_ENEMY"; }
     static FilePath folder() { return "enemies"_resource; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EnemyPrefab::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EnemyPrefab::extension(); }; }
 };
 
 struct Traveler {
@@ -52,7 +52,7 @@ struct Traveler {
     unique_ptr<Stat> max_speed;
 
     Target target = {};
-    Path path = {};
+    NavigationPath path = {};
     
     void set_target(Target new_target) {
         assert_else(new_target.priority != INT_MAX);

@@ -1,5 +1,7 @@
 ﻿#include "spawner.hpp"
 
+#include <filesystem>
+
 #include <entt/entity/entity.hpp>
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
@@ -8,6 +10,7 @@
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
 #include "general/logger.hpp"
+#include "renderer/assets/model.hpp"
 #include "game/scene.hpp"
 #include "general/input.hpp"
 #include "game/game.hpp"
@@ -313,7 +316,7 @@ bool inspect(Spawner* spawner) {
     ImGui::TableSetupColumn("Enemy");
     ImGui::TableHeadersRow();
 
-    for (const auto& entry : fs::directory_iterator(resource_path("enemies").abs_path())) {
+    for (const auto& entry : std::filesystem::directory_iterator(resource_path("enemies").abs_path())) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         string button_name = fmt_("Spawn {}", entry.path().stem().string());
@@ -345,15 +348,12 @@ entt::entity instance_prefab(Scene* scene, const SpawnerPrefab& spawner_prefab, 
     scene->registry.emplace<LogicTransform>(entity, v3(location));
 
     if (spawner_prefab.model_file_path.is_file()) {
-        auto& model_comp = scene->registry.emplace<Model>(entity);
-        model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(spawner_prefab.model_file_path));
-        model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
-        
+        scene->registry.emplace<Model>(entity, *scene->render_scene, spawner_prefab.model_file_path);
         scene->registry.emplace<ModelTransform>(entity);
         scene->registry.emplace<TransformLink>(entity, v3(0.5f, 0.5f, 0.0f));
     }
     
-    scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, scene->spawn_state_info);
+    scene->registry.emplace<Spawner>(entity, spawner_prefab.level_spawn_info, SpawnStateInfo{}, &*scene->spawn_state_info);
     scene->registry.emplace<FloorOccupier>(entity);
 
     // Preload all of the enemies

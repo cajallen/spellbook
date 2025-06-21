@@ -30,6 +30,21 @@
           "name": "TRACY_ENABLE",
           "value": "True",
           "type": "BOOL"
+        },
+        {
+          "name": "VUK_EXTRA",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "VUK_EXTRA_IMGUI",
+          "value": "False",
+          "type": "BOOL"
+        },
+        {
+          "name": "VUK_EXTRA_INIT",
+          "value": "False",
+          "type": "BOOL"
         }
       ]
     },

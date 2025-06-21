@@ -1,6 +1,6 @@
 ﻿#include "texture.hpp"
 
-#include <vuk/Partials.hpp>
+#include <vuk/vsl/Core.hpp>
 #include <lz4/lz4.h>
 #include <stb_image.h>
 
@@ -8,23 +8,9 @@
 #include "general/file/file_cache.hpp"
 #include "renderer/gpu_asset_cache.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/runtime.hpp"
 
 namespace spellbook {
-
-FilePath upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
-    assert_else(tex_cpu.file_path.is_file());
-    uint64 tex_cpu_hash = hash_path(tex_cpu.file_path);
-    vuk::Allocator& alloc = frame_allocation ? *get_renderer().frame_allocator : *get_renderer().global_allocator;
-    auto [tex, tex_fut] = vuk::create_texture(alloc, tex_cpu.format, vuk::Extent3D(tex_cpu.size), (void*) tex_cpu.pixels.data(), tex_cpu.needs_mips);
-    get_renderer().context->set_name(tex, vuk::Name(tex_cpu.file_path.rel_string()));
-    get_renderer().enqueue_setup(std::move(tex_fut));
-
-    get_gpu_asset_cache().textures[tex_cpu_hash] = {std::move(tex), frame_allocation};
-    assert_else(get_gpu_asset_cache().textures[tex_cpu_hash].value.image->image != VK_NULL_HANDLE);
-
-    return tex_cpu.file_path;
-}
-
 
 template<>
 TextureCPU& load_resource(const FilePath& input_path, bool assert_exists, bool clear_cache) {
@@ -35,7 +21,7 @@ TextureCPU& load_resource(const FilePath& input_path, bool assert_exists, bool c
 
     TextureCPU& texture = *cpu_resource_cache<TextureCPU>().emplace(input_path, std::make_unique<TextureCPU>()).first->second;
 
-    bool exists = fs::exists(input_path.abs_path());
+    bool exists = input_path.exists();
     bool corrext = input_path.extension() == TextureCPU::extension();
     if (assert_exists) {
         assert_else(exists && corrext)
@@ -88,7 +74,7 @@ bool save_resource(const TextureCPU& texture_cpu) {
 }
 
 TextureCPU convert_to_texture(const FilePath& input_file_path, const FilePath& output_folder, const string& output_name) {
-    fs::create_directories(output_folder.abs_path());
+    create_directories(output_folder);
 
     TextureCPU texture;
     texture.file_path = FilePath(output_folder.rel_string() + output_name + string(TextureCPU::extension()));
@@ -113,6 +99,58 @@ TextureCPU convert_to_texture(const FilePath& input_file_path, const FilePath& o
         free(pixel_data);
     }
     return texture;
+}
+
+FilePath upload_texture(const TextureCPU& tex_cpu, bool frame_allocation) {
+    assert_else(tex_cpu.file_path.is_file());
+    uint64 tex_cpu_hash = hash_path(tex_cpu.file_path);
+    vuk::Allocator& alloc = frame_allocation ? *get_renderer().frame_allocator : *get_renderer().global_allocator;
+
+    // TODO: mips
+    auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eMap2D, tex_cpu.format, vuk::Extent3D(tex_cpu.size), vuk::Samples::e1);
+    auto [_image, _view, _future] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferOnTransfer, ia, tex_cpu.pixels.data());
+    
+    // Our texture object will handle lifetimes of image and view
+    _image.release();
+    _view.release();
+
+    get_renderer().runtime->runtime->set_name(ia.image.image, vuk::Name(tex_cpu.file_path.rel_string()));
+    get_renderer().runtime->runtime->set_name(ia.image_view.payload, vuk::Name(tex_cpu.file_path.rel_string()));
+    _future.set_name(tex_cpu.file_path.rel_string());
+
+    get_renderer().enqueue_setup(std::move(_future));
+
+    get_gpu_asset_cache().textures[tex_cpu_hash] = TextureGPU(alloc, vuk::SampledImage{ia, Sampler().get()}, frame_allocation ? get_renderer().frame_timer.current_frame : ~0u);
+    assert_else(get_gpu_asset_cache().textures[tex_cpu_hash].value.ia.image.image != VK_NULL_HANDLE);
+
+    return tex_cpu.file_path;
+}
+
+TextureGPU::TextureGPU(vuk::Allocator& alloc, vuk::SampledImage&& value, bool frame_allocated) 
+    : alloc(&alloc)
+    , value(value)
+    , frame_allocated(frame_allocated) {}
+
+TextureGPU::~TextureGPU() {
+    if (alloc) {
+        vuk::deallocate(*alloc, value.ia.image);
+        vuk::deallocate(*alloc, value.ia.image_view);
+    }
+}
+
+TextureGPU::TextureGPU(TextureGPU&& other) noexcept
+    : alloc(other.alloc)
+    , value(std::move(other.value))
+    , frame_allocated(other.frame_allocated) {
+    other.reset();
+}
+
+TextureGPU& TextureGPU::operator=(TextureGPU&& other) noexcept {
+    alloc = other.alloc;
+    value = std::move(other.value);
+    frame_allocated = other.frame_allocated;
+    other.reset();
+    return *this;
 }
 
 }

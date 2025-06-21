@@ -2,10 +2,11 @@
 
 #include <imgui.h>
 
-#include "enemy.hpp"
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
+#include "renderer/assets/model.hpp"
 #include "game/scene.hpp"
+#include "game/entities/enemy.hpp"
 #include "game/entities/components.hpp"
 
 namespace spellbook {
@@ -19,9 +20,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     static int shrine_i = 0;
     scene->registry.emplace<Name>(shrine_entity, fmt_("{}_{}", consumer_prefab.shrine_model_path.stem(), shrine_i++));
 
-    Model& shrine_model = scene->registry.emplace<Model>(shrine_entity);
-    shrine_model.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(consumer_prefab.shrine_model_path));
-    shrine_model.model_gpu = instance_model(scene->render_scene, *shrine_model.model_cpu);
+    Model& shrine_model = scene->registry.emplace<Model>(shrine_entity, *scene->render_scene, consumer_prefab.shrine_model_path);
     
     scene->registry.emplace<LogicTransform>(shrine_entity, v3(location));
     scene->registry.emplace<ModelTransform>(shrine_entity);
@@ -30,10 +29,7 @@ entt::entity instance_prefab(Scene* scene, const ConsumerPrefab& consumer_prefab
     scene->registry.emplace<FloorOccupier>(shrine_entity);
     scene->registry.emplace<AddToInspect>(shrine_entity);
 
-    
-    Model& egg_model = scene->registry.emplace<Model>(egg_entity);
-    egg_model.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(consumer_prefab.egg_model_path));
-    egg_model.model_gpu = instance_model(scene->render_scene, *egg_model.model_cpu);
+    Model& egg_model = scene->registry.emplace<Model>(egg_entity, *scene->render_scene, consumer_prefab.egg_model_path);
 
     static int egg_i = 0;
     scene->registry.emplace<Name>(egg_entity, fmt_("{}_{}", consumer_prefab.egg_model_path.stem(), egg_i++));

@@ -1,14 +1,10 @@
 #pragma once
 
 #include <plf_colony.h>
-#include <vuk/vuk_fwd.hpp>
-#include <vuk/Buffer.hpp>
-#include <vuk/Image.hpp>
-#include <vuk/Future.hpp>
+#include <vuk/Value.hpp>
 
 #include "general/string.hpp"
 #include "general/math/geometry.hpp"
-#include "general/math/quaternion.hpp"
 #include "general/color.hpp"
 
 #include "renderer/viewport.hpp"
@@ -53,6 +49,13 @@ struct PostProcessData {
     float time;
 };
 
+struct QuerySystem {
+    std::queue<vuk::Value<vuk::Buffer>> futures;
+
+    v2i input = {-1, -1};
+    uint32 result;
+};
+
 struct RenderScene {
     string              name;
     
@@ -67,12 +70,10 @@ struct RenderScene {
     SceneData       scene_data;
     PostProcessData post_process_data;
     
-    v2i         query = v2i(-1, -1);
-    vuk::Future fut_query_result;
+    QuerySystem query;
 
     bool user_pause = false;
     bool cull_pause = false;
-    vuk::Texture render_target;
 
     vuk::ImageView metallic_refl_iv = {};
 
@@ -100,23 +101,13 @@ struct RenderScene {
     umap<mat_id, umap<mesh_id, vector<BuiltRenderable>>> renderables_built;
     umap<mat_id, umap<mesh_id, vector<BuiltRiggedRenderable>>> rigged_renderables_built;
 
-    void        setup(vuk::Allocator& allocator);
-    void        image(v2i size);
-    void        settings_gui();
-    void        pre_render();
-    void        update();
-    vuk::Future render(vuk::Allocator& allocator, vuk::Future target);
-    void        update_size(v2i new_size);
-
-    void add_sundepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_topdepth_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_topdepth_blur_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_forward_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_widget_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_postprocess_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_info_read_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_emitter_update_pass(std::shared_ptr<vuk::RenderGraph> rg);
-    void add_ui_pass(std::shared_ptr<vuk::RenderGraph> rg);
+    void setup(vuk::Allocator& allocator);
+    void window(v2i size);
+    void settings_gui();
+    void pre_render();
+    void update();
+    void render();
+    void update_size(v2i new_size);
 
     void prune_emitters();
 

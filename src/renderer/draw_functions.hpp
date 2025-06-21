@@ -1,9 +1,8 @@
 #pragma once
 
-#include "general/vector.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/camera.hpp"
-
+#include "renderer/assets/mesh.hpp"
 #include "general/navigation_path.hpp"
 
 namespace spellbook {
@@ -63,7 +62,7 @@ struct PaletteCreateInfo {
 
 void generate_palette(const PaletteCreateInfo& info);
 
-void draw_path(RenderScene& render_scene, Path& path, const v3& pos);
+void draw_path(RenderScene& render_scene, NavigationPath& path, const v3& pos);
 
 }
 

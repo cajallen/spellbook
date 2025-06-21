@@ -2,8 +2,9 @@
 
 #include <entt/entity/entity.hpp>
 
-#include "general/math/geometry.hpp"
 #include "general/umap.hpp"
+#include "general/function.hpp"
+#include "general/math/geometry.hpp"
 
 namespace spellbook {
 
@@ -11,8 +12,8 @@ struct Ability;
 struct Caster;
 struct Scene;
 
-using EntryEvalFunction = std::function<int(Scene*, const uset<entt::entity>&)>;
-using EntryGatherFunction = std::function<uset<entt::entity>(Ability&, v3i, float)>;
+using EntryEvalFunction = function<int(Scene*, const uset<entt::entity>&)>;
+using EntryGatherFunction = function<uset<entt::entity>(Ability&, v3i, float)>;
 
 bool trap_targeting(Ability& ability);
 

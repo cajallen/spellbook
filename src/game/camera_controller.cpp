@@ -8,6 +8,7 @@
 #include "general/math/math.hpp"
 #include "general/math/matrix_math.hpp"
 #include "general/input.hpp"
+#include "renderer/viewport.hpp"
 
 namespace spellbook {
 

@@ -3,6 +3,7 @@
 #include "extension/fmt.hpp"
 #include "extension/imgui_extra.hpp"
 #include "extension/icons/font_awesome4.h"
+#include "renderer/assets/model.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 
@@ -13,9 +14,7 @@ entt::entity instance_prefab(Scene* scene, const BeadPrefab& bead_prefab, v3 pos
     auto       entity = scene->registry.create();
     scene->registry.emplace<Name>(entity, fmt_("{}_{}", bead_prefab.file_path.stem(), i++));
     
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(bead_prefab.model_path));
-    model_comp.model_gpu = std::move(instance_model(scene->render_scene, *model_comp.model_cpu));
+    auto& model_comp = scene->registry.emplace<Model>(entity, *scene->render_scene, bead_prefab.model_path);
 
     scene->registry.emplace<LogicTransform>(entity, position);
     scene->registry.emplace<ModelTransform>(entity, v3{}, quat{}, v3(bead_prefab.scale));

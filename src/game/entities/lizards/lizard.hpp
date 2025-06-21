@@ -4,16 +4,15 @@
 
 #include "extension/fmt.hpp"
 #include "general/color.hpp"
+#include "general/function.hpp"
 #include "general/file/file_path.hpp"
-#include "game/entities/ability.hpp"
-
-#define LIZARD_VARIANT_COUNT 4
+#include "game/entities/ability_type.hpp"
 
 namespace spellbook {
 
 struct Scene;
 
-enum LizardType {
+enum LizardType : uint8 {
     LizardType_Empty,
     LizardType_Hanther,
     LizardType_Sauria,
@@ -21,19 +20,26 @@ enum LizardType {
     LizardType_Empyrea
 };
 
-struct Lizard { // Component
-    LizardType type = LizardType_Empty;
-    uint8 lizard_variant = 0;
-    std::function<void(Scene*, entt::entity)> dragging_preview_function;
+enum LizardVariant : uint8 {
+    LizardVariant_First,
+    LizardVariant_Second,
+    LizardVariant_Third,
+    LizardVariant_Fourth
 };
 
-template <LizardType T, uint8 Variant>
+struct Lizard { // Component
+    LizardType type = LizardType_Empty;
+    LizardVariant lizard_variant = LizardVariant_First;
+    function<void(Scene*, entt::entity)> dragging_preview_function;
+};
+
+template <LizardType T, LizardVariant Variant>
 void draw_dragging_preview(Scene* scene, entt::entity entity);
 
-constexpr uint32 ability_index(LizardType lizard_type, uint8 variant, AbilityType ability_type) {
+constexpr uint32 ability_index(LizardType lizard_type, LizardVariant variant, AbilityType ability_type) {
     return
-        lizard_type * (magic_enum::enum_count<AbilityType>() + LIZARD_VARIANT_COUNT)
-        + variant * LIZARD_VARIANT_COUNT
+        lizard_type * (magic_enum::enum_count<AbilityType>() + magic_enum::enum_count<LizardVariant>())
+        + variant * magic_enum::enum_count<LizardVariant>()
         + ability_type;
 }
 struct LizardDatabase {
@@ -45,7 +51,7 @@ struct LizardDatabase {
             uint8 uv = 0;
         };
         LizardType type;
-        std::array<VariantInfo, LIZARD_VARIANT_COUNT> variants;
+        std::array<VariantInfo, magic_enum::enum_count<LizardVariant>()> variants;
         string name;
         float scale;
         FilePath model_path;
@@ -57,7 +63,7 @@ struct LizardDatabase {
 
     struct AbilityEntry {
         LizardType lizard_type;
-        uint8 lizard_variant;
+        LizardVariant lizard_variant;
         AbilityType ability_type;
         string name;
         string description;
@@ -75,7 +81,7 @@ struct LizardDatabase {
 void initialize_lizard_database(LizardDatabase&);
 LizardDatabase& get_lizard_database();
 
-entt::entity instance_lizard(Scene* scene, v3i position, LizardType lizard_type, uint8 lizard_variant, std::function<void(Scene*, entt::entity)> build_func);
+entt::entity instance_lizard(Scene* scene, v3i position, LizardType lizard_type, LizardVariant lizard_variant, function<void(Scene*, entt::entity)> build_func);
 
 template <LizardType T, uint8 Variant>
 void build(Scene* scene, entt::entity entity);

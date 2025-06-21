@@ -1,14 +1,15 @@
 ﻿#pragma once
 
 #include <array>
-#include <ft2build.h>
-#include <freetype/freetype.h>
-#include <vuk/SampledImage.hpp>
+#include <vuk/ImageAttachment.hpp>
 
 #include "general/file/file_path.hpp"
 #include "general/math/geometry.hpp"
 
 using std::array;
+
+struct FT_LibraryRec;
+typedef struct FT_LibraryRec_*  FT_Library;
 
 namespace spellbook {
 struct FontRequestInfo {
@@ -42,7 +43,7 @@ struct Font {
     uint64 id;
     int32 size;
     array<Glyph, 128> glyphs;
-    vuk::SampledImage image = vuk::SampledImage(vuk::SampledImage::Global{});
+    vuk::SampledImage image = {};
     v2i atlas_size;
 };
 

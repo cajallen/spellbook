@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <entt/entity/entity.hpp>
+
 #include "general/string.hpp"
 
 namespace spellbook {

@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include <functional>
 #include <entt/entity/fwd.hpp>
 
 #include "general/vector.hpp"
 #include "general/id_ptr.hpp"
+#include "general/function.hpp"
 #include "general/file/resource.hpp"
 #include "game/entities/stat.hpp"
 
@@ -64,7 +64,7 @@ struct SpawnerPrefab {
     static constexpr string_view extension() { return ".sbjspw"; }
     static constexpr string_view dnd_key() { return "DND_SPAWNER"; }
     static FilePath folder() { return "spawners"_resource; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == SpawnerPrefab::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == SpawnerPrefab::extension(); }; }
 };
 
 struct Spawner {

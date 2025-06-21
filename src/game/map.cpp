@@ -10,8 +10,6 @@
 #include "game/entities/spawner.hpp"
 #include "game/entities/consumer.hpp"
 
-namespace fs = std::filesystem;
-
 namespace spellbook {
 
 bool inspect(MapPrefab* map_prefab) {

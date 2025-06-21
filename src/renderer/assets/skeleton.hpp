@@ -58,7 +58,7 @@ struct SkeletonPrefab : Resource {
     static constexpr string_view extension() { return ".sbjskl"; }
     static constexpr string_view dnd_key() { return "DND_SKELETON"; }
     static FilePath folder() { return get_resource_folder() + "models"; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == SkeletonPrefab::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == SkeletonPrefab::extension(); }; }
 };
 
 struct Bone {
@@ -97,7 +97,7 @@ struct IKTarget {
 
 struct SkeletonCPU {
     SkeletonPrefab* prefab;
-    vector<std::unique_ptr<Bone>> bones;
+    vector<unique_ptr<Bone>> bones;
     string current_pose;
 
     vector<IKTarget> iks;

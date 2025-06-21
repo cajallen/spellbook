@@ -12,7 +12,7 @@
 namespace spellbook {
 
 
-LizardCardGUI::LizardCardGUI(LizardDatabase::LizardEntry& lizard, uint8 variant, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, std::function<void(Scene*,v3i)> instance_func)
+LizardCardGUI::LizardCardGUI(LizardDatabase::LizardEntry& lizard, uint8 variant, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, function<void(Scene*,v3i)> instance_func)
     : variant(variant)
     , lizard(lizard)
     , attack(attack)
@@ -44,14 +44,14 @@ void LizardCardGUI::draw(GUIManager* manager) {
     AlignmentGUI card_splash_container(*manager);
     {
         ImageGUI card_splash(*manager);
-        card_splash.set_image(lizard.variants[variant].splash, v2i(200, 500), true);
+        card_splash.set_image(lizard.variants[variant].splash, v2i(300, 500), true);
         card_splash_container.item = make_unique<ImageGUI>(std::move(card_splash));
     }
     VerticalBox card_layout(*manager);
     {
         HorizontalBox title_bar(*manager);
         title_bar.background_opacity = 0.6f;
-        SpacingGUI    title_left_spacing(*manager);
+        SpacingGUI title_left_spacing(*manager);
         title_left_spacing.size = {10, 10};
         TextGUI text(*manager);
         text.text = fmt_("{{header}}{{shadow}}{{col=ffffff}}{}{{\\col}}{{\\shadow}}{{\\header}}", lizard.name);
@@ -66,7 +66,7 @@ void LizardCardGUI::draw(GUIManager* manager) {
     {
         HorizontalBox title_bar(*manager);
         title_bar.background_opacity = 0.6f;
-        SpacingGUI    title_left_spacing(*manager);
+        SpacingGUI title_left_spacing(*manager);
         title_left_spacing.size = {10, 10};
         TextGUI text(*manager);
         text.text = fmt_("{{bold}}{{shadow}}{{col={}}}{}{{\\col}}{{\\shadow}}{{\\bold}}", lizard.variants[variant].color.to_string(), lizard.variants[variant].title);

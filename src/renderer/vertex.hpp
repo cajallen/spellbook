@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vuk/CommandBuffer.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
 
 #include "general/math/geometry.hpp"
 #include "general/color.hpp"

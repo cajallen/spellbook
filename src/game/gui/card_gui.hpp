@@ -28,12 +28,12 @@ struct LizardCardGUI {
     bool attack_expanded;
     bool spell_expanded;
 
-    std::function<void(Scene*,v3i)> instance_function;
+    function<void(Scene*,v3i)> instance_function;
 
     // set by the UI
     v2i position;
 
-    LizardCardGUI(LizardDatabase::LizardEntry& lizard, uint8 variant, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, std::function<void(Scene*,v3i)> instance_func);
+    LizardCardGUI(LizardDatabase::LizardEntry& lizard, uint8 variant, LizardDatabase::AbilityEntry& attack, LizardDatabase::AbilityEntry& spell, int32 depth, function<void(Scene*,v3i)> instance_func);
 
     void draw(GUIManager* manager);
     void update(GUIManager* manager);

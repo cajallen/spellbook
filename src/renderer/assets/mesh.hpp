@@ -36,7 +36,7 @@ struct MeshCPU : Resource {
     static constexpr string_view extension() { return ".sbamsh"; }
     static constexpr string_view dnd_key() { return "DND_MESH"; }
     static FilePath folder() { return get_resource_folder(); }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == MeshCPU::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == MeshCPU::extension(); }; }
 };
 JSON_IMPL(MeshInfo, vertices_bsize, indices_bsize, index_bsize);
 JSON_IMPL(MeshBounds, valid, extents, origin, radius);

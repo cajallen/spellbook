@@ -2,9 +2,11 @@
 
 #include <entt/entity/fwd.hpp>
 
-#include "targeting.hpp"
+#include "general/memory.hpp"
 #include "game/timer.hpp"
 #include "game/entities/stat.hpp"
+#include "game/entities/targeting.hpp"
+#include "game/entities/ability_type.hpp"
 #include "renderer/assets/animation_state.hpp"
 
 namespace spellbook {
@@ -13,11 +15,6 @@ struct Scene;
 struct Ability;
 
 float instant_time_to_callback(Ability&, v3i);
-
-enum AbilityType {
-    AbilityType_Attack,
-    AbilityType_Spell
-};
 
 struct Ability {
     Scene* scene = nullptr;
@@ -28,8 +25,8 @@ struct Ability {
     StatInstance pre_trigger_time;
     StatInstance post_trigger_time;
     
-    std::shared_ptr<Timer> pre_trigger_timer;
-    std::shared_ptr<Timer> post_trigger_timer;
+    shared_ptr<Timer> pre_trigger_timer;
+    shared_ptr<Timer> post_trigger_timer;
 
     EntryEvalFunction entry_eval_function;
     EntryGatherFunction entry_gather_function;
@@ -38,7 +35,7 @@ struct Ability {
     v3i target = {};
 
     Ability(Scene* _scene, entt::entity _caster);
-    virtual ~Ability() = default;
+    virtual ~Ability();
 
     void setup_time(float base_pre, float base_post);
 
@@ -61,7 +58,7 @@ struct Ability {
 
 struct Attack : Ability {
     StatInstance cooldown_time;
-    std::shared_ptr<Timer> cooldown_timer;
+    shared_ptr<Timer> cooldown_timer;
 
     Attack(Scene* init_scene, entt::entity init_caster);
     virtual ~Attack() override = default;

@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "general/vector.hpp"
 #include "game/scene.hpp"
 
 namespace spellbook {

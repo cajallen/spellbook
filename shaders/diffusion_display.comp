@@ -1,0 +1,20 @@
+#version 450
+#pragma shader_stage(compute)
+
+layout(binding = 0, rg32f) uniform readonly image2D u_source;
+layout(binding = 1, rgba16f) uniform writeonly image2D u_target;
+
+layout(push_constant) uniform uPushConstant {
+    float step_min;
+    float step_max;
+} pc;
+
+layout (local_size_x = 8, local_size_y = 8) in;
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+
+    vec4 col = imageLoad(u_source, coord);
+    float value = smoothstep(pc.step_min, pc.step_max, col.g);
+
+    imageStore(u_target, coord, vec4(value, value, value, 1.0));
+}

@@ -2,6 +2,7 @@
 
 #include <entt/entity/entity.hpp>
 
+#include "general/function.hpp"
 #include "general/file/file_path.hpp"
 #include "game/entities/stat.hpp"
 
@@ -16,7 +17,7 @@ struct Projectile {
 
     bool first_frame = true;
     
-    std::function<void(entt::entity proj_entity)> callback = {};
+    function<void(entt::entity proj_entity)> callback = {};
 };
 
 entt::entity quick_projectile(Scene* scene, Projectile proj, v3 pos, const FilePath& particles_path = {}, const FilePath& model_path = {}, float scale = 1.0f);

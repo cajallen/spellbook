@@ -1,11 +1,12 @@
 ﻿#include "hit_effect.hpp"
 
+#include "renderer/assets/particles.hpp"
+#include "editor/console.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 #include "game/entities/enemy.hpp"
 #include "game/entities/caster.hpp"
 #include "game/entities/tags.hpp"
-#include "editor/console.hpp"
 
 
 namespace spellbook {

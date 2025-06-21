@@ -2,7 +2,6 @@
 
 #include <vuk/Types.hpp>
 #include <vuk/Buffer.hpp>
-#include <vuk/SampledImage.hpp>
 
 #include "general/color.hpp"
 #include "general/string.hpp"
@@ -12,7 +11,7 @@
 #include "general/file/file_path.hpp"
 #include "general/file/resource.hpp"
 #include "renderer/vertex.hpp"
-#include "renderer/image.hpp"
+#include "renderer/assets/texture.hpp"
 
 namespace spellbook {
 
@@ -70,7 +69,7 @@ struct EmitterCPU : Resource {
     static constexpr string_view extension() { return ".sbjemt"; }
     static constexpr string_view dnd_key() { return "DND_EMITTERS"; }
     static FilePath folder() { return "emitters"_resource; }
-    static std::function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EmitterCPU::extension(); }; }
+    static function<bool(const FilePath&)> path_filter() { return [](const FilePath& path) { return path.extension() == EmitterCPU::extension(); }; }
 };
 
 struct EmitterSettings {
@@ -104,7 +103,7 @@ struct EmitterGPU {
     float rate;
     float next_spawn;
     
-    Image color;
+    FilePath color;
     vuk::Unique<vuk::Buffer> particles_buffer;
     uint64 mesh;
     uint64 material;

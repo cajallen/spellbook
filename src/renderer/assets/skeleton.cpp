@@ -2,7 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 #include <vuk/Buffer.hpp>
-#include <vuk/AllocatorHelpers.hpp>
+#include <vuk/runtime/vk/AllocatorHelpers.hpp>
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <magic_enum.hpp>
@@ -385,7 +385,7 @@ bool inspect(vector<AnimationFrame>* animation, int* load_pose) {
             ImGui::EnumCombo("##EaseMode", &frame.ease_mode);
             return false;
         },
-        std::function<void(vector<AnimationFrame>&,bool)>{},
+        function<void(vector<AnimationFrame>&,bool)>{},
         false);
 }
 
@@ -436,7 +436,6 @@ bool     save_resource(const SkeletonPrefab& value) {
 
 template <>
 SkeletonPrefab& load_resource(const FilePath& input_path, bool assert_exists, bool clear_cache) {
-    fs::path absolute_path = input_path.abs_string();
     if (clear_cache && cpu_resource_cache<SkeletonPrefab>().contains(input_path))
         cpu_resource_cache<SkeletonPrefab>().erase(input_path);
     if (cpu_resource_cache<SkeletonPrefab>().contains(input_path))
@@ -444,7 +443,7 @@ SkeletonPrefab& load_resource(const FilePath& input_path, bool assert_exists, bo
 
     SkeletonPrefab& value = *cpu_resource_cache<SkeletonPrefab>().emplace(input_path, std::make_unique<SkeletonPrefab>()).first->second;
 
-    bool exists = fs::exists(absolute_path);
+    bool exists = input_path.exists();
     bool corrext = input_path.extension() == SkeletonPrefab::extension();
     if (assert_exists) {
         assert_else(exists && corrext)
@@ -454,7 +453,7 @@ SkeletonPrefab& load_resource(const FilePath& input_path, bool assert_exists, bo
             return value;
     }
     
-    json j = parse_file(absolute_path.string());
+    json j = parse_file(input_path.abs_string());
     value.file_path = input_path;
     value.dependencies = get_file_cache().load_dependencies(j);
 

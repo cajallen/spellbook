@@ -1,6 +1,7 @@
 ﻿#include "lizard.hpp"
 
 #include "general/file/file_cache.hpp"
+#include "renderer/assets/model.hpp"
 #include "game/scene.hpp"
 #include "game/pose_controller.hpp"
 #include "game/text_3d.hpp"
@@ -21,8 +22,8 @@ LizardDatabase& get_lizard_database() {
 void initialize_lizard_database(LizardDatabase& database) {
     json& lizards_json = get_file_cache().load_json("resources/data/lizards.sbjson"_content);
 
-    database.lizard_entries.resize(magic_enum::enum_count<LizardType>() * LIZARD_VARIANT_COUNT);
-    database.ability_entries.resize(magic_enum::enum_count<AbilityType>() * magic_enum::enum_count<LizardType>() * LIZARD_VARIANT_COUNT);
+    database.lizard_entries.resize(magic_enum::enum_count<LizardType>() * magic_enum::enum_count<LizardVariant>());
+    database.ability_entries.resize(magic_enum::enum_count<AbilityType>() * magic_enum::enum_count<LizardType>() * magic_enum::enum_count<LizardVariant>());
     for (const auto& lizard_jv_ptr : lizards_json.at("List")->get_list()) {
         LizardDatabase::LizardEntry entry {};
         json lizard_json = from_jv<json>(lizard_jv_ptr);
@@ -95,7 +96,7 @@ void initialize_lizard_database(LizardDatabase& database) {
                 continue;
             }
             if (value_name == "Variant") {
-                entry.lizard_variant = from_jv<int32>(*value_jv_ptr);
+                entry.lizard_variant = from_jv<LizardVariant>(*value_jv_ptr);
                 continue;
             }
             if (value_name == "Type") {
@@ -131,9 +132,9 @@ void initialize_lizard_database(LizardDatabase& database) {
         database.ability_entries[ability_index(entry.lizard_type, entry.lizard_variant, entry.ability_type)] = entry;
     }
     for (uint32 i = 0; i < magic_enum::enum_count<LizardType>(); i++) {
-        for (uint8 v = 0; v < LIZARD_VARIANT_COUNT; v++) {
-            auto& attack_entry = database.ability_entries[ability_index(LizardType(i), v, AbilityType_Attack)];
-            auto& spell_entry = database.ability_entries[ability_index(LizardType(i), v, AbilityType_Spell)];
+        for (uint8 v = 0; v < magic_enum::enum_count<LizardVariant>(); v++) {
+            auto& attack_entry = database.ability_entries[ability_index(LizardType(i), LizardVariant(v), AbilityType_Attack)];
+            auto& spell_entry = database.ability_entries[ability_index(LizardType(i), LizardVariant(v), AbilityType_Spell)];
 
             attack_entry.extra_strings["Spell"] = spell_entry.name;
             spell_entry.extra_strings["Attack"] = attack_entry.name;
@@ -142,19 +143,18 @@ void initialize_lizard_database(LizardDatabase& database) {
     database.initialized = true;
 }
 
-entt::entity instance_lizard(Scene* scene, v3i position, LizardType lizard_type, uint8 lizard_variant, std::function<void(Scene*, entt::entity)> build_func) {
+entt::entity instance_lizard(Scene* scene, v3i position, LizardType lizard_type, LizardVariant lizard_variant, function<void(Scene*, entt::entity)> build_func) {
     auto& lizard_entry = get_lizard_database().lizard_entries.at(lizard_type);
 
     auto entity = scene->registry.create();
     scene->registry.emplace<AddToInspect>(entity);
 
-    auto& model_comp = scene->registry.emplace<Model>(entity);
-    model_comp.model_cpu = std::make_unique<ModelCPU>(load_resource<ModelCPU>(lizard_entry.model_path));
-    for (id_ptr<ModelCPU::Node>& node : model_comp.model_cpu->nodes) {
+    ModelCPU& model_cpu = load_resource<ModelCPU>(lizard_entry.model_path);
+    for (id_ptr<ModelCPU::Node>& node : model_cpu.nodes) {
         if (node->mesh_path_options.size() > 1)
             node->mesh_selection = lizard_entry.variants[lizard_variant].uv;
     }
-    model_comp.model_gpu = instance_model(scene->render_scene, *model_comp.model_cpu);
+    auto& model_comp = scene->registry.emplace<Model>(entity, *scene->render_scene, model_cpu);
 
     scene->registry.emplace<LogicTransform>(entity, v3(position));
     scene->registry.emplace<Grounded>(entity);

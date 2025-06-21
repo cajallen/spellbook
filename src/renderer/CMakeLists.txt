@@ -13,11 +13,12 @@ add_library(renderer
     render_scene.cpp
     renderable.cpp
     renderer.cpp
-    samplers.cpp
+    sampler.cpp
     vertex.cpp
     viewport.cpp
 	font_manager.cpp
 	text_draw.cpp
+	runtime.cpp
 )
 
 target_include_directories(renderer PRIVATE ..)

@@ -1,12 +1,12 @@
 #include "debug_ui.hpp"
 
-#include <filesystem>
 #include <imgui.h>
 #include <tracy/Tracy.hpp>
 #include <windows.h>
 #include <shellapi.h>
 
 #include "general/input.hpp"
+#include "renderer/renderer.hpp"
 #include "editor/console.hpp"
 #include "editor/file_browser.hpp"
 #include "editor/editor_scene.hpp"
@@ -15,19 +15,17 @@
 #include "game/scene.hpp"
 #include "game/effects/text_layer.hpp"
 
-namespace fs = std::filesystem;
-
 namespace spellbook {
 
 void DebugUI::setup() {
     FilePath config_path = FilePath("gui" + string(Resource::extension()), FilePathLocation_Config);
 
-    if (fs::exists(config_path.abs_path())) {
+    if (config_path.exists()) {
         json j = parse_file(config_path.abs_string());
         FROM_JSON_MEMBER(windows);
         FROM_JSON_MEMBER(item_state);
         FROM_JSON_MEMBER(file_browser_path);
-        if (!fs::exists(file_browser_path.abs_path())) {
+        if (!file_browser_path.exists() || file_browser_path.location == FilePathLocation_Symbolic) {
             file_browser_path = FilePath();
         }
     }
@@ -37,7 +35,7 @@ void DebugUI::setup() {
 
 void DebugUI::shutdown() {
     FilePath config_path = FilePath("gui" + string(Resource::extension()), FilePathLocation_Config);
-    fs::create_directories(config_path.parent_path());
+    create_directories(config_path.parent_path());
     
     auto j = json();
     TO_JSON_MEMBER(windows);
@@ -142,6 +140,14 @@ void DebugUI::update() {
         color_window(p_open);
     if (*(p_open = window_open("asset_browser"))) {
         file_browser("File Browser", p_open, &file_browser_path);
+    }
+}
+
+void DebugUI::render() {
+    bool* p_open;
+    for (auto scene : game.scenes) {
+        if (*(p_open = window_open(scene->name + " output")))
+            scene->output_image(p_open);
     }
 }
 

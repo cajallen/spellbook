@@ -1,8 +1,8 @@
 #include "mesh.hpp"
 
 #include <imgui/imgui.h>
-#include <vuk/Partials.hpp>
 #include <lz4/lz4.h>
+#include <vuk/vsl/Core.hpp>
 
 #include "extension/fmt.hpp"
 #include "general/math/math.hpp"

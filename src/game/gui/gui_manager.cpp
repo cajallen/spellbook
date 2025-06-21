@@ -5,6 +5,7 @@
 #include "extension/fmt.hpp"
 #include "extension/fmt_geometry.hpp"
 #include "renderer/gpu_asset_cache.hpp"
+#include "renderer/render_scene.hpp"
 #include "game/effects/text_layer.hpp"
 #include "renderer/draw_functions.hpp"
 #include "game/gui/gui_items.hpp"
@@ -28,7 +29,7 @@ void GUIManager::update() {
     hovered = nullptr;
     for (int32 i = interact_regions.size() - 1; i >= 0; i--) {
         InteractRegion& interact_region = interact_regions[i];
-        v2i mouse_pos = v2i(Input::mouse_pos) - scene->render_scene.viewport.start;
+        v2i mouse_pos = v2i(Input::mouse_pos) - scene->render_scene->viewport.start;
         if (math::contains(interact_region.region, mouse_pos)) {
             if (!set_hover) {
                 hovered = &interact_region;
@@ -73,8 +74,8 @@ void GUIManager::update() {
 }
 
 void GUIManager::draw() {
-    hud_gui.draw(this, scene->render_scene);
-    shop_gui.draw(this, scene->render_scene);
+    hud_gui.draw(this, *scene->render_scene);
+    shop_gui.draw(this, *scene->render_scene);
 }
 
 void GUIManager::add_interact_region(const InteractRegion& new_region) {

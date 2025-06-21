@@ -1,15 +1,13 @@
 #pragma once
 
-#include "extension/imgui_extra.hpp"
-#include "general/color.hpp"
-#include "general/vector.hpp"
+#include "general/file/file_path.hpp"
+#include "general/file/json.hpp"
 #include "editor/editor_scene.hpp"
-#include "game/scene.hpp"
 #include "game/map.hpp"
-#include "game/entities/consumer.hpp"
-#include "game/entities/spawner.hpp"
-#include "game/entities/tile.hpp"
 #include "game/visual_tile.hpp"
+#include "game/entities/consumer.hpp"
+#include "game/entities/tile.hpp"
+#include "game/entities/spawner.hpp"
 
 namespace spellbook {
 
@@ -38,6 +36,9 @@ struct MapEditor : EditorScene {
     int32 z_level = 0;
 
     uint32 rotation = 0;
+
+    bool is_home_selected = false;
+    uint32 selected_home = 0;
 
     FilePath vts_path;
     umap<VisualTileCorners, vector<FilePath>> visual_tileset;

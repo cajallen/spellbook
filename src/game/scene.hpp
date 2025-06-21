@@ -5,23 +5,30 @@
 
 #include "general/navigation_path.hpp"
 #include "general/bitmask_3d.hpp"
-#include "renderer/render_scene.hpp"
+#include "renderer/camera.hpp"
 #include "game/camera_controller.hpp"
 #include "game/timer.hpp"
-#include "game/shop.hpp"
-#include "game/player.hpp"
 #include "game/map_targeting.hpp"
-#include "game/audio.hpp"
 #include "game/effects/hit.hpp"
-#include "game/gui/gui_manager.hpp"
+#include "game/entities/lizards/lizard.hpp"
 
 
 namespace spellbook {
+
+struct RenderScene;
 
 struct TilePrefab;
 struct SpawnerPrefab;
 struct ConsumerPrefab;
 struct SpawnStateInfo;
+
+struct GUIManager;
+struct Shop;
+struct Player;
+struct Audio;
+
+struct EmitterCPU;
+
 namespace astar {
 struct Navigation;
 }
@@ -29,32 +36,38 @@ struct Navigation;
 struct PathInfo {
     entt::entity spawner;
     entt::entity consumer;
-    Path path;
+    NavigationPath path;
 };
 
 struct MapData {
+    struct Home {
+        v3i position;
+        uint32 rotation;
+    };
+
     bool dirty = false;
     Bitmask3D solids;
     Bitmask3D path_solids;
     Bitmask3D slot_solids;
     Bitmask3D unstandable_solids;
     umap<v3i, Direction> ramps;
+    vector<Home> homes;
 
     void update(entt::registry& registry);
     void clear();
 };
 
 struct Scene {
-    string           name;
-    RenderScene      render_scene;
-    Camera           camera;
-    CameraController controller;
-    entt::registry   registry;
-    entt::entity     selected_entity;
-    Shop             shop;
-    Player           player;
-    SpawnStateInfo*  spawn_state_info;
-    Audio            audio;
+    string                     name;
+    unique_ptr<RenderScene>    render_scene;
+    Camera                     camera;
+    CameraController           controller;
+    entt::registry             registry;
+    entt::entity               selected_entity;
+    unique_ptr<Shop>           shop;
+    unique_ptr<Player>         player;
+    unique_ptr<SpawnStateInfo> spawn_state_info;
+    unique_ptr<Audio>          audio;
     
     bool edit_mode = true; // disables certain features
     uint32 frame = 0;
@@ -68,12 +81,12 @@ struct Scene {
 
     umap<v3i, entt::entity> visual_map_entities;
     MapData map_data;
-    std::unique_ptr<MapTargeting> targeting;
+    unique_ptr<MapTargeting> targeting;
     
-    std::unique_ptr<astar::Navigation> navigation;
+    unique_ptr<astar::Navigation> navigation;
     vector<PathInfo> paths;
 
-    GUIManager gui_manager;
+    unique_ptr<GUIManager> gui_manager;
 
     HitSceneState hit_scene_state;
 
@@ -86,6 +99,7 @@ struct Scene {
     void inspect_entity(entt::entity entity);
     void settings_window(bool* p_open);
     void output_window(bool* p_open);
+    void output_image(bool* p_open);
     void select_entity(entt::entity entity);
 
     // Helper query functions
@@ -101,6 +115,8 @@ struct Scene {
     void release_selected();
 
     void set_edit_mode(bool to);
+
+    entt::entity instance_lizard(v3i pos, LizardType type, LizardDatabase::LizardEntry::VariantInfo& variant);
 };
 
 void update_paths(vector<PathInfo>& paths, Scene& scene);

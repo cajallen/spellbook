@@ -17,10 +17,10 @@ struct ShopEntry {
     Bead cost_type = Bead_Wood;
     int32 cost_amount = 0;
     LizardType lizard_type;
-    uint8 lizard_variant;
+    LizardVariant lizard_variant;
 
-    std::function<void(Scene*, entt::entity)> build_func;
-    std::function<void(ShopGUI&)> add_card_func;
+    function<void(Scene*, entt::entity)> build_func;
+    function<void(ShopGUI&)> add_card_func;
 
     Item* item = nullptr;
 };

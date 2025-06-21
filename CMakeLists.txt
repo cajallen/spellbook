@@ -8,6 +8,8 @@ set(DISTRIBUTED_DIR ${CMAKE_SOURCE_DIR} CACHE PATH "Root directory for resources
 set(FA_PATH "${CMAKE_SOURCE_DIR}/fa.ttf" CACHE PATH "Font Awesome path" FORCE)
 set(FREETYPE_PATH ${CMAKE_SOURCE_DIR}/libs/bin/freetype CACHE PATH "FreeType Path")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_subdirectory(libs)
 add_subdirectory(src)
 

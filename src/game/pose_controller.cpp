@@ -3,6 +3,7 @@
 #include <tracy/Tracy.hpp>
 
 #include "renderer/assets/animation_state.hpp"
+#include "renderer/assets/model.hpp"
 #include "game/scene.hpp"
 #include "game/entities/components.hpp"
 
@@ -84,8 +85,8 @@ void pose_system(Scene* scene) {
     for (auto [entity, model] : scene->registry.view<Model>().each()) {
         if (model.model_cpu->skeleton)
             model.model_cpu->skeleton->update();
-        if (model.model_gpu.skeleton)
-            model.model_gpu.skeleton->update(*model.model_cpu->skeleton);
+        if (model.model_gpu->skeleton)
+            model.model_gpu->skeleton->update(*model.model_cpu->skeleton);
     }
 }
 

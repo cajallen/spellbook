@@ -1,5 +1,7 @@
 ﻿#include "visual_tile.hpp"
 
+#include <filesystem>
+
 #include <Tracy/Tracy.hpp>
 #include <entt/entity/registry.hpp>
 
@@ -9,10 +11,12 @@
 #include "general/logger.hpp"
 #include "general/math/math.hpp"
 #include "general/math/matrix_math.hpp"
-#include "game/scene.hpp"
 #include "renderer/draw_functions.hpp"
+#include "renderer/render_scene.hpp"
 #include "renderer/assets/model.hpp"
+#include "renderer/assets/material.hpp"
 #include "editor/widget_system.hpp"
+#include "game/scene.hpp"
 
 namespace spellbook {
 
@@ -204,7 +208,7 @@ bool inspect(VisualTileSet* tile_set) {
         FilePath& convert_path = convert_paths.contains(tile_set) ? convert_paths[tile_set] : convert_paths[tile_set] = "models"_resource;
         ImGui::PathSelect<ModelCPU>("Folder", &convert_path);
         if (ImGui::Button("Convert")) {
-            for (auto& dir_entry : fs::directory_iterator(convert_path.abs_path())) {
+            for (auto& dir_entry : std::filesystem::directory_iterator(convert_path.abs_path())) {
                 if (ModelCPU::path_filter()(FilePath(dir_entry))) {
                     bool already_exists = false;
                     for (auto& tile : tile_set->tiles) {
@@ -282,7 +286,7 @@ void visual_tile_widget_system(Scene* scene) {
                     if (tile_entry.corners[c] == 0)
                         mat_id = mat_err_id;
 
-                    auto& r = scene->render_scene.quick_renderable(mesh_id, mat_id, true);           
+                    auto& r = scene->render_scene->quick_renderable(mesh_id, mat_id, true);           
                     v3 c_pos = pos + v3(visual_direction_offsets[c]) - v3(0.5f);
                     m44 t = math::translate(c_pos) * math::scale(v3(0.07f));
                     r.transform = m44GPU(t);
@@ -290,20 +294,20 @@ void visual_tile_widget_system(Scene* scene) {
                     uint64 corner_id = hash_path(vtsw.tile_set->file_path) ^ hash_path(tile_entry.model_path) + c;
                     WidgetSystem::Mouse3DInfo mouse;
                     mouse.model = t;
-                    mouse.mvp = scene->render_scene.viewport.camera->vp * mouse.model;
-                    mouse.uv_position = scene->render_scene.viewport.mouse_uv();
+                    mouse.mvp = scene->render_scene->viewport.camera->vp * mouse.model;
+                    mouse.uv_position = scene->render_scene->viewport.mouse_uv();
                     mouse.os_ray = math::transformed_ray(mouse.mvp, mouse.uv_position);
                     v4 h_screen_position = mouse.mvp * v4(v3(0.0f), 1.0f);
                     v2 uv_screen_position = math::to_unsigned_range(h_screen_position.xy / h_screen_position.w);
                     mouse.os_center_ray = math::transformed_ray(mouse.mvp, uv_screen_position);
-                    mouse.viewport_size = v2(scene->render_scene.viewport.size);
+                    mouse.viewport_size = v2(scene->render_scene->viewport.size);
 
                     auto dot_project_info = mouse_to_3d_dot(mouse);
 
                     auto& depth = WidgetSystem::depths[corner_id];
                     if (dot_project_info.distance < 12.0f) {
                         constexpr float bias = 0.02f;
-                        depth = math::min(depth, math::length(c_pos - scene->render_scene.viewport.camera->position) + bias);
+                        depth = math::min(depth, math::length(c_pos - scene->render_scene->viewport.camera->position) + bias);
                     } else {
                         depth = math::min(depth, FLT_MAX);
                     }

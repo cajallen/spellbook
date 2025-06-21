@@ -1,9 +1,6 @@
 ﻿#include "gpu_asset_cache.hpp"
 
-#include "general/logger.hpp"
-
 #include "renderer/draw_functions.hpp"
-#include "renderer/assets/material.hpp"
 
 namespace spellbook {
 
